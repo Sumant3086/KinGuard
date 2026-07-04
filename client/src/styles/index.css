@@ -382,3 +382,40 @@ tr:hover {
 .close-btn:hover {
   color: #333;
 }
+
+/* Edited row highlighting */
+.edited-row {
+  background-color: #fffbeb !important;
+  border-left: 3px solid #f59e0b;
+}
+
+.edited-row input {
+  border-color: #f59e0b;
+  background-color: #fef3c7;
+}
+
+/* Alert styles */
+.alert {
+  padding: 12px 20px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.alert-warning {
+  background-color: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.alert-error {
+  background-color: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+}
+
+.alert-success {
+  background-color: #d1fae5;
+  border: 1px solid #10b981;
+  color: #065f46;
+}
