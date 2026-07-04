@@ -48,6 +48,19 @@ export async function uploadInventory(file, inventoryDate) {
   return data;
 }
 
+export async function previewUpload(file, inventoryDate) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('inventoryDate', inventoryDate);
+
+  const { data } = await client.post('/admin/uploads/preview', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return data;
+}
+
 export async function getUploads() {
   const { data } = await client.get('/admin/uploads');
   return data;
@@ -56,6 +69,14 @@ export async function getUploads() {
 export async function getInventory(filters) {
   const { data } = await client.get('/admin/inventory', { params: filters });
   return data;
+}
+
+export async function downloadInventoryExport(filters) {
+  const response = await client.get('/admin/inventory/export', {
+    params: filters,
+    responseType: 'blob',
+  });
+  return response.data;
 }
 
 export async function getReconciliationReport(filters) {

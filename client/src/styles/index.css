@@ -419,3 +419,47 @@ tr:hover {
   border: 1px solid #10b981;
   color: #065f46;
 }
+
+/* Pagination styles */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Upload preview row styles */
+.preview-row-valid {
+  background-color: #d1fae5 !important;
+}
+
+.preview-row-warning {
+  background-color: #fef3c7 !important;
+}
+
+.preview-row-error {
+  background-color: #fee2e2 !important;
+}
+
+.badge-valid {
+  background: #10b981;
+  color: white;
+}
+
+.badge-warning {
+  background: #f59e0b;
+  color: white;
+}
+
+.badge-error {
+  background: #ef4444;
+  color: white;
+}

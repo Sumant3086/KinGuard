@@ -6,7 +6,9 @@ export default function AdminUpload() {
   const [file, setFile] = useState(null);
   const [inventoryDate, setInventoryDate] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [result, setResult] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,10 +25,32 @@ export default function AdminUpload() {
     }
   }
 
-  async function handleSubmit(e) {
+  async function handlePreview(e) {
     e.preventDefault();
     if (!file || !inventoryDate) {
       alert('Please select a file and inventory date');
+      return;
+    }
+
+    try {
+      setPreviewing(true);
+      setResult(null);
+      const data = await adminApi.previewUpload(file, inventoryDate);
+      setPreview(data);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Preview failed');
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
+  async function handleConfirmUpload() {
+    if (!file || !inventoryDate) {
+      alert('Please select a file and inventory date');
+      return;
+    }
+
+    if (!confirm(`Confirm upload of ${preview.totalRows} rows?\n\nValid: ${preview.statistics.valid}\nErrors: ${preview.statistics.errors}\nWarnings: ${preview.statistics.warnings}`)) {
       return;
     }
 
@@ -37,6 +61,7 @@ export default function AdminUpload() {
       setResult(data);
       setFile(null);
       setInventoryDate('');
+      setPreview(null);
       loadUploads();
     } catch (err) {
       alert(err.response?.data?.error || 'Upload failed');
@@ -45,13 +70,24 @@ export default function AdminUpload() {
     }
   }
 
+  function handleCancelPreview() {
+    setPreview(null);
+  }
+
+  function getRowClass(status) {
+    if (status === 'valid') return 'preview-row-valid';
+    if (status === 'warning') return 'preview-row-warning';
+    if (status === 'error') return 'preview-row-error';
+    return '';
+  }
+
   return (
     <AdminLayout>
       <h2>Upload Inventory</h2>
 
       <div className="card">
         <h3>Upload Master File</h3>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handlePreview}>
           <div className="form-group">
             <label>Inventory Date</label>
             <input
@@ -59,6 +95,7 @@ export default function AdminUpload() {
               value={inventoryDate}
               onChange={(e) => setInventoryDate(e.target.value)}
               required
+              disabled={previewing || uploading}
             />
           </div>
           <div className="form-group">
@@ -66,18 +103,111 @@ export default function AdminUpload() {
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
-              onChange={(e) => setFile(e.target.files[0])}
+              onChange={(e) => {
+                setFile(e.target.files[0]);
+                setPreview(null);
+                setResult(null);
+              }}
               required
+              disabled={previewing || uploading}
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={uploading}>
-            {uploading ? 'Uploading...' : 'Upload'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" className="btn btn-primary" disabled={previewing || uploading || preview}>
+              {previewing ? 'Validating...' : 'Preview Upload'}
+            </button>
+            {preview && (
+              <>
+                <button 
+                  type="button" 
+                  className="btn btn-success" 
+                  onClick={handleConfirmUpload}
+                  disabled={uploading || preview.statistics.errors === preview.totalRows}
+                >
+                  {uploading ? 'Uploading...' : 'Confirm Upload'}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={handleCancelPreview}
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
         </form>
+
+        {preview && (
+          <div className="alert alert-info" style={{ marginTop: '20px' }}>
+            <h4>📋 Upload Preview: {preview.fileName}</h4>
+            <p><strong>Inventory Date:</strong> {new Date(preview.inventoryDate).toLocaleDateString()}</p>
+            <p><strong>Total Rows:</strong> {preview.totalRows}</p>
+            {preview.showingPartial && (
+              <p style={{ color: '#f59e0b' }}><em>Showing first {preview.previewRows} rows (preview limit)</em></p>
+            )}
+            
+            <div style={{ display: 'flex', gap: '20px', marginTop: '10px', marginBottom: '10px' }}>
+              <div style={{ color: '#10b981', fontWeight: 'bold' }}>
+                ✓ Valid: {preview.statistics.valid}
+              </div>
+              <div style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                ⚠ Warnings: {preview.statistics.warnings}
+              </div>
+              <div style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                ✗ Errors: {preview.statistics.errors}
+              </div>
+            </div>
+
+            {preview.statistics.errors === preview.totalRows && (
+              <div className="alert alert-error" style={{ marginTop: '10px' }}>
+                ❌ All rows have errors. Please fix the file and try again.
+              </div>
+            )}
+
+            <div style={{ maxHeight: '400px', overflowY: 'auto', marginTop: '15px' }}>
+              <table style={{ fontSize: '12px' }}>
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Store Code</th>
+                    <th>Store Name</th>
+                    <th>Material Code</th>
+                    <th>Material Name</th>
+                    <th>SYS Qty</th>
+                    <th>Status</th>
+                    <th>Message</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.preview.map((row) => (
+                    <tr key={row.row} className={getRowClass(row.status)}>
+                      <td>{row.row}</td>
+                      <td>{row.storeCode}</td>
+                      <td>{row.storeName}</td>
+                      <td>{row.materialCode}</td>
+                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {row.materialName}
+                      </td>
+                      <td>{row.systemQuantity}</td>
+                      <td>
+                        <span className={`badge badge-${row.status}`}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td>{row.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {result && (
           <div className={`alert ${result.rejectedRows > 0 ? 'alert-info' : 'alert-success'}`} style={{ marginTop: '20px' }}>
-            <h4>Upload Complete</h4>
+            <h4>✅ Upload Complete</h4>
             <p>Total Rows: {result.totalRows}</p>
             <p>Successful: {result.successfulRows}</p>
             <p>Rejected: {result.rejectedRows}</p>
