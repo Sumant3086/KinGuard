@@ -8,9 +8,9 @@ export default function StoreInventory() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [editValues, setEditValues] = useState({});
+  const [editedRecords, setEditedRecords] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadInventory();
@@ -21,6 +21,8 @@ export default function StoreInventory() {
       setLoading(true);
       const data = await storeApi.getInventory(search, statusFilter);
       setRecords(data);
+      // Clear edited records when reloading
+      setEditedRecords({});
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load inventory');
     } finally {
@@ -28,27 +30,71 @@ export default function StoreInventory() {
     }
   }
 
-  function startEdit(record) {
-    setEditingId(record.id);
-    setEditValues({
-      physicalQuantity: record.physicalQuantity ?? '',
-      remarks: record.remarks ?? '',
-    });
+  function updateField(recordId, field, value) {
+    setEditedRecords(prev => ({
+      ...prev,
+      [recordId]: {
+        ...prev[recordId],
+        [field]: value
+      }
+    }));
   }
 
-  function cancelEdit() {
-    setEditingId(null);
-    setEditValues({});
+  function getFieldValue(record, field) {
+    // Return edited value if exists, otherwise original value
+    if (editedRecords[record.id] && editedRecords[record.id][field] !== undefined) {
+      return editedRecords[record.id][field];
+    }
+    return record[field] ?? '';
   }
 
-  async function saveEdit(id) {
+  async function saveAll() {
+    const recordsToUpdate = Object.keys(editedRecords);
+    if (recordsToUpdate.length === 0) {
+      alert('No changes to save');
+      return;
+    }
+
     try {
-      await storeApi.updateRecord(id, editValues.physicalQuantity, editValues.remarks);
-      setEditingId(null);
-      setEditValues({});
+      setSaving(true);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const recordId of recordsToUpdate) {
+        try {
+          const edits = editedRecords[recordId];
+          await storeApi.updateRecord(
+            recordId, 
+            edits.physicalQuantity, 
+            edits.remarks
+          );
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to update record ${recordId}:`, err);
+          errorCount++;
+        }
+      }
+
+      if (errorCount === 0) {
+        alert(`Successfully saved ${successCount} record(s)`);
+      } else {
+        alert(`Saved ${successCount} record(s), ${errorCount} failed`);
+      }
+
+      setEditedRecords({});
       loadInventory();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to save changes');
+      alert('Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancelAll() {
+    if (Object.keys(editedRecords).length > 0) {
+      if (confirm('Discard all unsaved changes?')) {
+        setEditedRecords({});
+      }
     }
   }
 
@@ -90,6 +136,7 @@ export default function StoreInventory() {
   }
 
   const pendingCount = records.filter(r => r.status === 'PENDING').length;
+  const hasUnsavedChanges = Object.keys(editedRecords).length > 0;
 
   return (
     <StoreLayout>
@@ -98,8 +145,18 @@ export default function StoreInventory() {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="actions">
+        {hasUnsavedChanges && (
+          <>
+            <button onClick={saveAll} disabled={saving} className="btn btn-success">
+              {saving ? 'Saving...' : `Save All Changes (${Object.keys(editedRecords).length})`}
+            </button>
+            <button onClick={cancelAll} disabled={saving} className="btn btn-secondary">
+              Cancel Changes
+            </button>
+          </>
+        )}
         {pendingCount > 0 && (
-          <button onClick={handleSubmit} disabled={submitting} className="btn btn-success">
+          <button onClick={handleSubmit} disabled={submitting || hasUnsavedChanges} className="btn btn-success">
             {submitting ? 'Submitting...' : `Submit Inventory (${pendingCount} pending)`}
           </button>
         )}
@@ -107,6 +164,12 @@ export default function StoreInventory() {
           Download My Inventory
         </button>
       </div>
+
+      {hasUnsavedChanges && (
+        <div className="alert alert-warning">
+          You have unsaved changes. Click "Save All Changes" to save or "Cancel Changes" to discard.
+        </div>
+      )}
 
       <div className="filters">
         <input
@@ -145,73 +208,69 @@ export default function StoreInventory() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    <td>{record.materialCode}</td>
-                    <td>{record.materialName}</td>
-                    <td>{record.systemQuantity}</td>
-                    <td>
-                      {editingId === record.id ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={editValues.physicalQuantity}
-                          onChange={(e) => setEditValues({ ...editValues, physicalQuantity: e.target.value })}
-                          style={{ width: '100px' }}
-                        />
-                      ) : (
-                        record.physicalQuantity ?? '-'
-                      )}
-                    </td>
-                    <td>
-                      {record.difference !== null ? (
-                        <span className={
-                          record.difference === 0 ? 'badge badge-matched' :
-                          record.difference < 0 ? 'badge badge-shortage' :
-                          'badge badge-excess'
-                        }>
-                          {record.difference}
+                {records.map((record) => {
+                  const isPending = record.status === 'PENDING';
+                  const isEdited = editedRecords[record.id] !== undefined;
+                  
+                  return (
+                    <tr key={record.id} className={isEdited ? 'edited-row' : ''}>
+                      <td>{record.materialCode}</td>
+                      <td>{record.materialName}</td>
+                      <td>{record.systemQuantity}</td>
+                      <td>
+                        {isPending ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={getFieldValue(record, 'physicalQuantity')}
+                            onChange={(e) => updateField(record.id, 'physicalQuantity', e.target.value)}
+                            placeholder="Enter qty"
+                            style={{ width: '100px' }}
+                          />
+                        ) : (
+                          record.physicalQuantity ?? '-'
+                        )}
+                      </td>
+                      <td>
+                        {record.difference !== null ? (
+                          <span className={
+                            record.difference === 0 ? 'badge badge-matched' :
+                            record.difference < 0 ? 'badge badge-shortage' :
+                            'badge badge-excess'
+                          }>
+                            {record.difference}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td>
+                        {isPending ? (
+                          <input
+                            type="text"
+                            value={getFieldValue(record, 'remarks')}
+                            onChange={(e) => updateField(record.id, 'remarks', e.target.value)}
+                            placeholder="Optional notes"
+                            style={{ width: '150px' }}
+                          />
+                        ) : (
+                          record.remarks || '-'
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge badge-${record.status.toLowerCase()}`}>
+                          {record.status}
                         </span>
-                      ) : '-'}
-                    </td>
-                    <td>
-                      {editingId === record.id ? (
-                        <input
-                          type="text"
-                          value={editValues.remarks}
-                          onChange={(e) => setEditValues({ ...editValues, remarks: e.target.value })}
-                          style={{ width: '150px' }}
-                        />
-                      ) : (
-                        record.remarks || '-'
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge badge-${record.status.toLowerCase()}`}>
-                        {record.status}
-                      </span>
-                    </td>
-                    <td>
-                      {editingId === record.id ? (
-                        <>
-                          <button onClick={() => saveEdit(record.id)} className="btn btn-success" style={{ marginRight: '5px', padding: '4px 8px', fontSize: '12px' }}>
-                            Save
-                          </button>
-                          <button onClick={cancelEdit} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : record.status === 'PENDING' ? (
-                        <button onClick={() => startEdit(record)} className="btn btn-primary" style={{ padding: '4px 8px', fontSize: '12px' }}>
-                          Edit
-                        </button>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        {isEdited && (
+                          <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 'bold' }}>
+                            Modified
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
