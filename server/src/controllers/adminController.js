@@ -488,6 +488,186 @@ export async function uploadInventory(req, res, next) {
   }
 }
 
+export async function previewUpload(req, res, next) {
+  try {
+    if (!req.file) {
+      throw new AppError('File is required', 400);
+    }
+
+    const { inventoryDate } = req.body;
+    if (!inventoryDate) {
+      throw new AppError('Inventory date is required', 400);
+    }
+
+    const file = req.file;
+    let rows = [];
+
+    // Parse file based on type
+    if (file.mimetype.includes('csv')) {
+      rows = parse(file.buffer, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      });
+    } else {
+      // Excel file
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(file.buffer);
+      const worksheet = workbook.worksheets[0];
+
+      const headers = [];
+      worksheet.getRow(1).eachCell((cell) => {
+        headers.push(cell.value.toString().trim());
+      });
+
+      worksheet.eachRow((row, rowIndex) => {
+        if (rowIndex === 1) return; // Skip header
+        const rowData = {};
+        row.eachCell((cell, colNumber) => {
+          rowData[headers[colNumber - 1]] = cell.value;
+        });
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData);
+        }
+      });
+    }
+
+    if (rows.length === 0) {
+      throw new AppError('No data rows found in file', 400);
+    }
+
+    console.log('📋 Preview - Excel Headers Found:', Object.keys(rows[0]));
+
+    // Map column names
+    const columnMap = {
+      storeCode: [
+        'Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 
+        'STORE CODE', 'Store code ', 'Store Code '
+      ],
+      materialCode: [
+        'Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 
+        'SKU', 'MATERIAL', 'Material code ', 'Material Code ',
+        'Material Name', 'Material name', 'MaterialName', 'material_name'
+      ],
+      materialName: [
+        'Material Description', 'Material Name', 'MaterialName', 'Description', 
+        'material_name', 'Item Name', 'MATERIAL DESCRIPTION', 'Material Description ', 
+        'Material description', 'MaterialDescription', 'material_description'
+      ],
+      systemQuantity: [
+        'SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 
+        'Quantity', 'QTY', 'SYSTEM QUANTITY', 'SYS ', 'Sys'
+      ],
+    };
+
+    const findColumn = (row, possibleNames) => {
+      for (const name of possibleNames) {
+        if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+          return row[name];
+        }
+      }
+      return null;
+    };
+
+    // Fetch all store codes for validation
+    const stores = await prisma.store.findMany({
+      select: { storeCode: true, storeName: true },
+    });
+    const storeMap = new Map(stores.map(s => [s.storeCode, s.storeName]));
+
+    const preview = [];
+    let validCount = 0;
+    let errorCount = 0;
+    let warningCount = 0;
+
+    // Process each row for preview (limit to first 100 for performance)
+    const previewLimit = Math.min(rows.length, 100);
+    for (let i = 0; i < previewLimit; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // +2 for header row and 0-index
+
+      const storeCode = findColumn(row, columnMap.storeCode)?.toString().trim();
+      const materialCode = findColumn(row, columnMap.materialCode)?.toString().trim();
+      const materialDescription = findColumn(row, columnMap.materialName)?.toString().trim();
+      const systemQuantity = findColumn(row, columnMap.systemQuantity);
+      
+      const materialName = materialDescription || materialCode;
+
+      let status = 'valid';
+      let message = '';
+      const errors = [];
+      const warnings = [];
+
+      // Validation
+      if (!storeCode) {
+        errors.push('Missing Store Code');
+      } else if (!storeMap.has(storeCode)) {
+        errors.push(`Unknown store code: ${storeCode}`);
+      }
+
+      if (!materialCode) {
+        errors.push('Missing Material Name');
+      }
+
+      if (!materialName) {
+        warnings.push('Missing Material Description - will use Material Code');
+      }
+
+      if (systemQuantity === null || systemQuantity === undefined || systemQuantity === '') {
+        errors.push('Missing SYS (System Quantity)');
+      } else {
+        const qty = parseFloat(systemQuantity);
+        if (isNaN(qty)) {
+          errors.push('Invalid System Quantity (not a number)');
+        } else if (qty < 0) {
+          errors.push('Invalid System Quantity (negative)');
+        }
+      }
+
+      if (errors.length > 0) {
+        status = 'error';
+        message = errors.join('; ');
+        errorCount++;
+      } else if (warnings.length > 0) {
+        status = 'warning';
+        message = warnings.join('; ');
+        warningCount++;
+      } else {
+        status = 'valid';
+        message = 'OK';
+        validCount++;
+      }
+
+      preview.push({
+        row: rowNum,
+        storeCode: storeCode || '',
+        storeName: storeCode ? storeMap.get(storeCode) || '' : '',
+        materialCode: materialCode || '',
+        materialName: materialName || '',
+        systemQuantity: systemQuantity !== null ? systemQuantity : '',
+        status,
+        message,
+      });
+    }
+
+    res.json({
+      fileName: file.originalname,
+      inventoryDate,
+      totalRows: rows.length,
+      previewRows: preview.length,
+      statistics: {
+        valid: validCount,
+        errors: errorCount,
+        warnings: warningCount,
+      },
+      preview,
+      showingPartial: rows.length > 100,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getUploads(req, res, next) {
   try {
     const uploads = await prisma.uploadBatch.findMany({
@@ -546,8 +726,9 @@ export async function getUploadDetails(req, res, next) {
 }
 
 export async function getInventory(req, res, next) {
+  const startTime = Date.now();
   try {
-    const { storeId, status, search, batchId } = req.query;
+    const { storeId, status, search, batchId, page = 1, pageSize = 50 } = req.query;
 
     const where = {};
 
@@ -567,10 +748,18 @@ export async function getInventory(req, res, next) {
       ];
     }
 
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const skip = (pageNum - 1) * pageSizeNum;
+
+    // Get total count for pagination
+    const totalRecords = await prisma.inventoryRecord.count({ where });
+
     const records = await prisma.inventoryRecord.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      skip,
+      take: pageSizeNum,
       include: {
         store: {
           select: {
@@ -586,7 +775,18 @@ export async function getInventory(req, res, next) {
       },
     });
 
-    res.json(records);
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] GET_ADMIN_INVENTORY (${records.length} records, page ${pageNum}): ${duration}ms`);
+
+    res.json({
+      data: records,
+      pagination: {
+        page: pageNum,
+        pageSize: pageSizeNum,
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / pageSizeNum),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -751,6 +951,158 @@ export async function downloadReconciliationReport(req, res, next) {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
     res.setHeader('Content-Disposition', 'attachment; filename=reconciliation_report.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function downloadInventoryExport(req, res, next) {
+  const startTime = Date.now();
+  try {
+    const { storeId, status, search, batchId, discrepancy } = req.query;
+
+    const where = {};
+
+    if (storeId) {
+      where.storeId = parseInt(storeId);
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (batchId) {
+      where.batchId = parseInt(batchId);
+    }
+    if (search) {
+      where.OR = [
+        { materialCode: { contains: search, mode: 'insensitive' } },
+        { materialName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Fetch all matching records (no pagination limit for export)
+    let records = await prisma.inventoryRecord.findMany({
+      where,
+      orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
+      include: {
+        store: {
+          select: {
+            storeCode: true,
+            storeName: true,
+          },
+        },
+        batch: {
+          select: {
+            inventoryDate: true,
+          },
+        },
+        submitter: {
+          select: {
+            employeeId: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Apply discrepancy filter
+    if (discrepancy === 'matched') {
+      records = records.filter((r) => r.difference === 0);
+    } else if (discrepancy === 'shortage') {
+      records = records.filter((r) => r.difference !== null && r.difference < 0);
+    } else if (discrepancy === 'excess') {
+      records = records.filter((r) => r.difference !== null && r.difference > 0);
+    }
+
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Inventory Records');
+
+    // Define columns with business-friendly names
+    worksheet.columns = [
+      { header: 'Store Code', key: 'storeCode', width: 12 },
+      { header: 'Store Name', key: 'storeName', width: 25 },
+      { header: 'Inventory Date', key: 'inventoryDate', width: 15 },
+      { header: 'Material Code', key: 'materialCode', width: 15 },
+      { header: 'Material Name', key: 'materialName', width: 35 },
+      { header: 'SYS', key: 'sys', width: 12 },
+      { header: 'Sold', key: 'sold', width: 12 },
+      { header: 'Diff', key: 'diff', width: 12 },
+      { header: 'Remarks', key: 'remarks', width: 30 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Submitted By', key: 'submittedBy', width: 20 },
+      { header: 'Submitted At', key: 'submittedAt', width: 20 },
+    ];
+
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' },
+    };
+
+    // Freeze header row
+    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    // Enable AutoFilter
+    worksheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: 12 },
+    };
+
+    // Add data rows
+    records.forEach((record) => {
+      worksheet.addRow({
+        storeCode: record.store.storeCode,
+        storeName: record.store.storeName,
+        inventoryDate: record.batch.inventoryDate.toISOString().split('T')[0],
+        materialCode: record.materialCode,
+        materialName: record.materialName,
+        sys: record.systemQuantity,
+        sold: record.physicalQuantity !== null ? record.physicalQuantity : '',
+        diff: record.difference !== null ? record.difference : '',
+        remarks: record.remarks || '',
+        status: record.status,
+        submittedBy: record.submitter ? `${record.submitter.name} (${record.submitter.employeeId})` : '',
+        submittedAt: record.submittedAt ? record.submittedAt.toISOString().replace('T', ' ').substring(0, 19) : '',
+      });
+    });
+
+    // Format Store Code and Material Code as text to preserve leading zeros
+    const storeCodeCol = worksheet.getColumn('storeCode');
+    storeCodeCol.numFmt = '@';
+    const materialCodeCol = worksheet.getColumn('materialCode');
+    materialCodeCol.numFmt = '@';
+
+    await createAuditLog({
+      userId: req.user.id,
+      action: 'DOWNLOAD_ADMIN_INVENTORY_EXPORT',
+      entityType: 'INVENTORY_RECORD',
+      entityId: null,
+      metadata: { recordCount: records.length, filters: { storeId, status, batchId, discrepancy } },
+    });
+
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] DOWNLOAD_ADMIN_EXPORT (${records.length} records): ${duration}ms`);
+
+    // Generate filename
+    const date = new Date().toISOString().split('T')[0];
+    const storeFilter = storeId ? `_Store_${storeId}` : '';
+    const filename = `KinGuard${storeFilter}_Inventory_${date}.xlsx`;
+
+    // Send file
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`
+    );
 
     await workbook.xlsx.write(res);
     res.end();

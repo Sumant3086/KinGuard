@@ -42,12 +42,14 @@ router.post('/users', adminController.createUser);
 router.patch('/users/:id', adminController.updateUser);
 
 // Uploads
+router.post('/uploads/preview', upload.single('file'), adminController.previewUpload);
 router.post('/uploads', upload.single('file'), adminController.uploadInventory);
 router.get('/uploads', adminController.getUploads);
 router.get('/uploads/:id', adminController.getUploadDetails);
 
 // Inventory
 router.get('/inventory', adminController.getInventory);
+router.get('/inventory/export', adminController.downloadInventoryExport);
 
 // Reports
 router.get('/reports/reconciliation', adminController.getReconciliationReport);
