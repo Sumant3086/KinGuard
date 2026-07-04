@@ -321,18 +321,51 @@ export async function uploadInventory(req, res, next) {
       });
     }
 
+    // Debug: Log the headers from the first row
+    if (rows.length > 0) {
+      console.log('📋 Excel Headers Found:', Object.keys(rows[0]));
+    }
+
     // Map column names (supports both generic and business-specific formats)
     const columnMap = {
-      storeCode: ['Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 'STORE CODE'],
-      materialCode: ['Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 'SKU', 'MATERIAL'],
-      materialName: ['Material Description', 'Material Name', 'MaterialName', 'Description', 'material_name', 'Item Name', 'MATERIAL DESCRIPTION'],
-      systemQuantity: ['SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 'Quantity', 'QTY', 'SYSTEM QUANTITY'],
-      date: ['Date', 'DATE', 'Inventory Date', 'InventoryDate', 'inventory_date'],
+      storeCode: [
+        'Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 
+        'STORE CODE', 'Store code ', 'Store Code '
+      ],
+      materialCode: [
+        'Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 
+        'SKU', 'MATERIAL', 'Material code ', 'Material Code ',
+        'Material Name', 'Material name', 'MaterialName', 'material_name' // Added Material Name variants
+      ],
+      materialName: [
+        'Material Description', 'Material Name', 'MaterialName', 'Description', 
+        'material_name', 'Item Name', 'MATERIAL DESCRIPTION', 'Material Description ', 
+        'Material description', 'MaterialDescription', 'material_description'
+      ],
+      systemQuantity: [
+        'SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 
+        'Quantity', 'QTY', 'SYSTEM QUANTITY', 'SYS ', 'Sys'
+      ],
+      sold: [
+        'Sold', 'sold', 'SOLD', 'Physical Quantity', 'PhysicalQuantity', 
+        'physical_quantity', 'Physical', 'Sold '
+      ],
+      difference: [
+        'Diff', 'diff', 'DIFF', 'Difference', 'difference', 'DIFFERENCE', 'Diff '
+      ],
+      remarks: [
+        'Remarks', 'remarks', 'REMARKS', 'Remark', 'remark', 'Notes', 'notes', 'Remarks '
+      ],
+      date: [
+        'Date', 'DATE', 'Inventory Date', 'InventoryDate', 'inventory_date', 'Date '
+      ],
     };
 
     const findColumn = (row, possibleNames) => {
       for (const name of possibleNames) {
-        if (row[name] !== undefined) return row[name];
+        if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+          return row[name];
+        }
       }
       return null;
     };
@@ -361,23 +394,26 @@ export async function uploadInventory(req, res, next) {
       try {
         const storeCode = findColumn(row, columnMap.storeCode)?.toString().trim();
         const materialCode = findColumn(row, columnMap.materialCode)?.toString().trim();
-        const materialName = findColumn(row, columnMap.materialName)?.toString().trim();
+        const materialDescription = findColumn(row, columnMap.materialName)?.toString().trim();
         const systemQuantity = findColumn(row, columnMap.systemQuantity);
+        
+        // Use Material Description as materialName, or fallback to materialCode if not found
+        const materialName = materialDescription || materialCode;
 
         if (!storeCode) {
           errors.push({ row: rowNum, error: 'Missing Store Code' });
           continue;
         }
         if (!materialCode) {
-          errors.push({ row: rowNum, error: 'Missing Material Code' });
-          continue;
-        }
-        if (!materialName) {
           errors.push({ row: rowNum, error: 'Missing Material Name' });
           continue;
         }
+        if (!materialName) {
+          errors.push({ row: rowNum, error: 'Missing Material Description' });
+          continue;
+        }
         if (systemQuantity === null || systemQuantity === undefined) {
-          errors.push({ row: rowNum, error: 'Missing System Quantity' });
+          errors.push({ row: rowNum, error: 'Missing SYS (System Quantity)' });
           continue;
         }
 
