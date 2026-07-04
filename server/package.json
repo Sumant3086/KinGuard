@@ -10,6 +10,7 @@
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
     "seed": "node prisma/seed.js",
+    "reset-data": "node prisma/reset-data.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest"
   },
   "dependencies": {
