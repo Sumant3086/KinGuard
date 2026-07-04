@@ -3,7 +3,14 @@ import { createAuditLog } from '../services/auditService.js';
 import ExcelJS from 'exceljs';
 import prisma from '../config/prisma.js';
 
+// WebSocket instance (set from server.js)
+let io;
+export function setSocketIO(socketIO) {
+  io = socketIO;
+}
+
 export async function getDashboard(req, res, next) {
+  const startTime = Date.now();
   try {
     const storeId = req.user.storeId;
 
@@ -64,12 +71,16 @@ export async function getDashboard(req, res, next) {
       },
       stats,
     });
+    
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
   } catch (error) {
     next(error);
   }
 }
 
 export async function getInventory(req, res, next) {
+  const startTime = Date.now();
   try {
     const storeId = req.user.storeId;
     const { search, status } = req.query;
@@ -100,6 +111,9 @@ export async function getInventory(req, res, next) {
       },
     });
 
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] GET_INVENTORY (${records.length} records): ${duration}ms`);
+
     res.json(records);
   } catch (error) {
     next(error);
@@ -107,6 +121,7 @@ export async function getInventory(req, res, next) {
 }
 
 export async function updateInventoryRecord(req, res, next) {
+  const startTime = Date.now();
   try {
     const { id } = req.params;
     const storeId = req.user.storeId;
@@ -181,7 +196,134 @@ export async function updateInventoryRecord(req, res, next) {
       metadata: { physicalQuantity, remarks },
     });
 
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] UPDATE_INVENTORY record ${id}: ${duration}ms`);
+
+    // Emit WebSocket event to store room
+    if (io) {
+      io.to(`store:${storeId}`).emit('inventoryUpdate', result);
+      io.to('admin').emit('inventoryChange', {
+        type: 'update',
+        storeId,
+        recordId: result.id,
+        batchId: result.batchId,
+      });
+    }
+
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function bulkUpdateInventory(req, res, next) {
+  const startTime = Date.now();
+  try {
+    const storeId = req.user.storeId;
+    const { batchId, changes } = req.body;
+
+    if (!batchId || !Array.isArray(changes)) {
+      throw new AppError('batchId and changes array are required', 400);
+    }
+
+    if (changes.length === 0) {
+      throw new AppError('No changes provided', 400);
+    }
+
+    if (changes.length > 100) {
+      throw new AppError('Maximum 100 records per bulk update', 400);
+    }
+
+    // Use transaction for atomic bulk update
+    const updatedRecords = await prisma.$transaction(async (tx) => {
+      const recordIds = changes.map(c => c.recordId);
+
+      // Verify all records exist, belong to this store and batch, and are pending
+      const records = await tx.inventoryRecord.findMany({
+        where: {
+          id: { in: recordIds },
+          storeId,
+          batchId: parseInt(batchId),
+          status: 'PENDING',
+        },
+        select: {
+          id: true,
+          systemQuantity: true,
+        },
+      });
+
+      if (records.length !== changes.length) {
+        throw new AppError(
+          `Authorization failed: ${changes.length - records.length} record(s) not found, unauthorized, or already submitted`,
+          403
+        );
+      }
+
+      // Create a map for quick lookup
+      const recordMap = new Map(records.map(r => [r.id, r]));
+
+      // Update each record
+      const updates = [];
+      for (const change of changes) {
+        const record = recordMap.get(change.recordId);
+        if (!record) continue;
+
+        const physicalQty = change.physicalQuantity !== null && change.physicalQuantity !== undefined
+          ? parseFloat(change.physicalQuantity)
+          : null;
+
+        if (physicalQty !== null && (isNaN(physicalQty) || physicalQty < 0)) {
+          throw new AppError(`Invalid physicalQuantity for record ${change.recordId}`, 400);
+        }
+
+        const difference = physicalQty !== null ? physicalQty - record.systemQuantity : null;
+
+        updates.push(
+          tx.inventoryRecord.update({
+            where: { id: change.recordId },
+            data: {
+              physicalQuantity: physicalQty,
+              difference,
+              remarks: change.remarks !== undefined ? change.remarks : undefined,
+            },
+          })
+        );
+      }
+
+      return await Promise.all(updates);
+    });
+
+    // Single audit log for bulk operation
+    await createAuditLog({
+      userId: req.user.id,
+      action: 'BULK_UPDATE_INVENTORY',
+      entityType: 'INVENTORY_RECORD',
+      entityId: parseInt(batchId),
+      metadata: { batchId, changedRecordCount: changes.length },
+    });
+
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] BULK_UPDATE_INVENTORY (${changes.length} records): ${duration}ms`);
+
+    // Emit WebSocket event to store room
+    if (io) {
+      io.to(`store:${storeId}`).emit('inventoryBulkUpdate', {
+        batchId: parseInt(batchId),
+        updated: updatedRecords.length,
+        records: updatedRecords,
+      });
+      io.to('admin').emit('inventoryChange', {
+        type: 'bulkUpdate',
+        storeId,
+        batchId: parseInt(batchId),
+        count: updatedRecords.length,
+      });
+    }
+
+    res.json({
+      updated: updatedRecords.length,
+      records: updatedRecords,
+    });
   } catch (error) {
     next(error);
   }
@@ -244,6 +386,20 @@ export async function submitInventory(req, res, next) {
       entityId: parseInt(batchId),
       metadata: { recordCount: result.count },
     });
+
+    // Emit WebSocket event to store room and admin
+    if (io) {
+      io.to(`store:${storeId}`).emit('inventorySubmitted', {
+        batchId: parseInt(batchId),
+        count: result.count,
+      });
+      io.to('admin').emit('inventoryChange', {
+        type: 'submit',
+        storeId,
+        batchId: parseInt(batchId),
+        count: result.count,
+      });
+    }
 
     res.json({
       message: 'Inventory submitted successfully',
