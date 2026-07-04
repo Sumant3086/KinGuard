@@ -1,11 +1,9 @@
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import ExcelJS from 'exceljs';
 import { parse } from 'csv-parse/sync';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
-
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 export async function getDashboard(req, res, next) {
   try {
@@ -323,12 +321,13 @@ export async function uploadInventory(req, res, next) {
       });
     }
 
-    // Map column names (flexible header matching)
+    // Map column names (supports both generic and business-specific formats)
     const columnMap = {
-      storeCode: ['Store Code', 'StoreCode', 'Store', 'store_code'],
-      materialCode: ['Material Code', 'MaterialCode', 'Material', 'material_code', 'SKU'],
-      materialName: ['Material Name', 'MaterialName', 'Description', 'material_name', 'Item Name'],
-      systemQuantity: ['System Quantity', 'SystemQuantity', 'SYS', 'system_quantity', 'Quantity'],
+      storeCode: ['Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 'STORE CODE'],
+      materialCode: ['Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 'SKU', 'MATERIAL'],
+      materialName: ['Material Description', 'Material Name', 'MaterialName', 'Description', 'material_name', 'Item Name', 'MATERIAL DESCRIPTION'],
+      systemQuantity: ['SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 'Quantity', 'QTY', 'SYSTEM QUANTITY'],
+      date: ['Date', 'DATE', 'Inventory Date', 'InventoryDate', 'inventory_date'],
     };
 
     const findColumn = (row, possibleNames) => {

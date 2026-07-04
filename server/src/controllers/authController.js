@@ -1,11 +1,9 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 import { env } from '../config/env.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
-
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 export async function login(req, res, next) {
   try {

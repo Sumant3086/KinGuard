@@ -1,16 +1,19 @@
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import ExcelJS from 'exceljs';
-
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 export async function getDashboard(req, res, next) {
   try {
     const storeId = req.user.storeId;
 
-    // Get latest batch for this store
+    // Get latest batch WHERE this store has inventory records
     const latestBatch = await prisma.uploadBatch.findFirst({
+      where: {
+        inventoryRecords: {
+          some: { storeId },
+        },
+      },
       orderBy: { inventoryDate: 'desc' },
       include: {
         inventoryRecords: {
@@ -117,13 +120,26 @@ export async function updateInventoryRecord(req, res, next) {
       }
     }
 
-    // Find record and verify ownership
-    const record = await prisma.inventoryRecord.findUnique({
-      where: { id: parseInt(id) },
+    // Atomically find record, verify ownership, check status, and get systemQuantity
+    const record = await prisma.inventoryRecord.findFirst({
+      where: {
+        id: parseInt(id),
+        storeId, // Verify ownership atomically
+      },
+      select: {
+        id: true,
+        systemQuantity: true,
+        status: true,
+      },
     });
 
-    if (!record || record.storeId !== storeId) {
+    if (!record) {
       throw new AppError('Record not found', 404);
+    }
+
+    // Prevent editing after submission
+    if (record.status === 'SUBMITTED') {
+      throw new AppError('Cannot edit submitted records', 403);
     }
 
     // Calculate difference if physical quantity is provided
@@ -132,9 +148,13 @@ export async function updateInventoryRecord(req, res, next) {
       difference = parseFloat(physicalQuantity) - record.systemQuantity;
     }
 
-    // Update record
-    const updated = await prisma.inventoryRecord.update({
-      where: { id: parseInt(id) },
+    // Update record atomically with ownership check
+    const updated = await prisma.inventoryRecord.updateMany({
+      where: {
+        id: parseInt(id),
+        storeId, // Re-verify ownership at update time
+        status: 'PENDING', // Ensure still pending
+      },
       data: {
         physicalQuantity: physicalQuantity !== null && physicalQuantity !== undefined 
           ? parseFloat(physicalQuantity) 
@@ -144,15 +164,24 @@ export async function updateInventoryRecord(req, res, next) {
       },
     });
 
+    if (updated.count === 0) {
+      throw new AppError('Record not found or already submitted', 404);
+    }
+
+    // Fetch updated record for response
+    const result = await prisma.inventoryRecord.findUnique({
+      where: { id: parseInt(id) },
+    });
+
     await createAuditLog({
       userId: req.user.id,
       action: 'UPDATE_INVENTORY',
       entityType: 'INVENTORY_RECORD',
-      entityId: updated.id,
+      entityId: parseInt(id),
       metadata: { physicalQuantity, remarks },
     });
 
-    res.json(updated);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -167,40 +196,45 @@ export async function submitInventory(req, res, next) {
       throw new AppError('Batch ID is required', 400);
     }
 
-    // Get all records for this store and batch
-    const records = await prisma.inventoryRecord.findMany({
-      where: {
-        storeId,
-        batchId: parseInt(batchId),
-        status: 'PENDING',
-      },
-    });
+    // Use transaction for atomic submission
+    const result = await prisma.$transaction(async (tx) => {
+      // Get all records for this store and batch
+      const records = await tx.inventoryRecord.findMany({
+        where: {
+          storeId,
+          batchId: parseInt(batchId),
+          status: 'PENDING',
+        },
+      });
 
-    if (records.length === 0) {
-      throw new AppError('No pending records found', 400);
-    }
+      if (records.length === 0) {
+        throw new AppError('No pending records found', 400);
+      }
 
-    // Validate all records have physical quantity
-    const missingPhysicalQty = records.filter((r) => r.physicalQuantity === null);
-    if (missingPhysicalQty.length > 0) {
-      throw new AppError(
-        `Please enter physical quantity for all items. ${missingPhysicalQty.length} items are missing.`,
-        400
-      );
-    }
+      // Validate all records have physical quantity
+      const missingPhysicalQty = records.filter((r) => r.physicalQuantity === null);
+      if (missingPhysicalQty.length > 0) {
+        throw new AppError(
+          `Please enter physical quantity for all items. ${missingPhysicalQty.length} items are missing.`,
+          400
+        );
+      }
 
-    // Submit all records
-    await prisma.inventoryRecord.updateMany({
-      where: {
-        storeId,
-        batchId: parseInt(batchId),
-        status: 'PENDING',
-      },
-      data: {
-        status: 'SUBMITTED',
-        submittedBy: req.user.id,
-        submittedAt: new Date(),
-      },
+      // Submit all records atomically
+      const updated = await tx.inventoryRecord.updateMany({
+        where: {
+          storeId,
+          batchId: parseInt(batchId),
+          status: 'PENDING',
+        },
+        data: {
+          status: 'SUBMITTED',
+          submittedBy: req.user.id,
+          submittedAt: new Date(),
+        },
+      });
+
+      return { count: updated.count };
     });
 
     await createAuditLog({
@@ -208,12 +242,12 @@ export async function submitInventory(req, res, next) {
       action: 'SUBMIT_INVENTORY',
       entityType: 'INVENTORY_RECORD',
       entityId: parseInt(batchId),
-      metadata: { recordCount: records.length },
+      metadata: { recordCount: result.count },
     });
 
     res.json({
       message: 'Inventory submitted successfully',
-      recordCount: records.length,
+      recordCount: result.count,
     });
   } catch (error) {
     next(error);
@@ -224,9 +258,26 @@ export async function downloadInventory(req, res, next) {
   try {
     const storeId = req.user.storeId;
 
-    // Get records for this store only
+    // Get latest batch WHERE this store has inventory records
+    const latestBatch = await prisma.uploadBatch.findFirst({
+      where: {
+        inventoryRecords: {
+          some: { storeId },
+        },
+      },
+      orderBy: { inventoryDate: 'desc' },
+    });
+
+    if (!latestBatch) {
+      throw new AppError('No inventory records found for your store', 404);
+    }
+
+    // Get records for this store in latest batch only
     const records = await prisma.inventoryRecord.findMany({
-      where: { storeId },
+      where: {
+        storeId,
+        batchId: latestBatch.id,
+      },
       include: {
         batch: {
           select: {
@@ -290,8 +341,8 @@ export async function downloadInventory(req, res, next) {
       userId: req.user.id,
       action: 'DOWNLOAD_INVENTORY',
       entityType: 'INVENTORY_RECORD',
-      entityId: null,
-      metadata: { recordCount: records.length },
+      entityId: latestBatch.id,
+      metadata: { recordCount: records.length, batchId: latestBatch.id },
     });
 
     // Send file
