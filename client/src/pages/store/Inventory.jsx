@@ -1,28 +1,80 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import StoreLayout from '../../components/StoreLayout';
 import * as storeApi from '../../api/store';
+import { useAuth } from '../../context/AuthContext';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 export default function StoreInventory() {
+  const { user } = useAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [editedRecords, setEditedRecords] = useState({});
+  const [savingRecords, setSavingRecords] = useState(new Set());
+  const [savedRecords, setSavedRecords] = useState(new Set());
+  const [errorRecords, setErrorRecords] = useState(new Map());
   const [submitting, setSubmitting] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const debounceTimers = useRef({});
+
+  // WebSocket connection
+  const token = localStorage.getItem('token');
+  const { connected, on, off } = useWebSocket(token);
 
   useEffect(() => {
     loadInventory();
   }, [search, statusFilter]);
+
+  // WebSocket event listeners
+  useEffect(() => {
+    if (!connected) return;
+
+    const handleInventoryUpdate = (updated) => {
+      console.log('[WebSocket] Received inventory update:', updated);
+      setRecords(prev => prev.map(r => r.id === updated.id ? updated : r));
+    };
+
+    const handleInventoryBulkUpdate = (data) => {
+      console.log('[WebSocket] Received bulk update:', data);
+      // Refresh inventory to get latest state
+      loadInventory();
+    };
+
+    const handleInventorySubmitted = (data) => {
+      console.log('[WebSocket] Inventory submitted:', data);
+      // Refresh inventory to show submitted status
+      loadInventory();
+    };
+
+    on('inventoryUpdate', handleInventoryUpdate);
+    on('inventoryBulkUpdate', handleInventoryBulkUpdate);
+    on('inventorySubmitted', handleInventorySubmitted);
+
+    return () => {
+      off('inventoryUpdate', handleInventoryUpdate);
+      off('inventoryBulkUpdate', handleInventoryBulkUpdate);
+      off('inventorySubmitted', handleInventorySubmitted);
+    };
+  }, [connected]);
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
+    };
+  }, []);
 
   async function loadInventory() {
     try {
       setLoading(true);
       const data = await storeApi.getInventory(search, statusFilter);
       setRecords(data);
-      // Clear edited records when reloading
+      // Clear edit states when reloading
       setEditedRecords({});
+      setSavingRecords(new Set());
+      setSavedRecords(new Set());
+      setErrorRecords(new Map());
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load inventory');
     } finally {
@@ -38,6 +90,88 @@ export default function StoreInventory() {
         [field]: value
       }
     }));
+
+    // Clear saved/error state for this record
+    setSavedRecords(prev => {
+      const next = new Set(prev);
+      next.delete(recordId);
+      return next;
+    });
+    setErrorRecords(prev => {
+      const next = new Map(prev);
+      next.delete(recordId);
+      return next;
+    });
+
+    // Debounce autosave
+    debouncedSave(recordId);
+  }
+
+  const debouncedSave = useCallback((recordId) => {
+    // Clear existing timer for this record
+    if (debounceTimers.current[recordId]) {
+      clearTimeout(debounceTimers.current[recordId]);
+    }
+
+    // Set new timer
+    debounceTimers.current[recordId] = setTimeout(() => {
+      saveRecord(recordId);
+    }, 1000); // 1 second debounce
+  }, [editedRecords]);
+
+  async function saveRecord(recordId) {
+    const edits = editedRecords[recordId];
+    if (!edits) return;
+
+    // Mark as saving
+    setSavingRecords(prev => new Set(prev).add(recordId));
+    setErrorRecords(prev => {
+      const next = new Map(prev);
+      next.delete(recordId);
+      return next;
+    });
+
+    try {
+      const updated = await storeApi.updateRecord(
+        recordId,
+        edits.physicalQuantity,
+        edits.remarks
+      );
+
+      // Update the record in local state with server response
+      setRecords(prev => prev.map(r => r.id === parseInt(recordId) ? updated : r));
+
+      // Mark as saved
+      setSavedRecords(prev => new Set(prev).add(recordId));
+      setSavingRecords(prev => {
+        const next = new Set(prev);
+        next.delete(recordId);
+        return next;
+      });
+
+      // Remove from edited records
+      setEditedRecords(prev => {
+        const next = { ...prev };
+        delete next[recordId];
+        return next;
+      });
+
+      // Clear saved indicator after 3 seconds
+      setTimeout(() => {
+        setSavedRecords(prev => {
+          const next = new Set(prev);
+          next.delete(recordId);
+          return next;
+        });
+      }, 3000);
+    } catch (err) {
+      setSavingRecords(prev => {
+        const next = new Set(prev);
+        next.delete(recordId);
+        return next;
+      });
+      setErrorRecords(prev => new Map(prev).set(recordId, err.response?.data?.error || 'Save failed'));
+    }
   }
 
   function getFieldValue(record, field) {
@@ -48,60 +182,33 @@ export default function StoreInventory() {
     return record[field] ?? '';
   }
 
-  async function saveAll() {
-    const recordsToUpdate = Object.keys(editedRecords);
-    if (recordsToUpdate.length === 0) {
-      alert('No changes to save');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const recordId of recordsToUpdate) {
-        try {
-          const edits = editedRecords[recordId];
-          await storeApi.updateRecord(
-            recordId, 
-            edits.physicalQuantity, 
-            edits.remarks
-          );
-          successCount++;
-        } catch (err) {
-          console.error(`Failed to update record ${recordId}:`, err);
-          errorCount++;
-        }
-      }
-
-      if (errorCount === 0) {
-        alert(`Successfully saved ${successCount} record(s)`);
-      } else {
-        alert(`Saved ${successCount} record(s), ${errorCount} failed`);
-      }
-
-      setEditedRecords({});
-      loadInventory();
-    } catch (err) {
-      alert('Failed to save changes');
-    } finally {
-      setSaving(false);
-    }
+  function getRecordState(recordId) {
+    if (savingRecords.has(recordId)) return 'saving';
+    if (savedRecords.has(recordId)) return 'saved';
+    if (errorRecords.has(recordId)) return 'error';
+    if (editedRecords[recordId]) return 'unsaved';
+    return null;
   }
 
-  function cancelAll() {
-    if (Object.keys(editedRecords).length > 0) {
-      if (confirm('Discard all unsaved changes?')) {
-        setEditedRecords({});
-      }
-    }
+  function getStateLabel(recordId) {
+    const state = getRecordState(recordId);
+    if (state === 'saving') return { text: 'Saving...', color: '#3b82f6' };
+    if (state === 'saved') return { text: '✓ Saved', color: '#10b981' };
+    if (state === 'error') return { text: '✗ ' + errorRecords.get(recordId), color: '#ef4444' };
+    if (state === 'unsaved') return { text: 'Unsaved', color: '#f59e0b' };
+    return null;
   }
 
   async function handleSubmit() {
     const batchId = records[0]?.batchId;
     if (!batchId) {
       alert('No batch found');
+      return;
+    }
+
+    // Check for unsaved changes
+    if (Object.keys(editedRecords).length > 0) {
+      alert('Please wait for all changes to save before submitting');
       return;
     }
 
@@ -137,6 +244,7 @@ export default function StoreInventory() {
 
   const pendingCount = records.filter(r => r.status === 'PENDING').length;
   const hasUnsavedChanges = Object.keys(editedRecords).length > 0;
+  const isSaving = savingRecords.size > 0;
 
   return (
     <StoreLayout>
@@ -144,19 +252,20 @@ export default function StoreInventory() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
+      {hasUnsavedChanges && (
+        <div className="alert alert-warning">
+          You have unsaved changes. Changes will auto-save after 1 second of inactivity.
+        </div>
+      )}
+
       <div className="actions">
-        {hasUnsavedChanges && (
-          <>
-            <button onClick={saveAll} disabled={saving} className="btn btn-success">
-              {saving ? 'Saving...' : `Save All Changes (${Object.keys(editedRecords).length})`}
-            </button>
-            <button onClick={cancelAll} disabled={saving} className="btn btn-secondary">
-              Cancel Changes
-            </button>
-          </>
-        )}
         {pendingCount > 0 && (
-          <button onClick={handleSubmit} disabled={submitting || hasUnsavedChanges} className="btn btn-success">
+          <button 
+            onClick={handleSubmit} 
+            disabled={submitting || hasUnsavedChanges || isSaving} 
+            className="btn btn-success"
+            title={hasUnsavedChanges || isSaving ? 'Wait for all changes to save' : ''}
+          >
             {submitting ? 'Submitting...' : `Submit Inventory (${pendingCount} pending)`}
           </button>
         )}
@@ -164,12 +273,6 @@ export default function StoreInventory() {
           Download My Inventory
         </button>
       </div>
-
-      {hasUnsavedChanges && (
-        <div className="alert alert-warning">
-          You have unsaved changes. Click "Save All Changes" to save or "Cancel Changes" to discard.
-        </div>
-      )}
 
       <div className="filters">
         <input
@@ -210,10 +313,10 @@ export default function StoreInventory() {
               <tbody>
                 {records.map((record) => {
                   const isPending = record.status === 'PENDING';
-                  const isEdited = editedRecords[record.id] !== undefined;
+                  const stateLabel = getStateLabel(record.id);
                   
                   return (
-                    <tr key={record.id} className={isEdited ? 'edited-row' : ''}>
+                    <tr key={record.id}>
                       <td>{record.materialCode}</td>
                       <td>{record.materialName}</td>
                       <td>{record.systemQuantity}</td>
@@ -227,6 +330,7 @@ export default function StoreInventory() {
                             onChange={(e) => updateField(record.id, 'physicalQuantity', e.target.value)}
                             placeholder="Enter qty"
                             style={{ width: '100px' }}
+                            disabled={savingRecords.has(record.id)}
                           />
                         ) : (
                           record.physicalQuantity ?? '-'
@@ -251,6 +355,7 @@ export default function StoreInventory() {
                             onChange={(e) => updateField(record.id, 'remarks', e.target.value)}
                             placeholder="Optional notes"
                             style={{ width: '150px' }}
+                            disabled={savingRecords.has(record.id)}
                           />
                         ) : (
                           record.remarks || '-'
@@ -262,9 +367,9 @@ export default function StoreInventory() {
                         </span>
                       </td>
                       <td>
-                        {isEdited && (
-                          <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 'bold' }}>
-                            Modified
+                        {stateLabel && (
+                          <span style={{ color: stateLabel.color, fontSize: '12px', fontWeight: 'bold' }}>
+                            {stateLabel.text}
                           </span>
                         )}
                       </td>
