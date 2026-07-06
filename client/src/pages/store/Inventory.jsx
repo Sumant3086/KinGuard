@@ -1,95 +1,83 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import StoreLayout from '../../components/StoreLayout';
 import * as storeApi from '../../api/store';
-import { useAuth } from '../../context/AuthContext';
-import { useWebSocket } from '../../hooks/useWebSocket';
+
+const IconSave = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+    <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const IconRetry = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+  </svg>
+);
 
 export default function StoreInventory() {
-  const { user } = useAuth();
-  const [records, setRecords] = useState([]);
-  const [batches, setBatches] = useState([]);
+  const [records, setRecords]           = useState([]);
+  const [batches, setBatches]           = useState([]);
   const [selectedBatch, setSelectedBatch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const [isLocked, setIsLocked]         = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [editedRecords, setEditedRecords] = useState({});
   const [savingRecords, setSavingRecords] = useState(new Set());
-  const [savedRecords, setSavedRecords] = useState(new Set());
-  const [errorRecords, setErrorRecords] = useState(new Map());
-  const [submitting, setSubmitting] = useState(false);
-  const debounceTimers = useRef({});
+  const [savedRecords, setSavedRecords]   = useState(new Set());
+  const [errorRecords, setErrorRecords]   = useState(new Map());
+  const [submitting, setSubmitting]     = useState(false);
+  const [submitResult, setSubmitResult] = useState(null);
 
-  // WebSocket connection
-  const token = localStorage.getItem('token');
-  const { connected, on, off } = useWebSocket(token);
+  const debounceTimers    = useRef({});
+  const editedRecordsRef  = useRef({});
+  const editTimestampRef  = useRef({});
+  const blankRowRefs      = useRef({});
+  const batchesReadyRef   = useRef(false);
+
+  useEffect(() => { loadBatches(); }, []);
 
   useEffect(() => {
-    loadBatches();
-  }, []);
-
-  useEffect(() => {
+    if (!batchesReadyRef.current) return;
     loadInventory();
   }, [search, statusFilter, selectedBatch]);
 
-  // WebSocket event listeners
   useEffect(() => {
-    if (!connected) return;
-
-    const handleInventoryUpdate = (updated) => {
-      console.log('[WebSocket] Received inventory update:', updated);
-      setRecords(prev => prev.map(r => r.id === updated.id ? updated : r));
-    };
-
-    const handleInventoryBulkUpdate = (data) => {
-      console.log('[WebSocket] Received bulk update:', data);
-      // Refresh inventory to get latest state
-      loadInventory();
-    };
-
-    const handleInventorySubmitted = (data) => {
-      console.log('[WebSocket] Inventory submitted:', data);
-      // Refresh inventory to show submitted status
-      loadInventory();
-    };
-
-    on('inventoryUpdate', handleInventoryUpdate);
-    on('inventoryBulkUpdate', handleInventoryBulkUpdate);
-    on('inventorySubmitted', handleInventorySubmitted);
-
-    return () => {
-      off('inventoryUpdate', handleInventoryUpdate);
-      off('inventoryBulkUpdate', handleInventoryBulkUpdate);
-      off('inventorySubmitted', handleInventorySubmitted);
-    };
-  }, [connected]);
-
-  // Cleanup debounce timers on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
-    };
+    return () => { Object.values(debounceTimers.current).forEach(clearTimeout); };
   }, []);
 
   async function loadBatches() {
     try {
       const data = await storeApi.getBatches();
       setBatches(data);
-      // Auto-select the latest batch (first in list)
+      batchesReadyRef.current = true;
       if (data.length > 0) {
         setSelectedBatch(data[0].id.toString());
+      } else {
+        loadInventory();
       }
     } catch (err) {
       console.error('Failed to load batches:', err);
+      setLoading(false);
     }
   }
 
   async function loadInventory() {
     try {
       setLoading(true);
-      const data = await storeApi.getInventory(search, statusFilter, selectedBatch);
-      setRecords(data);
-      // Clear edit states when reloading
+      const res = await storeApi.getInventory(search, statusFilter, selectedBatch);
+      const { records: recs, isLocked: locked } = res;
+      setRecords(recs);
+      setIsLocked(locked);
+      editedRecordsRef.current = {};
       setEditedRecords({});
       setSavingRecords(new Set());
       setSavedRecords(new Set());
@@ -102,144 +90,111 @@ export default function StoreInventory() {
   }
 
   function updateField(recordId, field, value) {
-    setEditedRecords(prev => ({
-      ...prev,
-      [recordId]: {
-        ...prev[recordId],
-        [field]: value
-      }
-    }));
-
-    // Clear saved/error state for this record
-    setSavedRecords(prev => {
-      const next = new Set(prev);
-      next.delete(recordId);
-      return next;
-    });
-    setErrorRecords(prev => {
-      const next = new Map(prev);
-      next.delete(recordId);
-      return next;
-    });
-
-    // Autosave after 700ms
+    const next = {
+      ...editedRecordsRef.current,
+      [recordId]: { ...(editedRecordsRef.current[recordId] || {}), [field]: value },
+    };
+    editedRecordsRef.current = next;
+    editTimestampRef.current[recordId] = Date.now();
+    setEditedRecords(next);
+    setSavedRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
+    setErrorRecords(prev => { const m = new Map(prev); m.delete(recordId); return m; });
     debouncedSave(recordId);
   }
 
   const debouncedSave = useCallback((recordId) => {
-    // Clear existing timer for this record
+    if (debounceTimers.current[recordId]) clearTimeout(debounceTimers.current[recordId]);
+    debounceTimers.current[recordId] = setTimeout(() => saveRecord(recordId), 700);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function saveNow(recordId) {
     if (debounceTimers.current[recordId]) {
       clearTimeout(debounceTimers.current[recordId]);
+      delete debounceTimers.current[recordId];
     }
-
-    // Set new timer
-    debounceTimers.current[recordId] = setTimeout(() => {
-      saveRecord(recordId);
-    }, 700);
-  }, [editedRecords]);
+    saveRecord(recordId);
+  }
 
   async function saveRecord(recordId) {
-    const edits = editedRecords[recordId];
+    const edits = editedRecordsRef.current[recordId];
     if (!edits) return;
+    const savedAt = editTimestampRef.current[recordId];
 
-    // Mark as saving
     setSavingRecords(prev => new Set(prev).add(recordId));
-    setErrorRecords(prev => {
-      const next = new Map(prev);
-      next.delete(recordId);
-      return next;
-    });
+    setErrorRecords(prev => { const m = new Map(prev); m.delete(recordId); return m; });
 
     try {
-      const updated = await storeApi.updateRecord(
-        recordId,
-        edits.physicalQuantity,
-        edits.remarks
-      );
-
-      // Update the record in local state with server response
+      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.remarks);
       setRecords(prev => prev.map(r => r.id === parseInt(recordId) ? updated : r));
-
-      // Mark as saved
       setSavedRecords(prev => new Set(prev).add(recordId));
-      setSavingRecords(prev => {
-        const next = new Set(prev);
-        next.delete(recordId);
-        return next;
-      });
+      setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
 
-      // Remove from edited records
-      setEditedRecords(prev => {
-        const next = { ...prev };
-        delete next[recordId];
-        return next;
-      });
+      if (editTimestampRef.current[recordId] === savedAt) {
+        const cleared = { ...editedRecordsRef.current };
+        delete cleared[recordId];
+        editedRecordsRef.current = cleared;
+        setEditedRecords(cleared);
+      }
 
-      // Clear saved indicator after 2 seconds
-      setTimeout(() => {
-        setSavedRecords(prev => {
-          const next = new Set(prev);
-          next.delete(recordId);
-          return next;
-        });
-      }, 2000);
+      setTimeout(() => setSavedRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; }), 2000);
     } catch (err) {
-      setSavingRecords(prev => {
-        const next = new Set(prev);
-        next.delete(recordId);
-        return next;
-      });
+      setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
       setErrorRecords(prev => new Map(prev).set(recordId, err.response?.data?.error || 'Save failed'));
     }
   }
 
   function getFieldValue(record, field) {
-    // Return edited value if exists, otherwise original value
     if (editedRecords[record.id] && editedRecords[record.id][field] !== undefined) {
       return editedRecords[record.id][field];
     }
     return record[field] ?? '';
   }
 
-  function getRecordState(recordId) {
+  // Returns instant local diff from typed value (no API wait)
+  function getInstantDiff(record) {
+    const edited = editedRecords[record.id];
+    if (edited?.physicalQuantity !== undefined && edited.physicalQuantity !== '' && edited.physicalQuantity !== null) {
+      const sold = parseFloat(edited.physicalQuantity);
+      if (!isNaN(sold)) return sold - record.systemQuantity;
+    }
+    return record.difference;
+  }
+
+  function getSaveState(recordId) {
     if (savingRecords.has(recordId)) return 'saving';
-    if (savedRecords.has(recordId)) return 'saved';
-    if (errorRecords.has(recordId)) return 'error';
-    if (editedRecords[recordId]) return 'unsaved';
+    if (savedRecords.has(recordId))  return 'saved';
+    if (errorRecords.has(recordId))  return 'error';
+    if (editedRecords[recordId])     return 'unsaved';
     return null;
   }
 
-  function getStateLabel(recordId) {
-    const state = getRecordState(recordId);
-    if (state === 'saving') return { text: 'Saving...', color: '#3b82f6' };
-    if (state === 'saved') return { text: '✓ Saved', color: '#10b981' };
-    if (state === 'error') return { text: '✗ ' + errorRecords.get(recordId), color: '#ef4444' };
-    if (state === 'unsaved') return { text: 'Unsaved', color: '#f59e0b' };
-    return null;
+  function jumpToNextBlank() {
+    const blank = records.find(r =>
+      r.status === 'PENDING' &&
+      r.physicalQuantity === null &&
+      !editedRecords[r.id]?.physicalQuantity
+    );
+    if (blank) {
+      const el = blankRowRefs.current[blank.id];
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+    }
   }
 
   async function handleSubmit() {
-    const batchId = records[0]?.batchId;
-    if (!batchId) {
-      alert('No batch found');
+    if (!selectedBatch) {
+      alert('Please select a specific date before submitting');
       return;
     }
-
-    // Check for unsaved changes
-    if (Object.keys(editedRecords).length > 0) {
+    const batchId = parseInt(selectedBatch);
+    if (Object.keys(editedRecordsRef.current).length > 0) {
       alert('Please wait for all changes to save before submitting');
       return;
     }
-
-    if (!confirm('Are you sure you want to submit your inventory? This will mark all pending items as submitted.')) {
-      return;
-    }
-
+    if (!confirm('Submit your inventory? All pending items will become read-only.')) return;
     try {
       setSubmitting(true);
-      await storeApi.submitInventory(batchId);
-      alert('Inventory submitted successfully');
-      loadInventory();
+      const res = await storeApi.submitInventory(batchId);
+      setSubmitResult(res);
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to submit inventory');
     } finally {
@@ -252,154 +207,339 @@ export default function StoreInventory() {
       const blob = await storeApi.downloadInventory();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'inventory.xlsx';
-      a.click();
+      a.href = url; a.download = 'inventory.xlsx'; a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to download inventory');
+      alert(err.response?.data?.error || 'Failed to download');
     }
   }
 
-  const pendingCount = records.filter(r => r.status === 'PENDING').length;
+  const pendingRecords = records.filter(r => r.status === 'PENDING');
+  const enteredCount   = pendingRecords.filter(r => {
+    if (r.physicalQuantity !== null) return true;
+    const editedQty = editedRecords[r.id]?.physicalQuantity;
+    return editedQty !== undefined && editedQty !== '' && editedQty !== null;
+  }).length;
+  const totalPending    = pendingRecords.length;
+  const progressPct     = totalPending > 0 ? Math.round((enteredCount / totalPending) * 100) : 100;
+  const blankCount      = totalPending - enteredCount;
   const hasUnsavedChanges = Object.keys(editedRecords).length > 0;
-  const isSaving = savingRecords.size > 0;
+  const isSaving          = savingRecords.size > 0;
+
+  // ── Post-submit summary ────────────────────────────────────
+  if (submitResult) {
+    const recs     = submitResult.records || [];
+    const matched  = recs.filter(r => r.difference === 0).length;
+    const shortage = recs.filter(r => r.difference !== null && r.difference < 0).length;
+    const excess   = recs.filter(r => r.difference !== null && r.difference > 0).length;
+    const nonZero  = recs.filter(r => r.difference !== null && r.difference !== 0)
+                        .sort((a, b) => a.difference - b.difference);
+    return (
+      <StoreLayout>
+        <div className="submit-summary">
+          <div className="submit-summary-header">
+            <div className="submit-success-icon">✓</div>
+            <h2>Inventory Submitted</h2>
+            <p>{submitResult.recordCount} items submitted successfully</p>
+          </div>
+          <div className="summary-metrics">
+            <div className="summary-metric matched">
+              <h4>Matched</h4>
+              <div className="metric-value">{matched}</div>
+            </div>
+            <div className="summary-metric shortage">
+              <h4>Shortage</h4>
+              <div className="metric-value">{shortage}</div>
+            </div>
+            <div className="summary-metric excess">
+              <h4>Excess</h4>
+              <div className="metric-value">{excess}</div>
+            </div>
+          </div>
+          {nonZero.length > 0 && (
+            <div className="card">
+              <h3 className="card-title" style={{ marginBottom: 16 }}>Discrepancy Details</h3>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Material Name</th>
+                      <th>SYS</th>
+                      <th>Sold</th>
+                      <th>Diff</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nonZero.map(r => (
+                      <tr key={r.id}>
+                        <td style={{ fontWeight: 600 }}>{r.materialCode}</td>
+                        <td>{r.systemQuantity}</td>
+                        <td>{r.physicalQuantity}</td>
+                        <td>
+                          <span className={r.difference < 0 ? 'badge badge-shortage' : 'badge badge-excess'}>
+                            {r.difference > 0 ? '+' : ''}{r.difference}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: 12, color: 'var(--t3)' }}>{r.remarks || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <div className="actions" style={{ justifyContent: 'center', marginTop: 8 }}>
+            <button className="btn btn-primary" onClick={() => { setSubmitResult(null); loadInventory(); }}>
+              View Submitted Records
+            </button>
+            <button className="btn btn-secondary" onClick={handleDownload}>
+              Download My Report
+            </button>
+          </div>
+        </div>
+      </StoreLayout>
+    );
+  }
 
   return (
     <StoreLayout>
-      <h2>Inventory Reconciliation</h2>
-
-      {error && <div className="alert alert-error">{error}</div>}
-
-      {hasUnsavedChanges && (
-        <div className="alert alert-warning">
-          You have unsaved changes. Changes will auto-save after 0.7 seconds of inactivity.
+      {/* ── Entry progress bar ── */}
+      {totalPending > 0 && !isLocked && (
+        <div className="inv-progress-bar">
+          <div className="inv-progress-left">
+            <span className="inv-progress-fraction">
+              <strong>{enteredCount}</strong> / {totalPending}
+            </span>
+            <span className="inv-progress-label">items entered</span>
+          </div>
+          <div className="inv-progress-track-wrap">
+            <div className="inv-progress-track">
+              <div
+                className={`inv-progress-fill${progressPct < 50 ? ' warn' : ''}`}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <span className="inv-progress-pct">{progressPct}%</span>
+          </div>
+          <div className="inv-progress-right">
+            {blankCount > 0 ? (
+              <>
+                <span className="inv-blank-count">{blankCount} blank</span>
+                <button className="btn-jump" onClick={jumpToNextBlank}>Jump to next</button>
+              </>
+            ) : (
+              <span className="inv-all-entered">All entered</span>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="actions">
-        {pendingCount > 0 && (
-          <button 
-            onClick={handleSubmit} 
-            disabled={submitting || hasUnsavedChanges || isSaving} 
-            className="btn btn-success"
-            title={hasUnsavedChanges || isSaving ? 'Wait for all changes to save' : ''}
-          >
-            {submitting ? 'Submitting...' : `Submit Inventory (${pendingCount} pending)`}
+      {/* ── Page header ── */}
+      <div className="page-header" style={{ marginTop: 24 }}>
+        <div>
+          <h2>Inventory Reconciliation</h2>
+          {selectedBatch && batches.length > 0 && (() => {
+            const b = batches.find(b => b.id.toString() === selectedBatch);
+            return b ? (
+              <p>{new Date(b.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            ) : null;
+          })()}
+        </div>
+        <div className="actions" style={{ margin: 0 }}>
+          {totalPending > 0 && !isLocked && (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || hasUnsavedChanges || isSaving}
+              className="btn btn-success"
+              title={hasUnsavedChanges || isSaving ? 'Wait for all changes to save first' : ''}
+            >
+              {submitting ? 'Submitting…' : `Submit (${totalPending} pending)`}
+            </button>
+          )}
+          <button onClick={handleDownload} className="btn btn-ghost btn-sm">
+            Download
           </button>
-        )}
-        <button onClick={handleDownload} className="btn btn-primary">
-          Download My Inventory
-        </button>
+        </div>
       </div>
 
-      <div className="filters">
-        <select 
-          value={selectedBatch} 
-          onChange={(e) => setSelectedBatch(e.target.value)}
-          style={{ minWidth: '200px' }}
-        >
-          <option value="">All Batches</option>
-          {batches.map((batch) => (
-            <option key={batch.id} value={batch.id}>
-              {new Date(batch.inventoryDate).toLocaleDateString()} 
-              {' '}({batch.pendingCount} pending, {batch.submittedCount} submitted)
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Search materials..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">All Status</option>
-          <option value="PENDING">Pending</option>
-          <option value="SUBMITTED">Submitted</option>
-        </select>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {isLocked && (
+        <div className="lock-banner">
+          <span className="lock-banner-icon">🔒</span>
+          <div>
+            <p>This batch is locked</p>
+            <span>The submission deadline has passed. Contact your administrator to request an extension.</span>
+          </div>
+        </div>
+      )}
+
+      {(hasUnsavedChanges || isSaving) && (
+        <div className="autosave-notice">
+          <div className="autosave-dot" />
+          {isSaving ? 'Saving changes…' : 'Changes will auto-save in a moment'}
+        </div>
+      )}
+
+      {/* ── Filters ── */}
+      <div className="inv-filters">
+        <div className="filter-group">
+          <span className="filter-label">Batch / Date</span>
+          <select
+            value={selectedBatch}
+            onChange={e => setSelectedBatch(e.target.value)}
+            style={{ minWidth: 220 }}
+          >
+            <option value="">All Batches</option>
+            {batches.map(b => (
+              <option key={b.id} value={b.id}>
+                {new Date(b.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {' '}({b.pendingCount} pending, {b.submittedCount} submitted)
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Search</span>
+          <div className="search-wrap">
+            <svg className="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Search materials…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="search-input"
+            />
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Status</span>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="">All</option>
+            <option value="PENDING">Pending</option>
+            <option value="SUBMITTED">Submitted</option>
+          </select>
+        </div>
       </div>
 
+      {/* ── Table ── */}
       {loading ? (
-        <div className="loading">Loading...</div>
+        <div className="loading"><div className="loading-spinner" />Loading inventory…</div>
       ) : records.length === 0 ? (
         <div className="card">
-          <p>No inventory records found.</p>
+          <div className="empty-state">
+            <div className="empty-state-icon">📭</div>
+            <p>No inventory records found for this selection.</p>
+          </div>
         </div>
       ) : (
-        <div className="card">
+        <div className="inv-table-card">
           <div className="table-container">
-            <table>
+            <table className="inv-table">
               <thead>
                 <tr>
-                  <th>Material Code</th>
                   <th>Material Name</th>
-                  <th>System Qty</th>
-                  <th>Physical Qty</th>
-                  <th>Difference</th>
+                  <th>Description</th>
+                  <th style={{ textAlign: 'right' }}>SYS</th>
+                  <th style={{ textAlign: 'right' }}>Sold</th>
+                  <th>Diff</th>
                   <th>Remarks</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th className="save-col-header"></th>
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => {
-                  const isPending = record.status === 'PENDING';
-                  const stateLabel = getStateLabel(record.id);
-                  
+                {records.map(record => {
+                  const isPending  = record.status === 'PENDING';
+                  const isEditable = isPending && !isLocked;
+                  const saveState  = getSaveState(record.id);
+                  const isEditing  = !!editedRecords[record.id];
+                  const isBlank    = isPending && record.physicalQuantity === null && !editedRecords[record.id]?.physicalQuantity;
+                  const instantDiff = getInstantDiff(record);
+
                   return (
-                    <tr key={record.id}>
-                      <td>{record.materialCode}</td>
-                      <td>{record.materialName}</td>
-                      <td>{record.systemQuantity}</td>
+                    <tr
+                      key={record.id}
+                      className={[
+                        isBlank   ? 'row-blank'   : '',
+                        isEditing ? 'row-editing'  : '',
+                        saveState === 'saved' ? 'row-flash-saved' : '',
+                      ].filter(Boolean).join(' ')}
+                    >
+                      {/* Material Name */}
                       <td>
-                        {isPending ? (
+                        <span className="mat-name">{record.materialCode}</span>
+                      </td>
+
+                      {/* Description */}
+                      <td>
+                        <span className="mat-desc">{record.materialName}</span>
+                      </td>
+
+                      {/* SYS */}
+                      <td style={{ textAlign: 'right' }}>
+                        <span className="qty-sys">{record.systemQuantity}</span>
+                      </td>
+
+                      {/* Sold (editable) */}
+                      <td style={{ textAlign: 'right' }}>
+                        {isEditable ? (
                           <input
+                            ref={el => { blankRowRefs.current[record.id] = el; }}
                             type="number"
                             step="0.01"
                             min="0"
                             value={getFieldValue(record, 'physicalQuantity')}
-                            onChange={(e) => updateField(record.id, 'physicalQuantity', e.target.value)}
-                            placeholder="Enter qty"
-                            style={{ width: '100px' }}
-                            disabled={savingRecords.has(record.id)}
+                            onChange={e => updateField(record.id, 'physicalQuantity', e.target.value)}
+                            placeholder="0"
+                            className="qty-input"
                           />
                         ) : (
-                          record.physicalQuantity ?? '-'
+                          <span className="qty-val">{record.physicalQuantity ?? '—'}</span>
                         )}
                       </td>
+
+                      {/* Diff — updates instantly as user types */}
                       <td>
-                        {record.difference !== null ? (
-                          <span className={
-                            record.difference === 0 ? 'badge badge-matched' :
-                            record.difference < 0 ? 'badge badge-shortage' :
-                            'badge badge-excess'
-                          }>
-                            {record.difference}
+                        {instantDiff !== null ? (
+                          <span
+                            key={`${record.id}-${instantDiff}`}
+                            className={`badge diff-badge ${
+                              instantDiff === 0 ? 'badge-matched' :
+                              instantDiff < 0   ? 'badge-shortage' :
+                              'badge-excess'
+                            }`}
+                          >
+                            {instantDiff > 0 ? '+' : ''}{instantDiff}
                           </span>
-                        ) : '-'}
+                        ) : (
+                          <span className="diff-empty">—</span>
+                        )}
                       </td>
+
+                      {/* Remarks */}
                       <td>
-                        {isPending ? (
-                          <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                        {isEditable ? (
+                          <div className="remark-wrap">
                             <input
                               type="text"
                               value={getFieldValue(record, 'remarks')}
-                              onChange={(e) => updateField(record.id, 'remarks', e.target.value)}
-                              placeholder="Type or select..."
-                              style={{ width: '150px' }}
-                              disabled={savingRecords.has(record.id)}
+                              onChange={e => updateField(record.id, 'remarks', e.target.value)}
+                              placeholder="Add remark…"
+                              className="inline-input remark-input"
                             />
                             <select
-                              onChange={(e) => {
+                              className="remark-select"
+                              onChange={e => {
                                 if (e.target.value) {
                                   updateField(record.id, 'remarks', e.target.value);
-                                  e.target.value = ''; // Reset dropdown
+                                  e.target.value = '';
                                 }
                               }}
-                              disabled={savingRecords.has(record.id)}
-                              style={{ width: '40px', padding: '4px' }}
-                              title="Quick select remarks"
+                              title="Quick select remark"
                             >
                               <option value="">▼</option>
                               <option value="Damaged items removed">Damaged items removed</option>
@@ -411,19 +551,44 @@ export default function StoreInventory() {
                             </select>
                           </div>
                         ) : (
-                          record.remarks || '-'
+                          <span className="remark-text">{record.remarks || '—'}</span>
                         )}
                       </td>
+
+                      {/* Status */}
                       <td>
                         <span className={`badge badge-${record.status.toLowerCase()}`}>
-                          {record.status}
+                          {record.status === 'PENDING' ? 'Pending' : 'Submitted'}
                         </span>
                       </td>
-                      <td>
-                        {stateLabel && (
-                          <span style={{ color: stateLabel.color, fontSize: '12px', fontWeight: 'bold' }}>
-                            {stateLabel.text}
+
+                      {/* Save controls */}
+                      <td className="save-col">
+                        {saveState === 'saving' && (
+                          <span className="save-spinner" title="Saving…" />
+                        )}
+                        {saveState === 'saved' && (
+                          <span className="save-check" title="Saved">
+                            <IconCheck />
                           </span>
+                        )}
+                        {saveState === 'unsaved' && isEditable && (
+                          <button
+                            className="btn-row-save"
+                            onClick={() => saveNow(record.id)}
+                            title="Save this row now"
+                          >
+                            <IconSave /> Save
+                          </button>
+                        )}
+                        {saveState === 'error' && (
+                          <button
+                            className="btn-row-save btn-row-retry"
+                            onClick={() => saveNow(record.id)}
+                            title={errorRecords.get(record.id)}
+                          >
+                            <IconRetry /> Retry
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -431,6 +596,16 @@ export default function StoreInventory() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Table footer */}
+          <div className="inv-table-footer">
+            <span>{records.length} record{records.length !== 1 ? 's' : ''}</span>
+            {hasUnsavedChanges && (
+              <span className="footer-unsaved-count">
+                {Object.keys(editedRecords).length} unsaved
+              </span>
+            )}
           </div>
         </div>
       )}
