@@ -1,28 +1,31 @@
 import app from './app.js';
 import { env } from './config/env.js';
 import prisma from './config/prisma.js';
+import { exec } from 'child_process';
+
+// Kill whatever process is holding the port so we never fight over it
+function freePort(port) {
+  return new Promise((resolve) => {
+    const cmd = `powershell -Command "$p=(Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue).OwningProcess; if($p){Stop-Process -Id $p -Force}"`;
+    exec(cmd, () => resolve()); // resolve regardless — nothing on the port is fine too
+  });
+}
 
 async function startServer() {
   try {
     await prisma.$connect();
     console.log('Database connected successfully');
 
+    await freePort(env.server.port);
+
     const server = app.listen(env.server.port, () => {
       console.log(`Server running on port ${env.server.port}`);
       console.log(`Environment: ${env.server.nodeEnv}`);
     });
 
-    // On Windows, node --watch restarts faster than the OS releases the TCP
-    // socket, so the new process hits EADDRINUSE before the port is free.
-    // Retry after a short delay instead of crashing.
     server.on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.log(`Port ${env.server.port} still busy — retrying in 1s...`);
-        setTimeout(() => server.listen(env.server.port), 1000);
-      } else {
-        console.error('Server error:', err);
-        process.exit(1);
-      }
+      console.error('Server error:', err);
+      process.exit(1);
     });
 
     async function shutdown() {
