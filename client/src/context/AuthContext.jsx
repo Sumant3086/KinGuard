@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
     const { token, user: userData } = await authApi.login(employeeId, password);
     localStorage.setItem('token', token);
     setUser(userData);
+    // User data already received from login response - no need to call /auth/me
 
     // Navigate based on role
     if (userData.role === 'ADMIN') {

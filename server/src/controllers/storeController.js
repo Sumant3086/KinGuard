@@ -3,18 +3,12 @@ import { createAuditLog } from '../services/auditService.js';
 import ExcelJS from 'exceljs';
 import prisma from '../config/prisma.js';
 
-// WebSocket instance (set from server.js)
-let io;
-export function setSocketIO(socketIO) {
-  io = socketIO;
-}
-
 export async function getDashboard(req, res, next) {
   const startTime = Date.now();
   try {
     const storeId = req.user.storeId;
 
-    // Get latest batch WHERE this store has inventory records
+    // Get latest batch WHERE this store has inventory records - optimized query
     const latestBatch = await prisma.uploadBatch.findFirst({
       where: {
         inventoryRecords: {
@@ -22,15 +16,14 @@ export async function getDashboard(req, res, next) {
         },
       },
       orderBy: { inventoryDate: 'desc' },
-      include: {
-        inventoryRecords: {
-          where: { storeId },
-          select: { id: true },
-        },
+      select: {
+        id: true,
+        inventoryDate: true,
+        uploadedAt: true,
       },
     });
 
-    if (!latestBatch || latestBatch.inventoryRecords.length === 0) {
+    if (!latestBatch) {
       return res.json({
         store: req.user.store,
         batch: null,
@@ -45,31 +38,23 @@ export async function getDashboard(req, res, next) {
       });
     }
 
-    // Get statistics
-    const records = await prisma.inventoryRecord.findMany({
-      where: {
-        storeId,
-        batchId: latestBatch.id,
-      },
-    });
-
-    const stats = {
-      totalItems: records.length,
-      pendingItems: records.filter((r) => r.status === 'PENDING').length,
-      submittedItems: records.filter((r) => r.status === 'SUBMITTED').length,
-      matchedItems: records.filter((r) => r.difference === 0 && r.status === 'SUBMITTED').length,
-      shortageItems: records.filter((r) => r.difference < 0 && r.status === 'SUBMITTED').length,
-      excessItems: records.filter((r) => r.difference > 0 && r.status === 'SUBMITTED').length,
-    };
+    // Use database aggregation instead of loading all records
+    const stats = await prisma.$queryRaw`
+      SELECT 
+        COUNT(*)::int as "totalItems",
+        COUNT(CASE WHEN status = 'PENDING' THEN 1 END)::int as "pendingItems",
+        COUNT(CASE WHEN status = 'SUBMITTED' THEN 1 END)::int as "submittedItems",
+        COUNT(CASE WHEN difference = 0 AND status = 'SUBMITTED' THEN 1 END)::int as "matchedItems",
+        COUNT(CASE WHEN difference < 0 AND status = 'SUBMITTED' THEN 1 END)::int as "shortageItems",
+        COUNT(CASE WHEN difference > 0 AND status = 'SUBMITTED' THEN 1 END)::int as "excessItems"
+      FROM "InventoryRecord"
+      WHERE "storeId" = ${storeId} AND "batchId" = ${latestBatch.id}
+    `;
 
     res.json({
       store: req.user.store,
-      batch: {
-        id: latestBatch.id,
-        inventoryDate: latestBatch.inventoryDate,
-        uploadedAt: latestBatch.uploadedAt,
-      },
-      stats,
+      batch: latestBatch,
+      stats: stats[0],
     });
     
     const duration = Date.now() - startTime;
@@ -80,46 +65,29 @@ export async function getDashboard(req, res, next) {
 }
 
 export async function getBatches(req, res, next) {
+  const startTime = Date.now();
   try {
     const storeId = req.user.storeId;
 
-    // Get all batches with aggregated counts in a single query
-    const batches = await prisma.uploadBatch.findMany({
-      where: {
-        inventoryRecords: {
-          some: { storeId },
-        },
-      },
-      orderBy: { inventoryDate: 'desc' },
-      select: {
-        id: true,
-        inventoryDate: true,
-        uploadedAt: true,
-        inventoryRecords: {
-          where: { storeId },
-          select: {
-            status: true,
-          },
-        },
-      },
-    });
+    // Get all batches with aggregated counts using a single optimized query
+    const batches = await prisma.$queryRaw`
+      SELECT 
+        b.id,
+        b."inventoryDate",
+        b."uploadedAt",
+        COUNT(ir.id)::int as "totalRecords",
+        COUNT(CASE WHEN ir.status = 'PENDING' THEN 1 END)::int as "pendingCount",
+        COUNT(CASE WHEN ir.status = 'SUBMITTED' THEN 1 END)::int as "submittedCount"
+      FROM "UploadBatch" b
+      INNER JOIN "InventoryRecord" ir ON ir."batchId" = b.id AND ir."storeId" = ${storeId}
+      GROUP BY b.id, b."inventoryDate", b."uploadedAt"
+      ORDER BY b."inventoryDate" DESC
+    `;
 
-    // Calculate status counts from the already-loaded records
-    const batchesWithStatus = batches.map((batch) => {
-      const pendingCount = batch.inventoryRecords.filter((r) => r.status === 'PENDING').length;
-      const submittedCount = batch.inventoryRecords.filter((r) => r.status === 'SUBMITTED').length;
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] GET_BATCHES (${batches.length} batches): ${duration}ms`);
 
-      return {
-        id: batch.id,
-        inventoryDate: batch.inventoryDate,
-        uploadedAt: batch.uploadedAt,
-        totalRecords: batch.inventoryRecords.length,
-        pendingCount,
-        submittedCount,
-      };
-    });
-
-    res.json(batchesWithStatus);
+    res.json(batches);
   } catch (error) {
     next(error);
   }
@@ -148,23 +116,27 @@ export async function getInventory(req, res, next) {
       where.status = status;
     }
 
-    const records = await prisma.inventoryRecord.findMany({
-      where,
-      orderBy: { materialCode: 'asc' },
-      include: {
-        batch: {
-          select: {
-            id: true,
-            inventoryDate: true,
-          },
-        },
-      },
-    });
+    const [records, batchInfo] = await Promise.all([
+      prisma.inventoryRecord.findMany({
+        where,
+        orderBy: { materialCode: 'asc' },
+      }),
+      batchId
+        ? prisma.uploadBatch.findUnique({
+            where: { id: parseInt(batchId) },
+            select: { submissionDeadline: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const isLocked = batchInfo?.submissionDeadline
+      ? new Date() > new Date(batchInfo.submissionDeadline)
+      : false;
 
     const duration = Date.now() - startTime;
     console.log(`[PERF] GET_INVENTORY (${records.length} records): ${duration}ms`);
 
-    res.json(records);
+    res.json({ records, isLocked });
   } catch (error) {
     next(error);
   }
@@ -174,91 +146,67 @@ export async function updateInventoryRecord(req, res, next) {
   const startTime = Date.now();
   try {
     const { id } = req.params;
+    const recordId = parseInt(id);
     const storeId = req.user.storeId;
-    const { physicalQuantity, remarks } = req.body;
+    const { physicalQuantity: rawQty, remarks } = req.body;
 
-    // Validate physical quantity
-    if (physicalQuantity !== null && physicalQuantity !== undefined) {
+    const physicalQuantityProvided = rawQty !== undefined;
+    const physicalQuantity = (rawQty === '' || rawQty === null) ? null : rawQty;
+
+    if (physicalQuantityProvided && physicalQuantity !== null) {
       const qty = parseFloat(physicalQuantity);
       if (isNaN(qty) || qty < 0) {
-        throw new AppError('Physical quantity must be a non-negative number', 400);
+        throw new AppError('Sold quantity must be a non-negative number', 400);
       }
     }
 
-    // Atomically find record, verify ownership, check status, and get systemQuantity
+    // Single query: verify ownership + get systemQuantity + check batch deadline
     const record = await prisma.inventoryRecord.findFirst({
-      where: {
-        id: parseInt(id),
-        storeId, // Verify ownership atomically
-      },
+      where: { id: recordId, storeId },
       select: {
         id: true,
         systemQuantity: true,
         status: true,
+        batch: { select: { submissionDeadline: true } },
       },
     });
 
-    if (!record) {
-      throw new AppError('Record not found', 404);
+    if (!record) throw new AppError('Record not found', 404);
+    if (record.status === 'SUBMITTED') throw new AppError('Cannot edit submitted records', 403);
+    if (record.batch?.submissionDeadline && new Date() > new Date(record.batch.submissionDeadline)) {
+      throw new AppError('This batch is locked. The submission deadline has passed. Contact your administrator.', 403);
     }
 
-    // Prevent editing after submission
-    if (record.status === 'SUBMITTED') {
-      throw new AppError('Cannot edit submitted records', 403);
+    let difference = undefined;
+    if (physicalQuantityProvided) {
+      difference = physicalQuantity !== null
+        ? parseFloat(physicalQuantity) - record.systemQuantity
+        : null;
     }
 
-    // Calculate difference if physical quantity is provided
-    let difference = null;
-    if (physicalQuantity !== null && physicalQuantity !== undefined) {
-      difference = parseFloat(physicalQuantity) - record.systemQuantity;
-    }
-
-    // Update record atomically with ownership check
-    const updated = await prisma.inventoryRecord.updateMany({
-      where: {
-        id: parseInt(id),
-        storeId, // Re-verify ownership at update time
-        status: 'PENDING', // Ensure still pending
-      },
+    // Single update query — returns the updated record directly (no extra findUnique needed)
+    const result = await prisma.inventoryRecord.update({
+      where: { id: recordId },
       data: {
-        physicalQuantity: physicalQuantity !== null && physicalQuantity !== undefined 
-          ? parseFloat(physicalQuantity) 
+        physicalQuantity: physicalQuantityProvided
+          ? (physicalQuantity !== null ? parseFloat(physicalQuantity) : null)
           : undefined,
         difference,
         remarks: remarks !== undefined ? remarks : undefined,
       },
     });
 
-    if (updated.count === 0) {
-      throw new AppError('Record not found or already submitted', 404);
-    }
-
-    // Fetch updated record for response
-    const result = await prisma.inventoryRecord.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    await createAuditLog({
+    // Fire-and-forget — don't block the HTTP response for an audit log write
+    createAuditLog({
       userId: req.user.id,
       action: 'UPDATE_INVENTORY',
       entityType: 'INVENTORY_RECORD',
-      entityId: parseInt(id),
+      entityId: recordId,
       metadata: { physicalQuantity, remarks },
-    });
+    }).catch(() => {});
 
     const duration = Date.now() - startTime;
     console.log(`[PERF] UPDATE_INVENTORY record ${id}: ${duration}ms`);
-
-    // Emit WebSocket event to store room
-    if (io) {
-      io.to(`store:${storeId}`).emit('inventoryUpdate', result);
-      io.to('admin').emit('inventoryChange', {
-        type: 'update',
-        storeId,
-        recordId: result.id,
-        batchId: result.batchId,
-      });
-    }
 
     res.json(result);
   } catch (error) {
@@ -266,118 +214,6 @@ export async function updateInventoryRecord(req, res, next) {
   }
 }
 
-export async function bulkUpdateInventory(req, res, next) {
-  const startTime = Date.now();
-  try {
-    const storeId = req.user.storeId;
-    const { batchId, changes } = req.body;
-
-    if (!batchId || !Array.isArray(changes)) {
-      throw new AppError('batchId and changes array are required', 400);
-    }
-
-    if (changes.length === 0) {
-      throw new AppError('No changes provided', 400);
-    }
-
-    if (changes.length > 100) {
-      throw new AppError('Maximum 100 records per bulk update', 400);
-    }
-
-    // Use transaction for atomic bulk update
-    const updatedRecords = await prisma.$transaction(async (tx) => {
-      const recordIds = changes.map(c => c.recordId);
-
-      // Verify all records exist, belong to this store and batch, and are pending
-      const records = await tx.inventoryRecord.findMany({
-        where: {
-          id: { in: recordIds },
-          storeId,
-          batchId: parseInt(batchId),
-          status: 'PENDING',
-        },
-        select: {
-          id: true,
-          systemQuantity: true,
-        },
-      });
-
-      if (records.length !== changes.length) {
-        throw new AppError(
-          `Authorization failed: ${changes.length - records.length} record(s) not found, unauthorized, or already submitted`,
-          403
-        );
-      }
-
-      // Create a map for quick lookup
-      const recordMap = new Map(records.map(r => [r.id, r]));
-
-      // Update each record
-      const updates = [];
-      for (const change of changes) {
-        const record = recordMap.get(change.recordId);
-        if (!record) continue;
-
-        const physicalQty = change.physicalQuantity !== null && change.physicalQuantity !== undefined
-          ? parseFloat(change.physicalQuantity)
-          : null;
-
-        if (physicalQty !== null && (isNaN(physicalQty) || physicalQty < 0)) {
-          throw new AppError(`Invalid physicalQuantity for record ${change.recordId}`, 400);
-        }
-
-        const difference = physicalQty !== null ? physicalQty - record.systemQuantity : null;
-
-        updates.push(
-          tx.inventoryRecord.update({
-            where: { id: change.recordId },
-            data: {
-              physicalQuantity: physicalQty,
-              difference,
-              remarks: change.remarks !== undefined ? change.remarks : undefined,
-            },
-          })
-        );
-      }
-
-      return await Promise.all(updates);
-    });
-
-    // Single audit log for bulk operation
-    await createAuditLog({
-      userId: req.user.id,
-      action: 'BULK_UPDATE_INVENTORY',
-      entityType: 'INVENTORY_RECORD',
-      entityId: parseInt(batchId),
-      metadata: { batchId, changedRecordCount: changes.length },
-    });
-
-    const duration = Date.now() - startTime;
-    console.log(`[PERF] BULK_UPDATE_INVENTORY (${changes.length} records): ${duration}ms`);
-
-    // Emit WebSocket event to store room
-    if (io) {
-      io.to(`store:${storeId}`).emit('inventoryBulkUpdate', {
-        batchId: parseInt(batchId),
-        updated: updatedRecords.length,
-        records: updatedRecords,
-      });
-      io.to('admin').emit('inventoryChange', {
-        type: 'bulkUpdate',
-        storeId,
-        batchId: parseInt(batchId),
-        count: updatedRecords.length,
-      });
-    }
-
-    res.json({
-      updated: updatedRecords.length,
-      records: updatedRecords,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
 
 export async function submitInventory(req, res, next) {
   try {
@@ -388,76 +224,110 @@ export async function submitInventory(req, res, next) {
       throw new AppError('Batch ID is required', 400);
     }
 
-    // Use transaction for atomic submission
-    const result = await prisma.$transaction(async (tx) => {
-      // Get all records for this store and batch
-      const records = await tx.inventoryRecord.findMany({
-        where: {
-          storeId,
-          batchId: parseInt(batchId),
-          status: 'PENDING',
-        },
+    const parsedBatchId = parseInt(batchId);
+    const submittedAt   = new Date();
+
+    // Fetch + validate pending records, then submit — all in one transaction
+    const { count, records } = await prisma.$transaction(async (tx) => {
+      const pending = await tx.inventoryRecord.findMany({
+        where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
       });
 
-      if (records.length === 0) {
-        throw new AppError('No pending records found', 400);
-      }
+      if (pending.length === 0) throw new AppError('No pending records found', 400);
 
-      // Validate all records have physical quantity
-      const missingPhysicalQty = records.filter((r) => r.physicalQuantity === null);
-      if (missingPhysicalQty.length > 0) {
+      const missing = pending.filter(r => r.physicalQuantity === null);
+      if (missing.length > 0) {
         throw new AppError(
-          `Please enter physical quantity for all items. ${missingPhysicalQty.length} items are missing.`,
+          `Please enter Sold quantity for all items before submitting. ${missing.length} items are missing.`,
           400
         );
       }
 
-      // Submit all records atomically
-      const updated = await tx.inventoryRecord.updateMany({
-        where: {
-          storeId,
-          batchId: parseInt(batchId),
-          status: 'PENDING',
-        },
-        data: {
-          status: 'SUBMITTED',
-          submittedBy: req.user.id,
-          submittedAt: new Date(),
-        },
+      await tx.inventoryRecord.updateMany({
+        where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
+        data: { status: 'SUBMITTED', submittedBy: req.user.id, submittedAt },
       });
 
-      return { count: updated.count };
+      // Return the records with updated status so we don't need a second fetch
+      return {
+        count: pending.length,
+        records: pending
+          .map(r => ({ ...r, status: 'SUBMITTED', submittedBy: req.user.id, submittedAt }))
+          .sort((a, b) => (a.difference ?? 0) - (b.difference ?? 0)),
+      };
     });
 
-    await createAuditLog({
+    // Fire-and-forget side effects — don't block the response
+    createAuditLog({
       userId: req.user.id,
       action: 'SUBMIT_INVENTORY',
       entityType: 'INVENTORY_RECORD',
-      entityId: parseInt(batchId),
-      metadata: { recordCount: result.count },
-    });
-
-    // Emit WebSocket event to store room and admin
-    if (io) {
-      io.to(`store:${storeId}`).emit('inventorySubmitted', {
-        batchId: parseInt(batchId),
-        count: result.count,
-      });
-      io.to('admin').emit('inventoryChange', {
-        type: 'submit',
-        storeId,
-        batchId: parseInt(batchId),
-        count: result.count,
-      });
-    }
+      entityId: parsedBatchId,
+      metadata: { recordCount: count },
+    }).catch(() => {});
+    detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(() => {});
 
     res.json({
       message: 'Inventory submitted successfully',
-      recordCount: result.count,
+      recordCount: count,
+      records,
     });
   } catch (error) {
     next(error);
   }
+}
+
+async function detectRepeatDiscrepancies(storeId, batchId, userId) {
+  const currentBatch = await prisma.uploadBatch.findUnique({
+    where: { id: batchId },
+    select: { inventoryDate: true },
+  });
+  if (!currentBatch) return;
+
+  const priorBatches = await prisma.uploadBatch.findMany({
+    where: { inventoryDate: { lt: currentBatch.inventoryDate } },
+    orderBy: { inventoryDate: 'desc' },
+    take: 2,
+    select: { id: true },
+  });
+  if (priorBatches.length === 0) return;
+
+  const priorBatchIds = priorBatches.map((b) => b.id);
+
+  const currentShortages = await prisma.inventoryRecord.findMany({
+    where: { storeId, batchId, status: 'SUBMITTED', difference: { lt: 0 } },
+    select: { materialCode: true },
+  });
+  if (currentShortages.length === 0) return;
+
+  const currentMaterials = currentShortages.map((r) => r.materialCode);
+
+  const priorShortages = await prisma.inventoryRecord.findMany({
+    where: {
+      storeId,
+      batchId: { in: priorBatchIds },
+      status: 'SUBMITTED',
+      difference: { lt: 0 },
+      materialCode: { in: currentMaterials },
+    },
+    select: { materialCode: true, batchId: true },
+  });
+
+  const repeatMaterials = new Set(priorShortages.map((r) => r.materialCode));
+  if (repeatMaterials.size === 0) return;
+
+  await createAuditLog({
+    userId,
+    action: 'REPEAT_DISCREPANCY',
+    entityType: 'INVENTORY_RECORD',
+    entityId: batchId,
+    metadata: {
+      storeId,
+      batchId,
+      materials: Array.from(repeatMaterials),
+      count: repeatMaterials.size,
+    },
+  });
 }
 
 export async function downloadInventory(req, res, next) {
@@ -510,12 +380,12 @@ export async function downloadInventory(req, res, next) {
     // Add headers
     worksheet.columns = [
       { header: 'Store Code', key: 'storeCode', width: 12 },
-      { header: 'Inventory Date', key: 'inventoryDate', width: 15 },
-      { header: 'Material Code', key: 'materialCode', width: 15 },
-      { header: 'Material Name', key: 'materialName', width: 30 },
-      { header: 'System Quantity', key: 'systemQuantity', width: 18 },
-      { header: 'Physical Quantity', key: 'physicalQuantity', width: 18 },
-      { header: 'Difference', key: 'difference', width: 12 },
+      { header: 'Date', key: 'inventoryDate', width: 15 },
+      { header: 'Material Name', key: 'materialCode', width: 20 },
+      { header: 'Material Description', key: 'materialName', width: 30 },
+      { header: 'SYS', key: 'systemQuantity', width: 12 },
+      { header: 'Sold', key: 'physicalQuantity', width: 12 },
+      { header: 'Diff', key: 'difference', width: 12 },
       { header: 'Remarks', key: 'remarks', width: 30 },
       { header: 'Status', key: 'status', width: 12 },
     ];

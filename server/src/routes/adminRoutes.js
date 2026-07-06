@@ -45,7 +45,6 @@ router.patch('/users/:id', adminController.updateUser);
 router.post('/uploads/preview', upload.single('file'), adminController.previewUpload);
 router.post('/uploads', upload.single('file'), adminController.uploadInventory);
 router.get('/uploads', adminController.getUploads);
-router.get('/uploads/:id', adminController.getUploadDetails);
 
 // Inventory
 router.get('/inventory', adminController.getInventory);

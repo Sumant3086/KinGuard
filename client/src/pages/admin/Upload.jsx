@@ -5,6 +5,7 @@ import * as adminApi from '../../api/admin';
 export default function AdminUpload() {
   const [file, setFile] = useState(null);
   const [inventoryDate, setInventoryDate] = useState('');
+  const [submissionDeadline, setSubmissionDeadline] = useState('');
   const [uploading, setUploading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [result, setResult] = useState(null);
@@ -57,10 +58,11 @@ export default function AdminUpload() {
     try {
       setUploading(true);
       setResult(null);
-      const data = await adminApi.uploadInventory(file, inventoryDate);
+      const data = await adminApi.uploadInventory(file, inventoryDate, submissionDeadline);
       setResult(data);
       setFile(null);
       setInventoryDate('');
+      setSubmissionDeadline('');
       setPreview(null);
       loadUploads();
     } catch (err) {
@@ -88,15 +90,27 @@ export default function AdminUpload() {
       <div className="card">
         <h3>Upload Master File</h3>
         <form onSubmit={handlePreview}>
-          <div className="form-group">
-            <label>Inventory Date</label>
-            <input
-              type="date"
-              value={inventoryDate}
-              onChange={(e) => setInventoryDate(e.target.value)}
-              required
-              disabled={previewing || uploading}
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Inventory Date</label>
+              <input
+                type="date"
+                value={inventoryDate}
+                onChange={(e) => setInventoryDate(e.target.value)}
+                required
+                disabled={previewing || uploading}
+              />
+            </div>
+            <div className="form-group">
+              <label>Submission Deadline <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+              <input
+                type="date"
+                value={submissionDeadline}
+                onChange={(e) => setSubmissionDeadline(e.target.value)}
+                disabled={previewing || uploading}
+                min={inventoryDate}
+              />
+            </div>
           </div>
           <div className="form-group">
             <label>Excel or CSV File</label>
@@ -173,9 +187,9 @@ export default function AdminUpload() {
                     <th>Row</th>
                     <th>Store Code</th>
                     <th>Store Name</th>
-                    <th>Material Code</th>
                     <th>Material Name</th>
-                    <th>SYS Qty</th>
+                    <th>Material Description</th>
+                    <th>SYS</th>
                     <th>Status</th>
                     <th>Message</th>
                   </tr>

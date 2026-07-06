@@ -1,28 +1,94 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+const Icons = {
+  dashboard: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  ),
+  inventory: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="2"/>
+      <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+    </svg>
+  ),
+  logout: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
+};
+
 export default function StoreLayout({ children }) {
   const { user, logout } = useAuth();
   const location = useLocation();
-
-  const isActive = (path) => location.pathname === path;
+  const isActive = path => location.pathname === path;
 
   return (
-    <div>
-      <div className="navbar">
-        <h1>KinGuard - {user?.store?.storeName}</h1>
-        <nav>
-          <Link to="/store/dashboard" style={{ fontWeight: isActive('/store/dashboard') ? 'bold' : 'normal' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--page)' }}>
+      {/* ── Top header ── */}
+      <header className="store-header">
+        <div className="store-header-inner">
+          <div className="store-brand">
+            <div className="store-logo">K</div>
+            <span className="store-brand-name">KinMarché</span>
+            {user?.store && (
+              <span className="store-chip">{user.store.storeName}</span>
+            )}
+          </div>
+
+          {/* Desktop nav */}
+          <nav className="store-nav-desktop">
+            <Link
+              to="/store/dashboard"
+              className={`store-nav-link ${isActive('/store/dashboard') ? 'active' : ''}`}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/store/inventory"
+              className={`store-nav-link ${isActive('/store/inventory') ? 'active' : ''}`}
+            >
+              Inventory
+            </Link>
+            <span className="store-nav-user">{user?.name}</span>
+            <button className="btn-signout" onClick={logout}>Sign Out</button>
+          </nav>
+        </div>
+      </header>
+
+      {/* ── Page content ── */}
+      <div className="store-content">
+        {children}
+      </div>
+
+      {/* ── Mobile bottom navigation ── */}
+      <nav className="store-bottom-nav">
+        <div className="store-bottom-nav-inner">
+          <Link
+            to="/store/dashboard"
+            className={`mob-nav-item ${isActive('/store/dashboard') ? 'active' : ''}`}
+          >
+            {Icons.dashboard}
             Dashboard
           </Link>
-          <Link to="/store/inventory" style={{ fontWeight: isActive('/store/inventory') ? 'bold' : 'normal' }}>
+          <Link
+            to="/store/inventory"
+            className={`mob-nav-item ${isActive('/store/inventory') ? 'active' : ''}`}
+          >
+            {Icons.inventory}
             Inventory
           </Link>
-          <span style={{ color: 'white', marginLeft: '20px' }}>{user?.name}</span>
-          <button onClick={logout}>Logout</button>
-        </nav>
-      </div>
-      <div className="container">{children}</div>
+          <button className="mob-logout" onClick={logout}>
+            {Icons.logout}
+            Sign Out
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

@@ -59,16 +59,17 @@ model User {
 }
 
 model UploadBatch {
-  id               Int          @id @default(autoincrement())
-  originalFileName String
-  storedFileName   String?
-  uploadedBy       Int
-  uploadedAt       DateTime     @default(now())
-  inventoryDate    DateTime
-  totalRows        Int          @default(0)
-  successfulRows   Int          @default(0)
-  rejectedRows     Int          @default(0)
-  status           UploadStatus @default(PENDING)
+  id                 Int          @id @default(autoincrement())
+  originalFileName   String
+  storedFileName     String?
+  uploadedBy         Int
+  uploadedAt         DateTime     @default(now())
+  inventoryDate      DateTime
+  submissionDeadline DateTime?
+  totalRows          Int          @default(0)
+  successfulRows     Int          @default(0)
+  rejectedRows       Int          @default(0)
+  status             UploadStatus @default(PENDING)
 
   uploader         User              @relation(fields: [uploadedBy], references: [id])
   inventoryRecords InventoryRecord[]

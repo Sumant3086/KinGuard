@@ -14,6 +14,7 @@ export async function getInventory(search, status, batchId) {
   const { data } = await client.get('/store/inventory', {
     params: { search, status, batchId },
   });
+  // Returns { records, isLocked }
   return data;
 }
 
@@ -21,14 +22,6 @@ export async function updateRecord(id, physicalQuantity, remarks) {
   const { data } = await client.patch(`/store/inventory/${id}`, {
     physicalQuantity,
     remarks,
-  });
-  return data;
-}
-
-export async function bulkUpdateRecords(batchId, changes) {
-  const { data } = await client.patch('/store/inventory/bulk', {
-    batchId,
-    changes,
   });
   return data;
 }

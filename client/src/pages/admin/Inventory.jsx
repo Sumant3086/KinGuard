@@ -7,34 +7,38 @@ export default function AdminInventory() {
   const [pagination, setPagination] = useState({ page: 1, pageSize: 50, totalRecords: 0, totalPages: 0 });
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ storeId: '', status: '', search: '', discrepancy: '' });
+  const [filters, setFilters] = useState({ storeId: '', status: '', search: '', discrepancy: '', batchId: '' });
 
   useEffect(() => {
-    loadData();
+    loadInitialData();
   }, []);
 
-  async function loadData() {
+  async function loadInitialData() {
     try {
-      const [storesData] = await Promise.all([
-        adminApi.getStores(),
-      ]);
+      setLoading(true);
+      // Only load stores on mount, don't load inventory yet
+      const storesData = await adminApi.getStores();
       setStores(storesData);
-      await loadInventory();
+    } catch (err) {
+      console.error('Failed to load stores:', err);
     } finally {
       setLoading(false);
     }
   }
 
-  async function loadInventory() {
+  async function loadInventory(page) {
     setLoading(true);
+    const pageNum = page ?? pagination.page;
     try {
       const data = await adminApi.getInventory({
         ...filters,
-        page: pagination.page,
+        page: pageNum,
         pageSize: pagination.pageSize,
       });
       setRecords(data.data);
       setPagination(data.pagination);
+    } catch (err) {
+      console.error('Failed to load inventory:', err);
     } finally {
       setLoading(false);
     }
@@ -45,8 +49,8 @@ export default function AdminInventory() {
   }
 
   async function applyFilters() {
-    setPagination({ ...pagination, page: 1 });
-    await loadInventory();
+    setPagination(prev => ({ ...prev, page: 1 }));
+    await loadInventory(1);
   }
 
   async function handleDownloadExcel() {
@@ -63,9 +67,8 @@ export default function AdminInventory() {
     }
   }
 
-  async function changePage(newPage) {
-    setPagination({ ...pagination, page: newPage });
-    await loadInventory();
+  function changePage(newPage) {
+    loadInventory(newPage);
   }
 
   return (
@@ -98,6 +101,7 @@ export default function AdminInventory() {
             placeholder="Search materials..."
             value={filters.search}
             onChange={(e) => handleFilterChange('search', e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && applyFilters()}
           />
           <button onClick={applyFilters} className="btn btn-primary">
             Apply Filters
@@ -108,65 +112,77 @@ export default function AdminInventory() {
         </div>
       </div>
 
-      {loading ? (
+      {loading && records.length === 0 ? (
         <div className="loading">Loading...</div>
       ) : records.length === 0 ? (
         <div className="card">
-          <p>No records found.</p>
+          <p>No records found. Click "Apply Filters" to load inventory records.</p>
         </div>
       ) : (
         <>
           <div className="card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Store</th>
-                  <th>Material Code</th>
-                  <th>Material Name</th>
-                  <th>System Qty</th>
-                  <th>Physical Qty</th>
-                  <th>Difference</th>
-                  <th>Remarks</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    <td>{record.store.storeCode}</td>
-                    <td>{record.materialCode}</td>
-                    <td>{record.materialName}</td>
-                    <td>{record.systemQuantity}</td>
-                    <td>{record.physicalQuantity ?? '-'}</td>
-                    <td>
-                      {record.difference !== null ? (
-                        <span className={
-                          record.difference === 0 ? 'badge badge-matched' :
-                          record.difference < 0 ? 'badge badge-shortage' :
-                          'badge badge-excess'
-                        }>
-                          {record.difference}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.remarks || ''}>
-                      {record.remarks || '-'}
-                    </td>
-                    <td>
-                      <span className={`badge badge-${record.status.toLowerCase()}`}>
-                        {record.status}
-                      </span>
-                    </td>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Store</th>
+                    <th>Material Name</th>
+                    <th>Material Description</th>
+                    <th>SYS</th>
+                    <th>Sold</th>
+                    <th>Diff</th>
+                    <th>Remarks</th>
+                    <th>Status</th>
+                    <th>Flag</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {records.map((record) => (
+                    <tr key={record.id}>
+                      <td>{record.store.storeCode}</td>
+                      <td>{record.materialCode}</td>
+                      <td>{record.materialName}</td>
+                      <td>{record.systemQuantity}</td>
+                      <td>{record.physicalQuantity ?? '-'}</td>
+                      <td>
+                        {record.difference !== null ? (
+                          <span className={
+                            record.difference === 0 ? 'badge badge-matched' :
+                            record.difference < 0 ? 'badge badge-shortage' :
+                            'badge badge-excess'
+                          }>
+                            {record.difference > 0 ? '+' : ''}{record.difference}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.remarks || ''}>
+                        {record.remarks || '-'}
+                      </td>
+                      <td>
+                        <span className={`badge badge-${record.status.toLowerCase()}`}>
+                          {record.status}
+                        </span>
+                      </td>
+                      <td>
+                        {record.isRepeat && (
+                          <span className="badge badge-repeat" title="Appeared in shortage in previous cycles">
+                            🔁 Repeat
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
+          
+          {loading && <div className="loading" style={{ marginTop: '10px' }}>Loading...</div>}
           
           <div className="pagination">
             <button 
               onClick={() => changePage(pagination.page - 1)} 
-              disabled={pagination.page === 1}
+              disabled={pagination.page === 1 || loading}
               className="btn btn-secondary"
             >
               Previous
@@ -176,7 +192,7 @@ export default function AdminInventory() {
             </span>
             <button 
               onClick={() => changePage(pagination.page + 1)} 
-              disabled={pagination.page === pagination.totalPages}
+              disabled={pagination.page === pagination.totalPages || loading}
               className="btn btn-secondary"
             >
               Next

@@ -5,74 +5,229 @@ import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import prisma from '../config/prisma.js';
 
-export async function getDashboard(req, res, next) {
-  try {
-    // Get store statistics
-    const totalStores = await prisma.store.count({ where: { isActive: true } });
+// Shared column name aliases for Excel/CSV parsing
+const COLUMN_MAP = {
+  storeCode: ['Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 'STORE CODE', 'Store code ', 'Store Code '],
+  materialCode: ['Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 'SKU', 'MATERIAL', 'Material code ', 'Material Code ', 'Material Name', 'Material name', 'MaterialName', 'material_name'],
+  materialName: ['Material Description', 'Material Name', 'MaterialName', 'Description', 'material_name', 'Item Name', 'MATERIAL DESCRIPTION', 'Material Description ', 'Material description', 'MaterialDescription', 'material_description'],
+  systemQuantity: ['SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 'Quantity', 'QTY', 'SYSTEM QUANTITY', 'SYS ', 'Sys'],
+};
 
-    // Get latest batch
-    const latestBatch = await prisma.uploadBatch.findFirst({
-      orderBy: { inventoryDate: 'desc' },
-    });
+function findColumn(row, possibleNames) {
+  for (const name of possibleNames) {
+    if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+      return row[name];
+    }
+  }
+  return null;
+}
+
+async function parseFileToRows(file) {
+  if (file.mimetype.includes('csv')) {
+    return parse(file.buffer, { columns: true, skip_empty_lines: true, trim: true });
+  }
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(file.buffer);
+  const worksheet = workbook.worksheets[0];
+  const headers = [];
+  worksheet.getRow(1).eachCell((cell) => headers.push(cell.value.toString().trim()));
+  const rows = [];
+  worksheet.eachRow((row, rowIndex) => {
+    if (rowIndex === 1) return;
+    const rowData = {};
+    row.eachCell((cell, colNumber) => { rowData[headers[colNumber - 1]] = cell.value; });
+    if (Object.keys(rowData).length > 0) rows.push(rowData);
+  });
+  return rows;
+}
+
+export async function getDashboard(req, res, next) {
+  const startTime = Date.now();
+  try {
+    const [totalStores, latestBatch] = await Promise.all([
+      prisma.store.count({ where: { isActive: true } }),
+      prisma.uploadBatch.findFirst({
+        orderBy: { inventoryDate: 'desc' },
+        select: { id: true, inventoryDate: true, submissionDeadline: true },
+      }),
+    ]);
 
     if (!latestBatch) {
       return res.json({
         totalStores,
-        storesPending: 0,
-        storesSubmitted: 0,
-        totalRecords: 0,
-        matchedItems: 0,
-        shortageItems: 0,
-        excessItems: 0,
+        currentBatch: null,
+        storeScorecard: [],
+        hotspots: [],
+        networkSummary: { totalRecords: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 },
       });
     }
 
-    // Get store submission status
-    const storesWithRecords = await prisma.inventoryRecord.groupBy({
-      by: ['storeId', 'status'],
-      where: { batchId: latestBatch.id },
-      _count: true,
+    const now = new Date();
+    const isDeadlinePassed = latestBatch.submissionDeadline
+      ? now > new Date(latestBatch.submissionDeadline)
+      : false;
+
+    // Per-store stats for the latest batch
+    const [perStoreStats, networkStats, allStores] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT
+          ir."storeId",
+          COUNT(*)::int                                          AS "totalItems",
+          COUNT(CASE WHEN ir.status = 'SUBMITTED' THEN 1 END)::int AS "submittedCount",
+          COUNT(CASE WHEN ir.status = 'PENDING'   THEN 1 END)::int AS "pendingCount",
+          COUNT(CASE WHEN ir.difference < 0 AND ir.status = 'SUBMITTED' THEN 1 END)::int AS "shortageCount",
+          COUNT(CASE WHEN ir.difference = 0 AND ir.status = 'SUBMITTED' THEN 1 END)::int AS "matchedCount",
+          COUNT(CASE WHEN ir.difference > 0 AND ir.status = 'SUBMITTED' THEN 1 END)::int AS "excessCount"
+        FROM "InventoryRecord" ir
+        WHERE ir."batchId" = ${latestBatch.id}
+        GROUP BY ir."storeId"
+      `,
+      prisma.$queryRaw`
+        SELECT
+          COUNT(*)::int                                                  AS "totalRecords",
+          COUNT(CASE WHEN difference = 0  AND status = 'SUBMITTED' THEN 1 END)::int AS "matchedItems",
+          COUNT(CASE WHEN difference < 0  AND status = 'SUBMITTED' THEN 1 END)::int AS "shortageItems",
+          COUNT(CASE WHEN difference > 0  AND status = 'SUBMITTED' THEN 1 END)::int AS "excessItems"
+        FROM "InventoryRecord"
+        WHERE "batchId" = ${latestBatch.id}
+      `,
+      prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true } }),
+    ]);
+
+    // Top remark per store — use Prisma groupBy; raw SQL storeId returns BigInt on some
+    // drivers so normalise to Number everywhere to avoid Map key mismatches.
+    const topRemarkRows = await prisma.$queryRaw`
+      SELECT "storeId", remarks, COUNT(*)::int AS cnt
+      FROM "InventoryRecord"
+      WHERE "batchId" = ${latestBatch.id} AND status = 'SUBMITTED' AND remarks IS NOT NULL AND remarks <> ''
+      GROUP BY "storeId", remarks
+      ORDER BY "storeId", cnt DESC
+    `;
+    const topRemarkMap = new Map();
+    topRemarkRows.forEach((r) => {
+      const sid = Number(r.storeId);
+      if (!topRemarkMap.has(sid)) topRemarkMap.set(sid, r.remarks);
     });
 
-    const storeStatusMap = new Map();
-    storesWithRecords.forEach((item) => {
-      if (!storeStatusMap.has(item.storeId)) {
-        storeStatusMap.set(item.storeId, { pending: 0, submitted: 0 });
-      }
-      const status = storeStatusMap.get(item.storeId);
-      if (item.status === 'PENDING') {
-        status.pending += item._count;
-      } else {
-        status.submitted += item._count;
-      }
-    });
+    // Normalise storeId keys from raw SQL to Number to match Prisma ORM ids
+    const statsMap = new Map(perStoreStats.map((r) => [Number(r.storeId), r]));
 
-    let storesPending = 0;
-    let storesSubmitted = 0;
-    storeStatusMap.forEach((status) => {
-      if (status.pending > 0) {
-        storesPending++;
-      } else if (status.submitted > 0) {
-        storesSubmitted++;
-      }
-    });
+    const storeScorecard = allStores.map((store) => {
+      const s = statsMap.get(store.id);
+      const totalItems    = s ? s.totalItems    : 0;
+      const shortageCount = s ? s.shortageCount : 0;
+      const shortageRate  = totalItems > 0 ? Math.round((shortageCount / totalItems) * 100) : 0;
+      const isSubmitted   = s ? s.pendingCount === 0 && s.submittedCount > 0 : false;
+      const isPending     = s ? s.pendingCount > 0 : false;
+      const riskLevel     = shortageRate >= 20 ? 'RED' : shortageRate >= 5 ? 'YELLOW' : 'GREEN';
+      return {
+        storeId: store.id,
+        storeCode: store.storeCode,
+        storeName: store.storeName,
+        totalItems,
+        shortageCount,
+        shortageRate,
+        matchedCount: s ? s.matchedCount : 0,
+        excessCount:  s ? s.excessCount  : 0,
+        topRemark:    topRemarkMap.get(store.id) || null,
+        status:    isSubmitted ? 'SUBMITTED' : isPending ? 'PENDING' : 'NO_DATA',
+        isOverdue: isDeadlinePassed && isPending,
+        riskLevel,
+      };
+    }).sort((a, b) => b.shortageRate - a.shortageRate);
 
-    // Get inventory statistics
-    const records = await prisma.inventoryRecord.findMany({
-      where: { batchId: latestBatch.id, status: 'SUBMITTED' },
+    // Shrinkage hotspots: (storeId, materialCode) pairs with shortages in ≥2 of the last 4 batches.
+    // Use Prisma findMany + JS aggregation — avoids raw SQL array parameters entirely.
+    const last4Batches = await prisma.uploadBatch.findMany({
+      orderBy: { inventoryDate: 'desc' },
+      take: 4,
+      select: { id: true },
     });
+    const batchIds = last4Batches.map((b) => b.id);
 
-    const stats = {
+    let hotspots = [];
+    if (batchIds.length >= 2) {
+      const shortageRows = await prisma.inventoryRecord.findMany({
+        where: {
+          batchId:    { in: batchIds },
+          status:     'SUBMITTED',
+          difference: { lt: 0 },
+        },
+        select: {
+          storeId:      true,
+          materialCode: true,
+          materialName: true,
+          difference:   true,
+          remarks:      true,
+          batchId:      true,
+          store: { select: { storeCode: true, storeName: true } },
+        },
+      });
+
+      const pairMap = new Map();
+      shortageRows.forEach((r) => {
+        const key = `${r.storeId}::${r.materialCode}`;
+        if (!pairMap.has(key)) {
+          pairMap.set(key, {
+            storeCode:    r.store.storeCode,
+            storeName:    r.store.storeName,
+            materialCode: r.materialCode,
+            materialName: r.materialName,
+            batches:      new Set(),
+            totalShortage: 0,
+            remarkCounts: {},
+          });
+        }
+        const p = pairMap.get(key);
+        p.batches.add(r.batchId);
+        p.totalShortage += Math.abs(r.difference);
+        if (r.remarks) p.remarkCounts[r.remarks] = (p.remarkCounts[r.remarks] || 0) + 1;
+      });
+
+      hotspots = Array.from(pairMap.values())
+        .filter((p) => p.batches.size >= 2)
+        .map((p) => ({
+          storeCode:     p.storeCode,
+          storeName:     p.storeName,
+          materialCode:  p.materialCode,
+          materialName:  p.materialName,
+          batchCount:    p.batches.size,
+          totalShortage: Math.round(p.totalShortage * 10) / 10,
+          dominantRemark: Object.entries(p.remarkCounts)
+            .sort((a, b) => b[1] - a[1])[0]?.[0] || null,
+        }))
+        .sort((a, b) => b.batchCount - a.batchCount || b.totalShortage - a.totalShortage)
+        .slice(0, 5);
+    }
+
+    const net = networkStats[0] || {};
+    const storesPending = storeScorecard.filter((s) => s.status === 'PENDING').length;
+    const storesSubmitted = storeScorecard.filter((s) => s.status === 'SUBMITTED').length;
+    const overdueStores = storeScorecard.filter((s) => s.isOverdue).map((s) => s.storeName);
+
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);
+
+    res.json({
       totalStores,
-      storesPending,
-      storesSubmitted,
-      totalRecords: records.length,
-      matchedItems: records.filter((r) => r.difference === 0).length,
-      shortageItems: records.filter((r) => r.difference < 0).length,
-      excessItems: records.filter((r) => r.difference > 0).length,
-    };
-
-    res.json(stats);
+      currentBatch: {
+        id: latestBatch.id,
+        inventoryDate: latestBatch.inventoryDate,
+        submissionDeadline: latestBatch.submissionDeadline,
+        storesPending,
+        storesSubmitted,
+        overdueStores,
+        isDeadlinePassed,
+      },
+      storeScorecard,
+      hotspots,
+      networkSummary: {
+        totalRecords: Number(net.totalRecords || 0),
+        matchedItems: Number(net.matchedItems || 0),
+        shortageItems: Number(net.shortageItems || 0),
+        excessItems: Number(net.excessItems || 0),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -171,16 +326,6 @@ export async function getUsers(req, res, next) {
             storeName: true,
           },
         },
-      },
-      select: {
-        id: true,
-        employeeId: true,
-        name: true,
-        role: true,
-        storeId: true,
-        isActive: true,
-        createdAt: true,
-        store: true,
       },
     });
 
@@ -283,92 +428,17 @@ export async function uploadInventory(req, res, next) {
       throw new AppError('File is required', 400);
     }
 
-    const { inventoryDate } = req.body;
+    const { inventoryDate, submissionDeadline } = req.body;
     if (!inventoryDate) {
       throw new AppError('Inventory date is required', 400);
     }
 
     const file = req.file;
-    let rows = [];
+    const rows = await parseFileToRows(file);
 
-    // Parse file based on type
-    if (file.mimetype.includes('csv')) {
-      rows = parse(file.buffer, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-      });
-    } else {
-      // Excel file
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(file.buffer);
-      const worksheet = workbook.worksheets[0];
-
-      const headers = [];
-      worksheet.getRow(1).eachCell((cell) => {
-        headers.push(cell.value.toString().trim());
-      });
-
-      worksheet.eachRow((row, rowIndex) => {
-        if (rowIndex === 1) return; // Skip header
-        const rowData = {};
-        row.eachCell((cell, colNumber) => {
-          rowData[headers[colNumber - 1]] = cell.value;
-        });
-        if (Object.keys(rowData).length > 0) {
-          rows.push(rowData);
-        }
-      });
-    }
-
-    // Debug: Log the headers from the first row
     if (rows.length > 0) {
-      console.log('📋 Excel Headers Found:', Object.keys(rows[0]));
+      console.log('📋 Upload Headers:', Object.keys(rows[0]));
     }
-
-    // Map column names (supports both generic and business-specific formats)
-    const columnMap = {
-      storeCode: [
-        'Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 
-        'STORE CODE', 'Store code ', 'Store Code '
-      ],
-      materialCode: [
-        'Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 
-        'SKU', 'MATERIAL', 'Material code ', 'Material Code ',
-        'Material Name', 'Material name', 'MaterialName', 'material_name' // Added Material Name variants
-      ],
-      materialName: [
-        'Material Description', 'Material Name', 'MaterialName', 'Description', 
-        'material_name', 'Item Name', 'MATERIAL DESCRIPTION', 'Material Description ', 
-        'Material description', 'MaterialDescription', 'material_description'
-      ],
-      systemQuantity: [
-        'SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 
-        'Quantity', 'QTY', 'SYSTEM QUANTITY', 'SYS ', 'Sys'
-      ],
-      sold: [
-        'Sold', 'sold', 'SOLD', 'Physical Quantity', 'PhysicalQuantity', 
-        'physical_quantity', 'Physical', 'Sold '
-      ],
-      difference: [
-        'Diff', 'diff', 'DIFF', 'Difference', 'difference', 'DIFFERENCE', 'Diff '
-      ],
-      remarks: [
-        'Remarks', 'remarks', 'REMARKS', 'Remark', 'remark', 'Notes', 'notes', 'Remarks '
-      ],
-      date: [
-        'Date', 'DATE', 'Inventory Date', 'InventoryDate', 'inventory_date', 'Date '
-      ],
-    };
-
-    const findColumn = (row, possibleNames) => {
-      for (const name of possibleNames) {
-        if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
-          return row[name];
-        }
-      }
-      return null;
-    };
 
     // Create upload batch
     const batch = await prisma.uploadBatch.create({
@@ -376,6 +446,7 @@ export async function uploadInventory(req, res, next) {
         originalFileName: file.originalname,
         uploadedBy: req.user.id,
         inventoryDate: new Date(inventoryDate),
+        submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : null,
         totalRows: rows.length,
         successfulRows: 0,
         rejectedRows: 0,
@@ -401,10 +472,10 @@ export async function uploadInventory(req, res, next) {
       const rowNum = i + 2; // +2 for header row and 0-index
 
       try {
-        const storeCode = findColumn(row, columnMap.storeCode)?.toString().trim();
-        const materialCode = findColumn(row, columnMap.materialCode)?.toString().trim();
-        const materialDescription = findColumn(row, columnMap.materialName)?.toString().trim();
-        const systemQuantity = findColumn(row, columnMap.systemQuantity);
+        const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
+        const materialCode = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
+        const materialDescription = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
+        const systemQuantity = findColumn(row, COLUMN_MAP.systemQuantity);
         
         // Use Material Description as materialName, or fallback to materialCode if not found
         const materialName = materialDescription || materialCode;
@@ -506,74 +577,13 @@ export async function previewUpload(req, res, next) {
     }
 
     const file = req.file;
-    let rows = [];
-
-    // Parse file based on type
-    if (file.mimetype.includes('csv')) {
-      rows = parse(file.buffer, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-      });
-    } else {
-      // Excel file
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(file.buffer);
-      const worksheet = workbook.worksheets[0];
-
-      const headers = [];
-      worksheet.getRow(1).eachCell((cell) => {
-        headers.push(cell.value.toString().trim());
-      });
-
-      worksheet.eachRow((row, rowIndex) => {
-        if (rowIndex === 1) return; // Skip header
-        const rowData = {};
-        row.eachCell((cell, colNumber) => {
-          rowData[headers[colNumber - 1]] = cell.value;
-        });
-        if (Object.keys(rowData).length > 0) {
-          rows.push(rowData);
-        }
-      });
-    }
+    const rows = await parseFileToRows(file);
 
     if (rows.length === 0) {
       throw new AppError('No data rows found in file', 400);
     }
 
-    console.log('📋 Preview - Excel Headers Found:', Object.keys(rows[0]));
-
-    // Map column names
-    const columnMap = {
-      storeCode: [
-        'Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 
-        'STORE CODE', 'Store code ', 'Store Code '
-      ],
-      materialCode: [
-        'Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 
-        'SKU', 'MATERIAL', 'Material code ', 'Material Code ',
-        'Material Name', 'Material name', 'MaterialName', 'material_name'
-      ],
-      materialName: [
-        'Material Description', 'Material Name', 'MaterialName', 'Description', 
-        'material_name', 'Item Name', 'MATERIAL DESCRIPTION', 'Material Description ', 
-        'Material description', 'MaterialDescription', 'material_description'
-      ],
-      systemQuantity: [
-        'SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 
-        'Quantity', 'QTY', 'SYSTEM QUANTITY', 'SYS ', 'Sys'
-      ],
-    };
-
-    const findColumn = (row, possibleNames) => {
-      for (const name of possibleNames) {
-        if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
-          return row[name];
-        }
-      }
-      return null;
-    };
+    console.log('📋 Preview Headers:', Object.keys(rows[0]));
 
     // Fetch all store codes for validation
     const stores = await prisma.store.findMany({
@@ -592,10 +602,10 @@ export async function previewUpload(req, res, next) {
       const row = rows[i];
       const rowNum = i + 2; // +2 for header row and 0-index
 
-      const storeCode = findColumn(row, columnMap.storeCode)?.toString().trim();
-      const materialCode = findColumn(row, columnMap.materialCode)?.toString().trim();
-      const materialDescription = findColumn(row, columnMap.materialName)?.toString().trim();
-      const systemQuantity = findColumn(row, columnMap.systemQuantity);
+      const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
+      const materialCode = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
+      const materialDescription = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
+      const systemQuantity = findColumn(row, COLUMN_MAP.systemQuantity);
       
       const materialName = materialDescription || materialCode;
 
@@ -694,98 +704,70 @@ export async function getUploads(req, res, next) {
   }
 }
 
-export async function getUploadDetails(req, res, next) {
-  try {
-    const { id } = req.params;
-
-    const upload = await prisma.uploadBatch.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        uploader: {
-          select: {
-            employeeId: true,
-            name: true,
-          },
-        },
-        inventoryRecords: {
-          take: 100,
-          include: {
-            store: {
-              select: {
-                storeCode: true,
-                storeName: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!upload) {
-      throw new AppError('Upload not found', 404);
-    }
-
-    res.json(upload);
-  } catch (error) {
-    next(error);
-  }
-}
-
 export async function getInventory(req, res, next) {
   const startTime = Date.now();
   try {
-    const { storeId, status, search, batchId, page = 1, pageSize = 50 } = req.query;
+    const { storeId, status, search, batchId, discrepancy, page = 1, pageSize = 50 } = req.query;
 
     const where = {};
 
-    if (storeId) {
-      where.storeId = parseInt(storeId);
-    }
-    if (status) {
-      where.status = status;
-    }
-    if (batchId) {
-      where.batchId = parseInt(batchId);
-    }
+    if (storeId)  where.storeId  = parseInt(storeId);
+    if (status)   where.status   = status;
+    if (batchId)  where.batchId  = parseInt(batchId);
     if (search) {
       where.OR = [
         { materialCode: { contains: search, mode: 'insensitive' } },
         { materialName: { contains: search, mode: 'insensitive' } },
       ];
     }
+    if (discrepancy === 'shortage') where.difference = { lt: 0 };
+    if (discrepancy === 'excess')   where.difference = { gt: 0 };
+    if (discrepancy === 'matched')  where.difference = { equals: 0 };
 
-    const pageNum = parseInt(page);
+    const pageNum     = parseInt(page);
     const pageSizeNum = parseInt(pageSize);
-    const skip = (pageNum - 1) * pageSizeNum;
+    const skip        = (pageNum - 1) * pageSizeNum;
 
-    // Get total count for pagination
-    const totalRecords = await prisma.inventoryRecord.count({ where });
+    const [totalRecords, records] = await Promise.all([
+      prisma.inventoryRecord.count({ where }),
+      prisma.inventoryRecord.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSizeNum,
+        include: {
+          store: { select: { storeCode: true, storeName: true } },
+        },
+      }),
+    ]);
 
-    const records = await prisma.inventoryRecord.findMany({
-      where,
+    // Attach repeat discrepancy flag per record.
+    // Avoid JSON path filter (fragile across DB versions); fetch recent logs and filter in JS.
+    const repeatLogs = await prisma.auditLog.findMany({
+      where: { action: 'REPEAT_DISCREPANCY' },
+      select: { metadata: true },
       orderBy: { createdAt: 'desc' },
-      skip,
-      take: pageSizeNum,
-      include: {
-        store: {
-          select: {
-            storeCode: true,
-            storeName: true,
-          },
-        },
-        batch: {
-          select: {
-            inventoryDate: true,
-          },
-        },
-      },
+      take: 500,
     });
+
+    const repeatMaterialsByStore = new Map();
+    repeatLogs.forEach(({ metadata: m }) => {
+      if (!m?.storeId || !Array.isArray(m.materials)) return;
+      const sid = Number(m.storeId);
+      if (!repeatMaterialsByStore.has(sid)) repeatMaterialsByStore.set(sid, new Set());
+      m.materials.forEach((mat) => repeatMaterialsByStore.get(sid).add(mat));
+    });
+
+    const enrichedRecords = records.map((r) => ({
+      ...r,
+      isRepeat: repeatMaterialsByStore.get(r.storeId)?.has(r.materialCode) ?? false,
+    }));
 
     const duration = Date.now() - startTime;
     console.log(`[PERF] GET_ADMIN_INVENTORY (${records.length} records, page ${pageNum}): ${duration}ms`);
 
     res.json({
-      data: records,
+      data: enrichedRecords,
       pagination: {
         page: pageNum,
         pageSize: pageSizeNum,
@@ -906,12 +888,12 @@ export async function downloadReconciliationReport(req, res, next) {
     worksheet.columns = [
       { header: 'Store Code', key: 'storeCode', width: 12 },
       { header: 'Store Name', key: 'storeName', width: 20 },
-      { header: 'Inventory Date', key: 'inventoryDate', width: 15 },
-      { header: 'Material Code', key: 'materialCode', width: 15 },
-      { header: 'Material Name', key: 'materialName', width: 30 },
-      { header: 'System Quantity', key: 'systemQuantity', width: 18 },
-      { header: 'Physical Quantity', key: 'physicalQuantity', width: 18 },
-      { header: 'Difference', key: 'difference', width: 12 },
+      { header: 'Date', key: 'inventoryDate', width: 15 },
+      { header: 'Material Name', key: 'materialCode', width: 20 },
+      { header: 'Material Description', key: 'materialName', width: 30 },
+      { header: 'SYS', key: 'systemQuantity', width: 12 },
+      { header: 'Sold', key: 'physicalQuantity', width: 12 },
+      { header: 'Diff', key: 'difference', width: 12 },
       { header: 'Remarks', key: 'remarks', width: 30 },
       { header: 'Status', key: 'status', width: 12 },
       { header: 'Submitted By', key: 'submittedBy', width: 20 },
@@ -1030,9 +1012,9 @@ export async function downloadInventoryExport(req, res, next) {
     worksheet.columns = [
       { header: 'Store Code', key: 'storeCode', width: 12 },
       { header: 'Store Name', key: 'storeName', width: 25 },
-      { header: 'Inventory Date', key: 'inventoryDate', width: 15 },
-      { header: 'Material Code', key: 'materialCode', width: 15 },
-      { header: 'Material Name', key: 'materialName', width: 35 },
+      { header: 'Date', key: 'inventoryDate', width: 15 },
+      { header: 'Material Name', key: 'materialCode', width: 20 },
+      { header: 'Material Description', key: 'materialName', width: 35 },
       { header: 'SYS', key: 'sys', width: 12 },
       { header: 'Sold', key: 'sold', width: 12 },
       { header: 'Diff', key: 'diff', width: 12 },

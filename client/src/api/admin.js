@@ -35,15 +35,14 @@ export async function updateUser(id, userData) {
   return data;
 }
 
-export async function uploadInventory(file, inventoryDate) {
+export async function uploadInventory(file, inventoryDate, submissionDeadline) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('inventoryDate', inventoryDate);
+  if (submissionDeadline) formData.append('submissionDeadline', submissionDeadline);
 
   const { data } = await client.post('/admin/uploads', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
   return data;
 }
@@ -54,9 +53,7 @@ export async function previewUpload(file, inventoryDate) {
   formData.append('inventoryDate', inventoryDate);
 
   const { data } = await client.post('/admin/uploads/preview', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
   return data;
 }

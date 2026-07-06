@@ -11,7 +11,6 @@ router.get('/dashboard', storeController.getDashboard);
 router.get('/batches', storeController.getBatches);
 router.get('/inventory', storeController.getInventory);
 router.patch('/inventory/:id', storeController.updateInventoryRecord);
-router.patch('/inventory/bulk', storeController.bulkUpdateInventory);
 router.post('/inventory/submit', storeController.submitInventory);
 router.get('/inventory/download', storeController.downloadInventory);
 
