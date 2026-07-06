@@ -386,6 +386,15 @@ export async function uploadInventory(req, res, next) {
     const errors = [];
     const successfulRecords = [];
 
+    // Fetch all stores ONCE before processing rows (prevents connection timeout on first upload)
+    const allStores = await prisma.store.findMany({
+      select: {
+        id: true,
+        storeCode: true,
+      },
+    });
+    const storeMap = new Map(allStores.map(s => [s.storeCode, s.id]));
+
     // Process each row
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -423,19 +432,16 @@ export async function uploadInventory(req, res, next) {
           continue;
         }
 
-        // Find store
-        const store = await prisma.store.findUnique({
-          where: { storeCode },
-        });
-
-        if (!store) {
+        // Find store from pre-loaded map (much faster than individual queries)
+        const storeId = storeMap.get(storeCode);
+        if (!storeId) {
           errors.push({ row: rowNum, error: `Unknown store code: ${storeCode}` });
           continue;
         }
 
         successfulRecords.push({
           batchId: batch.id,
-          storeId: store.id,
+          storeId: storeId,
           materialCode,
           materialName,
           systemQuantity: qty,

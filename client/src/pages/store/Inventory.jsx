@@ -7,6 +7,8 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 export default function StoreInventory() {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -23,8 +25,12 @@ export default function StoreInventory() {
   const { connected, on, off } = useWebSocket(token);
 
   useEffect(() => {
+    loadBatches();
+  }, []);
+
+  useEffect(() => {
     loadInventory();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, selectedBatch]);
 
   // WebSocket event listeners
   useEffect(() => {
@@ -65,10 +71,23 @@ export default function StoreInventory() {
     };
   }, []);
 
+  async function loadBatches() {
+    try {
+      const data = await storeApi.getBatches();
+      setBatches(data);
+      // Auto-select the latest batch (first in list)
+      if (data.length > 0) {
+        setSelectedBatch(data[0].id.toString());
+      }
+    } catch (err) {
+      console.error('Failed to load batches:', err);
+    }
+  }
+
   async function loadInventory() {
     try {
       setLoading(true);
-      const data = await storeApi.getInventory(search, statusFilter);
+      const data = await storeApi.getInventory(search, statusFilter, selectedBatch);
       setRecords(data);
       // Clear edit states when reloading
       setEditedRecords({});
@@ -103,7 +122,7 @@ export default function StoreInventory() {
       return next;
     });
 
-    // Debounce autosave
+    // Autosave after 700ms
     debouncedSave(recordId);
   }
 
@@ -116,7 +135,7 @@ export default function StoreInventory() {
     // Set new timer
     debounceTimers.current[recordId] = setTimeout(() => {
       saveRecord(recordId);
-    }, 1000); // 1 second debounce
+    }, 700);
   }, [editedRecords]);
 
   async function saveRecord(recordId) {
@@ -156,14 +175,14 @@ export default function StoreInventory() {
         return next;
       });
 
-      // Clear saved indicator after 3 seconds
+      // Clear saved indicator after 2 seconds
       setTimeout(() => {
         setSavedRecords(prev => {
           const next = new Set(prev);
           next.delete(recordId);
           return next;
         });
-      }, 3000);
+      }, 2000);
     } catch (err) {
       setSavingRecords(prev => {
         const next = new Set(prev);
@@ -254,7 +273,7 @@ export default function StoreInventory() {
 
       {hasUnsavedChanges && (
         <div className="alert alert-warning">
-          You have unsaved changes. Changes will auto-save after 1 second of inactivity.
+          You have unsaved changes. Changes will auto-save after 0.7 seconds of inactivity.
         </div>
       )}
 
@@ -275,6 +294,19 @@ export default function StoreInventory() {
       </div>
 
       <div className="filters">
+        <select 
+          value={selectedBatch} 
+          onChange={(e) => setSelectedBatch(e.target.value)}
+          style={{ minWidth: '200px' }}
+        >
+          <option value="">All Batches</option>
+          {batches.map((batch) => (
+            <option key={batch.id} value={batch.id}>
+              {new Date(batch.inventoryDate).toLocaleDateString()} 
+              {' '}({batch.pendingCount} pending, {batch.submittedCount} submitted)
+            </option>
+          ))}
+        </select>
         <input
           type="text"
           placeholder="Search materials..."
@@ -349,14 +381,35 @@ export default function StoreInventory() {
                       </td>
                       <td>
                         {isPending ? (
-                          <input
-                            type="text"
-                            value={getFieldValue(record, 'remarks')}
-                            onChange={(e) => updateField(record.id, 'remarks', e.target.value)}
-                            placeholder="Optional notes"
-                            style={{ width: '150px' }}
-                            disabled={savingRecords.has(record.id)}
-                          />
+                          <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={getFieldValue(record, 'remarks')}
+                              onChange={(e) => updateField(record.id, 'remarks', e.target.value)}
+                              placeholder="Type or select..."
+                              style={{ width: '150px' }}
+                              disabled={savingRecords.has(record.id)}
+                            />
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  updateField(record.id, 'remarks', e.target.value);
+                                  e.target.value = ''; // Reset dropdown
+                                }
+                              }}
+                              disabled={savingRecords.has(record.id)}
+                              style={{ width: '40px', padding: '4px' }}
+                              title="Quick select remarks"
+                            >
+                              <option value="">▼</option>
+                              <option value="Damaged items removed">Damaged items removed</option>
+                              <option value="Stock expired">Stock expired</option>
+                              <option value="Theft suspected">Theft suspected</option>
+                              <option value="Counting error corrected">Counting error corrected</option>
+                              <option value="Transfer to another store">Transfer to another store</option>
+                              <option value="Display sample used">Display sample used</option>
+                            </select>
+                          </div>
                         ) : (
                           record.remarks || '-'
                         )}

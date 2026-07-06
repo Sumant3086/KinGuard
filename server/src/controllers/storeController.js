@@ -79,13 +79,63 @@ export async function getDashboard(req, res, next) {
   }
 }
 
+export async function getBatches(req, res, next) {
+  try {
+    const storeId = req.user.storeId;
+
+    // Get all batches with aggregated counts in a single query
+    const batches = await prisma.uploadBatch.findMany({
+      where: {
+        inventoryRecords: {
+          some: { storeId },
+        },
+      },
+      orderBy: { inventoryDate: 'desc' },
+      select: {
+        id: true,
+        inventoryDate: true,
+        uploadedAt: true,
+        inventoryRecords: {
+          where: { storeId },
+          select: {
+            status: true,
+          },
+        },
+      },
+    });
+
+    // Calculate status counts from the already-loaded records
+    const batchesWithStatus = batches.map((batch) => {
+      const pendingCount = batch.inventoryRecords.filter((r) => r.status === 'PENDING').length;
+      const submittedCount = batch.inventoryRecords.filter((r) => r.status === 'SUBMITTED').length;
+
+      return {
+        id: batch.id,
+        inventoryDate: batch.inventoryDate,
+        uploadedAt: batch.uploadedAt,
+        totalRecords: batch.inventoryRecords.length,
+        pendingCount,
+        submittedCount,
+      };
+    });
+
+    res.json(batchesWithStatus);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getInventory(req, res, next) {
   const startTime = Date.now();
   try {
     const storeId = req.user.storeId;
-    const { search, status } = req.query;
+    const { search, status, batchId } = req.query;
 
     const where = { storeId };
+
+    if (batchId) {
+      where.batchId = parseInt(batchId);
+    }
 
     if (search) {
       where.OR = [

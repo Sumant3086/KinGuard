@@ -148,18 +148,16 @@ KinGuard/
    npx prisma migrate dev
    ```
 
-6. **Database is now ready (empty by default):**
-   
-   The database is empty by default. You have two options:
-   
-   **Option A: Create data via Admin Interface (Recommended)**
-   - Start the application (step 7)
-   - Create your first admin user manually in the database
-   - Use the admin interface to create stores, users, and upload inventory
-   
-   **Option B: Add Seed Data (For Testing)**
-   - Edit `server/prisma/seed.js` to add your test data
-   - Run `npm run seed` to populate the database
+6. **Seed the database:**
+   ```bash
+   npm run seed
+   ```
+
+   This creates:
+   - 4 stores (2036, 2007, 2024, 2013)
+   - 1 admin (ADMIN001 / Password123!)
+   - 4 store managers (MGR2036, MGR2007, MGR2024, MGR2013 / Password123!)
+   - Sample inventory records
 
 7. **Start development servers:**
 
@@ -179,30 +177,19 @@ KinGuard/
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:5000
 
-## Getting Started
+## Test Credentials
 
-**The database is empty by default.** To use the application:
+**Admin:**
+- Employee ID: `ADMIN001`
+- Password: `Password123!`
 
-1. **Create your first admin user** by manually inserting into the database:
-   ```sql
-   -- Connect to your database and run:
-   INSERT INTO "User" ("employeeId", "name", "passwordHash", "role", "isActive", "createdAt", "updatedAt")
-   VALUES ('ADMIN001', 'System Admin', '$2b$10$YourHashedPasswordHere', 'ADMIN', true, NOW(), NOW());
-   ```
-   
-   Or use a database tool like Prisma Studio:
-   ```bash
-   cd server
-   npx prisma studio
-   ```
+**Store Managers:**
+- Store 2036: `MGR2036` / `Password123!`
+- Store 2007: `MGR2007` / `Password123!`
+- Store 2024: `MGR2024` / `Password123!`
+- Store 2013: `MGR2013` / `Password123!`
 
-2. **Login** with your admin credentials and use the admin interface to:
-   - Create stores
-   - Create additional users (admins and store managers)
-   - Upload inventory data
-
-**For Development/Testing:**
-If you want to add seed data, edit `server/prisma/seed.js` and run `npm run seed`.
+**Note:** These are development credentials only. Never use these in production.
 
 ## Security Model
 
@@ -396,19 +383,13 @@ The backend calculates and stores this value. The client displays it but never c
 
 ## Development Notes
 
-**Clear Database:**
+**Seed Database:**
 ```bash
 cd server
-npm run reset-data
+npm run seed
 ```
 
-**Verify Database Status:**
-```bash
-cd server
-node prisma/verify-empty.js
-```
-
-**Reset Database Structure:**
+**Reset Database:**
 ```bash
 cd server
 npx prisma migrate reset

@@ -5,9 +5,14 @@ export async function getDashboard() {
   return data;
 }
 
-export async function getInventory(search, status) {
+export async function getBatches() {
+  const { data } = await client.get('/store/batches');
+  return data;
+}
+
+export async function getInventory(search, status, batchId) {
   const { data } = await client.get('/store/inventory', {
-    params: { search, status },
+    params: { search, status, batchId },
   });
   return data;
 }
@@ -16,6 +21,14 @@ export async function updateRecord(id, physicalQuantity, remarks) {
   const { data } = await client.patch(`/store/inventory/${id}`, {
     physicalQuantity,
     remarks,
+  });
+  return data;
+}
+
+export async function bulkUpdateRecords(batchId, changes) {
+  const { data } = await client.patch('/store/inventory/bulk', {
+    batchId,
+    changes,
   });
   return data;
 }

@@ -2,11 +2,9 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import app from './app.js';
 import { env } from './config/env.js';
-import { PrismaClient } from '@prisma/client';
+import prisma from './config/prisma.js';
 import jwt from 'jsonwebtoken';
 import { setSocketIO } from './controllers/storeController.js';
-
-const prisma = new PrismaClient();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
