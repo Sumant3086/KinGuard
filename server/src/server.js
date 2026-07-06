@@ -12,8 +12,19 @@ async function startServer() {
       console.log(`Environment: ${env.server.nodeEnv}`);
     });
 
-    // Graceful shutdown — close the HTTP server first so the port is released
-    // before the process exits. This prevents EADDRINUSE when node --watch restarts.
+    // On Windows, node --watch restarts faster than the OS releases the TCP
+    // socket, so the new process hits EADDRINUSE before the port is free.
+    // Retry after a short delay instead of crashing.
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${env.server.port} still busy — retrying in 1s...`);
+        setTimeout(() => server.listen(env.server.port), 1000);
+      } else {
+        console.error('Server error:', err);
+        process.exit(1);
+      }
+    });
+
     async function shutdown() {
       server.close(async () => {
         await prisma.$disconnect();
@@ -21,8 +32,8 @@ async function startServer() {
       });
     }
 
-    process.on('SIGTERM', shutdown); // sent by node --watch on restart
-    process.on('SIGINT',  shutdown); // Ctrl+C
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT',  shutdown);
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
