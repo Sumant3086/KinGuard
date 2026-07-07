@@ -66,6 +66,23 @@ export default function AdminUpload() {
       setPreview(null);
       loadUploads();
     } catch (err) {
+      if (err.response?.status === 409 && err.response.data?.warning === 'duplicate_batch') {
+        const { message } = err.response.data;
+        if (confirm(`⚠️ ${message}\n\nDo you want to upload anyway?`)) {
+          try {
+            const data = await adminApi.uploadInventoryForce(file, inventoryDate, submissionDeadline);
+            setResult(data);
+            setFile(null);
+            setInventoryDate('');
+            setSubmissionDeadline('');
+            setPreview(null);
+            loadUploads();
+          } catch (forceErr) {
+            alert(forceErr.response?.data?.error || 'Upload failed');
+          }
+        }
+        return;
+      }
       alert(err.response?.data?.error || 'Upload failed');
     } finally {
       setUploading(false);
@@ -85,10 +102,15 @@ export default function AdminUpload() {
 
   return (
     <AdminLayout>
-      <h2>Upload Inventory</h2>
+      <div className="page-header">
+        <div>
+          <h2>Upload Master Inventory File</h2>
+          <p>Upload an Excel or CSV file to create a new inventory cycle for all stores</p>
+        </div>
+      </div>
 
       <div className="card">
-        <h3>Upload Master File</h3>
+        <h3>Select File</h3>
         <form onSubmit={handlePreview}>
           <div className="form-row">
             <div className="form-group">
@@ -132,17 +154,17 @@ export default function AdminUpload() {
             </button>
             {preview && (
               <>
-                <button 
-                  type="button" 
-                  className="btn btn-success" 
+                <button
+                  type="button"
+                  className="btn btn-success"
                   onClick={handleConfirmUpload}
                   disabled={uploading || preview.statistics.errors === preview.totalRows}
                 >
-                  {uploading ? 'Uploading...' : 'Confirm Upload'}
+                  {uploading ? 'Uploading...' : 'Confirm & Publish to Stores'}
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
+                <button
+                  type="button"
+                  className="btn btn-secondary"
                   onClick={handleCancelPreview}
                   disabled={uploading}
                 >
@@ -155,13 +177,13 @@ export default function AdminUpload() {
 
         {preview && (
           <div className="alert alert-info" style={{ marginTop: '20px' }}>
-            <h4>📋 Upload Preview: {preview.fileName}</h4>
+            <h4>📋 Preview: {preview.fileName}</h4>
             <p><strong>Inventory Date:</strong> {new Date(preview.inventoryDate).toLocaleDateString()}</p>
             <p><strong>Total Rows:</strong> {preview.totalRows}</p>
             {preview.showingPartial && (
               <p style={{ color: '#f59e0b' }}><em>Showing first {preview.previewRows} rows (preview limit)</em></p>
             )}
-            
+
             <div style={{ display: 'flex', gap: '20px', marginTop: '10px', marginBottom: '10px' }}>
               <div style={{ color: '#10b981', fontWeight: 'bold' }}>
                 ✓ Valid: {preview.statistics.valid}
@@ -189,7 +211,7 @@ export default function AdminUpload() {
                     <th>Store Name</th>
                     <th>Material Name</th>
                     <th>Material Description</th>
-                    <th>SYS</th>
+                    <th>System Qty</th>
                     <th>Status</th>
                     <th>Message</th>
                   </tr>
@@ -221,7 +243,7 @@ export default function AdminUpload() {
 
         {result && (
           <div className={`alert ${result.rejectedRows > 0 ? 'alert-info' : 'alert-success'}`} style={{ marginTop: '20px' }}>
-            <h4>✅ Upload Complete</h4>
+            <h4>✅ Upload successful! Stores can now begin counting.</h4>
             <p>Total Rows: {result.totalRows}</p>
             <p>Successful: {result.successfulRows}</p>
             <p>Rejected: {result.rejectedRows}</p>
