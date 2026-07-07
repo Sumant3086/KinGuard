@@ -9,6 +9,8 @@ import AdminUpload from './pages/admin/Upload';
 import AdminInventory from './pages/admin/Inventory';
 import AdminReports from './pages/admin/Reports';
 import AdminAuditLogs from './pages/admin/AuditLogs';
+import AdminAnalytics from './pages/admin/Analytics';
+import AdminBatches from './pages/admin/Batches';
 import StoreDashboard from './pages/store/Dashboard';
 import StoreInventory from './pages/store/Inventory';
 import NotFound from './pages/NotFound';
@@ -93,6 +95,22 @@ function App() {
         element={
           <PrivateRoute role="ADMIN">
             <AdminAuditLogs />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics"
+        element={
+          <PrivateRoute role="ADMIN">
+            <AdminAnalytics />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin/batches"
+        element={
+          <PrivateRoute role="ADMIN">
+            <AdminBatches />
           </PrivateRoute>
         }
       />
