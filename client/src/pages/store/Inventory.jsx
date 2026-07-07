@@ -46,7 +46,7 @@ export default function StoreInventory() {
 
   useEffect(() => { loadBatches(); }, []);
 
-  // Debounce search: only send API request 400ms after typing stops (D2)
+  // Debounce search: only send API request 400ms after typing stops
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 400);
     return () => clearTimeout(t);
@@ -197,7 +197,7 @@ export default function StoreInventory() {
       alert('Please wait for all changes to save before submitting');
       return;
     }
-    if (!confirm('Submit your inventory? All pending items will become read-only.')) return;
+    if (!confirm('Submit your inventory? All pending items will become read-only. Your manager will be notified.')) return;
     try {
       setSubmitting(true);
       const res = await storeApi.submitInventory(batchId);
@@ -246,8 +246,8 @@ export default function StoreInventory() {
         <div className="submit-summary">
           <div className="submit-summary-header">
             <div className="submit-success-icon">✓</div>
-            <h2>Inventory Submitted</h2>
-            <p>{submitResult.recordCount} items submitted successfully</p>
+            <h2>Inventory Submitted!</h2>
+            <p>{submitResult.recordCount} items counted &amp; submitted successfully. Your manager has been notified.</p>
           </div>
           <div className="summary-metrics">
             <div className="summary-metric matched">
@@ -271,9 +271,9 @@ export default function StoreInventory() {
                   <thead>
                     <tr>
                       <th>Material Name</th>
-                      <th>SYS</th>
-                      <th>Sold</th>
-                      <th>Diff</th>
+                      <th>Expected Qty</th>
+                      <th>Counted Qty</th>
+                      <th>Gap</th>
                       <th>Remarks</th>
                     </tr>
                   </thead>
@@ -318,7 +318,7 @@ export default function StoreInventory() {
             <span className="inv-progress-fraction">
               <strong>{enteredCount}</strong> / {totalPending}
             </span>
-            <span className="inv-progress-label">items entered</span>
+            <span className="inv-progress-label">items counted &amp; saved</span>
           </div>
           <div className="inv-progress-track-wrap">
             <div className="inv-progress-track">
@@ -345,7 +345,7 @@ export default function StoreInventory() {
       {/* ── Page header ── */}
       <div className="page-header" style={{ marginTop: 24 }}>
         <div>
-          <h2>Inventory Reconciliation</h2>
+          <h2>Inventory Entry</h2>
           {selectedBatch && batches.length > 0 && (() => {
             const b = batches.find(b => b.id.toString() === selectedBatch);
             return b ? (
@@ -355,14 +355,17 @@ export default function StoreInventory() {
         </div>
         <div className="actions" style={{ margin: 0 }}>
           {totalPending > 0 && !isLocked && (
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || hasUnsavedChanges || isSaving}
-              className="btn btn-success"
-              title={hasUnsavedChanges || isSaving ? 'Wait for all changes to save first' : ''}
-            >
-              {submitting ? 'Submitting…' : `Submit (${totalPending} pending)`}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || hasUnsavedChanges || isSaving}
+                className="btn btn-success"
+                title={hasUnsavedChanges || isSaving ? 'Wait for all changes to save first' : ''}
+              >
+                {submitting ? 'Submitting…' : `Submit All (${totalPending} pending)`}
+              </button>
+              <span style={{ fontSize: 11, color: 'var(--t3)' }}>Once submitted, your manager will be notified</span>
+            </div>
           )}
           <button onClick={handleDownload} className="btn btn-ghost btn-sm">
             Download
@@ -376,8 +379,8 @@ export default function StoreInventory() {
         <div className="lock-banner">
           <span className="lock-banner-icon">🔒</span>
           <div>
-            <p>This batch is locked</p>
-            <span>The submission deadline has passed. Contact your administrator to request an extension.</span>
+            <p>Your inventory is locked.</p>
+            <span>Contact your administrator to make changes or request an extension.</span>
           </div>
         </div>
       )}
@@ -385,20 +388,20 @@ export default function StoreInventory() {
       {(hasUnsavedChanges || isSaving) && (
         <div className="autosave-notice">
           <div className="autosave-dot" />
-          {isSaving ? 'Saving changes…' : 'Changes will auto-save in a moment'}
+          {isSaving ? 'Saving changes…' : 'Changes save automatically when you click Save'}
         </div>
       )}
 
       {/* ── Filters ── */}
       <div className="inv-filters">
         <div className="filter-group">
-          <span className="filter-label">Batch / Date</span>
+          <span className="filter-label">Cycle / Date</span>
           <select
             value={selectedBatch}
             onChange={e => setSelectedBatch(e.target.value)}
             style={{ minWidth: 220 }}
           >
-            <option value="">All Batches</option>
+            <option value="">All Cycles</option>
             {batches.map(b => (
               <option key={b.id} value={b.id}>
                 {new Date(b.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -407,7 +410,7 @@ export default function StoreInventory() {
             ))}
           </select>
           <span style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4, display: 'block' }}>
-            Select any past batch to view historical records (read-only)
+            Select any past cycle to view historical records (read-only)
           </span>
         </div>
         <div className="filter-group">
@@ -442,7 +445,7 @@ export default function StoreInventory() {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">📭</div>
-            <p>No inventory records found for this selection.</p>
+            <p>No items assigned to your store for this cycle.</p>
           </div>
         </div>
       ) : (
@@ -453,9 +456,9 @@ export default function StoreInventory() {
                 <tr>
                   <th>Material Name</th>
                   <th>Description</th>
-                  <th style={{ textAlign: 'right' }}>SYS</th>
-                  <th style={{ textAlign: 'right' }}>Sold</th>
-                  <th>Diff</th>
+                  <th style={{ textAlign: 'right' }}>Expected Qty</th>
+                  <th style={{ textAlign: 'right' }}>Counted Qty</th>
+                  <th>Gap</th>
                   <th>Remarks</th>
                   <th>Status</th>
                   <th className="save-col-header"></th>
@@ -489,12 +492,12 @@ export default function StoreInventory() {
                         <span className="mat-desc">{record.materialName}</span>
                       </td>
 
-                      {/* SYS */}
+                      {/* Expected Qty (SYS) */}
                       <td style={{ textAlign: 'right' }}>
                         <span className="qty-sys">{record.systemQuantity}</span>
                       </td>
 
-                      {/* Sold (editable) */}
+                      {/* Counted Qty (editable) */}
                       <td style={{ textAlign: 'right' }}>
                         {isEditable ? (
                           <input
@@ -512,7 +515,7 @@ export default function StoreInventory() {
                         )}
                       </td>
 
-                      {/* Diff — updates instantly as user types */}
+                      {/* Gap (Diff) — updates instantly as user types */}
                       <td>
                         {instantDiff !== null ? (
                           <span

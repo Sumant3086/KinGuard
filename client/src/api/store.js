@@ -1,7 +1,12 @@
 import client from './client';
+import { get as cacheGet, set as cacheSet } from './cache';
 
 export async function getDashboard() {
+  const key = 'store:dashboard';
+  const cached = cacheGet(key);
+  if (cached) return cached;
   const { data } = await client.get('/store/dashboard');
+  cacheSet(key, data, 30_000);
   return data;
 }
 
@@ -11,6 +16,7 @@ export async function getBatches() {
 }
 
 export async function getInventory(search, status, batchId) {
+  // Do not cache inventory — it changes as user types and saves
   const { data } = await client.get('/store/inventory', {
     params: { search, status, batchId },
   });

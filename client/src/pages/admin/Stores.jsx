@@ -3,8 +3,8 @@ import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import * as cache from '../../api/cache';
 
-const CACHE_KEY = 'admin/stores';
-const CACHE_TTL = 120_000; // 2 min
+const CACHE_KEY = 'admin:stores';
+const CACHE_TTL = 60_000;
 
 export default function AdminStores() {
   const [stores, setStores] = useState(() => cache.get(CACHE_KEY) ?? []);
@@ -55,7 +55,7 @@ export default function AdminStores() {
         await adminApi.createStore(formData);
       }
       // Invalidate dependent caches, then refresh
-      cache.invalidate(CACHE_KEY, 'admin/dashboard');
+      cache.invalidate(CACHE_KEY, 'admin:dashboard');
       closeModal();
       await refreshStores();
     } catch (err) {
@@ -67,11 +67,11 @@ export default function AdminStores() {
     <AdminLayout>
       <div className="page-header">
         <div>
-          <h2>Stores</h2>
+          <h2>Store Management</h2>
           <p>Manage store locations and their status</p>
         </div>
         <button onClick={() => openModal()} className="btn btn-primary">
-          + Add Store
+          + Add New Store
         </button>
       </div>
 
@@ -130,7 +130,7 @@ export default function AdminStores() {
         <div className="modal" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingId ? 'Edit Store' : 'Add Store'}</h3>
+              <h3>{editingId ? 'Edit Store' : 'Add New Store'}</h3>
               <button onClick={closeModal} className="close-btn">&times;</button>
             </div>
             <form onSubmit={handleSubmit}>

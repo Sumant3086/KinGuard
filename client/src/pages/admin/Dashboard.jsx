@@ -4,7 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import * as cache from '../../api/cache';
 
-const CACHE_KEY = 'admin/dashboard';
+const CACHE_KEY = 'admin:dashboard';
 const CACHE_TTL = 30_000;
 
 /* ── Icons ─────────────────────────────────────────────────────── */
@@ -61,7 +61,7 @@ function RiskTag({ level }) {
   const map = {
     RED:    { cls: 'risk-tag risk-high', label: 'High Risk' },
     YELLOW: { cls: 'risk-tag risk-mid',  label: 'Watch'     },
-    GREEN:  { cls: 'risk-tag risk-low',  label: 'Healthy'   },
+    GREEN:  { cls: 'risk-tag risk-low',  label: 'On Track'  },
   };
   const { cls, label } = map[level] || map.GREEN;
   return <span className={cls}>{label}</span>;
@@ -121,13 +121,13 @@ function DashboardContent({ data, navigate }) {
           <div className="dash-cmd-sub">
             {cb
               ? `Active cycle · ${new Date(cb.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
-              : 'No active inventory cycle — upload a master file to begin'}
+              : 'No active inventory cycle. Upload a master file to begin.'}
           </div>
         </div>
         {cb && (
           <div className="dash-cmd-badges">
             <span className={`dash-cmd-badge ${submittedPct === 100 ? 'good' : submittedPct >= 50 ? 'warning' : 'danger'}`}>
-              {submittedPct}% submitted
+              {submittedPct}% reported
             </span>
             <span className="dash-cmd-badge">{totalStores} store{totalStores !== 1 ? 's' : ''}</span>
             {cb.submissionDeadline && (
@@ -169,9 +169,9 @@ function DashboardContent({ data, navigate }) {
         <div className="banner banner-over" style={{ marginBottom: 20 }}>
           <span className="banner-icon">🔁</span>
           <div>
-            <strong>Repeat Shortages Detected</strong>
+            <strong>Recurring Loss Items Detected</strong>
             <p style={{ marginTop: 4, fontSize: 13 }}>
-              {hotspots.length} material{hotspots.length !== 1 ? 's' : ''} appeared as shortages in multiple cycles.{' '}
+              {hotspots.length} material{hotspots.length !== 1 ? 's' : ''} missing in 2+ consecutive cycles.{' '}
               Top: <strong>{hotspots[0].materialCode}</strong> at {hotspots[0].storeName} — {hotspots[0].batchCount} cycles, −{hotspots[0].totalShortage} units lost.
             </p>
           </div>
@@ -182,51 +182,51 @@ function DashboardContent({ data, navigate }) {
       <div className="kpi-grid">
         <div className="kpi-card kpi-blue">
           <div className="kpi-icon"><IcoStores /></div>
-          <div className="kpi-label">Total Stores</div>
+          <div className="kpi-label">Active Stores</div>
           <div className="kpi-value">{totalStores}</div>
           <div className="kpi-sub">active locations</div>
         </div>
         <div className="kpi-card kpi-green">
           <div className="kpi-icon"><IcoCheckCircle /></div>
-          <div className="kpi-label">Stores Submitted</div>
+          <div className="kpi-label">Fully Reported</div>
           <div className="kpi-value">{cb?.storesSubmitted ?? 0}</div>
           <div className="kpi-sub">{submittedPct}% of network</div>
         </div>
         <div className="kpi-card kpi-amber">
           <div className="kpi-icon"><IcoClock /></div>
-          <div className="kpi-label">Stores Pending</div>
+          <div className="kpi-label">Awaiting Submission</div>
           <div className="kpi-value">{cb?.storesPending ?? 0}</div>
-          <div className="kpi-sub">awaiting submission</div>
+          <div className="kpi-sub">not yet submitted</div>
         </div>
         <div className="kpi-card kpi-red">
           <div className="kpi-icon"><IcoTrendDown /></div>
           <div className="kpi-label">Shortage Items</div>
           <div className="kpi-value">{ns.shortageItems}</div>
-          <div className="kpi-sub">Sold &lt; SYS</div>
+          <div className="kpi-sub">counted &lt; system</div>
         </div>
         <div className="kpi-card kpi-teal">
           <div className="kpi-icon"><IcoCheck /></div>
           <div className="kpi-label">Matched Items</div>
           <div className="kpi-value">{ns.matchedItems}</div>
-          <div className="kpi-sub">Sold = SYS</div>
+          <div className="kpi-sub">counted = system</div>
         </div>
         <div className="kpi-card kpi-purple">
           <div className="kpi-icon"><IcoTrendUp /></div>
           <div className="kpi-label">Excess Items</div>
           <div className="kpi-value">{ns.excessItems}</div>
-          <div className="kpi-sub">Sold &gt; SYS</div>
+          <div className="kpi-sub">counted &gt; system</div>
         </div>
       </div>
 
       {/* ── Main content grid ── */}
       <div className="dash-grid">
 
-        {/* Store Risk Scorecard */}
+        {/* Store Submission Status Scorecard */}
         <div className="card">
           <div className="card-header">
             <span className="card-title">
               <IcoBarChart />
-              Store Risk Scorecard
+              Store Submission Status
             </span>
             {cb && (
               <span className="card-header-meta">
@@ -263,7 +263,6 @@ function DashboardContent({ data, navigate }) {
                       <td><RiskTag level={store.riskLevel} /></td>
                       <td style={{ minWidth: 130 }}><ShortageBar rate={store.shortageRate} /></td>
                       <td>
-                        {/* Clickable drill-down to inventory filtered by store + shortage */}
                         <button
                           onClick={() => store.shortageCount > 0 && navigate(`/admin/inventory?storeId=${store.storeId}&discrepancy=shortage`)}
                           style={{
@@ -286,7 +285,7 @@ function DashboardContent({ data, navigate }) {
                         {store.status === 'SUBMITTED' && <span className="badge badge-submitted">Submitted</span>}
                         {store.status === 'PENDING' && (
                           <span className={`badge ${store.isOverdue ? 'badge-shortage' : 'badge-pending'}`}>
-                            {store.isOverdue ? 'Overdue' : 'Pending'}
+                            {store.isOverdue ? 'Past Deadline' : 'Awaiting'}
                           </span>
                         )}
                         {store.status === 'NO_DATA' && <span className="badge badge-no-data">No Data</span>}
@@ -299,15 +298,15 @@ function DashboardContent({ data, navigate }) {
           )}
         </div>
 
-        {/* Shrinkage Hotspots */}
+        {/* Recurring Loss Items */}
         <div className="card">
           <div className="card-header">
             <span className="card-title">
               <IcoHotspot />
-              Shrinkage Hotspots
+              Recurring Loss Items
             </span>
           </div>
-          <p className="card-sub">Items with shortages across multiple recent cycles</p>
+          <p className="card-sub">Items missing in 2+ consecutive cycles</p>
 
           {hotspots.length === 0 ? (
             <div className="empty">

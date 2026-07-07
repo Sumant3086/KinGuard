@@ -68,7 +68,7 @@ export default function AdminBatches() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `KinGuard_Batch_${new Date(inventoryDate).toISOString().split('T')[0]}.xlsx`;
+      a.download = `KinGuard_Cycle_${new Date(inventoryDate).toISOString().split('T')[0]}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (e) {
@@ -77,19 +77,19 @@ export default function AdminBatches() {
   }
 
   return (
-    <AdminLayout title="Batches">
+    <AdminLayout title="Inventory Cycles">
       <div className="page-header">
         <div>
-          <h2>Upload Batches</h2>
-          <p>Manage submission deadlines and export batch data</p>
+          <h2>Inventory Cycles</h2>
+          <p>Manage submission deadlines and export cycle data</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="loading"><div className="spinner" />Loading batches…</div>
+        <div className="loading"><div className="spinner" />Loading cycles…</div>
       ) : batches.length === 0 ? (
         <div className="card">
-          <div className="empty"><div className="empty-icon">📦</div><p>No batches uploaded yet.</p></div>
+          <div className="empty"><div className="empty-icon">📦</div><p>No inventory cycles yet. Upload a master file to start your first cycle.</p></div>
         </div>
       ) : (
         <div className="card">
@@ -102,7 +102,7 @@ export default function AdminBatches() {
                   <th>Uploaded By</th>
                   <th style={{ textAlign: 'center' }}>Records</th>
                   <th style={{ textAlign: 'center' }}>Progress</th>
-                  <th>Deadline</th>
+                  <th>Submission Deadline</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -131,7 +131,7 @@ export default function AdminBatches() {
                       <td style={{ minWidth: 160 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ flex: 1, background: 'var(--sb-bg)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-                            <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#10b981' : 'var(--accent)', borderRadius: 4, transition: 'width 0.3s' }} />
+                            <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#10b981' : 'var(--vi)', borderRadius: 4, transition: 'width 0.3s' }} />
                           </div>
                           <span style={{ fontSize: 11, color: 'var(--t3)', whiteSpace: 'nowrap' }}>{submitted}/{totalRecs}</span>
                         </div>
@@ -146,7 +146,7 @@ export default function AdminBatches() {
                               type="datetime-local"
                               value={deadlineInput}
                               onChange={e => setDeadlineInput(e.target.value)}
-                              style={{ fontSize: 12, padding: '3px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--t1)' }}
+                              style={{ fontSize: 12, padding: '3px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t1)' }}
                             />
                             <button
                               className="btn btn-primary btn-sm"
@@ -161,8 +161,8 @@ export default function AdminBatches() {
                           <span style={{ fontSize: 12, color: deadlinePassed ? 'var(--red)' : b.submissionDeadline ? 'var(--t2)' : 'var(--t3)' }}>
                             {b.submissionDeadline
                               ? new Date(b.submissionDeadline).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-                              : 'No deadline'}
-                            {deadlinePassed && <span className="badge badge-shortage" style={{ marginLeft: 6, fontSize: 10 }}>Locked</span>}
+                              : 'No deadline set'}
+                            {deadlinePassed && <span className="badge badge-shortage" style={{ marginLeft: 6, fontSize: 10 }}>Past Due</span>}
                           </span>
                         )}
                       </td>
@@ -183,7 +183,7 @@ export default function AdminBatches() {
                             className="btn btn-ghost btn-sm"
                             onClick={() => setExtendModal({ batchId: b.id })}
                           >
-                            Extend Store
+                            Extend Deadline for Store
                           </button>
                           <button
                             className="btn btn-success btn-sm"
@@ -210,7 +210,7 @@ export default function AdminBatches() {
         }}>
           <div className="card" style={{ width: 420, margin: 0 }}>
             <div className="card-header">
-              <span className="card-title">Grant Store Extension</span>
+              <span className="card-title">Extend Deadline for Store</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setExtendModal(null)}>✕</button>
             </div>
             <div style={{ padding: '0 0 16px' }}>
@@ -219,7 +219,7 @@ export default function AdminBatches() {
                 <select
                   value={extStoreId}
                   onChange={e => setExtStoreId(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--t1)' }}
+                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t1)' }}
                 >
                   <option value="">Select store…</option>
                   {stores.map(s => (
@@ -228,12 +228,12 @@ export default function AdminBatches() {
                 </select>
               </div>
               <div className="form-group" style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, color: 'var(--t2)', display: 'block', marginBottom: 4 }}>New Deadline</label>
+                <label style={{ fontSize: 12, color: 'var(--t2)', display: 'block', marginBottom: 4 }}>New Submission Deadline</label>
                 <input
                   type="datetime-local"
                   value={extDeadline}
                   onChange={e => setExtDeadline(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--t1)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t1)', boxSizing: 'border-box' }}
                 />
               </div>
               <div className="form-group" style={{ marginBottom: 16 }}>
@@ -243,7 +243,7 @@ export default function AdminBatches() {
                   value={extNote}
                   onChange={e => setExtNote(e.target.value)}
                   placeholder="Reason for extension…"
-                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--t1)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t1)', boxSizing: 'border-box' }}
                 />
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
