@@ -1,21 +1,32 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
+import * as cache from '../../api/cache';
+
+const STORES_KEY = 'admin/stores';
+const STORES_TTL = 120_000;
 
 export default function AdminReports() {
-  const [records, setRecords] = useState([]);
-  const [stores, setStores]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ storeId: '', status: 'SUBMITTED', discrepancy: '' });
+  const [records, setRecords]   = useState([]);
+  const [stores, setStores]     = useState(() => cache.get(STORES_KEY) ?? []);
+  const [loading, setLoading]   = useState(false);
+  const [filters, setFilters]   = useState({ storeId: '', status: 'SUBMITTED', discrepancy: '' });
+  const [includeInactive, setIncludeInactive] = useState(false);
 
   useEffect(() => {
-    adminApi.getStores().then(setStores).catch(() => {}).finally(() => setLoading(false));
+    if (cache.get(STORES_KEY)) return;
+    adminApi.getStores()
+      .then(d => { cache.set(STORES_KEY, d, STORES_TTL); setStores(d); })
+      .catch(() => {});
   }, []);
 
   async function loadReport() {
     setLoading(true);
     try {
-      const data = await adminApi.getReconciliationReport(filters);
+      const data = await adminApi.getReconciliationReport({
+        ...filters,
+        includeInactive: includeInactive ? 'true' : undefined,
+      });
       setRecords(data);
     } finally {
       setLoading(false);
@@ -24,7 +35,10 @@ export default function AdminReports() {
 
   async function handleDownload() {
     try {
-      const blob = await adminApi.downloadReconciliationReport(filters);
+      const blob = await adminApi.downloadReconciliationReport({
+        ...filters,
+        includeInactive: includeInactive ? 'true' : undefined,
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -37,12 +51,18 @@ export default function AdminReports() {
   }
 
   return (
-    <AdminLayout title="Reports">
+    <AdminLayout>
       <div className="page-header">
-        <h2>Reconciliation Reports</h2>
+        <div>
+          <h2>Reconciliation Reports</h2>
+          <p>Filter and export submitted inventory reconciliation data</p>
+        </div>
+        <button onClick={handleDownload} className="btn btn-success">
+          ↓ Download Excel
+        </button>
       </div>
 
-      <div className="card">
+      <div className="filter-card">
         <div className="filters">
           <div className="filter-group">
             <span className="filter-label">Store</span>
@@ -72,11 +92,19 @@ export default function AdminReports() {
               <option value="excess">Excess</option>
             </select>
           </div>
+          <div className="filter-group" style={{ alignSelf: 'flex-end' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--t2)', cursor: 'pointer', paddingBottom: 3 }}>
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={e => setIncludeInactive(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              Include inactive stores
+            </label>
+          </div>
           <button onClick={loadReport} className="btn btn-primary" style={{ alignSelf: 'flex-end' }}>
             Load Report
-          </button>
-          <button onClick={handleDownload} className="btn btn-success" style={{ alignSelf: 'flex-end' }}>
-            Download Excel
           </button>
         </div>
       </div>
@@ -91,7 +119,7 @@ export default function AdminReports() {
           </div>
         </div>
       ) : (
-        <div className="card">
+        <div className="card" style={{ padding: 0 }}>
           <div className="table-container">
             <table>
               <thead>
@@ -99,9 +127,9 @@ export default function AdminReports() {
                   <th>Store</th>
                   <th>Date</th>
                   <th>Material Name</th>
-                  <th>Material Description</th>
-                  <th>SYS</th>
-                  <th>Sold</th>
+                  <th>Description</th>
+                  <th style={{ textAlign: 'right' }}>SYS</th>
+                  <th style={{ textAlign: 'right' }}>Sold</th>
                   <th>Diff</th>
                   <th>Remarks</th>
                   <th>Submitted By</th>
@@ -110,12 +138,12 @@ export default function AdminReports() {
               <tbody>
                 {records.map((record) => (
                   <tr key={record.id}>
-                    <td>{record.store.storeCode}</td>
+                    <td style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 12 }}>{record.store.storeCode}</td>
                     <td>{new Date(record.batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                     <td style={{ fontWeight: 600 }}>{record.materialCode}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{record.materialName}</td>
-                    <td>{record.systemQuantity}</td>
-                    <td>{record.physicalQuantity ?? '—'}</td>
+                    <td style={{ color: 'var(--t3)', fontSize: 12 }}>{record.materialName}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--t2)' }}>{record.systemQuantity}</td>
+                    <td style={{ textAlign: 'right' }}>{record.physicalQuantity ?? '—'}</td>
                     <td>
                       {record.difference !== null ? (
                         <span className={
@@ -127,7 +155,7 @@ export default function AdminReports() {
                         </span>
                       ) : '—'}
                     </td>
-                    <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{record.remarks || '—'}</td>
+                    <td style={{ fontSize: 12, color: 'var(--t3)' }}>{record.remarks || '—'}</td>
                     <td>{record.submitter?.name || '—'}</td>
                   </tr>
                 ))}

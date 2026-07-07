@@ -36,6 +36,7 @@ export default function StoreInventory() {
   const [errorRecords, setErrorRecords]   = useState(new Map());
   const [submitting, setSubmitting]     = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
+  const [searchInput, setSearchInput]   = useState('');
 
   const debounceTimers    = useRef({});
   const editedRecordsRef  = useRef({});
@@ -44,6 +45,12 @@ export default function StoreInventory() {
   const batchesReadyRef   = useRef(false);
 
   useEffect(() => { loadBatches(); }, []);
+
+  // Debounce search: only send API request 400ms after typing stops (D2)
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   useEffect(() => {
     if (!batchesReadyRef.current) return;
@@ -124,7 +131,7 @@ export default function StoreInventory() {
     setErrorRecords(prev => { const m = new Map(prev); m.delete(recordId); return m; });
 
     try {
-      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.remarks);
+      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.remarks, edits.shrinkageCategory);
       setRecords(prev => prev.map(r => r.id === parseInt(recordId) ? updated : r));
       setSavedRecords(prev => new Set(prev).add(recordId));
       setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
@@ -399,6 +406,9 @@ export default function StoreInventory() {
               </option>
             ))}
           </select>
+          <span style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4, display: 'block' }}>
+            Select any past batch to view historical records (read-only)
+          </span>
         </div>
         <div className="filter-group">
           <span className="filter-label">Search</span>
@@ -409,8 +419,8 @@ export default function StoreInventory() {
             <input
               type="text"
               placeholder="Search materials…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
               className="search-input"
             />
           </div>
@@ -524,6 +534,23 @@ export default function StoreInventory() {
                       <td>
                         {isEditable ? (
                           <div className="remark-wrap">
+                            <div style={{ marginBottom: 4 }}>
+                              <select
+                                value={getFieldValue(record, 'shrinkageCategory')}
+                                onChange={e => updateField(record.id, 'shrinkageCategory', e.target.value)}
+                                className="remark-select"
+                                style={{ width: '100%', fontSize: 12 }}
+                              >
+                                <option value="">Category…</option>
+                                <option value="THEFT">Theft</option>
+                                <option value="DAMAGE">Damage</option>
+                                <option value="EXPIRED">Expired</option>
+                                <option value="COUNTING_ERROR">Counting Error</option>
+                                <option value="TRANSFER">Transfer</option>
+                                <option value="SAMPLE_USE">Sample Use</option>
+                                <option value="OTHER">Other</option>
+                              </select>
+                            </div>
                             <input
                               type="text"
                               value={getFieldValue(record, 'remarks')}

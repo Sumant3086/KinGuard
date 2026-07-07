@@ -66,6 +66,23 @@ export default function AdminUpload() {
       setPreview(null);
       loadUploads();
     } catch (err) {
+      if (err.response?.status === 409 && err.response.data?.warning === 'duplicate_batch') {
+        const { message, existingBatch } = err.response.data;
+        if (confirm(`⚠️ ${message}\n\nDo you want to upload anyway?`)) {
+          try {
+            const data = await adminApi.uploadInventoryForce(file, inventoryDate, submissionDeadline);
+            setResult(data);
+            setFile(null);
+            setInventoryDate('');
+            setSubmissionDeadline('');
+            setPreview(null);
+            loadUploads();
+          } catch (forceErr) {
+            alert(forceErr.response?.data?.error || 'Upload failed');
+          }
+        }
+        return;
+      }
       alert(err.response?.data?.error || 'Upload failed');
     } finally {
       setUploading(false);

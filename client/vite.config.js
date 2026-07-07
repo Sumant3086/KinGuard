@@ -14,5 +14,27 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor:       ['react', 'react-dom', 'react-router-dom', 'axios'],
+          'admin-pages': [
+            './src/pages/admin/Dashboard',
+            './src/pages/admin/Stores',
+            './src/pages/admin/Users',
+            './src/pages/admin/AuditLogs',
+            './src/pages/admin/Inventory',
+            './src/pages/admin/Reports',
+            './src/pages/admin/Upload',
+            './src/pages/admin/Analytics',
+            './src/pages/admin/Batches',
+          ],
+          'store-pages': [
+            './src/pages/store/Dashboard',
+            './src/pages/store/Inventory',
+          ],
+        },
+      },
+    },
   },
 });

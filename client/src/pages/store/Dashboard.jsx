@@ -2,24 +2,25 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import StoreLayout from '../../components/StoreLayout';
 import * as storeApi from '../../api/store';
+import * as cache from '../../api/cache';
+
+const CACHE_KEY = 'store/dashboard';
+const CACHE_TTL = 30_000; // 30 s
 
 export default function StoreDashboard() {
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading]     = useState(true);
+  const [dashboard, setDashboard] = useState(() => cache.get(CACHE_KEY) ?? null);
+  const [loading, setLoading]     = useState(!cache.get(CACHE_KEY));
   const [error, setError]         = useState('');
 
-  useEffect(() => { load(); }, []);
-
-  async function load() {
-    try {
-      const data = await storeApi.getDashboard();
-      setDashboard(data);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    if (cache.get(CACHE_KEY)) return;
+    let live = true;
+    storeApi.getDashboard()
+      .then(data => { if (live) { cache.set(CACHE_KEY, data, CACHE_TTL); setDashboard(data); } })
+      .catch(err  => { if (live) setError(err.response?.data?.error || 'Failed to load dashboard'); })
+      .finally(()  => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, []);
 
   if (loading) {
     return (

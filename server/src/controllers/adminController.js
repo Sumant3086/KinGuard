@@ -4,6 +4,7 @@ import { parse } from 'csv-parse/sync';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import prisma from '../config/prisma.js';
+import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 
 // Shared column name aliases for Excel/CSV parsing
 const COLUMN_MAP = {
@@ -44,6 +45,12 @@ async function parseFileToRows(file) {
 export async function getDashboard(req, res, next) {
   const startTime = Date.now();
   try {
+    const cached = sGet('admin:dashboard');
+    if (cached) {
+      res.set('Cache-Control', 'private, max-age=30');
+      return res.json(cached);
+    }
+
     const [totalStores, latestBatch] = await Promise.all([
       prisma.store.count({ where: { isActive: true } }),
       prisma.uploadBatch.findFirst({
@@ -94,15 +101,22 @@ export async function getDashboard(req, res, next) {
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true } }),
     ]);
 
-    // Top remark per store — use Prisma groupBy; raw SQL storeId returns BigInt on some
-    // drivers so normalise to Number everywhere to avoid Map key mismatches.
-    const topRemarkRows = await prisma.$queryRaw`
-      SELECT "storeId", remarks, COUNT(*)::int AS cnt
-      FROM "InventoryRecord"
-      WHERE "batchId" = ${latestBatch.id} AND status = 'SUBMITTED' AND remarks IS NOT NULL AND remarks <> ''
-      GROUP BY "storeId", remarks
-      ORDER BY "storeId", cnt DESC
-    `;
+    // Top remark per store + last 4 batches — run in parallel (B5)
+    const [topRemarkRows, last4Batches] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT "storeId", remarks, COUNT(*)::int AS cnt
+        FROM "InventoryRecord"
+        WHERE "batchId" = ${latestBatch.id} AND status = 'SUBMITTED' AND remarks IS NOT NULL AND remarks <> ''
+        GROUP BY "storeId", remarks
+        ORDER BY "storeId", cnt DESC
+      `,
+      prisma.uploadBatch.findMany({
+        orderBy: { inventoryDate: 'desc' },
+        take: 4,
+        select: { id: true },
+      }),
+    ]);
+
     const topRemarkMap = new Map();
     topRemarkRows.forEach((r) => {
       const sid = Number(r.storeId);
@@ -137,12 +151,6 @@ export async function getDashboard(req, res, next) {
     }).sort((a, b) => b.shortageRate - a.shortageRate);
 
     // Shrinkage hotspots: (storeId, materialCode) pairs with shortages in ≥2 of the last 4 batches.
-    // Use Prisma findMany + JS aggregation — avoids raw SQL array parameters entirely.
-    const last4Batches = await prisma.uploadBatch.findMany({
-      orderBy: { inventoryDate: 'desc' },
-      take: 4,
-      select: { id: true },
-    });
     const batchIds = last4Batches.map((b) => b.id);
 
     let hotspots = [];
@@ -208,7 +216,7 @@ export async function getDashboard(req, res, next) {
     const duration = Date.now() - startTime;
     console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);
 
-    res.json({
+    const result = {
       totalStores,
       currentBatch: {
         id: latestBatch.id,
@@ -227,7 +235,10 @@ export async function getDashboard(req, res, next) {
         shortageItems: Number(net.shortageItems || 0),
         excessItems: Number(net.excessItems || 0),
       },
-    });
+    };
+    sSet('admin:dashboard', result, 30_000);
+    res.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=30');
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -247,6 +258,7 @@ export async function getStores(req, res, next) {
       },
     });
 
+    res.set('Cache-Control', 'private, max-age=60');
     res.json(stores);
   } catch (error) {
     next(error);
@@ -277,6 +289,7 @@ export async function createStore(req, res, next) {
       metadata: { storeCode, storeName },
     });
 
+    sInvalidate('admin:dashboard');
     res.status(201).json(store);
   } catch (error) {
     if (error.code === 'P2002') {
@@ -308,6 +321,7 @@ export async function updateStore(req, res, next) {
       metadata: { storeName, isActive },
     });
 
+    sInvalidate('admin:dashboard');
     res.json(store);
   } catch (error) {
     next(error);
@@ -329,6 +343,7 @@ export async function getUsers(req, res, next) {
       },
     });
 
+    res.set('Cache-Control', 'private, max-age=60');
     res.json(users);
   } catch (error) {
     next(error);
@@ -431,6 +446,24 @@ export async function uploadInventory(req, res, next) {
     const { inventoryDate, submissionDeadline } = req.body;
     if (!inventoryDate) {
       throw new AppError('Inventory date is required', 400);
+    }
+
+    // Check if a batch already exists within 3 days of this inventory date (B7)
+    const targetDate = new Date(inventoryDate);
+    const windowStart = new Date(targetDate); windowStart.setDate(windowStart.getDate() - 3);
+    const windowEnd   = new Date(targetDate); windowEnd.setDate(windowEnd.getDate() + 3);
+    const existingBatch = await prisma.uploadBatch.findFirst({
+      where: { inventoryDate: { gte: windowStart, lte: windowEnd } },
+      select: { id: true, inventoryDate: true, originalFileName: true },
+    });
+    if (existingBatch) {
+      if (req.query.force !== 'true') {
+        return res.status(409).json({
+          warning: 'duplicate_batch',
+          message: `A batch already exists for ${new Date(existingBatch.inventoryDate).toLocaleDateString()}. Send with ?force=true to proceed anyway.`,
+          existingBatch: { id: existingBatch.id, inventoryDate: existingBatch.inventoryDate, fileName: existingBatch.originalFileName },
+        });
+      }
     }
 
     const file = req.file;
@@ -553,6 +586,7 @@ export async function uploadInventory(req, res, next) {
       },
     });
 
+    sInvalidate('admin:dashboard');
     res.status(201).json({
       batchId: batch.id,
       totalRows: rows.length,
@@ -741,26 +775,37 @@ export async function getInventory(req, res, next) {
       }),
     ]);
 
-    // Attach repeat discrepancy flag per record.
-    // Avoid JSON path filter (fragile across DB versions); fetch recent logs and filter in JS.
-    const repeatLogs = await prisma.auditLog.findMany({
-      where: { action: 'REPEAT_DISCREPANCY' },
-      select: { metadata: true },
-      orderBy: { createdAt: 'desc' },
-      take: 500,
-    });
+    // Attach repeat discrepancy flag — only check shortages in current page (B4)
+    const shortageKeys = new Set(
+      records
+        .filter(r => r.difference !== null && r.difference < 0 && r.status === 'SUBMITTED')
+        .map(r => `${r.storeId}::${r.materialCode}`)
+    );
 
-    const repeatMaterialsByStore = new Map();
-    repeatLogs.forEach(({ metadata: m }) => {
-      if (!m?.storeId || !Array.isArray(m.materials)) return;
-      const sid = Number(m.storeId);
-      if (!repeatMaterialsByStore.has(sid)) repeatMaterialsByStore.set(sid, new Set());
-      m.materials.forEach((mat) => repeatMaterialsByStore.get(sid).add(mat));
-    });
+    let repeatKeys = new Set();
+    if (shortageKeys.size > 0) {
+      const shortageRecords = records.filter(r => r.difference !== null && r.difference < 0);
+      const storeIds = [...new Set(shortageRecords.map(r => r.storeId))];
+      const materialCodes = [...new Set(shortageRecords.map(r => r.materialCode))];
+      const currentBatchIds = records.map(r => r.batchId).filter((v, i, a) => a.indexOf(v) === i);
 
-    const enrichedRecords = records.map((r) => ({
+      const priorShortages = await prisma.inventoryRecord.findMany({
+        where: {
+          storeId: { in: storeIds },
+          materialCode: { in: materialCodes },
+          status: 'SUBMITTED',
+          difference: { lt: 0 },
+          batchId: { notIn: currentBatchIds },
+        },
+        select: { storeId: true, materialCode: true },
+        distinct: ['storeId', 'materialCode'],
+      });
+      repeatKeys = new Set(priorShortages.map(r => `${r.storeId}::${r.materialCode}`));
+    }
+
+    const enrichedRecords = records.map(r => ({
       ...r,
-      isRepeat: repeatMaterialsByStore.get(r.storeId)?.has(r.materialCode) ?? false,
+      isRepeat: repeatKeys.has(`${r.storeId}::${r.materialCode}`),
     }));
 
     const duration = Date.now() - startTime;
@@ -782,7 +827,7 @@ export async function getInventory(req, res, next) {
 
 export async function getReconciliationReport(req, res, next) {
   try {
-    const { storeId, status, discrepancy } = req.query;
+    const { storeId, status, discrepancy, includeInactive } = req.query;
 
     const where = {};
 
@@ -792,6 +837,12 @@ export async function getReconciliationReport(req, res, next) {
     if (status) {
       where.status = status;
     }
+    if (discrepancy === 'shortage') where.difference = { lt: 0 };
+    if (discrepancy === 'excess')   where.difference = { gt: 0 };
+    if (discrepancy === 'matched')  where.difference = { equals: 0 };
+
+    // I1: inactive store filter
+    if (includeInactive !== 'true') where.store = { isActive: true };
 
     const records = await prisma.inventoryRecord.findMany({
       where,
@@ -817,17 +868,7 @@ export async function getReconciliationReport(req, res, next) {
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
     });
 
-    // Filter by discrepancy type if specified
-    let filtered = records;
-    if (discrepancy === 'matched') {
-      filtered = records.filter((r) => r.difference === 0);
-    } else if (discrepancy === 'shortage') {
-      filtered = records.filter((r) => r.difference < 0);
-    } else if (discrepancy === 'excess') {
-      filtered = records.filter((r) => r.difference > 0);
-    }
-
-    res.json(filtered);
+    res.json(records);
   } catch (error) {
     next(error);
   }
@@ -845,8 +886,11 @@ export async function downloadReconciliationReport(req, res, next) {
     if (status) {
       where.status = status;
     }
+    if (discrepancy === 'shortage') where.difference = { lt: 0 };
+    if (discrepancy === 'excess')   where.difference = { gt: 0 };
+    if (discrepancy === 'matched')  where.difference = { equals: 0 };
 
-    const records = await prisma.inventoryRecord.findMany({
+    const filtered = await prisma.inventoryRecord.findMany({
       where,
       include: {
         store: {
@@ -869,16 +913,6 @@ export async function downloadReconciliationReport(req, res, next) {
       },
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
     });
-
-    // Filter by discrepancy type
-    let filtered = records;
-    if (discrepancy === 'matched') {
-      filtered = records.filter((r) => r.difference === 0);
-    } else if (discrepancy === 'shortage') {
-      filtered = records.filter((r) => r.difference < 0);
-    } else if (discrepancy === 'excess') {
-      filtered = records.filter((r) => r.difference > 0);
-    }
 
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
@@ -970,8 +1004,12 @@ export async function downloadInventoryExport(req, res, next) {
       ];
     }
 
+    if (discrepancy === 'shortage') where.difference = { lt: 0 };
+    if (discrepancy === 'excess')   where.difference = { gt: 0 };
+    if (discrepancy === 'matched')  where.difference = { equals: 0 };
+
     // Fetch all matching records (no pagination limit for export)
-    let records = await prisma.inventoryRecord.findMany({
+    const records = await prisma.inventoryRecord.findMany({
       where,
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
       include: {
@@ -994,15 +1032,6 @@ export async function downloadInventoryExport(req, res, next) {
         },
       },
     });
-
-    // Apply discrepancy filter
-    if (discrepancy === 'matched') {
-      records = records.filter((r) => r.difference === 0);
-    } else if (discrepancy === 'shortage') {
-      records = records.filter((r) => r.difference !== null && r.difference < 0);
-    } else if (discrepancy === 'excess') {
-      records = records.filter((r) => r.difference !== null && r.difference > 0);
-    }
 
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
@@ -1119,8 +1148,197 @@ export async function getAuditLogs(req, res, next) {
       },
     });
 
+    res.set('Cache-Control', 'private, max-age=60');
     res.json(logs);
   } catch (error) {
     next(error);
   }
+}
+
+// ─── C1: New batch management endpoints ───────────────────────────────────────
+
+export async function getBatches(req, res, next) {
+  try {
+    const batches = await prisma.uploadBatch.findMany({
+      orderBy: { inventoryDate: 'desc' },
+      include: {
+        uploader: { select: { name: true, employeeId: true } },
+        _count: { select: { inventoryRecords: true } },
+        deadlineExtensions: { select: { storeId: true, newDeadline: true } },
+      },
+    });
+
+    const batchIds = batches.map(b => b.id);
+    const statsRows = batchIds.length > 0 ? await prisma.$queryRaw`
+      SELECT "batchId",
+        COUNT(*)::int AS "totalRecords",
+        COUNT(CASE WHEN status='SUBMITTED' THEN 1 END)::int AS "submittedCount",
+        COUNT(CASE WHEN status='PENDING'   THEN 1 END)::int AS "pendingCount",
+        COUNT(DISTINCT "storeId")::int AS "storeCount"
+      FROM "InventoryRecord"
+      WHERE "batchId" = ANY(${batchIds})
+      GROUP BY "batchId"
+    ` : [];
+
+    const statsMap = new Map(statsRows.map(r => [Number(r.batchId), r]));
+    const result = batches.map(b => ({ ...b, stats: statsMap.get(b.id) || null }));
+    res.set('Cache-Control', 'private, max-age=30');
+    res.json(result);
+  } catch (error) { next(error); }
+}
+
+export async function updateBatch(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { submissionDeadline } = req.body;
+    const batch = await prisma.uploadBatch.update({
+      where: { id: parseInt(id) },
+      data: { submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : null },
+    });
+    await createAuditLog({
+      userId: req.user.id, action: 'UPDATE_BATCH_DEADLINE',
+      entityType: 'UPLOAD_BATCH', entityId: batch.id,
+      metadata: { submissionDeadline },
+    });
+    res.json(batch);
+  } catch (error) { next(error); }
+}
+
+export async function grantStoreExtension(req, res, next) {
+  try {
+    const { batchId, storeId, newDeadline, note } = req.body;
+    if (!batchId || !storeId || !newDeadline) throw new AppError('batchId, storeId, newDeadline required', 400);
+    const ext = await prisma.batchDeadlineExtension.upsert({
+      where: { batchId_storeId: { batchId: parseInt(batchId), storeId: parseInt(storeId) } },
+      update: { newDeadline: new Date(newDeadline), grantedBy: req.user.id, grantedAt: new Date(), note: note || null },
+      create: { batchId: parseInt(batchId), storeId: parseInt(storeId), newDeadline: new Date(newDeadline), grantedBy: req.user.id, note: note || null },
+    });
+    await createAuditLog({
+      userId: req.user.id, action: 'GRANT_STORE_EXTENSION',
+      entityType: 'UPLOAD_BATCH', entityId: parseInt(batchId),
+      metadata: { storeId, newDeadline, note },
+    });
+    res.json(ext);
+  } catch (error) { next(error); }
+}
+
+export async function getTrends(req, res, next) {
+  try {
+    const { cycles = 6 } = req.query;
+    const batches = await prisma.uploadBatch.findMany({
+      orderBy: { inventoryDate: 'asc' },
+      take: parseInt(cycles),
+      select: { id: true, inventoryDate: true },
+    });
+    if (batches.length === 0) return res.json({ batches: [], series: [] });
+
+    const batchIds = batches.map(b => b.id);
+    const rows = await prisma.$queryRaw`
+      SELECT
+        ir."batchId",
+        ir."storeId",
+        s."storeName",
+        COUNT(*)::int AS "totalItems",
+        COUNT(CASE WHEN ir.difference < 0 AND ir.status='SUBMITTED' THEN 1 END)::int AS "shortageCount",
+        SUM(CASE WHEN ir.difference < 0 AND ir.status='SUBMITTED' THEN ABS(ir.difference) ELSE 0 END)::float AS "totalUnitsLost"
+      FROM "InventoryRecord" ir
+      JOIN "Store" s ON s.id = ir."storeId"
+      WHERE ir."batchId" = ANY(${batchIds})
+      GROUP BY ir."batchId", ir."storeId", s."storeName"
+    `;
+
+    const storeMap = new Map();
+    rows.forEach(r => {
+      const sid = Number(r.storeId);
+      if (!storeMap.has(sid)) storeMap.set(sid, { storeId: sid, storeName: r.storeName, data: [] });
+      storeMap.get(sid).data.push({
+        batchId: Number(r.batchId),
+        totalItems: r.totalItems,
+        shortageCount: r.shortageCount,
+        shortageRate: r.totalItems > 0 ? Math.round((r.shortageCount / r.totalItems) * 1000) / 10 : 0,
+        totalUnitsLost: Math.round(r.totalUnitsLost * 10) / 10,
+      });
+    });
+
+    res.set('Cache-Control', 'private, max-age=60');
+    res.json({ batches: batches.map(b => ({ id: b.id, inventoryDate: b.inventoryDate })), series: Array.from(storeMap.values()) });
+  } catch (error) { next(error); }
+}
+
+export async function getStoreDrilldown(req, res, next) {
+  try {
+    const { storeId } = req.params;
+    const { batchId } = req.query;
+
+    let targetBatchId = batchId ? parseInt(batchId) : null;
+    if (!targetBatchId) {
+      const latest = await prisma.uploadBatch.findFirst({ orderBy: { inventoryDate: 'desc' }, select: { id: true } });
+      if (!latest) return res.json([]);
+      targetBatchId = latest.id;
+    }
+
+    const records = await prisma.inventoryRecord.findMany({
+      where: { storeId: parseInt(storeId), batchId: targetBatchId, status: 'SUBMITTED', difference: { lt: 0 } },
+      orderBy: { difference: 'asc' },
+      select: { id: true, materialCode: true, materialName: true, systemQuantity: true, physicalQuantity: true, difference: true, remarks: true, shrinkageCategory: true },
+    });
+    res.json(records);
+  } catch (error) { next(error); }
+}
+
+export async function getBatchExport(req, res, next) {
+  try {
+    const { batchId } = req.params;
+    const batch = await prisma.uploadBatch.findUnique({
+      where: { id: parseInt(batchId) },
+      select: { inventoryDate: true, originalFileName: true },
+    });
+    if (!batch) throw new AppError('Batch not found', 404);
+
+    const records = await prisma.inventoryRecord.findMany({
+      where: { batchId: parseInt(batchId) },
+      orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
+      include: {
+        store: { select: { storeCode: true, storeName: true } },
+        submitter: { select: { name: true, employeeId: true } },
+      },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Batch Export');
+    ws.columns = [
+      { header: 'Store Code',    key: 'storeCode',    width: 12 },
+      { header: 'Store Name',    key: 'storeName',    width: 22 },
+      { header: 'Material Name', key: 'materialCode', width: 20 },
+      { header: 'Description',   key: 'materialName', width: 32 },
+      { header: 'SYS',           key: 'sys',          width: 10 },
+      { header: 'Sold',          key: 'sold',         width: 10 },
+      { header: 'Diff',          key: 'diff',         width: 10 },
+      { header: 'Category',      key: 'category',     width: 18 },
+      { header: 'Remarks',       key: 'remarks',      width: 30 },
+      { header: 'Status',        key: 'status',       width: 12 },
+      { header: 'Submitted By',  key: 'submittedBy',  width: 20 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 11 } };
+
+    records.forEach(r => ws.addRow({
+      storeCode: r.store.storeCode, storeName: r.store.storeName,
+      materialCode: r.materialCode, materialName: r.materialName,
+      sys: r.systemQuantity, sold: r.physicalQuantity ?? '',
+      diff: r.difference ?? '', category: r.shrinkageCategory || '',
+      remarks: r.remarks || '', status: r.status,
+      submittedBy: r.submitter ? `${r.submitter.name} (${r.submitter.employeeId})` : '',
+    }));
+
+    await createAuditLog({ userId: req.user.id, action: 'DOWNLOAD_BATCH_EXPORT', entityType: 'UPLOAD_BATCH', entityId: parseInt(batchId), metadata: { recordCount: records.length } });
+
+    const dateStr = batch.inventoryDate.toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="KinGuard_Batch_${dateStr}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) { next(error); }
 }

@@ -32,8 +32,9 @@ model Store {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users            User[]
-  inventoryRecords InventoryRecord[]
+  users               User[]
+  inventoryRecords    InventoryRecord[]
+  deadlineExtensions  BatchDeadlineExtension[]
 
   @@index([storeCode])
 }
@@ -53,6 +54,7 @@ model User {
   uploadBatches        UploadBatch[]
   submittedRecords     InventoryRecord[] @relation("SubmittedBy")
   auditLogs            AuditLog[]
+  deadlineExtensions   BatchDeadlineExtension[] @relation("DeadlineExtensions")
 
   @@index([employeeId])
   @@index([storeId])
@@ -71,8 +73,9 @@ model UploadBatch {
   rejectedRows       Int          @default(0)
   status             UploadStatus @default(PENDING)
 
-  uploader         User              @relation(fields: [uploadedBy], references: [id])
-  inventoryRecords InventoryRecord[]
+  uploader            User              @relation(fields: [uploadedBy], references: [id])
+  inventoryRecords    InventoryRecord[]
+  deadlineExtensions  BatchDeadlineExtension[]
 
   @@index([uploadedBy])
   @@index([inventoryDate])
@@ -88,8 +91,9 @@ model InventoryRecord {
   systemQuantity   Float
   physicalQuantity Float?
   difference       Float?
-  remarks          String?
-  status           InventoryStatus  @default(PENDING)
+  remarks           String?
+  shrinkageCategory String?
+  status            InventoryStatus  @default(PENDING)
   submittedBy      Int?
   submittedAt      DateTime?
   createdAt        DateTime         @default(now())
@@ -106,6 +110,7 @@ model InventoryRecord {
   @@index([submittedAt])
   @@index([storeId, batchId])
   @@index([storeId, status])
+  @@index([batchId, status])
 }
 
 model AuditLog {
@@ -122,4 +127,22 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model BatchDeadlineExtension {
+  id          Int      @id @default(autoincrement())
+  batchId     Int
+  storeId     Int
+  newDeadline DateTime
+  grantedBy   Int
+  grantedAt   DateTime @default(now())
+  note        String?
+
+  batch   UploadBatch @relation(fields: [batchId], references: [id])
+  store   Store       @relation(fields: [storeId], references: [id])
+  granter User        @relation("DeadlineExtensions", fields: [grantedBy], references: [id])
+
+  @@unique([batchId, storeId])
+  @@index([batchId])
+  @@index([storeId])
 }

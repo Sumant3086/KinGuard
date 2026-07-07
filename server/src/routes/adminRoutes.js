@@ -57,4 +57,16 @@ router.get('/reports/reconciliation/download', adminController.downloadReconcili
 // Audit logs
 router.get('/audit-logs', adminController.getAuditLogs);
 
+// Batches
+router.get('/batches', adminController.getBatches);
+router.patch('/batches/:id', adminController.updateBatch);
+router.post('/batches/extend', adminController.grantStoreExtension);
+router.get('/batches/:batchId/export', adminController.getBatchExport);
+
+// Analytics
+router.get('/analytics/trends', adminController.getTrends);
+
+// Store drilldown
+router.get('/stores/:storeId/drilldown', adminController.getStoreDrilldown);
+
 export default router;

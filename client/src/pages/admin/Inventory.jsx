@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 
@@ -7,7 +8,14 @@ export default function AdminInventory() {
   const [pagination, setPagination] = useState({ page: 1, pageSize: 50, totalRecords: 0, totalPages: 0 });
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ storeId: '', status: '', search: '', discrepancy: '', batchId: '' });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState({
+    storeId:     searchParams.get('storeId')     || '',
+    status:      searchParams.get('status')      || '',
+    search:      searchParams.get('search')      || '',
+    discrepancy: searchParams.get('discrepancy') || '',
+    batchId:     searchParams.get('batchId')     || '',
+  });
 
   useEffect(() => {
     loadInitialData();
@@ -16,7 +24,6 @@ export default function AdminInventory() {
   async function loadInitialData() {
     try {
       setLoading(true);
-      // Only load stores on mount, don't load inventory yet
       const storesData = await adminApi.getStores();
       setStores(storesData);
     } catch (err) {
@@ -25,6 +32,13 @@ export default function AdminInventory() {
       setLoading(false);
     }
   }
+
+  // Auto-load if URL has filter params (F3)
+  useEffect(() => {
+    if (searchParams.get('storeId') || searchParams.get('discrepancy') || searchParams.get('status')) {
+      loadInventory(1);
+    }
+  }, []); // eslint-disable-line
 
   async function loadInventory(page) {
     setLoading(true);

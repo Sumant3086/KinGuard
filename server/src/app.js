@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -14,6 +15,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Compression
+app.use(compression());
 
 // Body parsing
 app.use(express.json());
