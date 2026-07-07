@@ -3,8 +3,37 @@ import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import * as cache from '../../api/cache';
 
-const CACHE_TTL = 30_000; // 30 s
-const cacheKey  = limit => `admin/audit-logs/${limit}`;
+const CACHE_TTL = 60_000;
+const cacheKey  = limit => `admin:audit-logs:${limit}:all`;
+
+// Human-readable action labels
+const ACTION_LABELS = {
+  LOGIN:              'Signed in',
+  LOGOUT:             'Signed out',
+  UPLOAD_INVENTORY:   'Uploaded inventory batch',
+  UPLOAD:             'Uploaded file',
+  CREATE_USER:        'Created user account',
+  UPDATE_USER:        'Updated user account',
+  CREATE_STORE:       'Created store',
+  UPDATE_STORE:       'Updated store',
+  SUBMIT_INVENTORY:   'Store submitted inventory',
+  SUBMIT:             'Submitted inventory',
+  UPDATE:             'Updated record',
+  DELETE:             'Deleted record',
+  CREATE:             'Created record',
+};
+
+function humanizeAction(action) {
+  if (!action) return '—';
+  const upper = action.toUpperCase();
+  // Try exact match first
+  if (ACTION_LABELS[upper]) return ACTION_LABELS[upper];
+  // Try prefix match
+  const key = Object.keys(ACTION_LABELS).find(k => upper.startsWith(k));
+  if (key) return ACTION_LABELS[key];
+  // Fallback: convert snake_case to sentence case
+  return action.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
+}
 
 const actionColors = {
   LOGIN: 'badge-matched',
@@ -45,8 +74,8 @@ export default function AdminAuditLogs() {
     <AdminLayout>
       <div className="page-header">
         <div>
-          <h2>Audit Logs</h2>
-          <p>System activity trail for all users and actions</p>
+          <h2>Activity Log</h2>
+          <p>Complete trail of all user actions and system events</p>
         </div>
         <div className="filter-group">
           <span className="filter-label">Show</span>
@@ -67,12 +96,12 @@ export default function AdminAuditLogs() {
       </div>
 
       {loading ? (
-        <div className="loading"><div className="spinner" />Loading logs…</div>
+        <div className="loading"><div className="spinner" />Loading activity log…</div>
       ) : logs.length === 0 ? (
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">📋</div>
-            <p>No audit logs found.</p>
+            <p>No activity found.</p>
           </div>
         </div>
       ) : (
@@ -99,7 +128,7 @@ export default function AdminAuditLogs() {
                     </td>
                     <td>
                       <span className={`badge ${getBadgeClass(log.action)}`}>
-                        {log.action}
+                        {humanizeAction(log.action)}
                       </span>
                     </td>
                     <td style={{ color: 'var(--t3)', fontSize: 12 }}>{log.entityType || '—'}</td>

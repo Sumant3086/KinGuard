@@ -33,7 +33,7 @@ export default function AdminInventory() {
     }
   }
 
-  // Auto-load if URL has filter params (F3)
+  // Auto-load if URL has filter params
   useEffect(() => {
     if (searchParams.get('storeId') || searchParams.get('discrepancy') || searchParams.get('status')) {
       loadInventory(1);
@@ -87,7 +87,12 @@ export default function AdminInventory() {
 
   return (
     <AdminLayout>
-      <h2>Inventory Records</h2>
+      <div className="page-header">
+        <div>
+          <h2>Inventory Submissions</h2>
+          <p>View and filter submitted inventory records across all stores</p>
+        </div>
+      </div>
 
       <div className="card">
         <div className="filters">
@@ -101,11 +106,11 @@ export default function AdminInventory() {
           </select>
           <select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}>
             <option value="">All Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="SUBMITTED">Submitted</option>
+            <option value="PENDING">Awaiting Count</option>
+            <option value="SUBMITTED">Counted</option>
           </select>
           <select value={filters.discrepancy} onChange={(e) => handleFilterChange('discrepancy', e.target.value)}>
-            <option value="">All Discrepancies</option>
+            <option value="">All Variances</option>
             <option value="matched">Matched</option>
             <option value="shortage">Shortage</option>
             <option value="excess">Excess</option>
@@ -121,7 +126,7 @@ export default function AdminInventory() {
             Apply Filters
           </button>
           <button onClick={handleDownloadExcel} className="btn btn-success">
-            Download Excel
+            Download Report (Excel)
           </button>
         </div>
       </div>
@@ -130,7 +135,7 @@ export default function AdminInventory() {
         <div className="loading">Loading...</div>
       ) : records.length === 0 ? (
         <div className="card">
-          <p>No records found. Click "Apply Filters" to load inventory records.</p>
+          <p>No records found. Click &quot;Apply Filters&quot; to load inventory submissions.</p>
         </div>
       ) : (
         <>
@@ -142,9 +147,9 @@ export default function AdminInventory() {
                     <th>Store</th>
                     <th>Material Name</th>
                     <th>Material Description</th>
-                    <th>SYS</th>
-                    <th>Sold</th>
-                    <th>Diff</th>
+                    <th>System Qty</th>
+                    <th>Counted</th>
+                    <th>Variance</th>
                     <th>Remarks</th>
                     <th>Status</th>
                     <th>Flag</th>
@@ -174,7 +179,7 @@ export default function AdminInventory() {
                       </td>
                       <td>
                         <span className={`badge badge-${record.status.toLowerCase()}`}>
-                          {record.status}
+                          {record.status === 'PENDING' ? 'Awaiting Count' : 'Counted'}
                         </span>
                       </td>
                       <td>
@@ -190,12 +195,12 @@ export default function AdminInventory() {
               </table>
             </div>
           </div>
-          
+
           {loading && <div className="loading" style={{ marginTop: '10px' }}>Loading...</div>}
-          
+
           <div className="pagination">
-            <button 
-              onClick={() => changePage(pagination.page - 1)} 
+            <button
+              onClick={() => changePage(pagination.page - 1)}
               disabled={pagination.page === 1 || loading}
               className="btn btn-secondary"
             >
@@ -204,8 +209,8 @@ export default function AdminInventory() {
             <span style={{ margin: '0 15px' }}>
               Page {pagination.page} of {pagination.totalPages} ({pagination.totalRecords} total records)
             </span>
-            <button 
-              onClick={() => changePage(pagination.page + 1)} 
+            <button
+              onClick={() => changePage(pagination.page + 1)}
               disabled={pagination.page === pagination.totalPages || loading}
               className="btn btn-secondary"
             >

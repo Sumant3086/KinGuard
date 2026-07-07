@@ -3,8 +3,8 @@ import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import * as cache from '../../api/cache';
 
-const STORES_KEY = 'admin/stores';
-const STORES_TTL = 120_000;
+const STORES_KEY = 'admin:stores';
+const STORES_TTL = 60_000;
 
 export default function AdminReports() {
   const [records, setRecords]   = useState([]);
@@ -54,11 +54,11 @@ export default function AdminReports() {
     <AdminLayout>
       <div className="page-header">
         <div>
-          <h2>Reconciliation Reports</h2>
+          <h2>Reconciliation Report</h2>
           <p>Filter and export submitted inventory reconciliation data</p>
         </div>
         <button onClick={handleDownload} className="btn btn-success">
-          ↓ Download Excel
+          ↓ Export to Excel
         </button>
       </div>
 
@@ -79,8 +79,8 @@ export default function AdminReports() {
             <span className="filter-label">Status</span>
             <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
               <option value="">All</option>
-              <option value="PENDING">Pending</option>
-              <option value="SUBMITTED">Submitted</option>
+              <option value="PENDING">Awaiting Count</option>
+              <option value="SUBMITTED">Counted</option>
             </select>
           </div>
           <div className="filter-group">
@@ -128,9 +128,9 @@ export default function AdminReports() {
                   <th>Date</th>
                   <th>Material Name</th>
                   <th>Description</th>
-                  <th style={{ textAlign: 'right' }}>SYS</th>
-                  <th style={{ textAlign: 'right' }}>Sold</th>
-                  <th>Diff</th>
+                  <th style={{ textAlign: 'right' }}>System Qty</th>
+                  <th style={{ textAlign: 'right' }}>Counted</th>
+                  <th>Variance</th>
                   <th>Remarks</th>
                   <th>Submitted By</th>
                 </tr>

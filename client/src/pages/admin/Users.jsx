@@ -3,10 +3,10 @@ import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import * as cache from '../../api/cache';
 
-const USERS_KEY  = 'admin/users';
-const STORES_KEY = 'admin/stores';
-const USERS_TTL  = 120_000; // 2 min
-const STORES_TTL = 120_000;
+const USERS_KEY  = 'admin:users';
+const STORES_KEY = 'admin:stores';
+const USERS_TTL  = 60_000;
+const STORES_TTL = 60_000;
 
 export default function AdminUsers() {
   const [users, setUsers]   = useState(() => cache.get(USERS_KEY)  ?? []);
@@ -72,17 +72,17 @@ export default function AdminUsers() {
     }
   }
 
-  const roleLabel = (role) => role === 'ADMIN' ? 'Admin' : 'Store Manager';
+  const roleLabel = (role) => role === 'ADMIN' ? 'Administrator' : 'Store Manager';
 
   return (
     <AdminLayout>
       <div className="page-header">
         <div>
-          <h2>Users</h2>
+          <h2>User Management</h2>
           <p>Manage employee accounts and store assignments</p>
         </div>
         <button onClick={() => openModal()} className="btn btn-primary">
-          + Add User
+          + Add New User
         </button>
       </div>
 
@@ -144,7 +144,7 @@ export default function AdminUsers() {
         <div className="modal" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingId ? 'Edit User' : 'Add User'}</h3>
+              <h3>{editingId ? 'Edit User' : 'Add New User'}</h3>
               <button onClick={closeModal} className="close-btn">&times;</button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -185,7 +185,7 @@ export default function AdminUsers() {
                   required disabled={editingId !== null}
                 >
                   <option value="STORE_MANAGER">Store Manager</option>
-                  <option value="ADMIN">Admin</option>
+                  <option value="ADMIN">Administrator</option>
                 </select>
               </div>
               {formData.role === 'STORE_MANAGER' && (

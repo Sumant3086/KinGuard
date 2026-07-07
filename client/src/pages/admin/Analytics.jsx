@@ -39,13 +39,13 @@ export default function AdminAnalytics() {
   }
 
   if (loading) return (
-    <AdminLayout title="Analytics">
+    <AdminLayout title="Performance Analytics">
       <div className="loading"><div className="spinner" />Loading analytics…</div>
     </AdminLayout>
   );
 
   if (error) return (
-    <AdminLayout title="Analytics">
+    <AdminLayout title="Performance Analytics">
       <div className="alert alert-error">{error}</div>
     </AdminLayout>
   );
@@ -76,11 +76,11 @@ export default function AdminAnalytics() {
   const batchBDate = batches.find(b => b.id === batchBId);
 
   return (
-    <AdminLayout title="Analytics">
+    <AdminLayout title="Performance Analytics">
       <div className="page-header">
         <div>
-          <h2>Analytics</h2>
-          <p>Shortage trends and batch comparisons across the network</p>
+          <h2>Performance Analytics</h2>
+          <p>Shortage trends and cycle-over-cycle comparisons across the network</p>
         </div>
       </div>
 
@@ -91,11 +91,11 @@ export default function AdminAnalytics() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><path d="M2 20h20"/>
             </svg>
-            Shortage Rate Trend — Last {trendBatches.length} Cycles
+            Cycle-over-Cycle Trends — Last {trendBatches.length} Cycles
           </span>
         </div>
         {trendBatches.length === 0 ? (
-          <div className="empty"><div className="empty-icon">📊</div><p>No batch data available.</p></div>
+          <div className="empty"><div className="empty-icon">📊</div><p>No cycle data available yet.</p></div>
         ) : (
           <div className="table-wrap">
             <table className="scorecard">
@@ -167,26 +167,26 @@ export default function AdminAnalytics() {
           </span>
           <span>
             <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'rgba(16,185,129,0.25)', marginRight: 4 }} />
-            &lt;5% Healthy
+            &lt;5% On Track
           </span>
         </div>
       </div>
 
-      {/* Batch Comparison */}
+      {/* Store Deep Dive / Batch Comparison */}
       <div className="card">
         <div className="card-header">
           <span className="card-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </svg>
-            Batch Comparison
+            Store Deep Dive — Cycle Comparison
           </span>
         </div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="filter-group">
-            <span className="filter-label">Batch A (Earlier)</span>
+            <span className="filter-label">Cycle A (Earlier)</span>
             <select value={batchA} onChange={e => setBatchA(e.target.value)} style={{ minWidth: 180 }}>
-              <option value="">Select batch…</option>
+              <option value="">Select cycle…</option>
               {batches.map(b => (
                 <option key={b.id} value={b.id}>
                   {new Date(b.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -196,9 +196,9 @@ export default function AdminAnalytics() {
           </div>
           <div style={{ color: 'var(--t3)', fontWeight: 700, paddingBottom: 4 }}>vs</div>
           <div className="filter-group">
-            <span className="filter-label">Batch B (Later)</span>
+            <span className="filter-label">Cycle B (Later)</span>
             <select value={batchB} onChange={e => setBatchB(e.target.value)} style={{ minWidth: 180 }}>
-              <option value="">Select batch…</option>
+              <option value="">Select cycle…</option>
               {batches.map(b => (
                 <option key={b.id} value={b.id}>
                   {new Date(b.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -215,10 +215,10 @@ export default function AdminAnalytics() {
                 <tr>
                   <th>Store</th>
                   <th style={{ textAlign: 'center' }}>
-                    {batchADate ? new Date(batchADate.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Batch A'} — Shortages
+                    {batchADate ? new Date(batchADate.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Cycle A'} — Shortages
                   </th>
                   <th style={{ textAlign: 'center' }}>
-                    {batchBDate ? new Date(batchBDate.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Batch B'} — Shortages
+                    {batchBDate ? new Date(batchBDate.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Cycle B'} — Shortages
                   </th>
                   <th style={{ textAlign: 'center' }}>Change</th>
                 </tr>
@@ -250,7 +250,7 @@ export default function AdminAnalytics() {
             </table>
           </div>
         ) : (
-          <div className="empty"><div className="empty-icon">📊</div><p>Select two batches to compare.</p></div>
+          <div className="empty"><div className="empty-icon">📊</div><p>Select two cycles to compare.</p></div>
         )}
       </div>
     </AdminLayout>
