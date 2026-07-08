@@ -8,10 +8,11 @@ import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 
 // Shared column name aliases for Excel/CSV parsing
 const COLUMN_MAP = {
-  storeCode: ['Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 'STORE CODE', 'Store code ', 'Store Code '],
-  materialCode: ['Material Code', 'Material code', 'Material', 'MaterialCode', 'material_code', 'SKU', 'MATERIAL', 'Material code ', 'Material Code ', 'Material Name', 'Material name', 'MaterialName', 'material_name'],
-  materialName: ['Material Description', 'Material Name', 'MaterialName', 'Description', 'material_name', 'Item Name', 'MATERIAL DESCRIPTION', 'Material Description ', 'Material description', 'MaterialDescription', 'material_description'],
-  systemQuantity: ['SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 'Quantity', 'QTY', 'SYSTEM QUANTITY', 'SYS ', 'Sys'],
+  storeCode:      ['Plant', 'Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 'STORE CODE'],
+  materialCode:   ['Material', 'Material Code', 'Material code', 'MaterialCode', 'material_code', 'SKU', 'MATERIAL'],
+  materialName:   ['Material Description', 'Material Name', 'MaterialName', 'Description', 'material_name', 'MATERIAL DESCRIPTION'],
+  systemQuantity: ['System  Stock', 'System Stock', 'SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 'QTY', 'SYSTEM QUANTITY'],
+  remarks:        ['col_10', 'Remarks', 'remarks', 'REMARKS', 'Remark', 'Note'],
 };
 
 function findColumn(row, possibleNames) {
@@ -30,13 +31,19 @@ async function parseFileToRows(file) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(file.buffer);
   const worksheet = workbook.worksheets[0];
-  const headers = [];
-  worksheet.getRow(1).eachCell((cell) => headers.push(cell.value.toString().trim()));
+  // Map column number → header name; columns with no header get a positional key (col_N)
+  const headerMap = {};
+  worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    headerMap[colNumber] = cell.value?.toString().trim() || `col_${colNumber}`;
+  });
   const rows = [];
   worksheet.eachRow((row, rowIndex) => {
     if (rowIndex === 1) return;
     const rowData = {};
-    row.eachCell((cell, colNumber) => { rowData[headers[colNumber - 1]] = cell.value; });
+    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const key = headerMap[colNumber] ?? `col_${colNumber}`;
+      rowData[key] = cell.value;
+    });
     if (Object.keys(rowData).length > 0) rows.push(rowData);
   });
   return rows;
@@ -300,6 +307,48 @@ export async function createStore(req, res, next) {
   }
 }
 
+export async function deleteStore(req, res, next) {
+  try {
+    const { id } = req.params;
+    const storeId = parseInt(id);
+
+    const store = await prisma.store.findUnique({
+      where: { id: storeId },
+      include: { _count: { select: { inventoryRecords: true, users: true } } },
+    });
+
+    if (!store) throw new AppError('Store not found', 404);
+
+    if (store._count.inventoryRecords > 0) {
+      throw new AppError(
+        `Cannot delete — this store has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
+        409
+      );
+    }
+
+    // Remove dependent records (no inventory, so these are safe to clear)
+    await prisma.batchDeadlineExtension.deleteMany({ where: { storeId } });
+    if (store._count.users > 0) {
+      await prisma.user.updateMany({ where: { storeId }, data: { storeId: null } });
+    }
+
+    await prisma.store.delete({ where: { id: storeId } });
+
+    await createAuditLog({
+      userId: req.user.id,
+      action: 'DELETE_STORE',
+      entityType: 'STORE',
+      entityId: storeId,
+      metadata: { storeCode: store.storeCode, storeName: store.storeName },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json({ message: 'Store deleted' });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateStore(req, res, next) {
   try {
     const { id } = req.params;
@@ -490,13 +539,24 @@ export async function uploadInventory(req, res, next) {
     const errors = [];
     const successfulRecords = [];
 
-    // Fetch all stores ONCE before processing rows (prevents connection timeout on first upload)
-    const allStores = await prisma.store.findMany({
-      select: {
-        id: true,
-        storeCode: true,
-      },
-    });
+    // Auto-create any stores found in the file that don't exist yet
+    const fileStoreCodes = new Set();
+    for (const row of rows) {
+      const code = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
+      if (code) fileStoreCodes.add(code);
+    }
+    const existingStores = await prisma.store.findMany({ select: { id: true, storeCode: true } });
+    const existingCodes = new Set(existingStores.map(s => s.storeCode));
+    const newStoreCodes = [...fileStoreCodes].filter(c => !existingCodes.has(c));
+    if (newStoreCodes.length > 0) {
+      await prisma.store.createMany({
+        data: newStoreCodes.map(code => ({ storeCode: code, storeName: `Store ${code}`, isActive: true })),
+        skipDuplicates: true,
+      });
+    }
+
+    // Reload store map after potential creation
+    const allStores = await prisma.store.findMany({ select: { id: true, storeCode: true } });
     const storeMap = new Map(allStores.map(s => [s.storeCode, s.id]));
 
     // Process each row
@@ -508,47 +568,46 @@ export async function uploadInventory(req, res, next) {
         const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
         const materialCode = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
         const materialDescription = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
-        const systemQuantity = findColumn(row, COLUMN_MAP.systemQuantity);
-        
-        // Use Material Description as materialName, or fallback to materialCode if not found
+        const rawQty = findColumn(row, COLUMN_MAP.systemQuantity);
         const materialName = materialDescription || materialCode;
 
         if (!storeCode) {
-          errors.push({ row: rowNum, error: 'Missing Store Code' });
+          errors.push({ row: rowNum, error: 'Missing Plant / Store Code' });
           continue;
         }
         if (!materialCode) {
-          errors.push({ row: rowNum, error: 'Missing Material Name' });
+          errors.push({ row: rowNum, error: 'Missing Material Code' });
           continue;
         }
         if (!materialName) {
           errors.push({ row: rowNum, error: 'Missing Material Description' });
           continue;
         }
-        if (systemQuantity === null || systemQuantity === undefined) {
-          errors.push({ row: rowNum, error: 'Missing SYS (System Quantity)' });
-          continue;
-        }
 
-        const qty = parseFloat(systemQuantity);
+        // System quantity is optional — default to 0 when not in the file
+        const qty = (rawQty !== null && rawQty !== undefined && rawQty !== '')
+          ? parseFloat(rawQty)
+          : 0;
         if (isNaN(qty) || qty < 0) {
           errors.push({ row: rowNum, error: 'Invalid System Quantity' });
           continue;
         }
 
-        // Find store from pre-loaded map (much faster than individual queries)
         const storeId = storeMap.get(storeCode);
         if (!storeId) {
-          errors.push({ row: rowNum, error: `Unknown store code: ${storeCode}` });
+          errors.push({ row: rowNum, error: `Store not found: ${storeCode}` });
           continue;
         }
 
+        const remarks = findColumn(row, COLUMN_MAP.remarks)?.toString().trim() || null;
+
         successfulRecords.push({
           batchId: batch.id,
-          storeId: storeId,
+          storeId,
           materialCode,
           materialName,
           systemQuantity: qty,
+          remarks,
           status: 'PENDING',
         });
       } catch (error) {
@@ -639,9 +698,9 @@ export async function previewUpload(req, res, next) {
       const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
       const materialCode = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
       const materialDescription = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
-      const systemQuantity = findColumn(row, COLUMN_MAP.systemQuantity);
-      
+      const rawQty = findColumn(row, COLUMN_MAP.systemQuantity);
       const materialName = materialDescription || materialCode;
+      const remarks = findColumn(row, COLUMN_MAP.remarks)?.toString().trim() || '';
 
       let status = 'valid';
       let message = '';
@@ -650,23 +709,20 @@ export async function previewUpload(req, res, next) {
 
       // Validation
       if (!storeCode) {
-        errors.push('Missing Store Code');
+        errors.push('Missing Plant / Store Code');
       } else if (!storeMap.has(storeCode)) {
-        errors.push(`Unknown store code: ${storeCode}`);
+        warnings.push(`New store will be created: ${storeCode}`);
       }
 
       if (!materialCode) {
-        errors.push('Missing Material Name');
+        errors.push('Missing Material Code');
       }
 
-      if (!materialName) {
-        warnings.push('Missing Material Description - will use Material Code');
-      }
-
-      if (systemQuantity === null || systemQuantity === undefined || systemQuantity === '') {
-        errors.push('Missing SYS (System Quantity)');
+      // System quantity is optional — default 0 when absent
+      if (rawQty === null || rawQty === undefined || rawQty === '') {
+        warnings.push('System qty not in file — defaults to 0');
       } else {
-        const qty = parseFloat(systemQuantity);
+        const qty = parseFloat(rawQty);
         if (isNaN(qty)) {
           errors.push('Invalid System Quantity (not a number)');
         } else if (qty < 0) {
@@ -691,10 +747,11 @@ export async function previewUpload(req, res, next) {
       preview.push({
         row: rowNum,
         storeCode: storeCode || '',
-        storeName: storeCode ? storeMap.get(storeCode) || '' : '',
+        storeName: storeCode ? (storeMap.get(storeCode) || `(new) ${storeCode}`) : '',
         materialCode: materialCode || '',
         materialName: materialName || '',
-        systemQuantity: systemQuantity !== null ? systemQuantity : '',
+        systemQuantity: (rawQty !== null && rawQty !== undefined && rawQty !== '') ? rawQty : '0',
+        remarks,
         status,
         message,
       });

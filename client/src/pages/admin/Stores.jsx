@@ -1,78 +1,98 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
-import * as cache from '../../api/cache';
-
-const CACHE_KEY = 'admin:stores';
-const CACHE_TTL = 60_000;
 
 export default function AdminStores() {
-  const [stores, setStores] = useState(() => cache.get(CACHE_KEY) ?? []);
-  const [loading, setLoading] = useState(!cache.get(CACHE_KEY));
+  const [stores, setStores] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({ storeCode: '', storeName: '', isActive: true });
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
-    if (cache.get(CACHE_KEY)) return;
-    let live = true;
-    adminApi.getStores()
-      .then(d => { if (live) { cache.set(CACHE_KEY, d, CACHE_TTL); setStores(d); } })
-      .catch(() => {})
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
+    loadStores();
   }, []);
 
-  async function refreshStores() {
-    const d = await adminApi.getStores();
-    cache.set(CACHE_KEY, d, CACHE_TTL);
-    setStores(d);
+  async function loadStores() {
+    try {
+      setLoading(true);
+      const data = await adminApi.getStores();
+      setStores(data);
+    } catch (err) {
+      console.error('Failed to load stores:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function openModal(store = null) {
-    if (store) {
-      setEditingId(store.id);
-      setFormData({ storeCode: store.storeCode, storeName: store.storeName, isActive: store.isActive });
-    } else {
-      setEditingId(null);
-      setFormData({ storeCode: '', storeName: '', isActive: true });
-    }
+  function openCreate() {
+    setEditingId(null);
+    setFormData({ storeCode: '', storeName: '', isActive: true });
+    setFormError('');
+    setShowModal(true);
+  }
+
+  function openEdit(store) {
+    setEditingId(store.id);
+    setFormData({ storeCode: store.storeCode, storeName: store.storeName, isActive: store.isActive });
+    setFormError('');
     setShowModal(true);
   }
 
   function closeModal() {
+    if (submitting) return;
     setShowModal(false);
     setEditingId(null);
-    setFormData({ storeCode: '', storeName: '', isActive: true });
+    setFormError('');
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setFormError('');
+    setSubmitting(true);
     try {
       if (editingId) {
         await adminApi.updateStore(editingId, { storeName: formData.storeName, isActive: formData.isActive });
       } else {
-        await adminApi.createStore(formData);
+        await adminApi.createStore({ ...formData, storeCode: formData.storeCode.trim() });
       }
-      // Invalidate dependent caches, then refresh
-      cache.invalidate(CACHE_KEY, 'admin:dashboard');
-      closeModal();
-      await refreshStores();
+      setShowModal(false);
+      setEditingId(null);
+      await loadStores();
     } catch (err) {
-      alert(err.response?.data?.error || 'Operation failed');
+      setFormError(err.response?.data?.error || 'Operation failed. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   }
+
+  async function handleDelete(store) {
+    if (!confirm(`Delete store "${store.storeName}" (${store.storeCode})?\n\nThis cannot be undone.`)) return;
+    try {
+      await adminApi.deleteStore(store.id);
+      await loadStores();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Delete failed');
+    }
+  }
+
+  const activeStores   = stores.filter(s => s.isActive);
+  const inactiveStores = stores.filter(s => !s.isActive);
 
   return (
     <AdminLayout>
       <div className="page-header">
         <div>
           <h2>Store Management</h2>
-          <p>Manage store locations and their status</p>
+          <p>
+            {stores.length === 0
+              ? 'No stores yet — add your first store to get started.'
+              : `${activeStores.length} active · ${inactiveStores.length} inactive`}
+          </p>
         </div>
-        <button onClick={() => openModal()} className="btn btn-primary">
-          + Add New Store
-        </button>
+        <button onClick={openCreate} className="btn btn-primary">+ Add Store</button>
       </div>
 
       {loading ? (
@@ -81,7 +101,10 @@ export default function AdminStores() {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">🏪</div>
-            <p>No stores yet. Add your first store to get started.</p>
+            <p>Add your first store to get started.</p>
+            <button onClick={openCreate} className="btn btn-primary" style={{ marginTop: 16 }}>
+              + Add Store
+            </button>
           </div>
         </div>
       ) : (
@@ -92,8 +115,8 @@ export default function AdminStores() {
                 <tr>
                   <th>Store Code</th>
                   <th>Store Name</th>
-                  <th>Users</th>
-                  <th>Records</th>
+                  <th>Manager Accounts</th>
+                  <th>Inventory Records</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -101,7 +124,9 @@ export default function AdminStores() {
               <tbody>
                 {stores.map((store) => (
                   <tr key={store.id}>
-                    <td style={{ fontWeight: 700, color: 'var(--t1)', fontFamily: 'monospace' }}>{store.storeCode}</td>
+                    <td style={{ fontWeight: 700, color: 'var(--t1)', fontFamily: 'monospace' }}>
+                      {store.storeCode}
+                    </td>
                     <td style={{ fontWeight: 600 }}>{store.storeName}</td>
                     <td style={{ color: 'var(--t3)' }}>{store._count.users}</td>
                     <td style={{ color: 'var(--t3)' }}>{store._count.inventoryRecords}</td>
@@ -110,13 +135,19 @@ export default function AdminStores() {
                         {store.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td>
-                      <button
-                        onClick={() => openModal(store)}
-                        className="btn btn-secondary btn-sm"
-                      >
+                    <td style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">
                         Edit
                       </button>
+                      {store._count.inventoryRecords === 0 && (
+                        <button
+                          onClick={() => handleDelete(store)}
+                          className="btn btn-sm"
+                          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.25)' }}
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -130,9 +161,16 @@ export default function AdminStores() {
         <div className="modal" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingId ? 'Edit Store' : 'Add New Store'}</h3>
-              <button onClick={closeModal} className="close-btn">&times;</button>
+              <h3>{editingId ? 'Edit Store' : 'Add Store'}</h3>
+              <button onClick={closeModal} className="close-btn" disabled={submitting}>&times;</button>
             </div>
+
+            {formError && (
+              <div className="alert alert-error" style={{ marginBottom: 16, fontSize: 13 }}>
+                {formError}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Store Code</label>
@@ -141,9 +179,15 @@ export default function AdminStores() {
                   value={formData.storeCode}
                   onChange={(e) => setFormData({ ...formData, storeCode: e.target.value })}
                   required
-                  disabled={editingId !== null}
-                  placeholder="e.g. STR001"
+                  disabled={editingId !== null || submitting}
+                  placeholder="e.g. 2050"
+                  autoFocus
                 />
+                {!editingId && (
+                  <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>
+                    Must be unique. Cannot be changed after creation.
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>Store Name</label>
@@ -152,24 +196,28 @@ export default function AdminStores() {
                   value={formData.storeName}
                   onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
                   required
-                  placeholder="e.g. Kinshasa Central"
+                  disabled={submitting}
+                  placeholder="e.g. Kinshasa Central Branch"
                 />
               </div>
               <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: submitting ? 'default' : 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                     style={{ width: 'auto' }}
+                    disabled={submitting}
                   />
                   Active
                 </label>
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-                <button type="submit" className="btn btn-primary">
-                  {editingId ? 'Update Store' : 'Create Store'}
+                <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Saving…' : editingId ? 'Update Store' : 'Create Store'}
                 </button>
               </div>
             </form>

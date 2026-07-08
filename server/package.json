@@ -9,7 +9,9 @@
     "start": "node src/server.js",
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "db:reset": "prisma migrate reset --force && node prisma/seed.js",
+    "db:clear": "node prisma/clear-all.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -23,8 +25,7 @@
     "express-rate-limit": "^7.4.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.2.0",
-    "zod": "^3.23.8"
+    "multer": "^2.2.0"
   },
   "devDependencies": {
     "prisma": "^5.22.0"

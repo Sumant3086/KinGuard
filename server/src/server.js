@@ -2,12 +2,15 @@ import app from './app.js';
 import { env } from './config/env.js';
 import prisma from './config/prisma.js';
 import { exec } from 'child_process';
+import { platform } from 'os';
 
-// Kill whatever process is holding the port so we never fight over it
+// Kill whatever process is holding the port so we never fight over it during development
 function freePort(port) {
   return new Promise((resolve) => {
-    const cmd = `powershell -Command "$p=(Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue).OwningProcess; if($p){Stop-Process -Id $p -Force}"`;
-    exec(cmd, () => resolve()); // resolve regardless — nothing on the port is fine too
+    const cmd = platform() === 'win32'
+      ? `powershell -Command "$p=(Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue).OwningProcess; if($p){Stop-Process -Id $p -Force}"`
+      : `lsof -ti tcp:${port} | xargs kill -9 2>/dev/null || true`;
+    exec(cmd, () => resolve());
   });
 }
 

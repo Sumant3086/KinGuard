@@ -35,6 +35,7 @@ router.get('/dashboard', adminController.getDashboard);
 router.get('/stores', adminController.getStores);
 router.post('/stores', adminController.createStore);
 router.patch('/stores/:id', adminController.updateStore);
+router.delete('/stores/:id', adminController.deleteStore);
 
 // Users
 router.get('/users', adminController.getUsers);

@@ -7,7 +7,6 @@ import AdminStores from './pages/admin/Stores';
 import AdminUsers from './pages/admin/Users';
 import AdminUpload from './pages/admin/Upload';
 import AdminInventory from './pages/admin/Inventory';
-import AdminReports from './pages/admin/Reports';
 import AdminAuditLogs from './pages/admin/AuditLogs';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminBatches from './pages/admin/Batches';
@@ -82,14 +81,7 @@ function App() {
           </PrivateRoute>
         }
       />
-      <Route
-        path="/admin/reports"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminReports />
-          </PrivateRoute>
-        }
-      />
+      <Route path="/admin/reports" element={<Navigate to="/admin/inventory" replace />} />
       <Route
         path="/admin/audit-logs"
         element={
