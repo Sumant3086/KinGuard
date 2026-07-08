@@ -25,7 +25,8 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-shell">
-        {/* ── Left decorative panel ── */}
+
+        {/* ── Left — brand + warehouse imagery ── */}
         <div className="login-left">
           <div className="ll-brand">
             <div className="ll-logo">K</div>
@@ -33,20 +34,39 @@ export default function Login() {
           </div>
 
           <div className="ll-body">
+            <div className="ll-eyebrow">Loss &amp; Prevention Platform</div>
             <p className="ll-headline">
-              Reconcile smarter.<br />
-              <em>Protect every unit.</em>
+              One file upload.<br />
+              <em>Complete network visibility.</em>
             </p>
-            <p className="ll-desc">
-              Upload one master file for all your stores. KinMarché separates
-              records automatically — every manager sees only their store.
+            <p className="ll-desc" style={{ marginBottom: 0 }}>
+              Track shrinkage across every store in real time. KinMarché splits one
+              master file by Store Code, lets each manager reconcile their stock, and
+              gives your L&amp;P team a central risk view of the entire network.
             </p>
+
+            <div className="ll-metrics">
+              <div className="ll-metric">
+                <span className="ll-metric-val">Real-time</span>
+                <span className="ll-metric-label">Diff calculation</span>
+              </div>
+              <div className="ll-metric">
+                <span className="ll-metric-val">Multi-store</span>
+                <span className="ll-metric-label">One upload</span>
+              </div>
+              <div className="ll-metric">
+                <span className="ll-metric-val">Excel</span>
+                <span className="ll-metric-label">One-click export</span>
+              </div>
+            </div>
+
             <div className="ll-features">
               {[
-                'One upload file for all store locations',
-                'Automatic store separation by Store Code',
-                'Backend Diff = Sold − SYS calculation',
-                'Central admin monitoring and Excel export',
+                'One master file auto-split by Store Code',
+                'Diff = Sold − SYS enforced server-side',
+                'Risk scorecard: High Risk · Watch · On Track',
+                'Repeat loss hotspot detection across cycles',
+                'Per-store deadline control with extensions',
               ].map(f => (
                 <div key={f} className="ll-feat">
                   <span className="ll-feat-dot" />
@@ -56,15 +76,22 @@ export default function Login() {
             </div>
           </div>
 
-          <p className="ll-foot">KinMarché &copy; {new Date().getFullYear()} &mdash; Kinshasa, DRC</p>
+          <p className="ll-foot">
+            KinMarché &copy; {new Date().getFullYear()} &mdash; Kinshasa, DRC &mdash; Inventory Reconciliation
+          </p>
         </div>
 
-        {/* ── Right sign-in panel ── */}
+        {/* ── Right — sign-in form ── */}
         <div className="login-right">
-          <h2>Sign In</h2>
-          <p>Enter your credentials to continue.</p>
+          <div className="lr-header">
+            <div className="lr-logo">K</div>
+            <div className="lr-header-text">
+              <h2>Sign In</h2>
+              <p>Enter your credentials to continue.</p>
+            </div>
+          </div>
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>{error}</div>}
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
@@ -114,12 +141,25 @@ export default function Login() {
               type="submit"
               className="btn btn-gold"
               disabled={loading}
-              style={{ width: '100%', marginTop: 8, padding: '12px 18px', fontSize: 14, justifyContent: 'center' }}
+              style={{ width: '100%', marginTop: 10, padding: '12px 18px', fontSize: 14, justifyContent: 'center' }}
             >
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? 'Signing in…' : 'Sign In →'}
             </button>
           </form>
+
+          <div className="lr-sep" />
+          <div className="lr-roles">
+            <div className="lr-role">
+              <span className="lr-role-badge admin">Admin</span>
+              <span>Full dashboard, uploads, all stores &amp; reports</span>
+            </div>
+            <div className="lr-role">
+              <span className="lr-role-badge mgr">Manager</span>
+              <span>Your assigned store only</span>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   );

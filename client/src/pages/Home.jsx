@@ -6,93 +6,90 @@ export default function Home() {
 
   return (
     <div className="home-page">
-      {/* ── Topbar ── */}
+      {/* ── Sticky nav ── */}
       <div className="home-bar">
-        <div className="home-logo-wrap">
-          <div className="home-logo-icon">K</div>
-          <span className="home-logo-name">KinMarché</span>
+        <div style={{ maxWidth: 1280, margin: '0 auto', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div className="home-logo-wrap">
+            <div className="home-logo-icon">K</div>
+            <div>
+              <div className="home-logo-name">KinMarché</div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.8px', textTransform: 'uppercase', color: 'var(--t4)', marginTop: 1 }}>Loss &amp; Prevention</div>
+            </div>
+          </div>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {user ? (
+              <Link
+                to={user.role === 'ADMIN' ? '/admin/dashboard' : '/store/dashboard'}
+                className="btn btn-primary"
+                style={{ padding: '8px 20px', fontSize: 13 }}
+              >
+                Go to Dashboard →
+              </Link>
+            ) : (
+              <Link to="/login" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: 13 }}>
+                Sign In
+              </Link>
+            )}
+          </nav>
         </div>
-        <nav>
-          {user ? (
-            <Link
-              to={user.role === 'ADMIN' ? '/admin/dashboard' : '/store/dashboard'}
-              className="btn btn-primary"
-            >
-              Go to Dashboard
-            </Link>
-          ) : (
-            <Link to="/login" className="btn btn-primary">Sign In</Link>
-          )}
-        </nav>
       </div>
 
-      {/* ── Hero ── */}
-      <div className="home-hero">
-        <div className="home-eyebrow">Loss &amp; Prevention Platform</div>
-        <h1>
-          Inventory Reconciliation<br />
-          <em>for Every Store</em>
-        </h1>
-        <p>
-          Upload one master file for all your stores. KinMarché automatically
-          separates records by store code, lets each manager reconcile their stock
-          securely, and gives your L&amp;P team a central view of every discrepancy.
-        </p>
-        {!user && (
-          <Link
-            to="/login"
-            className="btn btn-primary"
-            style={{ padding: '11px 28px', fontSize: 14 }}
-          >
-            Get Started
-          </Link>
-        )}
+      {/* ── Hero with retail background image ── */}
+      <div className="home-hero-bg">
+        <div className="home-hero" style={{ textAlign: 'center', margin: '0 auto' }}>
+          <div className="home-eyebrow">Retail Inventory Reconciliation</div>
+          <h1>
+            Catch shrinkage early.<br />
+            <em>Across every store.</em>
+          </h1>
+          <p>
+            Upload one master Excel file for your entire network. KinMarché separates
+            records by Store Code automatically — every manager sees only their store,
+            every discrepancy is calculated server-side, and your L&amp;P team gets
+            instant risk visibility.
+          </p>
+          {!user && (
+            <Link
+              to="/login"
+              className="btn btn-primary"
+              style={{ padding: '12px 32px', fontSize: 15, display: 'inline-flex' }}
+            >
+              Get Started →
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* ── Workflow ── */}
       <div className="home-workflow">
-        <div className="home-step">
-          <div className="home-step-num">1</div>
-          <div className="home-step-body">
-            <strong>Upload Master File</strong>
-            <span>Single Excel for all stores</span>
+        {[
+          { n: '1', title: 'Upload Master File',    sub: 'Single Excel for all stores' },
+          { n: '2', title: 'Auto Store Split',      sub: 'Records separated by Store Code' },
+          { n: '3', title: 'Manager Reconciliation',sub: 'Each store enters Sold quantities' },
+          { n: '4', title: 'L&P Insights',          sub: 'Central risk monitoring & export' },
+        ].map((s, i) => (
+          <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            <div className="home-step">
+              <div className="home-step-num">{s.n}</div>
+              <div className="home-step-body">
+                <strong>{s.title}</strong>
+                <span>{s.sub}</span>
+              </div>
+            </div>
+            {i < 3 && <div className="home-step-arrow">→</div>}
           </div>
-        </div>
-        <div className="home-step-arrow">→</div>
-        <div className="home-step">
-          <div className="home-step-num">2</div>
-          <div className="home-step-body">
-            <strong>Store Separation</strong>
-            <span>Auto-split by Store Code</span>
-          </div>
-        </div>
-        <div className="home-step-arrow">→</div>
-        <div className="home-step">
-          <div className="home-step-num">3</div>
-          <div className="home-step-body">
-            <strong>Manager Reconciliation</strong>
-            <span>Each store enters Sold quantities</span>
-          </div>
-        </div>
-        <div className="home-step-arrow">→</div>
-        <div className="home-step">
-          <div className="home-step-num">4</div>
-          <div className="home-step-body">
-            <strong>Admin Insights</strong>
-            <span>Central L&amp;P monitoring</span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* ── Features ── */}
+      {/* ── Feature cards ── */}
       <div className="home-features">
         {[
-          { icon: '🔒', title: 'Store Isolation', desc: 'Each manager sees only their assigned store. No cross-store data leaks.' },
-          { icon: '📤', title: 'One Upload', desc: 'Upload a single master Excel file. Records are separated by Store Code automatically.' },
-          { icon: '⚡', title: 'Auto Reconciliation', desc: 'Diff = Sold − SYS is calculated server-side. Managers cannot manipulate figures.' },
-          { icon: '📊', title: 'Risk Scorecard', desc: 'Admin dashboard ranks stores by shortage rate so you know where to focus first.' },
-          { icon: '🔁', title: 'Repeat Tracking', desc: 'Automatically flags SKUs with shortages across consecutive cycles.' },
-          { icon: '📥', title: 'Excel Export', desc: 'Download updated reconciliation reports filtered by store, date, or discrepancy type.' },
+          { icon: '🔒', title: 'Store Isolation',     desc: 'Each manager sees only their assigned store. Enforced at the server level — not just the UI.' },
+          { icon: '📤', title: 'Single Upload',        desc: 'One master Excel file for the whole network. Records separate by Store Code automatically.' },
+          { icon: '⚡', title: 'Server-Side Diff',    desc: 'Diff = Sold − SYS is calculated and stored server-side. Managers cannot manipulate figures.' },
+          { icon: '📊', title: 'Risk Scorecard',       desc: 'Every store ranked High Risk / Watch / On Track by shortage rate. Worst performers surface first.' },
+          { icon: '🔁', title: 'Repeat Hotspots',     desc: 'Automatically flags (store, item) pairs with shortages across two or more consecutive cycles.' },
+          { icon: '📥', title: 'Excel Export',         desc: 'Download full reconciliation reports filtered by store, cycle, status, or discrepancy type.' },
         ].map((f) => (
           <div key={f.title} className="home-feat">
             <div className="home-feat-icon">{f.icon}</div>
@@ -100,6 +97,17 @@ export default function Home() {
             <p>{f.desc}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Footer ── */}
+      <div style={{
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        padding: '24px 48px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        maxWidth: 1280, margin: '0 auto', color: '#334155', fontSize: 12,
+      }}>
+        <span>KinMarché &copy; {new Date().getFullYear()} — Kinshasa, DRC</span>
+        <span>Loss &amp; Prevention Inventory Reconciliation Platform</span>
       </div>
     </div>
   );
