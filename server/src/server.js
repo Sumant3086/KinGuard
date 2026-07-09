@@ -19,7 +19,8 @@ async function startServer() {
     await prisma.$connect();
     console.log('Database connected successfully');
 
-    await freePort(env.server.port);
+    // Only kill the port in development — never do this in production
+    if (env.server.nodeEnv === 'development') await freePort(env.server.port);
 
     const server = app.listen(env.server.port, () => {
       console.log(`Server running on port ${env.server.port}`);

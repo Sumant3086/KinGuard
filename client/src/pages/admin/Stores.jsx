@@ -1,32 +1,92 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
+import { useToast } from '../../context/ToastContext';
 
 export default function AdminStores() {
-  const [stores, setStores] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const toast = useToast();
+  const [stores, setStores]     = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [selected, setSelected] = useState(new Set()); // Set of store IDs
+
+  // Add/Edit modal
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [formData, setFormData] = useState({ storeCode: '', storeName: '', isActive: true });
-  const [editingId, setEditingId] = useState(null);
+  const [formError, setFormError]   = useState('');
+  const [editingId, setEditingId]   = useState(null);
+  const [formData, setFormData]     = useState({ storeCode: '', storeName: '', isActive: true });
 
-  useEffect(() => {
-    loadStores();
-  }, []);
+  // Bulk delete state
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  useEffect(() => { loadStores(); }, []);
 
   async function loadStores() {
     try {
       setLoading(true);
+      setSelected(new Set());
       const data = await adminApi.getStores();
       setStores(data);
     } catch (err) {
-      console.error('Failed to load stores:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
+  // ── Selection helpers ──────────────────────────────────────────────
+  const allSelected = stores.length > 0 && selected.size === stores.length;
+  const someSelected = selected.size > 0 && selected.size < stores.length;
+
+  function toggleSelect(id) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected(allSelected ? new Set() : new Set(stores.map(s => s.id)));
+  }
+
+  // ── Bulk delete ────────────────────────────────────────────────────
+  async function handleBulkDelete() {
+    const selectedStores = stores.filter(s => selected.has(s.id));
+    const withRecords    = selectedStores.filter(s => s._count.inventoryRecords > 0);
+    const totalRecords   = withRecords.reduce((sum, s) => sum + s._count.inventoryRecords, 0);
+
+    const msg =
+      `DELETE ${selected.size} STORE${selected.size !== 1 ? 'S' : ''}\n\n` +
+      (withRecords.length > 0
+        ? `⚠ ${withRecords.length} store(s) have a combined ${totalRecords} inventory record(s) that will also be permanently erased.\n\n`
+        : '') +
+      `This cannot be undone.\n\nType  DELETE  to confirm:`;
+
+    const confirmed = prompt(msg);
+    if (confirmed !== 'DELETE') {
+      if (confirmed !== null) toast.warning('Confirmation did not match — no stores deleted.');
+      return;
+    }
+
+    // Optimistic update — remove from screen immediately before server responds
+    const deletingIds = Array.from(selected);
+    setStores(prev => prev.filter(s => !selected.has(s.id)));
+    setSelected(new Set());
+    setBulkDeleting(true);
+    try {
+      const result = await adminApi.bulkDeleteStores(deletingIds, true);
+      toast.success(result.message);
+      await loadStores(); // sync with server state
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Bulk delete failed');
+      await loadStores(); // rollback on error
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  // ── Single store actions ───────────────────────────────────────────
   function openCreate() {
     setEditingId(null);
     setFormData({ storeCode: '', storeName: '', isActive: true });
@@ -74,12 +134,30 @@ export default function AdminStores() {
       await adminApi.deleteStore(store.id);
       await loadStores();
     } catch (err) {
-      alert(err.response?.data?.error || 'Delete failed');
+      toast.error(err.response?.data?.error || 'Delete failed');
     }
   }
 
-  const activeStores   = stores.filter(s => s.isActive);
-  const inactiveStores = stores.filter(s => !s.isActive);
+  async function handleForceDelete(store) {
+    const confirmed = prompt(
+      `FORCE DELETE "${store.storeName}" (${store.storeCode})\n\n` +
+      `Will permanently erase ${store._count.inventoryRecords} inventory record(s), deadline extensions, and manager links.\n\n` +
+      `Type the store code to confirm:`
+    );
+    if (confirmed !== store.storeCode) {
+      if (confirmed !== null) toast.warning('Store code did not match — deletion cancelled.');
+      return;
+    }
+    try {
+      await adminApi.forceDeleteStore(store.id);
+      await loadStores();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Force delete failed');
+    }
+  }
+
+  const activeCount   = stores.filter(s => s.isActive).length;
+  const inactiveCount = stores.filter(s => !s.isActive).length;
 
   return (
     <AdminLayout>
@@ -89,11 +167,42 @@ export default function AdminStores() {
           <p>
             {stores.length === 0
               ? 'No stores yet — add your first store to get started.'
-              : `${activeStores.length} active · ${inactiveStores.length} inactive`}
+              : `${activeCount} active · ${inactiveCount} inactive · ${stores.length} total`}
           </p>
         </div>
         <button onClick={openCreate} className="btn btn-primary">+ Add Store</button>
       </div>
+
+      {/* ── Bulk action bar (shown when stores are selected) ── */}
+      {selected.size > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 16px', marginBottom: 12,
+          background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)',
+          borderRadius: 'var(--r-md)',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>
+            {selected.size} store{selected.size !== 1 ? 's' : ''} selected
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setSelected(new Set())}
+              disabled={bulkDeleting}
+            >
+              Clear selection
+            </button>
+            <button
+              className="btn btn-sm"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              style={{ background: 'rgba(239,68,68,0.14)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.28)', fontWeight: 600 }}
+            >
+              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading"><div className="spinner" />Loading stores…</div>
@@ -102,9 +211,7 @@ export default function AdminStores() {
           <div className="empty-state">
             <div className="empty-state-icon">🏪</div>
             <p>Add your first store to get started.</p>
-            <button onClick={openCreate} className="btn btn-primary" style={{ marginTop: 16 }}>
-              + Add Store
-            </button>
+            <button onClick={openCreate} className="btn btn-primary" style={{ marginTop: 16 }}>+ Add Store</button>
           </div>
         </div>
       ) : (
@@ -113,18 +220,39 @@ export default function AdminStores() {
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 36, paddingRight: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={el => { if (el) el.indeterminate = someSelected; }}
+                      onChange={toggleSelectAll}
+                      style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }}
+                      title={allSelected ? 'Deselect all' : 'Select all'}
+                    />
+                  </th>
                   <th>Store Code</th>
                   <th>Store Name</th>
-                  <th>Manager Accounts</th>
-                  <th>Inventory Records</th>
+                  <th>Managers</th>
+                  <th>Records</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {stores.map((store) => (
-                  <tr key={store.id}>
-                    <td style={{ fontWeight: 700, color: 'var(--t1)', fontFamily: 'monospace' }}>
+                {stores.map(store => (
+                  <tr
+                    key={store.id}
+                    style={selected.has(store.id) ? { background: 'rgba(139,92,246,0.06)' } : {}}
+                  >
+                    <td style={{ paddingRight: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(store.id)}
+                        onChange={() => toggleSelect(store.id)}
+                        style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }}
+                      />
+                    </td>
+                    <td style={{ fontWeight: 700, color: 'var(--vi-light)', fontFamily: 'monospace' }}>
                       {store.storeCode}
                     </td>
                     <td style={{ fontWeight: 600 }}>{store.storeName}</td>
@@ -135,17 +263,24 @@ export default function AdminStores() {
                         {store.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">
-                        Edit
-                      </button>
-                      {store._count.inventoryRecords === 0 && (
+                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
+                      {store._count.inventoryRecords === 0 ? (
                         <button
                           onClick={() => handleDelete(store)}
                           className="btn btn-sm"
-                          style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.25)' }}
+                          style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}
                         >
                           Delete
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleForceDelete(store)}
+                          className="btn btn-sm"
+                          title={`Force delete — erases ${store._count.inventoryRecords} record(s)`}
+                          style={{ background: 'rgba(239,68,68,0.07)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }}
+                        >
+                          Force Delete
                         </button>
                       )}
                     </td>
@@ -157,18 +292,17 @@ export default function AdminStores() {
         </div>
       )}
 
+      {/* ── Add / Edit modal ── */}
       {showModal && (
         <div className="modal" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingId ? 'Edit Store' : 'Add Store'}</h3>
-              <button onClick={closeModal} className="close-btn" disabled={submitting}>&times;</button>
+              <button className="close-btn" onClick={closeModal} disabled={submitting}>&times;</button>
             </div>
 
             {formError && (
-              <div className="alert alert-error" style={{ marginBottom: 16, fontSize: 13 }}>
-                {formError}
-              </div>
+              <div className="alert alert-error" style={{ marginBottom: 16, fontSize: 13 }}>{formError}</div>
             )}
 
             <form onSubmit={handleSubmit}>
@@ -177,7 +311,7 @@ export default function AdminStores() {
                 <input
                   type="text"
                   value={formData.storeCode}
-                  onChange={(e) => setFormData({ ...formData, storeCode: e.target.value })}
+                  onChange={e => setFormData({ ...formData, storeCode: e.target.value })}
                   required
                   disabled={editingId !== null || submitting}
                   placeholder="e.g. 2050"
@@ -185,7 +319,7 @@ export default function AdminStores() {
                 />
                 {!editingId && (
                   <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>
-                    Must be unique. Cannot be changed after creation.
+                    Must match the code in your Excel files. Cannot be changed after creation.
                   </small>
                 )}
               </div>
@@ -194,7 +328,7 @@ export default function AdminStores() {
                 <input
                   type="text"
                   value={formData.storeName}
-                  onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
+                  onChange={e => setFormData({ ...formData, storeName: e.target.value })}
                   required
                   disabled={submitting}
                   placeholder="e.g. Kinshasa Central Branch"
@@ -205,7 +339,7 @@ export default function AdminStores() {
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
                     style={{ width: 'auto' }}
                     disabled={submitting}
                   />
@@ -213,9 +347,7 @@ export default function AdminStores() {
                 </label>
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
-                  Cancel
-                </button>
+                <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Saving…' : editingId ? 'Update Store' : 'Create Store'}
                 </button>

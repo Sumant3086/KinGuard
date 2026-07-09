@@ -31,18 +31,22 @@ const upload = multer({
 // Dashboard
 router.get('/dashboard', adminController.getDashboard);
 
-// Stores
+// Stores — bulk route MUST come before :id routes
 router.get('/stores', adminController.getStores);
 router.post('/stores', adminController.createStore);
+router.delete('/stores/bulk', adminController.bulkDeleteStores);
 router.patch('/stores/:id', adminController.updateStore);
 router.delete('/stores/:id', adminController.deleteStore);
+router.delete('/stores/:id/force', adminController.forceDeleteStore);
 
 // Users
 router.get('/users', adminController.getUsers);
 router.post('/users', adminController.createUser);
 router.patch('/users/:id', adminController.updateUser);
+router.delete('/users/:id', adminController.deleteUser);
 
 // Uploads
+router.get('/uploads/template', adminController.downloadSampleTemplate);
 router.post('/uploads/preview', upload.single('file'), adminController.previewUpload);
 router.post('/uploads', upload.single('file'), adminController.uploadInventory);
 router.get('/uploads', adminController.getUploads);
@@ -50,19 +54,27 @@ router.get('/uploads', adminController.getUploads);
 // Inventory
 router.get('/inventory', adminController.getInventory);
 router.get('/inventory/export', adminController.downloadInventoryExport);
+router.get('/inventory/export-pdf', adminController.downloadInventoryExportPDF);
+router.patch('/inventory/:id/override', adminController.overrideInventoryRecord);
 
 // Reports
 router.get('/reports/reconciliation', adminController.getReconciliationReport);
 router.get('/reports/reconciliation/download', adminController.downloadReconciliationReport);
+router.get('/reports/reconciliation/download-pdf', adminController.downloadReconciliationReportPDF);
 
 // Audit logs
 router.get('/audit-logs', adminController.getAuditLogs);
+router.get('/audit-logs/export', adminController.exportAuditLogs);
 
 // Batches
 router.get('/batches', adminController.getBatches);
 router.patch('/batches/:id', adminController.updateBatch);
+router.delete('/batches/:id', adminController.deleteBatch);
 router.post('/batches/extend', adminController.grantStoreExtension);
+router.post('/batches/:id/unlock-store', adminController.unlockStoreForBatch);
 router.get('/batches/:batchId/export', adminController.getBatchExport);
+router.get('/batches/:batchId/export-pdf', adminController.downloadBatchExportPDF);
+router.post('/batches/:id/send-reminders', adminController.sendBatchReminders);
 
 // Analytics
 router.get('/analytics/trends', adminController.getTrends);

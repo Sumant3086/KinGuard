@@ -19,9 +19,15 @@ app.use(
 // Compression
 app.use(compression());
 
-// Body parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parsing — cap JSON at 1 MB to prevent DoS via oversized payloads
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Suppress verbose dev logs in production
+if (process.env.NODE_ENV === 'production') {
+  const noop = () => {};
+  console.log = noop;
+}
 
 // Health check
 app.get('/api/health', (req, res) => {
