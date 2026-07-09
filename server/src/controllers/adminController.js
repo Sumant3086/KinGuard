@@ -586,7 +586,13 @@ export async function uploadInventory(req, res, next) {
       const code = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
       if (code) fileStoreCodes.add(code);
     }
-    const existingStores = await prisma.store.findMany({ select: { id: true, storeCode: true } });
+    let existingStores;
+    try {
+      existingStores = await prisma.store.findMany({ select: { id: true, storeCode: true } });
+    } catch {
+      await prisma.$connect();
+      existingStores = await prisma.store.findMany({ select: { id: true, storeCode: true } });
+    }
     const existingCodes = new Set(existingStores.map(s => s.storeCode));
     const newStoreCodes = [...fileStoreCodes].filter(c => !existingCodes.has(c));
     if (newStoreCodes.length > 0) {
@@ -733,10 +739,14 @@ export async function previewUpload(req, res, next) {
 
     console.log('" Preview Headers:', Object.keys(rows[0]));
 
-    // Fetch all store codes for validation
-    const stores = await prisma.store.findMany({
-      select: { storeCode: true, storeName: true },
-    });
+    // Fetch all store codes for validation — retry once on transient DB errors
+    let stores;
+    try {
+      stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
+    } catch {
+      await prisma.$connect();
+      stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
+    }
     const storeMap = new Map(stores.map(s => [s.storeCode, s.storeName]));
 
     const preview = [];
