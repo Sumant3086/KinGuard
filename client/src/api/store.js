@@ -24,9 +24,10 @@ export async function getInventory(search, status, batchId) {
   return data;
 }
 
-export async function updateRecord(id, physicalQuantity, remarks, shrinkageCategory) {
+export async function updateRecord(id, physicalQuantity, systemQuantity, remarks, shrinkageCategory) {
   const { data } = await client.patch(`/store/inventory/${id}`, {
     physicalQuantity,
+    systemQuantity,
     remarks,
     shrinkageCategory,
   });

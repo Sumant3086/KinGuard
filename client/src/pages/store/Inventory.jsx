@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import StoreLayout from '../../components/StoreLayout';
 import * as storeApi from '../../api/store';
+import { useToast } from '../../context/ToastContext';
 
 const IconSave = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -22,6 +23,7 @@ const IconRetry = () => (
 );
 
 export default function StoreInventory() {
+  const toast = useToast();
   const [records, setRecords]           = useState([]);
   const [batches, setBatches]           = useState([]);
   const [selectedBatch, setSelectedBatch] = useState('');
@@ -131,7 +133,7 @@ export default function StoreInventory() {
     setErrorRecords(prev => { const m = new Map(prev); m.delete(recordId); return m; });
 
     try {
-      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.remarks, edits.shrinkageCategory);
+      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.systemQuantity, edits.remarks, edits.shrinkageCategory);
       setRecords(prev => prev.map(r => r.id === parseInt(recordId) ? updated : r));
       setSavedRecords(prev => new Set(prev).add(recordId));
       setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
@@ -157,12 +159,15 @@ export default function StoreInventory() {
     return record[field] ?? '';
   }
 
-  // Returns instant local diff from typed value (no API wait)
+  // Returns instant local diff from typed values (no API wait)
   function getInstantDiff(record) {
     const edited = editedRecords[record.id];
-    if (edited?.physicalQuantity !== undefined && edited.physicalQuantity !== '' && edited.physicalQuantity !== null) {
-      const sold = parseFloat(edited.physicalQuantity);
-      if (!isNaN(sold)) return sold - record.systemQuantity;
+    const physRaw = edited?.physicalQuantity !== undefined ? edited.physicalQuantity : record.physicalQuantity;
+    const sysRaw  = edited?.systemQuantity  !== undefined ? edited.systemQuantity   : record.systemQuantity;
+    const phys = parseFloat(physRaw);
+    const sys  = parseFloat(sysRaw);
+    if (!isNaN(phys) && physRaw !== '' && physRaw !== null) {
+      return parseFloat((phys - (isNaN(sys) ? 0 : sys)).toFixed(4));
     }
     return record.difference;
   }
@@ -189,12 +194,12 @@ export default function StoreInventory() {
 
   async function handleSubmit() {
     if (!selectedBatch) {
-      alert('Please select a specific date before submitting');
+      toast.warning('Please select a specific date before submitting');
       return;
     }
     const batchId = parseInt(selectedBatch);
     if (Object.keys(editedRecordsRef.current).length > 0) {
-      alert('Please wait for all changes to save before submitting');
+      toast.warning('Please wait for all changes to save before submitting');
       return;
     }
     if (!confirm('Submit your inventory? All pending items will become read-only. Your manager will be notified.')) return;
@@ -203,7 +208,7 @@ export default function StoreInventory() {
       const res = await storeApi.submitInventory(batchId);
       setSubmitResult(res);
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to submit inventory');
+      toast.error(err.response?.data?.error || 'Failed to submit inventory');
     } finally {
       setSubmitting(false);
     }
@@ -217,7 +222,7 @@ export default function StoreInventory() {
       a.href = url; a.download = 'inventory.xlsx'; a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to download');
+      toast.error(err.response?.data?.error || 'Failed to download');
     }
   }
 
@@ -271,8 +276,8 @@ export default function StoreInventory() {
                   <thead>
                     <tr>
                       <th>Material Name</th>
-                      <th>Expected Qty</th>
-                      <th>Counted Qty</th>
+                      <th>System Stock</th>
+                      <th>Physical Stock</th>
                       <th>Gap</th>
                       <th>Remarks</th>
                     </tr>
@@ -456,8 +461,8 @@ export default function StoreInventory() {
                 <tr>
                   <th>Material Name</th>
                   <th>Description</th>
-                  <th style={{ textAlign: 'right' }}>Expected Qty</th>
-                  <th style={{ textAlign: 'right' }}>Counted Qty</th>
+                  <th style={{ textAlign: 'right' }}>System Stock</th>
+                  <th style={{ textAlign: 'right' }}>Physical Stock</th>
                   <th>Gap</th>
                   <th>Remarks</th>
                   <th>Status</th>
@@ -492,12 +497,24 @@ export default function StoreInventory() {
                         <span className="mat-desc">{record.materialName}</span>
                       </td>
 
-                      {/* Expected Qty (SYS) */}
+                      {/* System Stock (editable when pending) */}
                       <td style={{ textAlign: 'right' }}>
-                        <span className="qty-sys">{record.systemQuantity}</span>
+                        {isEditable ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={getFieldValue(record, 'systemQuantity')}
+                            onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
+                            placeholder="0"
+                            className="qty-input qty-input-sys"
+                          />
+                        ) : (
+                          <span className="qty-sys">{record.systemQuantity}</span>
+                        )}
                       </td>
 
-                      {/* Counted Qty (editable) */}
+                      {/* Physical Stock (editable when pending) */}
                       <td style={{ textAlign: 'right' }}>
                         {isEditable ? (
                           <input
