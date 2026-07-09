@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+﻿import bcrypt from 'bcrypt';
 import ExcelJS from 'exceljs';
 import { parse } from 'csv-parse/sync';
 import { AppError } from '../middleware/errorHandler.js';
@@ -24,17 +24,28 @@ function findColumn(row, possibleNames) {
   return null;
 }
 
+// Safely extract plain text from any ExcelJS cell value.
+// Handles: plain string, number, boolean, RichText ({richText:[{text}]}), Hyperlink ({text}).
+function cellText(val) {
+  if (val === null || val === undefined) return ‘’;
+  if (typeof val === ‘string’)  return val.trim();
+  if (typeof val === ‘number’ || typeof val === ‘boolean’) return String(val);
+  if (Array.isArray(val?.richText)) return val.richText.map(r => r.text ?? ‘’).join(‘’).trim();
+  if (val?.text !== undefined)  return String(val.text).trim();
+  return String(val).trim();
+}
+
 async function parseFileToRows(file) {
-  if (file.mimetype.includes('csv')) {
+  if (file.mimetype.includes(‘csv’)) {
     return parse(file.buffer, { columns: true, skip_empty_lines: true, trim: true });
   }
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(file.buffer);
   const worksheet = workbook.worksheets[0];
-  // Map column number → header name; columns with no header get a positional key (col_N)
+  // Map column number → header name; bold/rich-text headers are flattened to plain string
   const headerMap = {};
   worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
-    headerMap[colNumber] = cell.value?.toString().trim() || `col_${colNumber}`;
+    headerMap[colNumber] = cellText(cell.value) || `col_${colNumber}`;
   });
   const rows = [];
   worksheet.eachRow((row, rowIndex) => {
@@ -42,7 +53,11 @@ async function parseFileToRows(file) {
     const rowData = {};
     row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
       const key = headerMap[colNumber] ?? `col_${colNumber}`;
-      rowData[key] = cell.value;
+      // Flatten RichText data cells too (e.g. bold material codes)
+      const v = cell.value;
+      rowData[key] = (v && typeof v === ‘object’ && (Array.isArray(v.richText) || v.text !== undefined))
+        ? cellText(v)
+        : v;
     });
     if (Object.keys(rowData).length > 0) rows.push(rowData);
   });
@@ -54,7 +69,7 @@ export async function getDashboard(req, res, next) {
   try {
     const cached = sGet('admin:dashboard');
     if (cached) {
-      res.set('Cache-Control', 'private, max-age=30');
+      
       return res.json(cached);
     }
 
@@ -108,7 +123,7 @@ export async function getDashboard(req, res, next) {
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true } }),
     ]);
 
-    // Top remark per store + last 4 batches — run in parallel (B5)
+    // Top remark per store + last 4 batches â€” run in parallel (B5)
     const [topRemarkRows, last4Batches] = await Promise.all([
       prisma.$queryRaw`
         SELECT "storeId", remarks, COUNT(*)::int AS cnt
@@ -157,7 +172,7 @@ export async function getDashboard(req, res, next) {
       };
     }).sort((a, b) => b.shortageRate - a.shortageRate);
 
-    // Shrinkage hotspots: (storeId, materialCode) pairs with shortages in ≥2 of the last 4 batches.
+    // Shrinkage hotspots: (storeId, materialCode) pairs with shortages in â‰¥2 of the last 4 batches.
     const batchIds = last4Batches.map((b) => b.id);
 
     let hotspots = [];
@@ -244,7 +259,7 @@ export async function getDashboard(req, res, next) {
       },
     };
     sSet('admin:dashboard', result, 30_000);
-    res.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=30');
+    
     res.json(result);
   } catch (error) {
     next(error);
@@ -265,7 +280,7 @@ export async function getStores(req, res, next) {
       },
     });
 
-    res.set('Cache-Control', 'private, max-age=60');
+    
     res.json(stores);
   } catch (error) {
     next(error);
@@ -321,7 +336,7 @@ export async function deleteStore(req, res, next) {
 
     if (store._count.inventoryRecords > 0) {
       throw new AppError(
-        `Cannot delete — this store has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
+        `Cannot delete â€” this store has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
         409
       );
     }
@@ -392,7 +407,7 @@ export async function getUsers(req, res, next) {
       },
     });
 
-    res.set('Cache-Control', 'private, max-age=60');
+    
     res.json(users);
   } catch (error) {
     next(error);
@@ -401,7 +416,7 @@ export async function getUsers(req, res, next) {
 
 export async function createUser(req, res, next) {
   try {
-    const { employeeId, name, password, role, storeId, isActive } = req.body;
+    const { employeeId, name, password, role, storeId, isActive, email, phone } = req.body;
 
     if (!employeeId || !name || !password || !role) {
       throw new AppError('Employee ID, name, password, and role are required', 400);
@@ -415,6 +430,10 @@ export async function createUser(req, res, next) {
       throw new AppError('Admin users cannot be assigned to a store', 400);
     }
 
+    if (password.length < 8) {
+      throw new AppError('Password must be at least 8 characters', 400);
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -425,6 +444,8 @@ export async function createUser(req, res, next) {
         role,
         storeId: storeId ? parseInt(storeId) : null,
         isActive: isActive !== undefined ? isActive : true,
+        email: email || null,
+        phone: phone || null,
       },
       include: {
         store: true,
@@ -453,13 +474,30 @@ export async function createUser(req, res, next) {
 export async function updateUser(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, password, storeId, isActive } = req.body;
+    const { name, password, storeId, isActive, email, phone } = req.body;
 
     const data = {
-      name: name !== undefined ? name : undefined,
-      storeId: storeId !== undefined ? (storeId ? parseInt(storeId) : null) : undefined,
+      name:     name     !== undefined ? name     : undefined,
       isActive: isActive !== undefined ? isActive : undefined,
+      email:    email    !== undefined ? (email || null)  : undefined,
+      phone:    phone    !== undefined ? (phone || null)  : undefined,
     };
+
+    if (storeId !== undefined) {
+      if (storeId) {
+        data.store = { connect: { id: parseInt(storeId) } };
+      } else {
+        // Only issue disconnect if the user actually has a store — Prisma P2025
+        // is thrown when disconnecting an already-null optional relation.
+        const current = await prisma.user.findUnique({
+          where: { id: parseInt(id) },
+          select: { storeId: true },
+        });
+        if (current?.storeId) {
+          data.store = { disconnect: true };
+        }
+      }
+    }
 
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 10);
@@ -519,7 +557,7 @@ export async function uploadInventory(req, res, next) {
     const rows = await parseFileToRows(file);
 
     if (rows.length > 0) {
-      console.log('📋 Upload Headers:', Object.keys(rows[0]));
+      console.log('ðŸ“‹ Upload Headers:', Object.keys(rows[0]));
     }
 
     // Create upload batch
@@ -584,7 +622,7 @@ export async function uploadInventory(req, res, next) {
           continue;
         }
 
-        // System quantity is optional — default to 0 when not in the file
+        // System quantity is optional â€” default to 0 when not in the file
         const qty = (rawQty !== null && rawQty !== undefined && rawQty !== '')
           ? parseFloat(rawQty)
           : 0;
@@ -615,10 +653,12 @@ export async function uploadInventory(req, res, next) {
       }
     }
 
-    // Insert successful records
+    // Insert successful records â€” skipDuplicates prevents re-uploading the same
+    // (batch, store, material) from creating duplicate rows
     if (successfulRecords.length > 0) {
       await prisma.inventoryRecord.createMany({
         data: successfulRecords,
+        skipDuplicates: true,
       });
     }
 
@@ -646,12 +686,24 @@ export async function uploadInventory(req, res, next) {
     });
 
     sInvalidate('admin:dashboard');
+
+    // Fire-and-forget: email all store managers in affected stores
+    const affectedStoreIds = [...storeMap.values()];
+    prisma.user.findMany({
+      where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: affectedStoreIds } },
+      include: { store: true },
+    }).then(managers => {
+      import('../services/emailService.js').then(({ sendNewCycleEmail }) => {
+        sendNewCycleEmail({ managers, inventoryDate, deadline: submissionDeadline || null });
+      });
+    }).catch(() => {});
+
     res.status(201).json({
       batchId: batch.id,
       totalRows: rows.length,
       successfulRows: successfulRecords.length,
       rejectedRows: errors.length,
-      errors: errors.slice(0, 50), // Limit error details
+      errors: errors.slice(0, 50),
     });
   } catch (error) {
     next(error);
@@ -676,7 +728,7 @@ export async function previewUpload(req, res, next) {
       throw new AppError('No data rows found in file', 400);
     }
 
-    console.log('📋 Preview Headers:', Object.keys(rows[0]));
+    console.log('ðŸ“‹ Preview Headers:', Object.keys(rows[0]));
 
     // Fetch all store codes for validation
     const stores = await prisma.store.findMany({
@@ -718,9 +770,9 @@ export async function previewUpload(req, res, next) {
         errors.push('Missing Material Code');
       }
 
-      // System quantity is optional — default 0 when absent
+      // System quantity is optional â€” default 0 when absent
       if (rawQty === null || rawQty === undefined || rawQty === '') {
-        warnings.push('System qty not in file — defaults to 0');
+        warnings.push('System qty not in file â€” defaults to 0');
       } else {
         const qty = parseFloat(rawQty);
         if (isNaN(qty)) {
@@ -832,7 +884,7 @@ export async function getInventory(req, res, next) {
       }),
     ]);
 
-    // Attach repeat discrepancy flag — only check shortages in current page (B4)
+    // Attach repeat discrepancy flag â€” only check shortages in current page (B4)
     const shortageKeys = new Set(
       records
         .filter(r => r.difference !== null && r.difference < 0 && r.status === 'SUBMITTED')
@@ -982,8 +1034,8 @@ export async function downloadReconciliationReport(req, res, next) {
       { header: 'Date', key: 'inventoryDate', width: 15 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Material Description', key: 'materialName', width: 30 },
-      { header: 'SYS', key: 'systemQuantity', width: 12 },
-      { header: 'Sold', key: 'physicalQuantity', width: 12 },
+      { header: 'System Stock', key: 'systemQuantity', width: 14 },
+      { header: 'Physical Stock', key: 'physicalQuantity', width: 14 },
       { header: 'Diff', key: 'difference', width: 12 },
       { header: 'Remarks', key: 'remarks', width: 30 },
       { header: 'Status', key: 'status', width: 12 },
@@ -1101,8 +1153,8 @@ export async function downloadInventoryExport(req, res, next) {
       { header: 'Date', key: 'inventoryDate', width: 15 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Material Description', key: 'materialName', width: 35 },
-      { header: 'SYS', key: 'sys', width: 12 },
-      { header: 'Sold', key: 'sold', width: 12 },
+      { header: 'System Stock', key: 'sys', width: 14 },
+      { header: 'Physical Stock', key: 'sold', width: 14 },
       { header: 'Diff', key: 'diff', width: 12 },
       { header: 'Remarks', key: 'remarks', width: 30 },
       { header: 'Status', key: 'status', width: 12 },
@@ -1205,14 +1257,14 @@ export async function getAuditLogs(req, res, next) {
       },
     });
 
-    res.set('Cache-Control', 'private, max-age=60');
+    
     res.json(logs);
   } catch (error) {
     next(error);
   }
 }
 
-// ─── C1: New batch management endpoints ───────────────────────────────────────
+// â”€â”€â”€ C1: New batch management endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getBatches(req, res, next) {
   try {
@@ -1239,7 +1291,7 @@ export async function getBatches(req, res, next) {
 
     const statsMap = new Map(statsRows.map(r => [Number(r.batchId), r]));
     const result = batches.map(b => ({ ...b, stats: statsMap.get(b.id) || null }));
-    res.set('Cache-Control', 'private, max-age=30');
+    
     res.json(result);
   } catch (error) { next(error); }
 }
@@ -1317,7 +1369,7 @@ export async function getTrends(req, res, next) {
       });
     });
 
-    res.set('Cache-Control', 'private, max-age=60');
+    
     res.json({ batches: batches.map(b => ({ id: b.id, inventoryDate: b.inventoryDate })), series: Array.from(storeMap.values()) });
   } catch (error) { next(error); }
 }
@@ -1368,8 +1420,8 @@ export async function getBatchExport(req, res, next) {
       { header: 'Store Name',    key: 'storeName',    width: 22 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Description',   key: 'materialName', width: 32 },
-      { header: 'SYS',           key: 'sys',          width: 10 },
-      { header: 'Sold',          key: 'sold',         width: 10 },
+      { header: 'System Stock',   key: 'sys',          width: 14 },
+      { header: 'Physical Stock',key: 'sold',         width: 14 },
       { header: 'Diff',          key: 'diff',         width: 10 },
       { header: 'Category',      key: 'category',     width: 18 },
       { header: 'Remarks',       key: 'remarks',      width: 30 },
@@ -1397,5 +1449,588 @@ export async function getBatchExport(req, res, next) {
     res.setHeader('Content-Disposition', `attachment; filename="KinGuard_Batch_${dateStr}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ Excel sample template â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function downloadSampleTemplate(req, res, next) {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Inventory');
+
+    ws.columns = [
+      { header: 'Plant',             key: 'plant',    width: 14 },
+      { header: 'Material',          key: 'material', width: 18 },
+      { header: 'Material Description', key: 'desc',  width: 32 },
+      { header: 'System  Stock',     key: 'stock',    width: 16 },
+      { header: 'Remarks',           key: 'remarks',  width: 30 },
+    ];
+
+    // Style header row
+    const hRow = ws.getRow(1);
+    hRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+    hRow.height = 20;
+
+    // Freeze and filter
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 5 } };
+
+    // Sample rows
+    const samples = [
+      { plant: '2050', material: 'MAT001', desc: 'Mineral Water 1.5L',     stock: 120, remarks: '' },
+      { plant: '2050', material: 'MAT002', desc: 'Rice 5kg Bag',            stock: 80,  remarks: '' },
+      { plant: '2050', material: 'MAT003', desc: 'Cooking Oil 1L',          stock: 45,  remarks: '' },
+      { plant: '2051', material: 'MAT001', desc: 'Mineral Water 1.5L',     stock: 95,  remarks: '' },
+      { plant: '2051', material: 'MAT004', desc: 'Sugar 1kg',               stock: 200, remarks: '' },
+    ];
+
+    samples.forEach(row => ws.addRow(row));
+
+    // Format Plant and Material as text to preserve leading zeros
+    ws.getColumn('plant').numFmt    = '@';
+    ws.getColumn('material').numFmt = '@';
+
+    // Instructions sheet
+    const info = workbook.addWorksheet('Instructions');
+    info.getColumn(1).width = 70;
+    const lines = [
+      'KinMarchÃ© â€” Inventory Upload Template',
+      '',
+      'REQUIRED COLUMNS (exact header names or accepted aliases):',
+      '  â€¢ Plant / Store Code / StoreCode  â†’  Store Code from your store list',
+      '  â€¢ Material / Material Code / SKU  â†’  Item identifier',
+      '  â€¢ Material Description / Description  â†’  Item name',
+      '  â€¢ System  Stock / System Stock / SYS  â†’  Stock quantity per your ERP system',
+      '',
+      'OPTIONAL COLUMNS:',
+      '  â€¢ Remarks / Remark / Note  â†’  Pre-filled remarks (managers can edit)',
+      '',
+      'NOTES:',
+      '  â€¢ Each store code in this file will be matched against your store list.',
+      '  â€¢ If a store code does not exist it will be automatically created',
+      '    with the name "Store {code}" â€” rename it afterwards in Store Management.',
+      '  â€¢ Store codes are case-sensitive.',
+      '  â€¢ Maximum file size: 10 MB.',
+      '  â€¢ Supported formats: .xlsx, .xls, .csv',
+    ];
+    lines.forEach((line, i) => {
+      const cell = info.getCell(`A${i + 1}`);
+      cell.value = line;
+      if (i === 0) cell.font = { bold: true, size: 13 };
+      if (line.startsWith('REQUIRED') || line.startsWith('OPTIONAL') || line.startsWith('NOTES')) {
+        cell.font = { bold: true };
+      }
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="KinGuard_InventoryTemplate.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ User deletion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function deleteUser(req, res, next) {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (userId === req.user.id) {
+      throw new AppError('You cannot delete your own account', 400);
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError('User not found', 404);
+
+    if (user.role === 'ADMIN') {
+      const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
+      if (adminCount <= 1) {
+        throw new AppError('Cannot delete the last administrator account', 400);
+      }
+    }
+
+    // Reassign non-nullable FK references to the deleting admin so data isn't orphaned
+    await prisma.uploadBatch.updateMany({ where: { uploadedBy: userId }, data: { uploadedBy: req.user.id } });
+    await prisma.batchDeadlineExtension.updateMany({ where: { grantedBy: userId }, data: { grantedBy: req.user.id } });
+
+    // Null out nullable FK references
+    await prisma.inventoryRecord.updateMany({ where: { submittedBy: userId }, data: { submittedBy: null } });
+    await prisma.auditLog.updateMany({ where: { userId }, data: { userId: null } });
+
+    await prisma.user.delete({ where: { id: userId } });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'DELETE_USER',
+      entityType: 'USER', entityId: userId,
+      metadata: { employeeId: user.employeeId, name: user.name, role: user.role },
+    });
+
+    res.json({ message: 'User deleted' });
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ Bulk store delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function bulkDeleteStores(req, res, next) {
+  try {
+    const { ids, force = false } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new AppError('ids must be a non-empty array', 400);
+    }
+
+    const storeIds = ids.map(Number);
+
+    if (force) {
+      await prisma.batchDeadlineExtension.deleteMany({ where: { storeId: { in: storeIds } } });
+      await prisma.inventoryRecord.deleteMany({ where: { storeId: { in: storeIds } } });
+      await prisma.user.updateMany({ where: { storeId: { in: storeIds } }, data: { storeId: null } });
+      await prisma.store.deleteMany({ where: { id: { in: storeIds } } });
+
+      await createAuditLog({
+        userId: req.user.id, action: 'BULK_DELETE_STORES',
+        entityType: 'STORE', entityId: null,
+        metadata: { ids: storeIds, force: true, count: storeIds.length },
+      });
+
+      sInvalidate('admin:dashboard');
+      return res.json({ deleted: storeIds.length, message: `${storeIds.length} store(s) permanently deleted` });
+    }
+
+    // Non-force: only delete stores with no inventory records
+    const withRecords = await prisma.inventoryRecord.findMany({
+      where: { storeId: { in: storeIds } },
+      select: { storeId: true },
+      distinct: ['storeId'],
+    });
+    const blockedIds  = new Set(withRecords.map(r => r.storeId));
+    const deletableIds = storeIds.filter(id => !blockedIds.has(id));
+
+    if (deletableIds.length > 0) {
+      await prisma.batchDeadlineExtension.deleteMany({ where: { storeId: { in: deletableIds } } });
+      await prisma.user.updateMany({ where: { storeId: { in: deletableIds } }, data: { storeId: null } });
+      await prisma.store.deleteMany({ where: { id: { in: deletableIds } } });
+    }
+
+    await createAuditLog({
+      userId: req.user.id, action: 'BULK_DELETE_STORES',
+      entityType: 'STORE', entityId: null,
+      metadata: { ids: storeIds, force: false, deleted: deletableIds.length, blocked: blockedIds.size },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json({
+      deleted: deletableIds.length,
+      blocked: blockedIds.size,
+      message: blockedIds.size > 0
+        ? `Deleted ${deletableIds.length} store(s). ${blockedIds.size} skipped (have records â€” use force delete).`
+        : `${deletableIds.length} store(s) deleted`,
+    });
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ Store force-delete (cascade all data) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function forceDeleteStore(req, res, next) {
+  try {
+    const storeId = parseInt(req.params.id);
+
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    if (!store) throw new AppError('Store not found', 404);
+
+    await prisma.batchDeadlineExtension.deleteMany({ where: { storeId } });
+    await prisma.inventoryRecord.deleteMany({ where: { storeId } });
+    await prisma.user.updateMany({ where: { storeId }, data: { storeId: null } });
+    await prisma.store.delete({ where: { id: storeId } });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'FORCE_DELETE_STORE',
+      entityType: 'STORE', entityId: storeId,
+      metadata: { storeCode: store.storeCode, storeName: store.storeName },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json({ message: 'Store and all its data permanently deleted' });
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ Batch (cycle) deletion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function deleteBatch(req, res, next) {
+  try {
+    const batchId = parseInt(req.params.id);
+
+    const batch = await prisma.uploadBatch.findUnique({
+      where: { id: batchId },
+      select: { id: true, inventoryDate: true, originalFileName: true },
+    });
+    if (!batch) throw new AppError('Cycle not found', 404);
+
+    await prisma.batchDeadlineExtension.deleteMany({ where: { batchId } });
+    await prisma.inventoryRecord.deleteMany({ where: { batchId } });
+    await prisma.uploadBatch.delete({ where: { id: batchId } });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'DELETE_BATCH',
+      entityType: 'UPLOAD_BATCH', entityId: batchId,
+      metadata: { inventoryDate: batch.inventoryDate, fileName: batch.originalFileName },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json({ message: 'Cycle deleted' });
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ Unlock a store's submission so they can re-count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function unlockStoreForBatch(req, res, next) {
+  try {
+    const batchId = parseInt(req.params.id);
+    const { storeId } = req.body;
+    if (!storeId) throw new AppError('storeId is required', 400);
+
+    const result = await prisma.inventoryRecord.updateMany({
+      where: { batchId, storeId: parseInt(storeId), status: 'SUBMITTED' },
+      data: {
+        status: 'PENDING',
+        physicalQuantity: null,
+        difference: null,
+        submittedBy: null,
+        submittedAt: null,
+      },
+    });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'UNLOCK_STORE_SUBMISSION',
+      entityType: 'UPLOAD_BATCH', entityId: batchId,
+      metadata: { storeId, recordsUnlocked: result.count },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json({ message: `${result.count} record(s) reset to pending`, count: result.count });
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ Admin override of any inventory record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function overrideInventoryRecord(req, res, next) {
+  try {
+    const recordId = parseInt(req.params.id);
+    const { physicalQuantity, remarks, shrinkageCategory, status } = req.body;
+
+    const record = await prisma.inventoryRecord.findUnique({ where: { id: recordId } });
+    if (!record) throw new AppError('Record not found', 404);
+
+    const updateData = {};
+
+    if (physicalQuantity !== undefined) {
+      const qty = physicalQuantity !== null && physicalQuantity !== '' ? parseFloat(physicalQuantity) : null;
+      if (qty !== null && isNaN(qty)) throw new AppError('Invalid quantity', 400);
+      updateData.physicalQuantity = qty;
+      updateData.difference = qty !== null ? parseFloat((qty - record.systemQuantity).toFixed(4)) : null;
+    }
+
+    if (remarks !== undefined) updateData.remarks = remarks || null;
+    if (shrinkageCategory !== undefined) updateData.shrinkageCategory = shrinkageCategory || null;
+    if (status !== undefined) {
+      if (!['PENDING', 'SUBMITTED'].includes(status)) throw new AppError('Invalid status', 400);
+      updateData.status = status;
+      if (status === 'SUBMITTED') {
+        updateData.submittedBy = req.user.id;
+        updateData.submittedAt = new Date();
+      } else {
+        updateData.submittedBy = null;
+        updateData.submittedAt = null;
+      }
+    }
+
+    const updated = await prisma.inventoryRecord.update({
+      where: { id: recordId },
+      data: updateData,
+      include: { store: { select: { storeCode: true, storeName: true } } },
+    });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'OVERRIDE_RECORD',
+      entityType: 'INVENTORY_RECORD', entityId: recordId,
+      metadata: {
+        before: {
+          physicalQuantity: record.physicalQuantity,
+          difference: record.difference,
+          remarks: record.remarks,
+          status: record.status,
+        },
+        after: updateData,
+      },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json(updated);
+  } catch (error) { next(error); }
+}
+
+// â”€â”€â”€ Export audit log to Excel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export async function exportAuditLogs(req, res, next) {
+  try {
+    const { action, limit = 2000 } = req.query;
+    const where = action ? { action } : {};
+
+    const logs = await prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
+      include: { user: { select: { employeeId: true, name: true } } },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Activity Log');
+    ws.columns = [
+      { header: 'Timestamp',   key: 'time',       width: 22 },
+      { header: 'Employee ID', key: 'empId',       width: 14 },
+      { header: 'User Name',   key: 'name',        width: 22 },
+      { header: 'Action',      key: 'action',      width: 28 },
+      { header: 'Entity Type', key: 'entityType',  width: 18 },
+      { header: 'Entity ID',   key: 'entityId',    width: 10 },
+      { header: 'Details',     key: 'metadata',    width: 50 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+    logs.forEach(log => ws.addRow({
+      time:       log.createdAt.toISOString().replace('T', ' ').substring(0, 19),
+      empId:      log.user?.employeeId || 'â€”',
+      name:       log.user?.name || 'System',
+      action:     log.action,
+      entityType: log.entityType || '',
+      entityId:   log.entityId ?? '',
+      metadata:   log.metadata ? JSON.stringify(log.metadata) : '',
+    }));
+
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="KinGuard_ActivityLog_${date}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) { next(error); }
+}
+
+// ─── PDF Exports ──────────────────────────────────────────────────────────────
+
+export async function downloadInventoryExportPDF(req, res, next) {
+  try {
+    const { storeId, status, batchId, discrepancy, search } = req.query;
+    const where = {};
+    if (storeId)     where.storeId  = parseInt(storeId);
+    if (status)      where.status   = status;
+    if (batchId)     where.batchId  = parseInt(batchId);
+    if (search)      where.OR = [
+      { materialCode: { contains: search, mode: 'insensitive' } },
+      { materialName: { contains: search, mode: 'insensitive' } },
+    ];
+    if (discrepancy === 'shortage') where.difference = { lt: 0 };
+    if (discrepancy === 'excess')   where.difference = { gt: 0 };
+    if (discrepancy === 'matched')  where.difference = { equals: 0 };
+
+    const records = await prisma.inventoryRecord.findMany({
+      where,
+      orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
+      include: {
+        store: { select: { storeCode: true, storeName: true } },
+        batch: { select: { inventoryDate: true } },
+      },
+    });
+
+    const { buildPDF, baseDocDef, tableLayout, inventoryTableRows } = await import('../services/pdfService.js');
+    const today = new Date().toISOString().split('T')[0];
+
+    const pdfBuffer = await buildPDF({
+      ...baseDocDef({ title: 'Inventory Submissions', subtitle: `${records.length} records · ${today}` }),
+      content: [{
+        table: {
+          headerRows: 1,
+          widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          body: [
+            [
+              { text: 'Store', style: 'th' },
+              { text: 'Material', style: 'th' },
+              { text: 'Description', style: 'th' },
+              { text: 'Date', style: 'th' },
+              { text: 'SYS', style: 'th', alignment: 'right' },
+              { text: 'Sold', style: 'th', alignment: 'right' },
+              { text: 'Variance', style: 'th', alignment: 'right' },
+              { text: 'Status', style: 'th' },
+            ],
+            ...inventoryTableRows(records),
+          ],
+        },
+        layout: tableLayout(),
+      }],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="KinGuard_Inventory_${today}.pdf"`);
+    res.end(pdfBuffer);
+  } catch (error) { next(error); }
+}
+
+export async function downloadReconciliationReportPDF(req, res, next) {
+  try {
+    const { storeId, status, discrepancy } = req.query;
+    const where = {};
+    if (storeId)  where.storeId = parseInt(storeId);
+    if (status)   where.status  = status;
+    if (discrepancy === 'shortage') where.difference = { lt: 0 };
+    if (discrepancy === 'excess')   where.difference = { gt: 0 };
+    if (discrepancy === 'matched')  where.difference = { equals: 0 };
+
+    const records = await prisma.inventoryRecord.findMany({
+      where,
+      include: {
+        store: { select: { storeCode: true, storeName: true } },
+        batch: { select: { inventoryDate: true } },
+      },
+      orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
+    });
+
+    const { buildPDF, baseDocDef, tableLayout, inventoryTableRows } = await import('../services/pdfService.js');
+    const today = new Date().toISOString().split('T')[0];
+
+    const pdfBuffer = await buildPDF({
+      ...baseDocDef({ title: 'Reconciliation Report', subtitle: `${records.length} records · ${today}` }),
+      content: [{
+        table: {
+          headerRows: 1,
+          widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          body: [
+            [
+              { text: 'Store',       style: 'th' },
+              { text: 'Material',    style: 'th' },
+              { text: 'Description', style: 'th' },
+              { text: 'Date',        style: 'th' },
+              { text: 'SYS',         style: 'th', alignment: 'right' },
+              { text: 'Sold',        style: 'th', alignment: 'right' },
+              { text: 'Variance',    style: 'th', alignment: 'right' },
+              { text: 'Status',      style: 'th' },
+            ],
+            ...inventoryTableRows(records),
+          ],
+        },
+        layout: tableLayout(),
+      }],
+    });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'DOWNLOAD_REPORT_PDF',
+      entityType: 'INVENTORY_RECORD', entityId: null,
+      metadata: { recordCount: records.length, filters: { storeId, status, discrepancy } },
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="KinMarche_Reconciliation_${today}.pdf"`);
+    res.end(pdfBuffer);
+  } catch (error) { next(error); }
+}
+
+export async function sendBatchReminders(req, res, next) {
+  try {
+    const batchId = parseInt(req.params.id);
+    const batch = await prisma.uploadBatch.findUnique({
+      where: { id: batchId },
+      select: { id: true, inventoryDate: true, submissionDeadline: true },
+    });
+    if (!batch) throw new AppError('Batch not found', 404);
+
+    const pendingRecords = await prisma.inventoryRecord.findMany({
+      where: { batchId, status: 'PENDING' },
+      select: { storeId: true },
+      distinct: ['storeId'],
+    });
+
+    if (pendingRecords.length === 0) {
+      return res.json({ sent: 0, pending: 0, message: 'All stores have submitted — no reminders needed.' });
+    }
+
+    const storeIds = pendingRecords.map(r => r.storeId);
+    const managers = await prisma.user.findMany({
+      where: {
+        role: 'STORE_MANAGER',
+        isActive: true,
+        storeId: { in: storeIds },
+        email: { not: null },
+      },
+      include: { store: true },
+    });
+
+    const deadline = batch.submissionDeadline ?? new Date(Date.now() + 24 * 3_600_000);
+    const { sendDeadlineReminderEmail } = await import('../services/emailService.js');
+    await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'SEND_BATCH_REMINDERS',
+      entityType: 'UPLOAD_BATCH', entityId: batchId,
+      metadata: { managerCount: managers.length, pendingStores: storeIds.length },
+    });
+
+    res.json({
+      sent: managers.length,
+      pending: storeIds.length,
+      message: managers.length > 0
+        ? `Email reminder sent to ${managers.length} store manager(s) (${storeIds.length} store(s) pending).`
+        : `${storeIds.length} store(s) still pending but no email addresses on file. Add emails in User Management.`,
+    });
+  } catch (error) { next(error); }
+}
+
+export async function downloadBatchExportPDF(req, res, next) {
+  try {
+    const { batchId } = req.params;
+    const batch = await prisma.uploadBatch.findUnique({
+      where: { id: parseInt(batchId) },
+      select: { inventoryDate: true },
+    });
+    if (!batch) throw new AppError('Batch not found', 404);
+
+    const records = await prisma.inventoryRecord.findMany({
+      where: { batchId: parseInt(batchId) },
+      orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
+      include: {
+        store: { select: { storeCode: true, storeName: true } },
+        batch: { select: { inventoryDate: true } },
+      },
+    });
+
+    const { buildPDF, baseDocDef, tableLayout, inventoryTableRows } = await import('../services/pdfService.js');
+    const dateStr = batch.inventoryDate.toISOString().split('T')[0];
+
+    const pdfBuffer = await buildPDF({
+      ...baseDocDef({ title: 'Cycle Export', subtitle: `Date: ${dateStr} · ${records.length} records` }),
+      content: [{
+        table: {
+          headerRows: 1,
+          widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          body: [
+            [
+              { text: 'Store', style: 'th' },
+              { text: 'Material', style: 'th' },
+              { text: 'Description', style: 'th' },
+              { text: 'Date', style: 'th' },
+              { text: 'SYS', style: 'th', alignment: 'right' },
+              { text: 'Sold', style: 'th', alignment: 'right' },
+              { text: 'Variance', style: 'th', alignment: 'right' },
+              { text: 'Status', style: 'th' },
+            ],
+            ...inventoryTableRows(records),
+          ],
+        },
+        layout: tableLayout(),
+      }],
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="KinGuard_Cycle_${dateStr}.pdf"`);
+    res.end(pdfBuffer);
   } catch (error) { next(error); }
 }
