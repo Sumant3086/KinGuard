@@ -1,321 +1,159 @@
-# KinMarché — Loss & Prevention Platform
+<div align="center">
 
-A centralised multi-store inventory reconciliation system that helps retail operations teams track, measure, and act on stock shrinkage in real time.
+<img src="client/src/assets/img/logo 32px32px.png" alt="KinMarché Logo" width="80" height="80" />
 
----
+# KinMarché
 
-## Table of Contents
+### Loss & Prevention Inventory Reconciliation Platform
 
-- [Overview](#overview)
-- [How It Works](#how-it-works)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Database Setup](#database-setup)
-- [Running the App](#running-the-app)
-- [Default Login](#default-login)
-- [API Reference](#api-reference)
-- [Project Structure](#project-structure)
-- [Discrepancy Logic](#discrepancy-logic)
-- [Security](#security)
+**One upload. Every store. Real-time shrinkage visibility.**
 
 ---
 
-## Overview
+![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?style=flat-square&logo=prisma&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)
+![License](https://img.shields.io/badge/License-ISC-red?style=flat-square)
 
-Multi-store retailers lose millions to shrinkage every year — and most don't catch it until it's too late. KinMarché solves this by replacing fragmented spreadsheets and manual processes with a single platform where:
+[Getting Started](#getting-started) · [Documentation](docs/) · [API Reference](docs/api-reference.md) · [Architecture](docs/architecture.md)
 
-- Administrators upload one master inventory file and it instantly distributes to every store.
-- Store managers count their stock, enter sold quantities, and submit — all in one session.
-- The system calculates discrepancies instantly, flags repeat losses, and surfaces high-risk stores before losses compound.
+</div>
 
 ---
 
-## How It Works
+## What is KinMarché?
+
+KinMarché is an internal Loss & Prevention platform built for multi-store retail operations. It replaces fragmented spreadsheets and manual reconciliation workflows with a centralised system where:
+
+- **Administrators** upload one master Excel file and it distributes automatically to every store
+- **Store Managers** count their stock and submit — all within one focused interface
+- **L&P Teams** get instant risk scores, recurring loss alerts, and one-click Excel exports
 
 ```
-1. Admin uploads master Excel / CSV file
-         ↓
-2. Platform splits records by Store Code automatically
-         ↓
-3. Store Managers enter Sold quantities + Remarks per item
-         ↓
-4. Platform calculates:  Diff = Sold − System Qty
-         ↓
-5. Manager submits their store's count
-         ↓
-6. Admin sees full network picture — risk scores, hotspots, downloadable reports
+Admin uploads master file   →   Platform splits by Store Code
+        ↓
+Store Managers enter counts  →   Server calculates Variance = Counted − Book Stock
+        ↓
+Admin sees network-wide risk scores, hotspots, and trend charts
 ```
 
 ---
 
 ## Features
 
-### Administrator
+### For Administrators
 
 | Feature | Description |
 |---------|-------------|
-| File Upload | Upload one Excel or CSV file for all stores — the system splits by Store Code |
-| Preview Before Commit | Validate the file row-by-row before publishing to stores |
-| Auto Store Creation | New store codes found in the file are created automatically |
-| Duplicate Detection | Warns when a batch for the same date already exists; force-override available |
-| Submission Deadlines | Set per-cycle deadlines; stores are locked after the deadline passes |
-| Deadline Extensions | Grant individual store extensions without affecting the rest |
-| Store Risk Scorecard | Every store ranked as High Risk / Watch / Healthy based on shortage rate |
-| Shrinkage Hotspots | Highlights (store, item) pairs with shortages across multiple consecutive cycles |
-| Repeat Discrepancy Flags | Items that shortage in previous batches are automatically marked |
-| Inventory View | Full paginated view with filters by store, batch, status, discrepancy type |
-| Excel Export | Export any filtered view to Excel with one click |
-| Batch Management | View all cycles, update deadlines, export per-batch data |
-| Analytics | Multi-cycle shortage rate trend charts per store |
-| Audit Log | Full immutable trail of every action in the system |
-| Store & User Management | Create, edit, and deactivate stores and user accounts |
+| **File Upload & Validation** | Upload Excel or CSV for all stores with a live preview before committing |
+| **Auto Store Creation** | New store codes in the file are created automatically |
+| **Duplicate Detection** | Warns on same-date uploads; force-override available |
+| **Deadline Management** | Set per-cycle submission deadlines with per-store extensions |
+| **Store Risk Scorecard** | Every store ranked High Risk / Watch / On Track by shortage rate |
+| **Shrinkage Hotspots** | Flags (store, item) pairs with losses across 2+ consecutive cycles |
+| **Repeat Discrepancy Flags** | Items that shortage in previous cycles are automatically marked |
+| **Inventory View** | Paginated, filterable view across all stores and cycles |
+| **Excel & PDF Export** | Download any filtered view or full batch report |
+| **Analytics** | Multi-cycle shortage rate trend charts per store |
+| **Audit Log** | Immutable trail of every action in the system |
+| **In-App Notifications** | Real-time bell showing recent submissions, overdue stores, and deadlines |
 
-### Store Manager
+### For Store Managers
 
 | Feature | Description |
 |---------|-------------|
-| Scoped Data | Only the manager's own store is visible — enforced server-side |
-| Auto-Save | Quantities and remarks save automatically as the manager types |
-| Live Diff | Diff column (Sold − SYS) updates in real time without a round-trip |
-| Progress Bar | Shows how many items have been counted vs. remaining |
-| Submit Batch | One-click batch submit with a summary of matched / shortage / excess |
-| Deadline Lock | Clear locked message when the submission deadline has passed |
-| Post-Submit View | After submission, a read-only summary of the full count is shown |
+| **Scoped Access** | Only the manager's own store is visible — enforced server-side |
+| **Auto-Save** | Counts and remarks save automatically as the manager types |
+| **Live Variance** | Variance column updates in real time without a server round-trip |
+| **Progress Tracking** | Progress bar showing items counted vs. remaining |
+| **Past-Cycle Visibility** | Dashboard surfaces older pending cycles when admin uploads for past dates |
+| **Submit & Report** | One-click submit with a post-submission discrepancy summary |
+| **Deadline Lock** | Clear lock message and contact prompt when the deadline has passed |
+| **In-App Notifications** | Bell alerts for new cycles, approaching deadlines, and submission locks |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, React Router v6, Vite, custom CSS |
-| Backend | Node.js, Express.js |
-| ORM | Prisma 5 |
-| Database | PostgreSQL (tested with Supabase) |
-| Auth | JWT (HS256), bcrypt password hashing |
-| File Parsing | ExcelJS (xlsx), csv-parse |
-| File Upload | Multer (memory storage, 10 MB cap) |
-| Security | Helmet, CORS, express-rate-limit |
-| Compression | compression (gzip) |
-
----
-
-## Architecture
-
-```
-KinGuard/
-├── client/                  # React frontend (Vite)
-│   └── src/
-│       ├── api/             # Axios wrappers + client-side cache
-│       ├── components/      # Shared layout components
-│       ├── context/         # AuthContext (JWT storage & refresh)
-│       ├── pages/
-│       │   ├── admin/       # Admin pages
-│       │   └── store/       # Store Manager pages
-│       ├── assets/          # Brand images (logo, store backgrounds)
-│       └── styles/          # Split CSS: tokens · reset · layout · components
-│                            #            inventory · pages · toast
-│
-└── server/                  # Express backend
-    ├── prisma/
-    │   ├── schema.prisma    # Database schema
-    │   ├── migrations/      # Auto-generated migration files
-    │   └── seed.js          # Creates admin account on first run
-    └── src/
-        ├── config/          # env.js (validation), prisma.js (singleton client)
-        ├── controllers/     # adminController.js, authController.js, storeController.js
-        ├── middleware/      # auth.js (JWT + RBAC), errorHandler.js
-        ├── routes/          # adminRoutes.js, authRoutes.js, storeRoutes.js
-        └── services/        # auditService.js, serverCache.js, emailService.js, pdfService.js
-```
-
-### Data Flow
-
-```
-Browser ──HTTPS──▶ Express ──Prisma──▶ PostgreSQL
-                      │
-                 JWT middleware
-                 (every request)
-                      │
-                 Role guard
-                 (ADMIN vs STORE_MANAGER)
-```
-
-### Caching
-
-- **Client**: In-memory TTL cache (30–120 s) per resource type. Cleared on logout.
-- **Server**: In-memory TTL cache (30 s) for the admin dashboard aggregation query.
-
----
-
-## Prerequisites
-
-- **Node.js** v18 or later
-- **npm** v8 or later
-- **PostgreSQL** database (local or cloud — Supabase, Neon, Railway, etc.)
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Frontend | React 18 + Vite | SPA with code-split bundles per user role |
+| Styling | Custom CSS (7 focused files) | Design tokens, no external CSS framework |
+| Backend | Node.js + Express | REST API with role-based access control |
+| ORM | Prisma 5 | Type-safe database queries, migrations |
+| Database | PostgreSQL 15 | Primary data store (tested with Supabase) |
+| Auth | JWT (HS256) + bcrypt | Stateless auth, 10-round password hashing |
+| File Parsing | ExcelJS + csv-parse | Excel (.xlsx, .xls) and CSV support |
+| File Upload | Multer (memory storage) | 10 MB cap, MIME-type validation |
+| Security | Helmet + CORS + express-rate-limit | HTTP hardening, brute-force protection |
+| Email | Nodemailer (SMTP) | Optional submission and new-cycle notifications |
 
 ---
 
 ## Getting Started
 
-### 1. Clone the repository
+**Prerequisites:** Node.js 18+, npm 8+, PostgreSQL 15+
+
+### 1. Clone and install
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Sumant3086/KinGuard.git
 cd KinGuard
-```
-
-### 2. Install all dependencies
-
-```bash
-npm install
-npm install --workspace=client
-npm install --workspace=server
-```
-
-Or use the convenience script:
-
-```bash
 npm run install:all
 ```
 
-### 3. Configure environment variables
+### 2. Configure environment
 
 ```bash
 cp .env.example server/.env
 ```
 
-Edit `server/.env` with your database credentials and a strong JWT secret:
+Edit `server/.env` — the minimum required values:
 
 ```env
-DATABASE_URL=postgresql://user:password@host:5432/kinguard
-JWT_SECRET=your-random-secret-min-32-characters
+DATABASE_URL=postgresql://user:password@localhost:5432/kinmarche
+JWT_SECRET=<min-32-char-random-string>
 PORT=5000
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 ```
 
-> **Generate a secure secret:**
+> **Generate a secure JWT secret:**
 > ```bash
 > node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 > ```
 
-### 4. Run database migrations
+### 3. Run database migrations
 
 ```bash
 npm run migrate
 ```
 
-### 5. Seed the admin account
+### 4. Create the admin account
 
 ```bash
 npm run seed
 ```
 
-This creates a single administrator account. No sample data is inserted.
+Creates one admin account — `ADMIN001` / `Admin@123`. **Change the password immediately** after first login.
 
-### 6. Start the development servers
-
-In two separate terminals:
+### 5. Start development servers
 
 ```bash
-# Terminal 1 — backend (port 5000)
+# Terminal 1 — API server (port 5000)
 npm run dev:server
 
-# Terminal 2 — frontend (port 5173)
+# Terminal 2 — React frontend (port 5173)
 npm run dev:client
 ```
 
-Open `http://localhost:5173` in your browser.
+Open [http://localhost:5173](http://localhost:5173).
 
 ---
 
-## Environment Variables
-
-All variables live in `server/.env`. Copy from `.env.example`.
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string (pooled) |
-| `DIRECT_URL` | Supabase only | Non-pooled URL for Prisma migrations |
-| `JWT_SECRET` | Yes | HS256 signing key — minimum 32 characters |
-| `JWT_EXPIRES_IN` | No | Token lifetime, default `8h` |
-| `PORT` | Yes | Server port, default `5000` |
-| `NODE_ENV` | Yes | `development` or `production` |
-| `CLIENT_URL` | Yes | Frontend origin for CORS, e.g. `http://localhost:5173` |
-
----
-
-## Database Setup
-
-### Schema overview
-
-| Table | Purpose |
-|-------|---------|
-| `Store` | Store locations (storeCode, storeName, isActive) |
-| `User` | Admin and Store Manager accounts |
-| `UploadBatch` | One record per file upload / inventory cycle |
-| `InventoryRecord` | One row per (store, item, batch) |
-| `BatchDeadlineExtension` | Per-store deadline overrides |
-| `AuditLog` | Immutable action log |
-
-### Migrations
-
-```bash
-# Apply migrations to an existing database
-npm run migrate
-
-# Create a new migration during development
-cd server && npx prisma migrate dev --name <description>
-```
-
-### Clear all operational data (keep users)
-
-```bash
-npm run db:clear
-```
-
-Deletes all stores, inventory records, upload batches, and audit logs — while preserving all user accounts. Use this to remove test data or auto-created stores without losing your user setup.
-
-### Full reset (destructive)
-
-```bash
-npm run db:reset
-```
-
-Drops all tables, re-runs all migrations, and creates only the admin account. Use this to start completely from scratch.
-
----
-
-## Running the App
-
-### Development
-
-```bash
-npm run dev:client    # Vite dev server → http://localhost:5173
-npm run dev:server    # Express with --watch → http://localhost:5000
-```
-
-### Production build
-
-```bash
-npm run build:client  # Outputs to client/dist/
-npm run migrate       # Apply any pending migrations
-npm run seed          # Ensure admin account exists
-npm start --workspace=server
-```
-
-Serve `client/dist/` with any static host (Nginx, Vercel, Netlify, Cloudflare Pages). Point `CLIENT_URL` in `server/.env` to the deployed frontend origin.
-
----
-
-## Default Login
-
-After running `npm run seed`, one account is created:
+## Default Credentials
 
 | Field | Value |
 |-------|-------|
@@ -323,178 +161,7 @@ After running `npm run seed`, one account is created:
 | Password | `Admin@123` |
 | Role | Administrator |
 
-**Change this password immediately** after first login via Admin → Users.
-
-The admin account can then create stores and store manager accounts through the UI — no additional seeding is needed.
-
----
-
-## API Reference
-
-All routes are prefixed with `/api`. Authentication uses a Bearer token in the `Authorization` header.
-
-### Authentication
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/auth/login` | None | Login; returns JWT token |
-| `GET` | `/auth/me` | Required | Current user profile |
-
-**Login request body:**
-```json
-{ "employeeId": "ADMIN001", "password": "Admin@123" }
-```
-
-**Login response:**
-```json
-{
-  "token": "<jwt>",
-  "user": { "id": 1, "employeeId": "ADMIN001", "name": "...", "role": "ADMIN" }
-}
-```
-
----
-
-### Admin Endpoints
-
-All require `Authorization: Bearer <token>` with role `ADMIN`.
-
-#### Dashboard
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/dashboard` | Store scorecard, hotspots, network summary for the latest batch |
-
-#### Stores
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/stores` | List all stores |
-| `POST` | `/admin/stores` | Create a store |
-| `PATCH` | `/admin/stores/:id` | Update store name or active status |
-
-**Create store body:**
-```json
-{ "storeCode": "2050", "storeName": "Downtown Branch", "isActive": true }
-```
-
-#### Users
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/users` | List all users |
-| `POST` | `/admin/users` | Create a user |
-| `PATCH` | `/admin/users/:id` | Update name, password, store assignment, or active status |
-
-**Create user body:**
-```json
-{
-  "employeeId": "MGR2050",
-  "name": "Jane Doe",
-  "password": "SecurePass@1",
-  "role": "STORE_MANAGER",
-  "storeId": 5
-}
-```
-
-#### File Upload
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/admin/uploads/preview` | Validate a file without committing (multipart/form-data) |
-| `POST` | `/admin/uploads` | Commit an upload; add `?force=true` to override duplicate-date warning |
-| `GET` | `/admin/uploads` | Upload history |
-
-**Preview / upload form fields:**
-- `file` — Excel (.xlsx, .xls) or CSV file
-- `inventoryDate` — `YYYY-MM-DD`
-- `submissionDeadline` — `YYYY-MM-DD` (optional, upload only)
-
-**Expected column names in the file (any alias is accepted):**
-
-| Field | Accepted column names |
-|-------|-----------------------|
-| Store Code | `Plant`, `Store Code`, `StoreCode`, `store_code` |
-| Material Code | `Material`, `Material Code`, `SKU`, `MATERIAL` |
-| Material Name | `Material Description`, `Description`, `material_name` |
-| System Qty | `System Stock`, `System  Stock`, `SYS`, `QTY` |
-| Remarks | `Remarks`, `remarks`, `Remark`, `Note` |
-
-#### Inventory
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/inventory` | Paginated inventory records with filters |
-| `GET` | `/admin/inventory/export` | Download filtered records as Excel |
-
-**Query params for `/admin/inventory`:**
-
-| Param | Type | Description |
-|-------|------|-------------|
-| `storeId` | int | Filter by store |
-| `batchId` | int | Filter by batch |
-| `status` | string | `PENDING` or `SUBMITTED` |
-| `discrepancy` | string | `shortage`, `excess`, or `matched` |
-| `search` | string | Search material code or name |
-| `page` | int | Page number (default 1) |
-| `pageSize` | int | Records per page (default 50) |
-
-#### Reports
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/reports/reconciliation` | Reconciliation report (JSON) |
-| `GET` | `/admin/reports/reconciliation/download` | Download as Excel |
-
-#### Batches
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/batches` | All inventory cycles with per-store stats |
-| `PATCH` | `/admin/batches/:id` | Update submission deadline |
-| `POST` | `/admin/batches/extend` | Grant a store-specific deadline extension |
-| `GET` | `/admin/batches/:batchId/export` | Download full batch as Excel |
-
-**Extend deadline body:**
-```json
-{ "batchId": 3, "storeId": 2, "newDeadline": "2025-08-15", "note": "Stock count delayed" }
-```
-
-#### Analytics
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/analytics/trends` | Shortage rate trends across last N cycles |
-| `GET` | `/admin/stores/:storeId/drilldown` | Shortage details for one store in one batch |
-
-**Trends query params:**
-- `cycles` — number of batches to include (default 6)
-
-#### Audit Log
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/audit-logs` | Recent actions; filter by `action`, `limit` |
-
----
-
-### Store Manager Endpoints
-
-All require `Authorization: Bearer <token>` with role `STORE_MANAGER`.
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/store/dashboard` | Store progress summary for the active batch |
-| `GET` | `/store/inventory` | Pending inventory items for this store |
-| `PATCH` | `/store/inventory/:id` | Save sold quantity and remarks for one item |
-| `POST` | `/store/inventory/submit` | Submit all items for this store |
-
-**Save item body:**
-```json
-{ "physicalQuantity": 95, "remarks": "Damaged in transit" }
-```
-
-All store endpoints enforce store isolation at the database query level — a store manager can only read and write records belonging to their assigned store.
+> ⚠️ Change this password before using in any production or shared environment.
 
 ---
 
@@ -502,110 +169,122 @@ All store endpoints enforce store isolation at the database query level — a st
 
 ```
 KinGuard/
-├── .env.example                   # Environment variable template
-├── .gitignore
-├── package.json                   # Monorepo root
-├── README.md
+├── .env.example                    # Environment variable template
+├── package.json                    # Monorepo root (npm workspaces)
 │
-├── client/
-│   ├── package.json
-│   ├── vite.config.js
+├── client/                         # React frontend (Vite)
 │   └── src/
-│       ├── api/
-│       │   ├── admin.js           # Admin API calls + client cache
-│       │   ├── auth.js            # Login / me
-│       │   ├── cache.js           # In-memory TTL cache
-│       │   ├── client.js          # Axios instance (base URL, auth header)
-│       │   └── store.js           # Store manager API calls
-│       ├── components/
-│       │   ├── AdminLayout.jsx    # Top nav for admin pages
-│       │   └── StoreLayout.jsx    # Layout for store manager pages
-│       ├── context/
-│       │   └── AuthContext.jsx    # JWT storage, login, logout
+│       ├── api/                    # Axios wrappers + client-side TTL cache
+│       ├── assets/img/             # Brand images (logo, store backgrounds)
+│       ├── components/             # AdminLayout, StoreLayout, NotificationBell
+│       ├── context/                # AuthContext (JWT storage, login, logout)
 │       ├── pages/
-│       │   ├── Home.jsx           # Landing / redirect
-│       │   ├── Login.jsx          # Login form
-│       │   ├── NotFound.jsx       # 404
-│       │   ├── admin/
-│       │   │   ├── Analytics.jsx
-│       │   │   ├── AuditLogs.jsx
-│       │   │   ├── Batches.jsx
-│       │   │   ├── Dashboard.jsx
-│       │   │   ├── Inventory.jsx
-│       │   │   ├── Reports.jsx
-│       │   │   ├── Stores.jsx
-│       │   │   ├── Upload.jsx
-│       │   │   └── Users.jsx
-│       │   └── store/
-│       │       ├── Dashboard.jsx
-│       │       └── Inventory.jsx
-│       └── styles/
-│           └── index.css          # Design tokens + all component styles
+│       │   ├── admin/              # Dashboard, Upload, Batches, Inventory…
+│       │   └── store/              # Dashboard, Stock Count (Inventory)
+│       └── styles/                 # 7 CSS files: tokens · reset · layout
+│                                   #              components · inventory · pages · toast
 │
-└── server/
-    ├── package.json
-    ├── prisma/
-    │   ├── schema.prisma
-    │   ├── migrations/
-    │   └── seed.js                # Admin account initialisation
-    └── src/
-        ├── app.js                 # Express app setup (middleware, routes)
-        ├── server.js              # Entry point (DB connect, listen)
-        ├── config/
-        │   ├── env.js             # Env var validation + export
-        │   └── prisma.js          # Prisma singleton
-        ├── controllers/
-        │   ├── adminController.js
-        │   ├── authController.js
-        │   └── storeController.js
-        ├── middleware/
-        │   ├── auth.js            # JWT verification + role guards
-        │   └── errorHandler.js    # Centralised error format
-        ├── routes/
-        │   ├── adminRoutes.js
-        │   ├── authRoutes.js
-        │   └── storeRoutes.js
-        └── services/
-            ├── auditService.js    # Writes audit log entries
-            └── serverCache.js     # In-memory TTL cache
+├── server/                         # Express backend
+│   ├── prisma/
+│   │   ├── schema.prisma           # Database schema
+│   │   ├── migrations/             # Auto-generated migration files
+│   │   └── seed.js                 # Admin account initialisation
+│   └── src/
+│       ├── app.js                  # Middleware, rate limiting, route mounting
+│       ├── server.js               # Entry point
+│       ├── config/                 # env.js (validation), prisma.js (singleton)
+│       ├── controllers/            # adminController, authController, storeController
+│       ├── middleware/             # JWT auth, role guards, error handler
+│       ├── routes/                 # Admin, auth, and store route definitions
+│       └── services/               # auditService, serverCache, emailService, pdfService
+│
+└── docs/                           # Full project documentation
+    ├── getting-started.md
+    ├── architecture.md
+    ├── api-reference.md
+    ├── database-schema.md
+    ├── deployment.md
+    ├── security.md
+    └── user-guide/
+        ├── admin-guide.md
+        └── store-manager-guide.md
 ```
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Getting Started](docs/getting-started.md) | Full installation, configuration, and first-run guide |
+| [Architecture](docs/architecture.md) | System design, data flow, caching, and component map |
+| [API Reference](docs/api-reference.md) | Complete REST API documentation with request/response examples |
+| [Database Schema](docs/database-schema.md) | Table definitions, relationships, indexes, and data dictionary |
+| [Admin Guide](docs/user-guide/admin-guide.md) | How to use every admin feature end-to-end |
+| [Store Manager Guide](docs/user-guide/store-manager-guide.md) | Store manager workflow from login to submission |
+| [Deployment](docs/deployment.md) | Production deployment, environment config, and reverse proxy setup |
+| [Security](docs/security.md) | Security model, threat controls, and operational checklist |
+
+---
+
+## Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run install:all` | Install all workspace dependencies |
+| `npm run dev:client` | Start Vite dev server (port 5173) |
+| `npm run dev:server` | Start Express with `--watch` (port 5000) |
+| `npm run build:client` | Production build → `client/dist/` |
+| `npm run migrate` | Apply pending Prisma migrations |
+| `npm run seed` | Create/ensure admin account exists |
+| `npm run db:reset` | Drop all tables, re-migrate, re-seed (⚠️ destructive) |
+| `npm run db:clear` | Clear all operational data, keep user accounts |
 
 ---
 
 ## Discrepancy Logic
 
-The platform is the single source of truth for every Diff calculation. Nothing is computed client-side and trusted.
+Variance is always computed server-side. Clients cannot manipulate figures.
 
-| System Qty (SYS) | Sold | Diff (Sold − SYS) | Result |
-|------------------:|-----:|-------------------:|--------|
-| 100 | 100 | 0 | Matched |
-| 100 | 90 | −10 | **Shortage** (loss / shrinkage) |
-| 100 | 110 | +10 | Excess |
+| Book Stock | Counted | Variance | Outcome |
+|-----------:|--------:|:--------:|---------|
+| 100 | 100 | 0 | ✅ Matched |
+| 100 | 90 | −10 | 🔴 Shortage (shrinkage / loss) |
+| 100 | 110 | +10 | 🟣 Surplus (excess) |
 
-**Risk levels** are calculated per store per batch:
+**Store risk levels** are calculated as shortage rate per cycle:
 
 | Shortage Rate | Risk Level |
-|:-------------:|:----------:|
-| ≥ 20% | High Risk (RED) |
-| 5–19% | Watch (YELLOW) |
-| < 5% | Healthy (GREEN) |
-
-**Shrinkage Hotspots** are (store, item) pairs that appear in shortage status across 2 or more of the last 4 batches.
+|:---:|:---:|
+| ≥ 20% | 🔴 High Risk |
+| 5 – 19% | 🟡 Watch |
+| < 5% | 🟢 On Track |
 
 ---
 
-## Security
+## Security Highlights
 
-- Passwords are hashed with bcrypt (10 rounds).
-- JWT tokens are signed with HS256 and expire after 8 hours by default.
-- Every request to protected endpoints validates the token and checks the user's role.
-- Store isolation is enforced at the database query level — a store manager query always filters by `storeId = req.user.storeId`, regardless of request parameters.
-- HTTP security headers are applied by Helmet.
-- File uploads are validated by MIME type and capped at 10 MB before any parsing begins.
-- SQL injection is prevented by Prisma's parameterised queries.
-- Rate limiting is applied via `express-rate-limit`.
-- Never commit `server/.env` to version control — it is listed in `.gitignore`.
+- Passwords hashed with **bcrypt** (10 rounds)
+- JWT signed with **HS256**, expires after 8 hours
+- **Role-based access control** on every protected endpoint
+- **Store isolation** enforced at the database query level — a manager can never read or write another store's data
+- HTTP hardening via **Helmet** (CSP, HSTS, X-Frame-Options…)
+- **Rate limiting**: 10 requests / 15 min on auth endpoints; 300 requests / min on API endpoints
+- File uploads validated by **MIME type** and capped at **10 MB** before parsing
+- SQL injection prevented by **Prisma parameterised queries**
+
+See [docs/security.md](docs/security.md) for the full security model.
 
 ---
 
-*KinMarché — built for KinGuard Loss & Prevention operations.*
+## License
+
+ISC © [Sumant Yadav](https://github.com/Sumant3086)
+
+---
+
+<div align="center">
+<img src="client/src/assets/img/logo 32px32px.png" alt="KinMarché" width="32" height="32" />
+<br/>
+<sub>KinMarché · Kinshasa, DRC · Loss & Prevention Platform</sub>
+</div>
