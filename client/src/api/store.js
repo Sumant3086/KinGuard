@@ -46,3 +46,8 @@ export async function downloadInventory(batchId) {
   });
   return response.data;
 }
+
+export async function getNotifications() {
+  const { data } = await client.get('/store/notifications');
+  return data;
+}

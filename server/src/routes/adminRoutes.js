@@ -30,6 +30,7 @@ const upload = multer({
 
 // Dashboard
 router.get('/dashboard', adminController.getDashboard);
+router.get('/notifications', adminController.getNotifications);
 
 // Stores — bulk route MUST come before :id routes
 router.get('/stores', adminController.getStores);

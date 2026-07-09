@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(authenticate, requireStoreManager);
 
 router.get('/dashboard', storeController.getDashboard);
+router.get('/notifications', storeController.getNotifications);
 router.get('/batches', storeController.getBatches);
 router.get('/inventory', storeController.getInventory);
 router.post('/inventory/submit', storeController.submitInventory);

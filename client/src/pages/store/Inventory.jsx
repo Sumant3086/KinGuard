@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import StoreLayout from '../../components/StoreLayout';
 import * as storeApi from '../../api/store';
 import { useToast } from '../../context/ToastContext';
@@ -72,9 +73,12 @@ const IconRetry = () => (
 
 export default function StoreInventory() {
   const toast = useToast();
+  const [searchParams] = useSearchParams();
+  const urlBatchId = searchParams.get('batchId') ?? '';
+
   const [records, setRecords]           = useState([]);
   const [batches, setBatches]           = useState([]);
-  const [selectedBatch, setSelectedBatch] = useState('');
+  const [selectedBatch, setSelectedBatch] = useState(urlBatchId);
   const [isLocked, setIsLocked]         = useState(false);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
@@ -117,12 +121,17 @@ export default function StoreInventory() {
       setBatches(data);
       batchesReadyRef.current = true;
       if (data.length > 0) {
-        setSelectedBatch(data[0].id.toString());
+        // Honour a batchId from the URL (e.g. navigated from the older-batch alert
+        // on the dashboard); otherwise default to the most recent batch.
+        const urlId = urlBatchId && data.find(b => b.id.toString() === urlBatchId)
+          ? urlBatchId
+          : data[0].id.toString();
+        setSelectedBatch(urlId);
       } else {
         loadInventory();
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load inventory cycles. Please refresh the page.');
+      setError(err.response?.data?.error || 'Failed to load count periods. Please refresh the page.');
       setLoading(false);
     }
   }
@@ -346,10 +355,10 @@ export default function StoreInventory() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Material Name</th>
-                      <th>System Stock</th>
-                      <th>Physical Stock</th>
-                      <th>Gap</th>
+                      <th>Item Code</th>
+                      <th>Book Stock</th>
+                      <th>Your Count</th>
+                      <th>Variance</th>
                       <th>Category</th>
                       <th>Issue Detail</th>
                     </tr>
@@ -396,7 +405,7 @@ export default function StoreInventory() {
             <span className="inv-progress-fraction">
               <strong>{enteredCount}</strong> / {totalPending}
             </span>
-            <span className="inv-progress-label">items counted &amp; saved</span>
+            <span className="inv-progress-label">items counted</span>
           </div>
           <div className="inv-progress-track-wrap">
             <div className="inv-progress-track">
@@ -423,7 +432,7 @@ export default function StoreInventory() {
       {/* ── Page header ── */}
       <div className="page-header" style={{ marginTop: 24 }}>
         <div>
-          <h2>Inventory Entry</h2>
+          <h2>Stock Count Entry</h2>
           {selectedBatch && batches.length > 0 && (() => {
             const b = batches.find(b => b.id.toString() === selectedBatch);
             return b ? (
@@ -440,7 +449,7 @@ export default function StoreInventory() {
                 className="btn btn-success"
                 title={hasUnsavedChanges || isSaving ? 'Wait for all changes to save first' : ''}
               >
-                {submitting ? 'Submitting…' : `Submit All (${totalPending} pending)`}
+                {submitting ? 'Submitting…' : `Submit Count (${totalPending} items)`}
               </button>
               <span style={{ fontSize: 11, color: 'var(--t3)' }}>Once submitted, your manager will be notified</span>
             </div>
@@ -473,7 +482,7 @@ export default function StoreInventory() {
       {/* ── Filters ── */}
       <div className="inv-filters">
         <div className="filter-group">
-          <span className="filter-label">Cycle / Date</span>
+          <span className="filter-label">Count Period</span>
           <select
             value={selectedBatch}
             onChange={e => setSelectedBatch(e.target.value)}
@@ -488,7 +497,7 @@ export default function StoreInventory() {
             ))}
           </select>
           <span style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4, display: 'block' }}>
-            Select any past cycle to view historical records (read-only)
+            Select a past count period to view historical records (read-only)
           </span>
         </div>
         <div className="filter-group">
@@ -532,11 +541,11 @@ export default function StoreInventory() {
             <table className="inv-table">
               <thead>
                 <tr>
-                  <th>Material Name</th>
-                  <th>Description</th>
-                  <th style={{ textAlign: 'right' }}>System Stock</th>
-                  <th style={{ textAlign: 'right' }}>Physical Stock</th>
-                  <th>Gap</th>
+                  <th>Item Code</th>
+                  <th>Item Name</th>
+                  <th style={{ textAlign: 'right' }}>Book Stock</th>
+                  <th style={{ textAlign: 'right' }}>Your Count</th>
+                  <th>Variance</th>
                   <th>Category</th>
                   <th>Issue Detail</th>
                   <th>Status</th>
