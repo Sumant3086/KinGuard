@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
+import { useToast } from '../../context/ToastContext';
 
 export default function AdminUpload() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [inventoryDate, setInventoryDate] = useState('');
   const [submissionDeadline, setSubmissionDeadline] = useState('');
@@ -67,6 +69,7 @@ export default function AdminUpload() {
             const input = document.getElementById('file-input');
             if (input) input.value = '';
           } catch (forceErr) {
+            toast.error(forceErr.response?.data?.error || 'Upload failed.');
             setError(forceErr.response?.data?.error || 'Upload failed.');
           }
         }
@@ -75,6 +78,21 @@ export default function AdminUpload() {
       }
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleDownloadTemplate() {
+    try {
+      const blob = await adminApi.downloadSampleTemplate();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'KinGuard_InventoryTemplate.xlsx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Template downloaded');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to download template');
     }
   }
 
@@ -94,6 +112,9 @@ export default function AdminUpload() {
           <h2>Upload Inventory File</h2>
           <p>Upload a master Excel or CSV file to start a new inventory cycle for all stores</p>
         </div>
+        <button onClick={handleDownloadTemplate} className="btn btn-secondary">
+          ↓ Download Template
+        </button>
       </div>
 
       {/* Step 1 — File selection */}

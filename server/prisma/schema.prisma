@@ -47,6 +47,8 @@ model User {
   role         UserRole
   storeId      Int?
   isActive     Boolean  @default(true)
+  email        String?
+  phone        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -103,6 +105,7 @@ model InventoryRecord {
   store         Store       @relation(fields: [storeId], references: [id])
   submitter     User?       @relation("SubmittedBy", fields: [submittedBy], references: [id])
 
+  @@unique([batchId, storeId, materialCode])
   @@index([batchId])
   @@index([storeId])
   @@index([materialCode])
