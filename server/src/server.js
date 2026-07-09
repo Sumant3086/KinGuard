@@ -17,6 +17,10 @@ function freePort(port) {
 async function startServer() {
   try {
     await prisma.$connect();
+    // Warm-up: force the connection pool to establish a real connection.
+    // Without this, the pool is lazy — the first incoming HTTP request
+    // triggers the real DB handshake and can fail on cold start (watch reload).
+    await prisma.$queryRaw`SELECT 1`;
     console.log('Database connected successfully');
 
     // Only kill the port in development — never do this in production
