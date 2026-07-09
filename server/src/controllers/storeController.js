@@ -154,24 +154,30 @@ export async function updateInventoryRecord(req, res, next) {
     const { id } = req.params;
     const recordId = parseInt(id);
     const storeId = req.user.storeId;
-    const { physicalQuantity: rawQty, remarks, shrinkageCategory } = req.body;
+    const { physicalQuantity: rawPhys, systemQuantity: rawSys, remarks, shrinkageCategory } = req.body;
 
-    const physicalQuantityProvided = rawQty !== undefined;
-    const physicalQuantity = (rawQty === '' || rawQty === null) ? null : rawQty;
+    const physicalProvided = rawPhys !== undefined;
+    const systemProvided   = rawSys  !== undefined;
 
-    if (physicalQuantityProvided && physicalQuantity !== null) {
+    const physicalQuantity = physicalProvided ? ((rawPhys === '' || rawPhys === null) ? null : rawPhys) : undefined;
+    const systemQuantityIn = systemProvided   ? ((rawSys  === '' || rawSys  === null) ? null : rawSys)  : undefined;
+
+    if (physicalProvided && physicalQuantity !== null) {
       const qty = parseFloat(physicalQuantity);
-      if (isNaN(qty) || qty < 0) {
-        throw new AppError('Sold quantity must be a non-negative number', 400);
-      }
+      if (isNaN(qty) || qty < 0) throw new AppError('Physical stock must be a non-negative number', 400);
+    }
+    if (systemProvided && systemQuantityIn !== null) {
+      const qty = parseFloat(systemQuantityIn);
+      if (isNaN(qty) || qty < 0) throw new AppError('System stock must be a non-negative number', 400);
     }
 
-    // Single query: verify ownership + get systemQuantity + check batch deadline
+    // Single query: verify ownership + get current values + check batch deadline
     const record = await prisma.inventoryRecord.findFirst({
       where: { id: recordId, storeId },
       select: {
         id: true,
         systemQuantity: true,
+        physicalQuantity: true,
         status: true,
         batchId: true,
         batch: { select: { submissionDeadline: true } },
@@ -193,33 +199,41 @@ export async function updateInventoryRecord(req, res, next) {
       }
     }
 
+    // Resolve final values for both fields — used for diff AND for the DB write
+    // so the stored physicalQuantity and the stored difference are always consistent.
+    const finalSysQty  = systemProvided  && systemQuantityIn !== null
+      ? parseFloat(systemQuantityIn)
+      : record.systemQuantity;
+    // When physicalQuantity is explicitly cleared (null), effectivePhysQty is null.
+    // Falling back to record.physicalQuantity only when the field was NOT sent at all.
+    const effectivePhysQty = physicalProvided
+      ? (physicalQuantity !== null ? parseFloat(physicalQuantity) : null)
+      : record.physicalQuantity;
+
     let difference = undefined;
-    if (physicalQuantityProvided) {
-      difference = physicalQuantity !== null
-        ? parseFloat(physicalQuantity) - record.systemQuantity
+    if (physicalProvided || systemProvided) {
+      difference = effectivePhysQty !== null && effectivePhysQty !== undefined
+        ? parseFloat((effectivePhysQty - finalSysQty).toFixed(4))
         : null;
     }
 
-    // Single update query — returns the updated record directly (no extra findUnique needed)
     const result = await prisma.inventoryRecord.update({
       where: { id: recordId },
       data: {
-        physicalQuantity: physicalQuantityProvided
-          ? (physicalQuantity !== null ? parseFloat(physicalQuantity) : null)
-          : undefined,
+        systemQuantity:   systemProvided  ? finalSysQty     : undefined,
+        physicalQuantity: physicalProvided ? effectivePhysQty : undefined,
         difference,
-        remarks: remarks !== undefined ? remarks : undefined,
-        shrinkageCategory: shrinkageCategory !== undefined ? (shrinkageCategory || null) : undefined,
+        remarks:           remarks           !== undefined ? remarks                       : undefined,
+        shrinkageCategory: shrinkageCategory !== undefined ? (shrinkageCategory || null)   : undefined,
       },
     });
 
-    // Fire-and-forget — don't block the HTTP response for an audit log write
     createAuditLog({
       userId: req.user.id,
       action: 'UPDATE_INVENTORY',
       entityType: 'INVENTORY_RECORD',
       entityId: recordId,
-      metadata: { physicalQuantity, remarks },
+      metadata: { systemQuantity: finalSysQty, physicalQuantity: effectivePhysQty, remarks },
     }).catch(() => {});
 
     const duration = Date.now() - startTime;
@@ -283,6 +297,25 @@ export async function submitInventory(req, res, next) {
       metadata: { recordCount: count },
     }).catch(() => {});
     detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(() => {});
+
+    // Email admin on submission
+    const shortageCount = records.filter(r => (r.difference ?? 0) < 0).length;
+    prisma.uploadBatch.findUnique({ where: { id: parsedBatchId }, select: { inventoryDate: true } })
+      .then(b => prisma.user.findFirst({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } } })
+        .then(admin => {
+          if (!admin || !b) return;
+          import('../services/emailService.js').then(({ sendSubmissionEmail }) => {
+            sendSubmissionEmail({
+              adminEmail: admin.email,
+              adminName:  admin.name,
+              store:      req.user.store,
+              batchDate:  b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+              recordCount: count,
+              shortages:   shortageCount,
+            });
+          });
+        })
+      ).catch(() => {});
 
     res.json({
       message: 'Inventory submitted successfully',
@@ -400,8 +433,8 @@ export async function downloadInventory(req, res, next) {
       { header: 'Date', key: 'inventoryDate', width: 15 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Material Description', key: 'materialName', width: 30 },
-      { header: 'SYS', key: 'systemQuantity', width: 12 },
-      { header: 'Sold', key: 'physicalQuantity', width: 12 },
+      { header: 'System Stock', key: 'systemQuantity', width: 14 },
+      { header: 'Physical Stock', key: 'physicalQuantity', width: 14 },
       { header: 'Diff', key: 'difference', width: 12 },
       { header: 'Remarks', key: 'remarks', width: 30 },
       { header: 'Status', key: 'status', width: 12 },
