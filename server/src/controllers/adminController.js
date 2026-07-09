@@ -1,4 +1,4 @@
-﻿import bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt';
 import ExcelJS from 'exceljs';
 import { parse } from 'csv-parse/sync';
 import { AppError } from '../middleware/errorHandler.js';
