@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/img/logo 32px32px.png';
 
 const Icons = {
   dashboard: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
@@ -45,7 +46,7 @@ export default function AdminLayout({ children }) {
       <nav className="hl-nav">
         {/* Brand */}
         <Link to="/admin/dashboard" className="hl-brand">
-          <div className="hl-logo">K</div>
+          <img src={logoImg} alt="KinMarché" className="hl-logo-img" />
           <div className="hl-brand-text">
             <span className="hl-name">KinMarché</span>
             <span className="hl-tagline">Loss &amp; Prevention</span>
