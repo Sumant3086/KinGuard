@@ -13,11 +13,25 @@ export async function login(req, res, next) {
       throw new AppError('Employee ID and password are required', 400);
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { employeeId },
-      include: { store: true },
-    });
+    // Find user — retry once on transient DB connection errors (common on cold start)
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { employeeId },
+        include: { store: true },
+      });
+    } catch (dbErr) {
+      // On first request after server restart Prisma may not be fully ready
+      try {
+        await prisma.$connect();
+        user = await prisma.user.findUnique({
+          where: { employeeId },
+          include: { store: true },
+        });
+      } catch {
+        throw new AppError('Service is starting up. Please try again in a moment.', 503);
+      }
+    }
 
     if (!user) {
       throw new AppError('Employee ID or password is incorrect', 401);
