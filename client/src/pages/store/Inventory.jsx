@@ -3,6 +3,54 @@ import StoreLayout from '../../components/StoreLayout';
 import * as storeApi from '../../api/store';
 import { useToast } from '../../context/ToastContext';
 
+// Category -> Issue Detail sub-reasons mapping
+const ISSUE_REASONS = {
+  Dented: [
+    'Minor dent to packaging, product is ok',
+    'Moderate dent to packaging, product with lesser impact',
+    'Direct dent to product, product not ok',
+    'Dented due to warehouse handling error',
+    'Dented during transit/shipping',
+  ],
+  Expiry: [
+    'Product has passed the expiry date',
+    'Product has passed the particular date',
+    'Expired stock identified during stock take',
+    'Expired stock designated for return to vendor',
+    'Expired stock designated for disposal',
+  ],
+  Damage: [
+    'Physical breakage of product/component',
+    'Physical scratches/abrasions on product/packaging',
+    'Water exposure damage',
+    'Fire/smoke exposure damage',
+    'Electrical malfunction/damage',
+    'Manufacturing defect identified',
+    'Damage incurred during customer return process',
+    'Unsaleable due to damage',
+  ],
+  'In Transit': [
+    'Overage, Shortage, Damage (OS&D) report for transit damage',
+    'Damage/issue due to cargo shift during transport',
+    'Environmental exposure during transit (e.g., temperature, humidity)',
+    'Pilferage suspected during transit',
+    'Damage incurred due to transport accident',
+    'Discrepancy between physical count and shipping documentation',
+  ],
+  Other: [
+    'Quality control hold, pending further inspection/decision',
+    'Incorrect labeling identified on product/packaging',
+    'Product subject to manufacturer recall',
+    'Product deemed obsolete, no longer marketable',
+    'Inventory adjustment due to system error/discrepancy',
+    'Stock designated for donation',
+    'Stock designated for sampling/testing',
+    'Stock shared to national employees',
+  ],
+};
+
+const CATEGORIES = Object.keys(ISSUE_REASONS);
+
 const IconSave = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -202,7 +250,27 @@ export default function StoreInventory() {
       toast.warning('Please wait for all changes to save before submitting');
       return;
     }
-    if (!confirm('Submit your inventory? All pending items will become read-only. Your manager will be notified.')) return;
+
+    // Client-side validation before hitting the server
+    const pending = records.filter(r => r.status === 'PENDING');
+    const missingPhysical = pending.filter(r => r.physicalQuantity === null);
+    if (missingPhysical.length > 0) {
+      toast.error(`${missingPhysical.length} item(s) are missing Physical Stock. Please fill in all quantities.`);
+      return;
+    }
+    const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
+    const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
+    if (missingCategory.length > 0) {
+      toast.error(`${missingCategory.length} item(s) with discrepancies need a Category selected.`);
+      return;
+    }
+    const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
+    if (missingDetail.length > 0) {
+      toast.error(`${missingDetail.length} item(s) with discrepancies need Issue Details filled in.`);
+      return;
+    }
+
+    if (!confirm('Submit your inventory? All items will become read-only. Your manager will be notified.')) return;
     try {
       setSubmitting(true);
       const res = await storeApi.submitInventory(batchId);
@@ -282,7 +350,8 @@ export default function StoreInventory() {
                       <th>System Stock</th>
                       <th>Physical Stock</th>
                       <th>Gap</th>
-                      <th>Remarks</th>
+                      <th>Category</th>
+                      <th>Issue Detail</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -296,6 +365,7 @@ export default function StoreInventory() {
                             {r.difference > 0 ? '+' : ''}{r.difference}
                           </span>
                         </td>
+                        <td style={{ fontSize: 12 }}>{r.shrinkageCategory || '—'}</td>
                         <td style={{ fontSize: 12, color: 'var(--t3)' }}>{r.remarks || '—'}</td>
                       </tr>
                     ))}
@@ -467,7 +537,8 @@ export default function StoreInventory() {
                   <th style={{ textAlign: 'right' }}>System Stock</th>
                   <th style={{ textAlign: 'right' }}>Physical Stock</th>
                   <th>Gap</th>
-                  <th>Remarks</th>
+                  <th>Category</th>
+                  <th>Issue Detail</th>
                   <th>Status</th>
                   <th className="save-col-header"></th>
                 </tr>
@@ -553,55 +624,65 @@ export default function StoreInventory() {
                         )}
                       </td>
 
-                      {/* Remarks */}
+                      {/* Category */}
                       <td>
                         {isEditable ? (
-                          <div className="remark-wrap">
-                            <div style={{ marginBottom: 4 }}>
-                              <select
-                                value={getFieldValue(record, 'shrinkageCategory')}
-                                onChange={e => updateField(record.id, 'shrinkageCategory', e.target.value)}
-                                className="remark-select"
-                                style={{ width: '100%', fontSize: 12 }}
-                              >
-                                <option value="">Category…</option>
-                                <option value="THEFT">Theft</option>
-                                <option value="DAMAGE">Damage</option>
-                                <option value="EXPIRED">Expired</option>
-                                <option value="COUNTING_ERROR">Counting Error</option>
-                                <option value="TRANSFER">Transfer</option>
-                                <option value="SAMPLE_USE">Sample Use</option>
-                                <option value="OTHER">Other</option>
-                              </select>
-                            </div>
-                            <input
-                              type="text"
+                          <select
+                            value={getFieldValue(record, 'shrinkageCategory')}
+                            onChange={e => {
+                              updateField(record.id, 'shrinkageCategory', e.target.value);
+                              // Clear issue detail when category changes
+                              updateField(record.id, 'remarks', '');
+                            }}
+                            className="remark-select"
+                            style={{ width: '100%', minWidth: 110, fontSize: 12 }}
+                          >
+                            <option value="">-- Select --</option>
+                            {CATEGORIES.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="remark-text">{record.shrinkageCategory || '—'}</span>
+                        )}
+                      </td>
+
+                      {/* Issue Detail — dropdown or free-text depending on category */}
+                      <td>
+                        {isEditable ? (() => {
+                          const cat = getFieldValue(record, 'shrinkageCategory');
+                          if (!cat) {
+                            return <span style={{ fontSize: 11, color: 'var(--t4)' }}>Select category first</span>;
+                          }
+                          if (cat === 'Other') {
+                            return (
+                              <input
+                                type="text"
+                                value={getFieldValue(record, 'remarks')}
+                                onChange={e => updateField(record.id, 'remarks', e.target.value)}
+                                placeholder="Describe the issue…"
+                                className="inline-input remark-input"
+                                style={{ minWidth: 160 }}
+                              />
+                            );
+                          }
+                          return (
+                            <select
                               value={getFieldValue(record, 'remarks')}
                               onChange={e => updateField(record.id, 'remarks', e.target.value)}
-                              placeholder="Add remark…"
-                              className="inline-input remark-input"
-                            />
-                            <select
                               className="remark-select"
-                              onChange={e => {
-                                if (e.target.value) {
-                                  updateField(record.id, 'remarks', e.target.value);
-                                  e.target.value = '';
-                                }
-                              }}
-                              title="Quick select remark"
+                              style={{ width: '100%', minWidth: 160, fontSize: 12 }}
                             >
-                              <option value="">▼</option>
-                              <option value="Damaged items removed">Damaged items removed</option>
-                              <option value="Stock expired">Stock expired</option>
-                              <option value="Theft suspected">Theft suspected</option>
-                              <option value="Counting error corrected">Counting error corrected</option>
-                              <option value="Transfer to another store">Transfer to another store</option>
-                              <option value="Display sample used">Display sample used</option>
+                              <option value="">-- Select issue --</option>
+                              {(ISSUE_REASONS[cat] || []).map(reason => (
+                                <option key={reason} value={reason}>{reason}</option>
+                              ))}
                             </select>
-                          </div>
-                        ) : (
-                          <span className="remark-text">{record.remarks || '—'}</span>
+                          );
+                        })() : (
+                          <span className="remark-text" title={record.remarks || ''}>
+                            {record.remarks || '—'}
+                          </span>
                         )}
                       </td>
 

@@ -270,10 +270,28 @@ export async function submitInventory(req, res, next) {
 
       if (pending.length === 0) throw new AppError('No pending records found', 400);
 
-      const missing = pending.filter(r => r.physicalQuantity === null);
-      if (missing.length > 0) {
+      // All items must have physical stock entered
+      const missingPhysical = pending.filter(r => r.physicalQuantity === null);
+      if (missingPhysical.length > 0) {
         throw new AppError(
-          `Please enter Sold quantity for all items before submitting. ${missing.length} items are missing.`,
+          `${missingPhysical.length} item(s) are missing Physical Stock. Please fill in all quantities before submitting.`,
+          400
+        );
+      }
+
+      // Items with a discrepancy (diff != 0) must have Category and Issue Detail
+      const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
+      const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
+      if (missingCategory.length > 0) {
+        throw new AppError(
+          `${missingCategory.length} item(s) with discrepancies are missing a Category. Please select a category for each.`,
+          400
+        );
+      }
+      const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
+      if (missingDetail.length > 0) {
+        throw new AppError(
+          `${missingDetail.length} item(s) with discrepancies are missing Issue Details. Please provide details for each discrepancy.`,
           400
         );
       }
