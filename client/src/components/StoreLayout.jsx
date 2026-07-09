@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import logoImg from '../assets/img/logo 32px32px.png';
+import NotificationBell from './NotificationBell';
+import { getNotifications } from '../api/store';
 
 const Icons = {
   dashboard: (
@@ -48,15 +50,16 @@ export default function StoreLayout({ children }) {
               to="/store/dashboard"
               className={`store-nav-link ${isActive('/store/dashboard') ? 'active' : ''}`}
             >
-              Dashboard
+              My Dashboard
             </Link>
             <Link
               to="/store/inventory"
               className={`store-nav-link ${isActive('/store/inventory') ? 'active' : ''}`}
             >
-              Inventory
+              Stock Count
             </Link>
             <span className="store-nav-user">{user?.name}</span>
+            <NotificationBell fetcher={getNotifications} role="STORE_MANAGER" />
             <button className="btn-signout" onClick={logout}>Sign Out</button>
           </nav>
         </div>

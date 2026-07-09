@@ -12,39 +12,38 @@ export async function getDashboard(req, res, next) {
       throw new AppError('Your store has been removed. Please contact your administrator.', 403);
     }
 
-    // Get latest batch WHERE this store has inventory records - optimized query
-    const latestBatch = await prisma.uploadBatch.findFirst({
-      where: {
-        inventoryRecords: {
-          some: { storeId },
+    // Get latest batch WHERE this store has inventory records
+    const [latestBatch, allPendingBatches] = await Promise.all([
+      prisma.uploadBatch.findFirst({
+        where: { inventoryRecords: { some: { storeId } } },
+        orderBy: { inventoryDate: 'desc' },
+        select: {
+          id: true,
+          inventoryDate: true,
+          uploadedAt: true,
+          submissionDeadline: true,
         },
-      },
-      orderBy: { inventoryDate: 'desc' },
-      select: {
-        id: true,
-        inventoryDate: true,
-        uploadedAt: true,
-      },
-    });
+      }),
+      // All batches that still have PENDING records — surfaces past-date uploads
+      prisma.uploadBatch.findMany({
+        where: { inventoryRecords: { some: { storeId, status: 'PENDING' } } },
+        orderBy: { inventoryDate: 'desc' },
+        select: { id: true, inventoryDate: true },
+      }),
+    ]);
 
     if (!latestBatch) {
       return res.json({
         store: req.user.store,
         batch: null,
-        stats: {
-          totalItems: 0,
-          pendingItems: 0,
-          submittedItems: 0,
-          matchedItems: 0,
-          shortageItems: 0,
-          excessItems: 0,
-        },
+        stats: { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 },
+        olderPendingBatches: [],
       });
     }
 
-    // Use database aggregation instead of loading all records
+    // Aggregate stats for the latest batch
     const stats = await prisma.$queryRaw`
-      SELECT 
+      SELECT
         COUNT(*)::int as "totalItems",
         COUNT(CASE WHEN status = 'PENDING' THEN 1 END)::int as "pendingItems",
         COUNT(CASE WHEN status = 'SUBMITTED' THEN 1 END)::int as "submittedItems",
@@ -55,6 +54,9 @@ export async function getDashboard(req, res, next) {
       WHERE "storeId" = ${storeId} AND "batchId" = ${latestBatch.id}
     `;
 
+    // Older batches that still need the manager's attention (not the latest one)
+    const olderPendingBatches = allPendingBatches.filter(b => b.id !== latestBatch.id);
+
     const duration = Date.now() - startTime;
     console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
 
@@ -62,6 +64,7 @@ export async function getDashboard(req, res, next) {
       store: req.user.store,
       batch: latestBatch,
       stats: stats[0],
+      olderPendingBatches,
     });
   } catch (error) {
     next(error);
@@ -396,6 +399,52 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
       count: repeatMaterials.size,
     },
   });
+}
+
+export async function getNotifications(req, res, next) {
+  try {
+    const storeId = req.user.storeId;
+    const now = new Date();
+    const items = [];
+
+    // Every batch that still has PENDING records for this store
+    const pendingBatches = await prisma.uploadBatch.findMany({
+      where: { inventoryRecords: { some: { storeId, status: 'PENDING' } } },
+      orderBy: { inventoryDate: 'desc' },
+      select: {
+        id: true,
+        inventoryDate: true,
+        submissionDeadline: true,
+        deadlineExtensions: {
+          where: { storeId },
+          select: { newDeadline: true },
+        },
+      },
+    });
+
+    for (const batch of pendingBatches) {
+      const ext = batch.deadlineExtensions[0];
+      const deadline = ext ? ext.newDeadline : batch.submissionDeadline;
+      const dateLabel = new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+      if (deadline && now > new Date(deadline)) {
+        items.push({ type: 'overdue', message: `${dateLabel} — Past deadline, contact your admin`, batchId: batch.id, urgent: true });
+      } else if (deadline) {
+        const hoursLeft = Math.round((new Date(deadline) - now) / 3600000);
+        if (hoursLeft <= 48) {
+          items.push({ type: 'deadline', message: `${dateLabel} — Deadline in ${hoursLeft < 1 ? '<1' : hoursLeft}h`, batchId: batch.id, urgent: hoursLeft <= 12 });
+        } else {
+          items.push({ type: 'pending', message: `${dateLabel} — Items waiting for your count`, batchId: batch.id, urgent: false });
+        }
+      } else {
+        items.push({ type: 'pending', message: `${dateLabel} — Items waiting for your count`, batchId: batch.id, urgent: false });
+      }
+    }
+
+    res.json({ items, count: items.length });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function downloadInventory(req, res, next) {

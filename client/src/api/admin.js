@@ -238,6 +238,12 @@ export async function getStoreDrilldown(storeId, batchId) {
   return data;
 }
 
+export async function getNotifications() {
+  // Never cache — must always reflect current server state
+  const { data } = await client.get('/admin/notifications');
+  return data;
+}
+
 export async function uploadInventoryForce(file, inventoryDate, submissionDeadline) {
   const formData = new FormData();
   formData.append('file', file);

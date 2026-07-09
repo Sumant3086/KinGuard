@@ -2084,3 +2084,73 @@ export async function downloadBatchExportPDF(req, res, next) {
     res.end(pdfBuffer);
   } catch (error) { next(error); }
 }
+
+// ── Admin notification feed — computed from existing data, no extra table ──────
+export async function getNotifications(req, res, next) {
+  try {
+    const now = new Date();
+    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const items = [];
+
+    const latestBatch = await prisma.uploadBatch.findFirst({
+      where: { status: 'COMPLETED' },
+      orderBy: { inventoryDate: 'desc' },
+      select: { id: true, inventoryDate: true, submissionDeadline: true },
+    });
+
+    if (!latestBatch) return res.json({ items: [], count: 0 });
+
+    const dateLabel = new Date(latestBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+    // Stores that submitted in the last 24 hours
+    const recentSubmits = await prisma.inventoryRecord.findMany({
+      where: { batchId: latestBatch.id, status: 'SUBMITTED', submittedAt: { gte: since24h } },
+      select: { storeId: true },
+      distinct: ['storeId'],
+    });
+    if (recentSubmits.length > 0) {
+      items.push({
+        type: 'submitted',
+        message: `${recentSubmits.length} store${recentSubmits.length > 1 ? 's' : ''} submitted counts in the last 24h`,
+        batchId: latestBatch.id,
+        urgent: false,
+      });
+    }
+
+    // Overdue or deadline-approaching stores
+    if (latestBatch.submissionDeadline) {
+      const deadlineDate = new Date(latestBatch.submissionDeadline);
+      const pendingStores = await prisma.inventoryRecord.findMany({
+        where: { batchId: latestBatch.id, status: 'PENDING' },
+        select: { storeId: true },
+        distinct: ['storeId'],
+      });
+      const pendingCount = pendingStores.length;
+
+      if (pendingCount > 0) {
+        if (now > deadlineDate) {
+          items.push({
+            type: 'overdue',
+            message: `${pendingCount} store${pendingCount > 1 ? 's have' : ' has'} not submitted — ${dateLabel} deadline passed`,
+            batchId: latestBatch.id,
+            urgent: true,
+          });
+        } else {
+          const hoursLeft = Math.round((deadlineDate - now) / 3600000);
+          if (hoursLeft <= 48) {
+            items.push({
+              type: 'deadline',
+              message: `${pendingCount} store${pendingCount > 1 ? 's' : ''} still pending — ${dateLabel} deadline in ${hoursLeft < 1 ? '<1' : hoursLeft}h`,
+              batchId: latestBatch.id,
+              urgent: hoursLeft <= 12,
+            });
+          }
+        }
+      }
+    }
+
+    res.json({ items, count: items.length });
+  } catch (error) {
+    next(error);
+  }
+}
