@@ -8,17 +8,16 @@ const BellIcon = () => (
   </svg>
 );
 
-// type → destination path for the notification click
-const typeNav = {
-  // store side
-  pending:  '/store/inventory',
-  deadline: '/store/inventory',
-  overdue:  '/store/inventory',
-  // admin side
-  submitted: '/admin/inventory',
-  overdue:   '/admin/batches',
-  deadline:  '/admin/batches',
-};
+// Resolve navigation path based on notification type and user role.
+// Admin and store-manager roles need different destinations for the
+// same notification type, so a single static map would have duplicate
+// keys and silently overwrite the store-manager routes.
+function resolveNav(type, role) {
+  if (role === 'ADMIN') {
+    return type === 'submitted' ? '/admin/inventory' : '/admin/batches';
+  }
+  return '/store/inventory'; // store managers always go to their count page
+}
 
 const typeDot = {
   pending:   '#3b82f6',
@@ -58,7 +57,7 @@ export default function NotificationBell({ fetcher, role }) {
 
   function handleItem(item) {
     setOpen(false);
-    const base = typeNav[item.type] ?? (role === 'ADMIN' ? '/admin/batches' : '/store/inventory');
+    const base = resolveNav(item.type, role);
     const path = item.batchId ? `${base}?batchId=${item.batchId}` : base;
     navigate(path);
   }
