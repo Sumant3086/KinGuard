@@ -4,17 +4,19 @@ import * as adminApi from '../../api/admin';
 
 /* ── Pure-SVG sparkline — no library needed ─────────────────────── */
 function Sparkline({ values, width = 80, height = 28 }) {
-  if (!values || values.length < 2) return null;
-  const max = Math.max(...values, 1);
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * width;
+  const safe = (values || []).filter(v => typeof v === 'number' && !isNaN(v));
+  if (safe.length < 2) return null;
+  const values_ = safe;
+  const max = Math.max(...values_, 1);
+  const pts = values_.map((v, i) => {
+    const x = (i / (values_.length - 1)) * width;
     const y = height - (v / max) * (height - 4) - 2;
     return `${x},${y}`;
   }).join(' ');
 
   // Color based on last value trend
-  const last = values[values.length - 1];
-  const prev = values[values.length - 2];
+  const last = values_[values_.length - 1];
+  const prev = values_[values_.length - 2];
   const stroke = last > prev ? '#ef4444' : last < prev ? '#10b981' : '#64748b';
 
   return (

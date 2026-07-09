@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
@@ -35,6 +35,49 @@ function PasswordStrength({ pw }) {
         )}
       </div>
     </div>
+  );
+}
+
+function UserRow({ user, self, adminCount, onEdit, onDelete }) {
+  const isSelf = user.id === self?.id;
+  const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1;
+  const canDelete = !isSelf && !isLastAdmin;
+  return (
+    <tr>
+      <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--vi-light)' }}>
+        {user.employeeId}
+      </td>
+      <td style={{ fontWeight: 600 }}>{user.name}</td>
+      <td>
+        <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`}>
+          {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
+        </span>
+      </td>
+      <td style={{ color: 'var(--t3)', fontSize: 12 }}>
+        {user.store ? `${user.store.storeCode} -- ${user.store.storeName}` : '--'}
+      </td>
+      <td>
+        <span className={`badge ${user.isActive ? 'badge-active' : 'badge-inactive'}`}>
+          {user.isActive ? 'Active' : 'Inactive'}
+        </span>
+      </td>
+      <td style={{ display: 'flex', gap: 6 }}>
+        <button onClick={() => onEdit(user)} className="btn btn-secondary btn-sm">Edit</button>
+        {canDelete ? (
+          <button
+            onClick={() => onDelete(user)}
+            className="btn btn-sm"
+            style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}
+          >
+            Delete
+          </button>
+        ) : (
+          <span style={{ fontSize: 11, color: 'var(--t4)', alignSelf: 'center', paddingLeft: 4 }}>
+            {isSelf ? 'You' : 'Last admin'}
+          </span>
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -140,52 +183,6 @@ export default function AdminUsers() {
   const adminUsers   = users.filter(u => u.role === 'ADMIN');
   const managerUsers = users.filter(u => u.role === 'STORE_MANAGER');
 
-  function UserRow({ user }) {
-    const isSelf = user.id === self?.id;
-    const isLastAdmin = user.role === 'ADMIN' && adminUsers.length <= 1;
-    const canDelete = !isSelf && !isLastAdmin;
-
-    return (
-      <tr>
-        <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--vi-light)' }}>
-          {user.employeeId}
-        </td>
-        <td style={{ fontWeight: 600 }}>{user.name}</td>
-        <td>
-          <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`}>
-            {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
-          </span>
-        </td>
-        <td style={{ color: 'var(--t3)', fontSize: 12 }}>
-          {user.store ? `${user.store.storeCode} — ${user.store.storeName}` : '—'}
-        </td>
-        <td>
-          <span className={`badge ${user.isActive ? 'badge-active' : 'badge-inactive'}`}>
-            {user.isActive ? 'Active' : 'Inactive'}
-          </span>
-        </td>
-        <td style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => openEdit(user)} className="btn btn-secondary btn-sm">
-            Edit
-          </button>
-          {canDelete ? (
-            <button
-              onClick={() => handleDelete(user)}
-              className="btn btn-sm"
-              style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}
-            >
-              Delete
-            </button>
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--t4)', alignSelf: 'center', paddingLeft: 4 }}>
-              {isSelf ? 'You' : 'Last admin'}
-            </span>
-          )}
-        </td>
-      </tr>
-    );
-  }
-
   return (
     <AdminLayout>
       <div className="page-header">
@@ -225,7 +222,7 @@ export default function AdminUsers() {
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => <UserRow key={u.id} user={u} />)}
+                {users.map(u => <UserRow key={u.id} user={u} self={self} adminCount={adminUsers.length} onEdit={openEdit} onDelete={handleDelete} />)}
               </tbody>
             </table>
           </div>
