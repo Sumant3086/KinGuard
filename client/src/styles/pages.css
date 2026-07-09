@@ -80,9 +80,10 @@
   object-fit: contain;
   flex-shrink: 0;
   border-radius: 12px;
-  background: rgba(255,255,255,0.95);
-  padding: 5px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.28);
+  /* Solid white so logo reads clearly on the red/dark background */
+  background: #ffffff;
+  padding: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.30);
 }
 .ll-name { font-size:17px; font-weight:800; color:#ffffff; }
 
@@ -229,7 +230,15 @@
    ═══════════════════════════════════════════════════════════════════ */
 .home-page {
   min-height: 100vh;
-  background: #f8fafc;
+  /* Bakery counter image at ~3% gives the page a warm retail texture
+     without competing with text — visible only in the empty white margins */
+  background-color: #f8fafc;
+  background-image:
+    linear-gradient(rgba(248,250,252,0.97), rgba(248,250,252,0.97)),
+    url('../assets/img/page.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 /* Sticky nav */
@@ -262,16 +271,15 @@
 }
 .home-logo-name { font-size:15px; font-weight:800; color:#0f172a; }
 
-/* Hero section with background image */
+/* Hero section — uses actual KinMarché store background */
 .home-hero-bg { position:relative; overflow:hidden; }
 .home-hero-bg::before {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(248,250,252,0.45) 0%, rgba(248,250,252,0.96) 70%),
-    url('https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1920&q=80')
-    center 35% / cover no-repeat;
+    linear-gradient(180deg, rgba(248,250,252,0.38) 0%, rgba(248,250,252,0.97) 68%),
+    url('../assets/img/home creen.jpg') center 40% / cover no-repeat;
   z-index: 0;
 }
 .home-hero {
@@ -301,54 +309,76 @@
   margin-bottom: 26px;
 }
 
-/* Workflow steps */
+/* Workflow section — retail image at 8% behind the steps */
 .home-workflow {
-  background: rgba(255,255,255,0.88);
-  border: 1px solid rgba(0,0,0,0.07);
+  position: relative;
   border-radius: 16px;
   margin: 0 auto 64px;
-  padding: 28px 40px;
+  padding: 32px 40px;
   max-width: 1184px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0;
   flex-wrap: wrap;
+  overflow: hidden;
+  border: 1px solid rgba(220,38,38,0.12);
+  box-shadow: 0 4px 24px rgba(220,38,38,0.07), 0 1px 6px rgba(0,0,0,0.04);
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)),
+    url('../assets/img/page.jpg');
+  background-size: cover;
+  background-position: center;
 }
+/* Top red accent bar on the workflow section */
+.home-workflow::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #b91c1c, #dc2626, #ef4444);
+}
+
 .home-step {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
+  gap: 12px;
+  padding: 16px 22px;
   background: #ffffff;
   border-radius: var(--r-md);
-  border: 1px solid rgba(0,0,0,0.07);
-  box-shadow: var(--sh-sm);
+  border: 1px solid rgba(220,38,38,0.10);
+  box-shadow: 0 2px 10px rgba(220,38,38,0.06), 0 1px 3px rgba(0,0,0,0.04);
   flex: 1;
   min-width: 160px;
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+.home-step:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220,38,38,0.12), 0 2px 6px rgba(0,0,0,0.06);
 }
 .home-step-num {
-  width: 28px; height: 28px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   background: linear-gradient(135deg, #b91c1c, #dc2626);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(220,38,38,0.30);
+  box-shadow: 0 3px 12px rgba(220,38,38,0.35);
 }
-.home-step-body strong { font-size:12.5px; font-weight:700; color:#0f172a; display:block; }
-.home-step-body span   { font-size:11px; color:#64748b; }
-.home-step-arrow { font-size:16px; color:#94a3b8; padding:0 8px; flex-shrink:0; align-self:center; }
+.home-step-body strong { font-size:13px; font-weight:700; color:#0f172a; display:block; }
+.home-step-body span   { font-size:11px; color:#64748b; margin-top:2px; display:block; }
+.home-step-arrow { font-size:18px; color:rgba(220,38,38,0.30); padding:0 8px; flex-shrink:0; align-self:center; }
 
 /* Feature cards */
 .home-features {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+  gap: 18px;
   padding: 0 48px 80px;
   max-width: 1280px;
   margin: 0 auto;
@@ -357,16 +387,45 @@
   background: #ffffff;
   border: 1px solid rgba(0,0,0,0.07);
   border-radius: 14px;
-  padding: 22px 20px;
+  padding: 26px 22px;
   box-shadow: var(--sh-sm);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  /* Coloured top bar — nth-child sets the hue below */
+  border-top: 3px solid rgba(220,38,38,0.25);
+  position: relative;
 }
 .home-feat:hover {
-  transform: translateY(-3px);
-  border-color: rgba(220,38,38,0.20);
-  box-shadow: 0 8px 28px rgba(0,0,0,0.08), 0 0 0 1px rgba(220,38,38,0.08);
+  transform: translateY(-4px);
+  border-color: rgba(220,38,38,0.22);
+  border-top-color: #dc2626;
+  box-shadow: 0 10px 32px rgba(220,38,38,0.10), 0 2px 8px rgba(0,0,0,0.06);
 }
-.home-feat-icon { font-size:22px; margin-bottom:12px; }
+
+/* Distinct top-border colour per feature */
+.home-feat:nth-child(1) { border-top-color: #dc2626; }
+.home-feat:nth-child(2) { border-top-color: #16a34a; }
+.home-feat:nth-child(3) { border-top-color: #d97706; }
+.home-feat:nth-child(4) { border-top-color: #8b5cf6; }
+.home-feat:nth-child(5) { border-top-color: #06b6d4; }
+.home-feat:nth-child(6) { border-top-color: #dc2626; }
+
+/* Icon inside a coloured bubble */
+.home-feat-icon {
+  font-size: 22px;
+  margin-bottom: 14px;
+  width: 48px; height: 48px;
+  background: rgba(220,38,38,0.07);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.home-feat:nth-child(2) .home-feat-icon { background: rgba(22,163,74,0.08); }
+.home-feat:nth-child(3) .home-feat-icon { background: rgba(217,119,6,0.08); }
+.home-feat:nth-child(4) .home-feat-icon { background: rgba(139,92,246,0.08); }
+.home-feat:nth-child(5) .home-feat-icon { background: rgba(6,182,212,0.08); }
+.home-feat:nth-child(6) .home-feat-icon { background: rgba(220,38,38,0.07); }
+
 .home-feat h3   { font-size:14px; font-weight:700; color:#0f172a; margin-bottom:7px; }
 .home-feat p    { font-size:12.5px; color:#64748b; line-height:1.65; }
 
