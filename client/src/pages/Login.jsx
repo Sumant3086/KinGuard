@@ -93,16 +93,17 @@ export default function Login() {
 
           {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>{error}</div>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="form-group">
               <label>Employee ID</label>
               <input
                 type="text"
                 value={employeeId}
                 onChange={e => setEmployeeId(e.target.value)}
-                placeholder="e.g. ADMIN001"
+                placeholder="Enter your employee ID"
                 required
                 autoFocus
+                autoComplete="username"
               />
             </div>
             <div className="form-group">
@@ -115,6 +116,7 @@ export default function Login() {
                   placeholder="••••••••"
                   required
                   style={{ paddingRight: 40 }}
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
