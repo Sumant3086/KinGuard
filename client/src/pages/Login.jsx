@@ -63,7 +63,7 @@ export default function Login() {
             <div className="ll-features">
               {[
                 'One master file auto-split by Store Code',
-                'Diff = Sold − SYS enforced server-side',
+                'Diff = Physical Stock − System Stock, enforced server-side',
                 'Risk scorecard: High Risk · Watch · On Track',
                 'Repeat loss hotspot detection across cycles',
                 'Per-store deadline control with extensions',
