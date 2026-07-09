@@ -88,8 +88,8 @@ export default function AdminDashboard() {
     if (cache.get(CACHE_KEY)) return;
     let live = true;
     adminApi.getDashboard()
-      .then(d => { if (live) { cache.set(CACHE_KEY, d, CACHE_TTL); setData(d); } })
-      .catch(e => console.error(e))
+      .then(d => { if (live) setData(d); })
+      .catch(e => { if (live) setData(null); console.error(e); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, []);

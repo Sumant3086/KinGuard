@@ -111,7 +111,7 @@ export default function AdminBatches() {
       const url  = window.URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href = url;
-      a.download = `KinGuard_Cycle_${new Date(inventoryDate).toISOString().split('T')[0]}.xlsx`;
+      a.download = `KinGuard_Cycle_${String(inventoryDate).split('T')[0]}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (e) {

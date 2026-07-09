@@ -28,7 +28,7 @@ export default function AdminStores() {
       const data = await adminApi.getStores();
       setStores(data);
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to load stores. Please refresh.');
     } finally {
       setLoading(false);
     }

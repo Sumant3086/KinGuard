@@ -76,6 +76,7 @@ export async function getDashboard(req, res, next) {
     const [totalStores, latestBatch] = await Promise.all([
       prisma.store.count({ where: { isActive: true } }),
       prisma.uploadBatch.findFirst({
+        where: { status: 'COMPLETED' },
         orderBy: { inventoryDate: 'desc' },
         select: { id: true, inventoryDate: true, submissionDeadline: true },
       }),
@@ -484,18 +485,20 @@ export async function updateUser(req, res, next) {
     };
 
     if (storeId !== undefined) {
+      // Fetch current user role to enforce: ADMIN users cannot have a store
+      const currentUser = await prisma.user.findUnique({
+        where: { id: parseInt(id) },
+        select: { storeId: true, role: true },
+      });
+      if (!currentUser) throw new AppError('User not found', 404);
+      if (storeId && currentUser.role === 'ADMIN') {
+        throw new AppError('Administrator accounts cannot be assigned to a store', 400);
+      }
       if (storeId) {
         data.store = { connect: { id: parseInt(storeId) } };
-      } else {
-        // Only issue disconnect if the user actually has a store -- Prisma P2025
-        // is thrown when disconnecting an already-null optional relation.
-        const current = await prisma.user.findUnique({
-          where: { id: parseInt(id) },
-          select: { storeId: true },
-        });
-        if (current?.storeId) {
-          data.store = { disconnect: true };
-        }
+      } else if (currentUser.storeId) {
+        // Only issue disconnect if user actually has a store (prevents Prisma P2025)
+        data.store = { disconnect: true };
       }
     }
 
@@ -1239,7 +1242,8 @@ export async function downloadInventoryExport(req, res, next) {
 
 export async function getAuditLogs(req, res, next) {
   try {
-    const { action, limit = 100 } = req.query;
+    const { action } = req.query;
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
 
     const where = action ? { action } : {};
 
@@ -1317,6 +1321,15 @@ export async function grantStoreExtension(req, res, next) {
   try {
     const { batchId, storeId, newDeadline, note } = req.body;
     if (!batchId || !storeId || !newDeadline) throw new AppError('batchId, storeId, newDeadline required', 400);
+    const deadlineDate = new Date(newDeadline);
+    if (isNaN(deadlineDate.getTime())) throw new AppError('Invalid deadline date', 400);
+    if (deadlineDate <= new Date()) throw new AppError('Extension deadline must be in the future', 400);
+    const [batch, store] = await Promise.all([
+      prisma.uploadBatch.findUnique({ where: { id: parseInt(batchId) }, select: { id: true } }),
+      prisma.store.findUnique({ where: { id: parseInt(storeId) }, select: { id: true } }),
+    ]);
+    if (!batch) throw new AppError('Batch not found', 404);
+    if (!store) throw new AppError('Store not found', 404);
     const ext = await prisma.batchDeadlineExtension.upsert({
       where: { batchId_storeId: { batchId: parseInt(batchId), storeId: parseInt(storeId) } },
       update: { newDeadline: new Date(newDeadline), grantedBy: req.user.id, grantedAt: new Date(), note: note || null },
@@ -1735,14 +1748,24 @@ export async function overrideInventoryRecord(req, res, next) {
     if (shrinkageCategory !== undefined) updateData.shrinkageCategory = shrinkageCategory || null;
     if (status !== undefined) {
       if (!['PENDING', 'SUBMITTED'].includes(status)) throw new AppError('Invalid status', 400);
-      updateData.status = status;
       if (status === 'SUBMITTED') {
+        const finalPhysQty = updateData.physicalQuantity !== undefined
+          ? updateData.physicalQuantity
+          : record.physicalQuantity;
+        if (finalPhysQty === null || finalPhysQty === undefined) {
+          throw new AppError('Cannot mark as submitted without a physical stock quantity', 400);
+        }
         updateData.submittedBy = req.user.id;
         updateData.submittedAt = new Date();
       } else {
-        updateData.submittedBy = null;
-        updateData.submittedAt = null;
+        // Resetting to PENDING clears all count data so the store re-enters it
+        updateData.physicalQuantity = null;
+        updateData.difference       = null;
+        updateData.submittedBy      = null;
+        updateData.submittedAt      = null;
+        updateData.shrinkageCategory = null;
       }
+      updateData.status = status;
     }
 
     const updated = await prisma.inventoryRecord.update({
@@ -1774,7 +1797,8 @@ export async function overrideInventoryRecord(req, res, next) {
 
 export async function exportAuditLogs(req, res, next) {
   try {
-    const { action, limit = 2000 } = req.query;
+    const { action } = req.query;
+    const limit = Math.min(parseInt(req.query.limit) || 2000, 5000);
     const where = action ? { action } : {};
 
     const logs = await prisma.auditLog.findMany({
@@ -1970,9 +1994,14 @@ export async function sendBatchReminders(req, res, next) {
       include: { store: true },
     });
 
-    const deadline = batch.submissionDeadline ?? new Date(Date.now() + 24 * 3_600_000);
+    if (!batch.submissionDeadline) {
+      return res.json({
+        sent: 0, pending: storeIds.length,
+        message: 'No deadline set for this batch. Set a submission deadline before sending reminders.',
+      });
+    }
     const { sendDeadlineReminderEmail } = await import('../services/emailService.js');
-    await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline });
+    await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline: batch.submissionDeadline });
 
     await createAuditLog({
       userId: req.user.id, action: 'SEND_BATCH_REMINDERS',

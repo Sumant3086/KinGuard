@@ -216,7 +216,7 @@ export default function StoreInventory() {
 
   async function handleDownload() {
     try {
-      const blob = await storeApi.downloadInventory();
+      const blob = await storeApi.downloadInventory(selectedBatch || undefined);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = 'inventory.xlsx'; a.click();
@@ -228,9 +228,12 @@ export default function StoreInventory() {
 
   const pendingRecords = records.filter(r => r.status === 'PENDING');
   const enteredCount   = pendingRecords.filter(r => {
-    if (r.physicalQuantity !== null) return true;
-    const editedQty = editedRecords[r.id]?.physicalQuantity;
-    return editedQty !== undefined && editedQty !== '' && editedQty !== null;
+    // If the user has an active edit, that overrides the saved value
+    if (editedRecords[r.id] && editedRecords[r.id].physicalQuantity !== undefined) {
+      const editedQty = editedRecords[r.id].physicalQuantity;
+      return editedQty !== '' && editedQty !== null;
+    }
+    return r.physicalQuantity !== null;
   }).length;
   const totalPending    = pendingRecords.length;
   const progressPct     = totalPending > 0 ? Math.round((enteredCount / totalPending) * 100) : 100;
