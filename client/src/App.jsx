@@ -34,8 +34,6 @@ function PrivateRoute({ children, role }) {
 }
 
 function App() {
-  const { user } = useAuth();
-
   return (
     <Routes>
       <Route path="/" element={<Home />} />

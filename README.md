@@ -116,7 +116,9 @@ KinGuard/
 │       ├── pages/
 │       │   ├── admin/       # Admin pages
 │       │   └── store/       # Store Manager pages
-│       └── styles/          # Single global CSS file (design tokens + components)
+│       ├── assets/          # Brand images (logo, store backgrounds)
+│       └── styles/          # Split CSS: tokens · reset · layout · components
+│                            #            inventory · pages · toast
 │
 └── server/                  # Express backend
     ├── prisma/
@@ -128,7 +130,7 @@ KinGuard/
         ├── controllers/     # adminController.js, authController.js, storeController.js
         ├── middleware/      # auth.js (JWT + RBAC), errorHandler.js
         ├── routes/          # adminRoutes.js, authRoutes.js, storeRoutes.js
-        └── services/        # auditService.js, serverCache.js (in-memory TTL cache)
+        └── services/        # auditService.js, serverCache.js, emailService.js, pdfService.js
 ```
 
 ### Data Flow

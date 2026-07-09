@@ -466,7 +466,7 @@ export default function StoreInventory() {
       {(hasUnsavedChanges || isSaving) && (
         <div className="autosave-notice">
           <div className="autosave-dot" />
-          {isSaving ? 'Saving changes…' : 'Changes save automatically when you click Save'}
+          {isSaving ? 'Saving changes…' : 'Unsaved changes — auto-saving in a moment'}
         </div>
       )}
 
