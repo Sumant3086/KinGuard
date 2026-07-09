@@ -1,60 +1,108 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
-import * as cache from '../../api/cache';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
-const USERS_KEY  = 'admin:users';
-const STORES_KEY = 'admin:stores';
-const USERS_TTL  = 60_000;
-const STORES_TTL = 60_000;
+function pwScore(pw) {
+  let score = 0;
+  if (pw.length >= 8)  score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return score; // 0-5
+}
+
+function PasswordStrength({ pw }) {
+  const score = pwScore(pw);
+  const label = score <= 1 ? 'Weak' : score <= 3 ? 'Fair' : 'Strong';
+  const color = score <= 1 ? 'var(--red)' : score <= 3 ? 'var(--amber)' : 'var(--green)';
+  const pct   = Math.min(100, score * 20);
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ height: 3, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.3s, background 0.3s' }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11 }}>
+        <span style={{ color }}>Password strength: {label}</span>
+        {score < 3 && (
+          <span style={{ color: 'var(--t4)' }}>
+            {!/[A-Z]/.test(pw) && 'Add uppercase · '}
+            {!/[0-9]/.test(pw) && 'Add number · '}
+            {pw.length < 8 && 'Min 8 chars'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminUsers() {
-  const [users, setUsers]   = useState(() => cache.get(USERS_KEY)  ?? []);
-  const [stores, setStores] = useState(() => cache.get(STORES_KEY) ?? []);
-  const [loading, setLoading] = useState(!cache.get(USERS_KEY));
+  const { user: self } = useAuth();
+  const toast = useToast();
+  const [users, setUsers]   = useState([]);
+  const [stores, setStores] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     employeeId: '', name: '', password: '',
     role: 'STORE_MANAGER', storeId: '', isActive: true,
+    email: '', phone: '',
   });
-  const [editingId, setEditingId] = useState(null);
 
-  useEffect(() => {
-    const needUsers  = !cache.get(USERS_KEY);
-    const needStores = !cache.get(STORES_KEY);
-    if (!needUsers && !needStores) return;
+  useEffect(() => { load(); }, []);
 
-    const fetches = [];
-    if (needUsers)  fetches.push(adminApi.getUsers().then(d  => { cache.set(USERS_KEY,  d, USERS_TTL);  setUsers(d);  return d; }));
-    if (needStores) fetches.push(adminApi.getStores().then(d => { cache.set(STORES_KEY, d, STORES_TTL); setStores(d); return d; }));
-
-    Promise.all(fetches).finally(() => setLoading(false));
-  }, []);
-
-  async function refreshUsers() {
-    const d = await adminApi.getUsers();
-    cache.set(USERS_KEY, d, USERS_TTL);
-    setUsers(d);
+  async function load() {
+    try {
+      setLoading(true);
+      const [u, s] = await Promise.all([adminApi.getUsers(), adminApi.getStores()]);
+      setUsers(u);
+      setStores(s);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function openModal(user = null) {
-    if (user) {
-      setEditingId(user.id);
-      setFormData({
-        employeeId: user.employeeId, name: user.name, password: '',
-        role: user.role, storeId: user.storeId || '', isActive: user.isActive,
-      });
-    } else {
-      setEditingId(null);
-      setFormData({ employeeId: '', name: '', password: '', role: 'STORE_MANAGER', storeId: '', isActive: true });
-    }
+  function openCreate() {
+    setEditingId(null);
+    setFormData({ employeeId: '', name: '', password: '', role: 'STORE_MANAGER', storeId: '', isActive: true, email: '', phone: '' });
+    setFormError('');
     setShowModal(true);
   }
 
-  function closeModal() { setShowModal(false); setEditingId(null); }
+  function openEdit(user) {
+    setEditingId(user.id);
+    setFormData({
+      employeeId: user.employeeId,
+      name: user.name,
+      password: '',
+      role: user.role,
+      storeId: user.storeId || '',
+      isActive: user.isActive,
+      email: user.email || '',
+      phone: user.phone || '',
+    });
+    setFormError('');
+    setShowModal(true);
+  }
+
+  function closeModal() {
+    if (submitting) return;
+    setShowModal(false);
+    setEditingId(null);
+    setFormError('');
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setFormError('');
+    setSubmitting(true);
     try {
       const payload = { ...formData };
       if (payload.role === 'ADMIN') payload.storeId = null;
@@ -64,26 +112,92 @@ export default function AdminUsers() {
       } else {
         await adminApi.createUser(payload);
       }
-      cache.invalidate(USERS_KEY);
-      closeModal();
-      await refreshUsers();
+      setShowModal(false);
+      setEditingId(null);
+      await load();
     } catch (err) {
-      alert(err.response?.data?.error || 'Operation failed');
+      setFormError(err.response?.data?.error || 'Operation failed.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  const roleLabel = (role) => role === 'ADMIN' ? 'Administrator' : 'Store Manager';
+  async function handleDelete(user) {
+    if (!confirm(
+      `Delete user "${user.name}" (${user.employeeId})?\n\n` +
+      `• Their uploaded batches and granted extensions will be reassigned to you.\n` +
+      `• Their submitted records will be unlinked.\n\n` +
+      `This cannot be undone.`
+    )) return;
+    try {
+      await adminApi.deleteUser(user.id);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Delete failed');
+    }
+  }
+
+  const adminUsers   = users.filter(u => u.role === 'ADMIN');
+  const managerUsers = users.filter(u => u.role === 'STORE_MANAGER');
+
+  function UserRow({ user }) {
+    const isSelf = user.id === self?.id;
+    const isLastAdmin = user.role === 'ADMIN' && adminUsers.length <= 1;
+    const canDelete = !isSelf && !isLastAdmin;
+
+    return (
+      <tr>
+        <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--vi-light)' }}>
+          {user.employeeId}
+        </td>
+        <td style={{ fontWeight: 600 }}>{user.name}</td>
+        <td>
+          <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`}>
+            {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
+          </span>
+        </td>
+        <td style={{ color: 'var(--t3)', fontSize: 12 }}>
+          {user.store ? `${user.store.storeCode} — ${user.store.storeName}` : '—'}
+        </td>
+        <td>
+          <span className={`badge ${user.isActive ? 'badge-active' : 'badge-inactive'}`}>
+            {user.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </td>
+        <td style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => openEdit(user)} className="btn btn-secondary btn-sm">
+            Edit
+          </button>
+          {canDelete ? (
+            <button
+              onClick={() => handleDelete(user)}
+              className="btn btn-sm"
+              style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}
+            >
+              Delete
+            </button>
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--t4)', alignSelf: 'center', paddingLeft: 4 }}>
+              {isSelf ? 'You' : 'Last admin'}
+            </span>
+          )}
+        </td>
+      </tr>
+    );
+  }
 
   return (
     <AdminLayout>
       <div className="page-header">
         <div>
           <h2>User Management</h2>
-          <p>Manage employee accounts and store assignments</p>
+          <p>
+            {users.length === 0
+              ? 'No users yet.'
+              : `${adminUsers.length} admin${adminUsers.length !== 1 ? 's' : ''} · ${managerUsers.length} store manager${managerUsers.length !== 1 ? 's' : ''}`}
+          </p>
         </div>
-        <button onClick={() => openModal()} className="btn btn-primary">
-          + Add New User
-        </button>
+        <button onClick={openCreate} className="btn btn-primary">+ Add User</button>
       </div>
 
       {loading ? (
@@ -93,6 +207,7 @@ export default function AdminUsers() {
           <div className="empty-state">
             <div className="empty-state-icon">👤</div>
             <p>No users yet. Add your first user to get started.</p>
+            <button onClick={openCreate} className="btn btn-primary" style={{ marginTop: 16 }}>+ Add User</button>
           </div>
         </div>
       ) : (
@@ -104,36 +219,13 @@ export default function AdminUsers() {
                   <th>Employee ID</th>
                   <th>Name</th>
                   <th>Role</th>
-                  <th>Store</th>
+                  <th>Assigned Store</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>{user.employeeId}</td>
-                    <td style={{ fontWeight: 600 }}>{user.name}</td>
-                    <td>
-                      <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`}>
-                        {roleLabel(user.role)}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--t3)', fontSize: 12 }}>
-                      {user.store ? `${user.store.storeCode} — ${user.store.storeName}` : '—'}
-                    </td>
-                    <td>
-                      <span className={`badge ${user.isActive ? 'badge-active' : 'badge-inactive'}`}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <button onClick={() => openModal(user)} className="btn btn-secondary btn-sm">
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {users.map(u => <UserRow key={u.id} user={u} />)}
               </tbody>
             </table>
           </div>
@@ -142,47 +234,95 @@ export default function AdminUsers() {
 
       {showModal && (
         <div className="modal" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingId ? 'Edit User' : 'Add New User'}</h3>
-              <button onClick={closeModal} className="close-btn">&times;</button>
+              <h3>{editingId ? 'Edit User' : 'Add User'}</h3>
+              <button className="close-btn" onClick={closeModal} disabled={submitting}>&times;</button>
             </div>
+
+            {formError && (
+              <div className="alert alert-error" style={{ marginBottom: 16, fontSize: 13 }}>{formError}</div>
+            )}
+
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Employee ID</label>
                 <input
                   type="text"
                   value={formData.employeeId}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                  required disabled={editingId !== null}
-                  placeholder="e.g. EMP001"
+                  onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
+                  required
+                  disabled={!!editingId || submitting}
+                  placeholder="e.g. MGR001"
+                  autoFocus
                 />
+                {!editingId && (
+                  <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>
+                    Cannot be changed after creation.
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>Full Name</label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required placeholder="Employee full name"
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  disabled={submitting}
+                  placeholder="Employee full name"
                 />
               </div>
               <div className="form-group">
-                <label>Password {editingId && <span style={{ fontWeight: 400, color: 'var(--t3)' }}>(leave empty to keep current)</span>}</label>
+                <label>
+                  Password{' '}
+                  {editingId && <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(leave blank to keep current)</span>}
+                </label>
                 <input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
                   required={!editingId}
+                  disabled={submitting}
                   placeholder="••••••••"
                 />
+                {formData.password && <PasswordStrength pw={formData.password} />}
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    Email{' '}
+                    <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(for notifications)</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    disabled={submitting}
+                    placeholder="manager@company.com"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>
+                    WhatsApp Phone{' '}
+                    <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(with country code)</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={submitting}
+                    placeholder="+243 812 345 678"
+                  />
+                </div>
               </div>
               <div className="form-group">
                 <label>Role</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  required disabled={editingId !== null}
+                  onChange={e => setFormData({ ...formData, role: e.target.value, storeId: '' })}
+                  required
+                  disabled={!!editingId || submitting}
                 >
                   <option value="STORE_MANAGER">Store Manager</option>
                   <option value="ADMIN">Administrator</option>
@@ -190,36 +330,36 @@ export default function AdminUsers() {
               </div>
               {formData.role === 'STORE_MANAGER' && (
                 <div className="form-group">
-                  <label>Store</label>
+                  <label>Assigned Store</label>
                   <select
                     value={formData.storeId}
-                    onChange={(e) => setFormData({ ...formData, storeId: e.target.value })}
+                    onChange={e => setFormData({ ...formData, storeId: e.target.value })}
                     required
+                    disabled={submitting}
                   >
-                    <option value="">Select a store</option>
-                    {stores.map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.storeCode} — {store.storeName}
-                      </option>
+                    <option value="">Select a store…</option>
+                    {stores.filter(s => s.isActive).map(s => (
+                      <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>
                     ))}
                   </select>
                 </div>
               )}
               <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: submitting ? 'default' : 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
                     style={{ width: 'auto' }}
+                    disabled={submitting}
                   />
                   Active account
                 </label>
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-                <button type="submit" className="btn btn-primary">
-                  {editingId ? 'Update User' : 'Create User'}
+                <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Saving…' : editingId ? 'Update User' : 'Create User'}
                 </button>
               </div>
             </form>

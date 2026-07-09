@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import * as cache from '../../api/cache';
+import { useToast } from '../../context/ToastContext';
 
 const STORES_KEY = 'admin:stores';
 const STORES_TTL = 60_000;
 
 export default function AdminReports() {
+  const toast = useToast();
   const [records, setRecords]   = useState([]);
   const [stores, setStores]     = useState(() => cache.get(STORES_KEY) ?? []);
   const [loading, setLoading]   = useState(false);
+  const [dlExcel, setDlExcel]   = useState(false);
+  const [dlPdf, setDlPdf]       = useState(false);
   const [filters, setFilters]   = useState({ storeId: '', status: 'SUBMITTED', discrepancy: '' });
   const [includeInactive, setIncludeInactive] = useState(false);
 
@@ -33,7 +37,8 @@ export default function AdminReports() {
     }
   }
 
-  async function handleDownload() {
+  async function handleDownloadExcel() {
+    setDlExcel(true);
     try {
       const blob = await adminApi.downloadReconciliationReport({
         ...filters,
@@ -42,12 +47,32 @@ export default function AdminReports() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'reconciliation_report.xlsx';
+      a.download = `KinMarche_Reconciliation_${new Date().toISOString().split('T')[0]}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
+      toast.success('Excel report downloaded');
     } catch (err) {
-      alert(err.response?.data?.error || 'Download failed');
-    }
+      toast.error(err.response?.data?.error || 'Excel download failed');
+    } finally { setDlExcel(false); }
+  }
+
+  async function handleDownloadPDF() {
+    setDlPdf(true);
+    try {
+      const blob = await adminApi.downloadReconciliationReportPDF({
+        ...filters,
+        includeInactive: includeInactive ? 'true' : undefined,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `KinMarche_Reconciliation_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('PDF report downloaded');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'PDF download failed');
+    } finally { setDlPdf(false); }
   }
 
   return (
@@ -57,9 +82,19 @@ export default function AdminReports() {
           <h2>Reconciliation Report</h2>
           <p>Filter and export submitted inventory reconciliation data</p>
         </div>
-        <button onClick={handleDownload} className="btn btn-success">
-          ↓ Export to Excel
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={handleDownloadExcel} className="btn btn-success" disabled={dlExcel}>
+            {dlExcel ? '…' : '↓'} Excel
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className="btn btn-sm"
+            disabled={dlPdf}
+            style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.22)', padding: '8px 14px', fontSize: 13, fontWeight: 600 }}
+          >
+            {dlPdf ? '…' : '↓'} PDF
+          </button>
+        </div>
       </div>
 
       <div className="filter-card">
@@ -128,8 +163,8 @@ export default function AdminReports() {
                   <th>Date</th>
                   <th>Material Name</th>
                   <th>Description</th>
-                  <th style={{ textAlign: 'right' }}>System Qty</th>
-                  <th style={{ textAlign: 'right' }}>Counted</th>
+                  <th style={{ textAlign: 'right' }}>System Stock</th>
+                  <th style={{ textAlign: 'right' }}>Physical Stock</th>
                   <th>Variance</th>
                   <th>Remarks</th>
                   <th>Submitted By</th>
