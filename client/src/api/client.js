@@ -15,10 +15,19 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const url    = error.config?.url ?? '';
+    // 401 always means invalid/expired token — clear and redirect.
+    // 503 only clears the session when it came from an auth endpoint
+    // (DB down during token validation). A 503 on a report or upload
+    // endpoint is a transient outage and must NOT log the user out.
+    const isAuthEndpoint = url.includes('/auth/');
+    if (status === 401 || (status === 503 && isAuthEndpoint)) {
       localStorage.removeItem('token');
       localStorage.removeItem('kg_user');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
