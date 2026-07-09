@@ -29,7 +29,7 @@ export default function StoreLayout({ children }) {
   const isActive = path => location.pathname === path;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--page)' }}>
+    <div className="store-shell">
       {/* ── Top header ── */}
       <header className="store-header">
         <div className="store-header-inner">
