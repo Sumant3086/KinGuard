@@ -55,14 +55,14 @@ export async function getDashboard(req, res, next) {
       WHERE "storeId" = ${storeId} AND "batchId" = ${latestBatch.id}
     `;
 
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
+
     res.json({
       store: req.user.store,
       batch: latestBatch,
       stats: stats[0],
     });
-    
-    const duration = Date.now() - startTime;
-    console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
   } catch (error) {
     next(error);
   }
@@ -485,8 +485,8 @@ export async function downloadInventory(req, res, next) {
       userId: req.user.id,
       action: 'DOWNLOAD_INVENTORY',
       entityType: 'INVENTORY_RECORD',
-      entityId: latestBatch.id,
-      metadata: { recordCount: records.length, batchId: latestBatch.id },
+      entityId: targetBatchId,
+      metadata: { recordCount: records.length, batchId: targetBatchId },
     });
 
     // Send file

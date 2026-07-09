@@ -376,6 +376,9 @@ export async function updateStore(req, res, next) {
         storeName: storeName !== undefined ? storeName : undefined,
         isActive: isActive !== undefined ? isActive : undefined,
       },
+    }).catch(err => {
+      if (err.code === 'P2025') throw new AppError('Store not found', 404);
+      throw err;
     });
 
     await createAuditLog({
@@ -559,9 +562,6 @@ export async function uploadInventory(req, res, next) {
     const file = req.file;
     const rows = await parseFileToRows(file);
 
-    if (rows.length > 0) {
-      console.log('" Upload Headers:', Object.keys(rows[0]));
-    }
 
     // Create upload batch
     const batch = await prisma.uploadBatch.create({
@@ -737,7 +737,6 @@ export async function previewUpload(req, res, next) {
       throw new AppError('No data rows found in file', 400);
     }
 
-    console.log('" Preview Headers:', Object.keys(rows[0]));
 
     // Fetch all store codes for validation — retry once on transient DB errors
     let stores;
@@ -998,7 +997,7 @@ export async function getReconciliationReport(req, res, next) {
 
 export async function downloadReconciliationReport(req, res, next) {
   try {
-    const { storeId, status, discrepancy } = req.query;
+    const { storeId, status, discrepancy, includeInactive } = req.query;
 
     const where = {};
 
@@ -1011,6 +1010,7 @@ export async function downloadReconciliationReport(req, res, next) {
     if (discrepancy === 'shortage') where.difference = { lt: 0 };
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
     if (discrepancy === 'matched')  where.difference = { equals: 0 };
+    if (includeInactive !== 'true') where.store = { isActive: true };
 
     const filtered = await prisma.inventoryRecord.findMany({
       where,
@@ -1260,7 +1260,7 @@ export async function getAuditLogs(req, res, next) {
     const logs = await prisma.auditLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: parseInt(limit),
+      take: limit,
       include: {
         user: {
           select: {

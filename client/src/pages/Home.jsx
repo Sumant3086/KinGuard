@@ -101,7 +101,7 @@ export default function Home() {
 
       {/* ── Footer ── */}
       <div style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        borderTop: '1px solid rgba(0,0,0,0.08)',
         padding: '24px 48px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         maxWidth: 1280, margin: '0 auto', color: '#334155', fontSize: 12,

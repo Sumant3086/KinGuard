@@ -1,0 +1,127 @@
+/* ─── Design tokens ─────────────────────────────────────────────── */
+:root {
+  /* Brand — KinMarché Red */
+  --vi:       #dc2626;
+  --vi-deep:  #b91c1c;
+  --vi-light: #ef4444;
+  --vi-tint:  rgba(220,38,38,0.10);
+  --vi-tint2: rgba(220,38,38,0.05);
+  --vi-glow:  0 4px 16px rgba(220,38,38,0.25);
+
+  /* Semantic status */
+  --green:     #16a34a;
+  --green-bg:  rgba(22,163,74,0.11);
+  --red:       #dc2626;
+  --red-bg:    rgba(220,38,38,0.10);
+  --amber:     #d97706;
+  --amber-bg:  rgba(217,119,6,0.11);
+  --cyan:      #06b6d4;
+  --blue:      #3b82f6;
+  --violet:    #8b5cf6;
+  --violet-bg: rgba(139,92,246,0.12);
+
+  /* Surfaces */
+  --page:      #f8fafc;
+  --surface:   #ffffff;
+  --surface-2: #f1f5f9;
+
+  /* Sidebar / nav tokens */
+  --sb-bg:       #ffffff;
+  --sb-border:   rgba(0,0,0,0.07);
+  --sb-hover:    rgba(220,38,38,0.06);
+  --sb-active:   rgba(220,38,38,0.11);
+  --sb-text:     rgba(15,23,42,0.65);
+  --sb-text-dim: rgba(15,23,42,0.38);
+
+  /* Borders */
+  --border:        rgba(0,0,0,0.08);
+  --border-subtle: rgba(0,0,0,0.04);
+
+  /* Text */
+  --t1: #0f172a;
+  --t2: #334155;
+  --t3: #64748b;
+  --t4: #94a3b8;
+
+  /* Shadows */
+  --sh-xs: 0 1px 3px rgba(0,0,0,0.06);
+  --sh-sm: 0 1px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --sh-md: 0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  --sh-lg: 0 20px 56px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08);
+
+  /* Layout */
+  --bar-h:     56px;
+  --mob-nav-h: 60px;
+
+  /* Border radius */
+  --r:    6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  /* Motion */
+  --ease: cubic-bezier(.4,0,.2,1);
+  --fast: 0.12s;
+  --mid:  0.2s;
+  --slow: 0.32s;
+}
+
+/* ─── Keyframes ─────────────────────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes slide-up {
+  from { opacity:0; transform:translateY(16px) scale(0.98); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes value-pop {
+  0%   { transform:scale(0.94); opacity:0.7; }
+  60%  { transform:scale(1.04); }
+  100% { transform:scale(1); opacity:1; }
+}
+@keyframes badge-pop {
+  0%   { transform:scale(0.8); opacity:0; }
+  70%  { transform:scale(1.08); }
+  100% { transform:scale(1); opacity:1; }
+}
+@keyframes diff-pop {
+  from { transform:scale(0.88); opacity:0.6; }
+  to   { transform:scale(1); opacity:1; }
+}
+@keyframes check-pop {
+  0%   { transform:scale(0.6); opacity:0; }
+  70%  { transform:scale(1.1); }
+  100% { transform:scale(1); opacity:1; }
+}
+@keyframes fade-up {
+  from { opacity:0; transform:translateY(4px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+@keyframes dot-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(0.75); }
+}
+@keyframes shimmer {
+  0%   { background-position:-200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes row-save-flash {
+  0%   { background:rgba(220,38,38,0.07); }
+  100% { background:transparent; }
+}
+@keyframes admin-nav-shimmer {
+  0%,100% { background-position:0% 50%; }
+  50%     { background-position:100% 50%; }
+}
+@keyframes store-border-pulse {
+  0%,100% { border-bottom-color:#dc2626; }
+  50%     { border-bottom-color:#ef4444; }
+}
+@keyframes float-blob {
+  0%,100% { transform:scale(1) translate(0,0); }
+  33%     { transform:scale(1.08) translate(8px,-8px); }
+  66%     { transform:scale(0.95) translate(-5px,5px); }
+}
