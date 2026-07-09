@@ -74,7 +74,7 @@ export default function StoreInventory() {
         loadInventory();
       }
     } catch (err) {
-      console.error('Failed to load batches:', err);
+      setError(err.response?.data?.error || 'Failed to load inventory cycles. Please refresh the page.');
       setLoading(false);
     }
   }

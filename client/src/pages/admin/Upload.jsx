@@ -103,7 +103,8 @@ export default function AdminUpload() {
     return '';
   }
 
-  const allErrors = preview && preview.statistics.errors === preview.totalRows;
+  const allErrors = preview && preview.statistics.errors > 0
+    && preview.statistics.valid === 0 && preview.statistics.warnings === 0;
 
   return (
     <AdminLayout>

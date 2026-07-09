@@ -336,7 +336,7 @@ export async function deleteStore(req, res, next) {
 
     if (store._count.inventoryRecords > 0) {
       throw new AppError(
-        `Cannot delete " this store has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
+        `Cannot delete store -- it has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
         409
       );
     }
@@ -687,8 +687,8 @@ export async function uploadInventory(req, res, next) {
 
     sInvalidate('admin:dashboard');
 
-    // Fire-and-forget: email all store managers in affected stores
-    const affectedStoreIds = [...storeMap.values()];
+    // Fire-and-forget: email only managers of stores that have records in this batch
+    const affectedStoreIds = [...new Set(successfulRecords.map(r => r.storeId))];
     prisma.user.findMany({
       where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: affectedStoreIds } },
       include: { store: true },
@@ -1334,11 +1334,11 @@ export async function grantStoreExtension(req, res, next) {
 export async function getTrends(req, res, next) {
   try {
     const { cycles = 6 } = req.query;
-    const batches = await prisma.uploadBatch.findMany({
-      orderBy: { inventoryDate: 'asc' },
+    const batches = (await prisma.uploadBatch.findMany({
+      orderBy: { inventoryDate: 'desc' },
       take: parseInt(cycles),
       select: { id: true, inventoryDate: true },
-    });
+    })).reverse(); // most-recent N, oldest-first for chart left-to-right ordering
     if (batches.length === 0) return res.json({ batches: [], series: [] });
 
     const batchIds = batches.map(b => b.id);
@@ -1801,7 +1801,7 @@ export async function exportAuditLogs(req, res, next) {
 
     logs.forEach(log => ws.addRow({
       time:       log.createdAt.toISOString().replace('T', ' ').substring(0, 19),
-      empId:      log.user?.employeeId || '"',
+      empId:      log.user?.employeeId || '--',
       name:       log.user?.name || 'System',
       action:     log.action,
       entityType: log.entityType || '',
@@ -1868,6 +1868,12 @@ export async function downloadInventoryExportPDF(req, res, next) {
         },
         layout: tableLayout(),
       }],
+    });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'DOWNLOAD_INVENTORY_PDF',
+      entityType: 'INVENTORY_RECORD', entityId: null,
+      metadata: { recordCount: records.length, filters: { storeId, status, batchId, discrepancy } },
     });
 
     res.setHeader('Content-Type', 'application/pdf');

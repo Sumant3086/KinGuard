@@ -10,6 +10,7 @@ import AdminInventory from './pages/admin/Inventory';
 import AdminAuditLogs from './pages/admin/AuditLogs';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminBatches from './pages/admin/Batches';
+import AdminReports from './pages/admin/Reports';
 import StoreDashboard from './pages/store/Dashboard';
 import StoreInventory from './pages/store/Inventory';
 import NotFound from './pages/NotFound';
@@ -81,7 +82,14 @@ function App() {
           </PrivateRoute>
         }
       />
-      <Route path="/admin/reports" element={<Navigate to="/admin/inventory" replace />} />
+      <Route
+        path="/admin/reports"
+        element={
+          <PrivateRoute role="ADMIN">
+            <AdminReports />
+          </PrivateRoute>
+        }
+      />
       <Route
         path="/admin/audit-logs"
         element={

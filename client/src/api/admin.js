@@ -105,9 +105,7 @@ export async function uploadInventory(file, inventoryDate, submissionDeadline) {
   formData.append('inventoryDate', inventoryDate);
   if (submissionDeadline) formData.append('submissionDeadline', submissionDeadline);
 
-  const { data } = await client.post('/admin/uploads', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await client.post('/admin/uploads', formData);
   cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches');
   return data;
 }
@@ -117,9 +115,7 @@ export async function previewUpload(file, inventoryDate) {
   formData.append('file', file);
   formData.append('inventoryDate', inventoryDate);
 
-  const { data } = await client.post('/admin/uploads/preview', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await client.post('/admin/uploads/preview', formData);
   return data;
 }
 
@@ -247,9 +243,7 @@ export async function uploadInventoryForce(file, inventoryDate, submissionDeadli
   formData.append('file', file);
   formData.append('inventoryDate', inventoryDate);
   if (submissionDeadline) formData.append('submissionDeadline', submissionDeadline);
-  const { data } = await client.post('/admin/uploads?force=true', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await client.post('/admin/uploads?force=true', formData);
   cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches');
   return data;
 }

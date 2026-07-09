@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
@@ -134,8 +134,8 @@ export default function AdminAuditLogs() {
                   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
                   const isExpanded  = expanded.has(log.id);
                   return (
-                    <>
-                      <tr key={log.id} style={{ cursor: hasMetadata ? 'pointer' : 'default' }} onClick={() => hasMetadata && toggleExpand(log.id)}>
+                    <React.Fragment key={log.id}>
+                      <tr style={{ cursor: hasMetadata ? 'pointer' : 'default' }} onClick={() => hasMetadata && toggleExpand(log.id)}>
                         <td style={{ textAlign: 'center', color: 'var(--t4)', fontSize: 10 }}>
                           {hasMetadata ? (isExpanded ? '▼' : '▶') : ''}
                         </td>
@@ -161,7 +161,7 @@ export default function AdminAuditLogs() {
                         <td style={{ color: 'var(--t4)', fontSize: 12, fontFamily: 'monospace' }}>{log.entityId ?? '—'}</td>
                       </tr>
                       {isExpanded && hasMetadata && (
-                        <tr key={`${log.id}-meta`} style={{ background: 'var(--surface-2)' }}>
+                        <tr style={{ background: 'var(--surface-2)' }}>
                           <td />
                           <td colSpan={5} style={{ padding: '8px 16px 12px' }}>
                             <pre style={{
@@ -174,7 +174,7 @@ export default function AdminAuditLogs() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
