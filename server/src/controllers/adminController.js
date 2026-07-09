@@ -8,7 +8,7 @@ import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 
 // Shared column name aliases for Excel/CSV parsing
 const COLUMN_MAP = {
-  storeCode:      ['Plant', 'Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 'STORE CODE'],
+  storeCode:      ['Plant', 'Plant Code', 'Store Code', 'Store code', 'StoreCode', 'Store', 'store_code', 'STORE CODE', 'PLANT', 'PLANT CODE'],
   materialCode:   ['Material', 'Material Code', 'Material code', 'MaterialCode', 'material_code', 'SKU', 'MATERIAL'],
   materialName:   ['Material Description', 'Material Name', 'MaterialName', 'Description', 'material_name', 'MATERIAL DESCRIPTION'],
   systemQuantity: ['System  Stock', 'System Stock', 'SYS', 'System Quantity', 'SystemQuantity', 'system_quantity', 'QTY', 'SYSTEM QUANTITY'],
@@ -1472,31 +1472,33 @@ export async function downloadSampleTemplate(req, res, next) {
     const workbook = new ExcelJS.Workbook();
     const ws = workbook.addWorksheet('Inventory');
 
+    // Columns: Plant | Material | Material Description | System Stock | Physical Stock
+    // System Stock and Physical Stock are left blank for store managers to fill in
     ws.columns = [
-      { header: 'Plant',             key: 'plant',    width: 14 },
-      { header: 'Material',          key: 'material', width: 18 },
-      { header: 'Material Description', key: 'desc',  width: 32 },
-      { header: 'System  Stock',     key: 'stock',    width: 16 },
-      { header: 'Remarks',           key: 'remarks',  width: 30 },
+      { header: 'Plant',                key: 'plant',          width: 14 },
+      { header: 'Material',             key: 'material',       width: 18 },
+      { header: 'Material Description', key: 'desc',           width: 36 },
+      { header: 'System  Stock',        key: 'systemStock',    width: 16 },
+      { header: 'Physical Stock',       key: 'physicalStock',  width: 16 },
     ];
 
-    // Style header row
+    // Style header row — red brand colour
     const hRow = ws.getRow(1);
     hRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
-    hRow.height = 20;
+    hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+    hRow.height = 22;
 
     // Freeze and filter
     ws.views = [{ state: 'frozen', ySplit: 1 }];
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 5 } };
 
-    // Sample rows
+    // Sample rows — System Stock and Physical Stock left blank (to be filled by managers)
     const samples = [
-      { plant: '2050', material: 'MAT001', desc: 'Mineral Water 1.5L',     stock: 120, remarks: '' },
-      { plant: '2050', material: 'MAT002', desc: 'Rice 5kg Bag',            stock: 80,  remarks: '' },
-      { plant: '2050', material: 'MAT003', desc: 'Cooking Oil 1L',          stock: 45,  remarks: '' },
-      { plant: '2051', material: 'MAT001', desc: 'Mineral Water 1.5L',     stock: 95,  remarks: '' },
-      { plant: '2051', material: 'MAT004', desc: 'Sugar 1kg',               stock: 200, remarks: '' },
+      { plant: '2003', material: '1000013986', desc: 'Whisky Black Label 750Ml', systemStock: null, physicalStock: null },
+      { plant: '2001', material: '1000017695', desc: 'Sardines Huile Vegetale Anny 125gr', systemStock: null, physicalStock: null },
+      { plant: '2003', material: '1000017695', desc: 'Sardines Huile Vegetale Anny 125gr', systemStock: null, physicalStock: null },
+      { plant: '2004', material: '1000017695', desc: 'Sardines Huile Vegetale Anny 125gr', systemStock: null, physicalStock: null },
+      { plant: '2005', material: '1000017695', desc: 'Sardines Huile Vegetale Anny 125gr', systemStock: null, physicalStock: null },
     ];
 
     samples.forEach(row => ws.addRow(row));
@@ -1507,24 +1509,27 @@ export async function downloadSampleTemplate(req, res, next) {
 
     // Instructions sheet
     const info = workbook.addWorksheet('Instructions');
-    info.getColumn(1).width = 70;
+    info.getColumn(1).width = 75;
     const lines = [
       'KinMarche -- Inventory Upload Template',
       '',
-      'REQUIRED COLUMNS (exact header names or accepted aliases):',
-      '  - Plant / Store Code / StoreCode  -> Store Code from your store list',
-      '  - Material / Material Code / SKU  -> Item identifier',
-      '  - Material Description / Description  -> Item name',
-      '  - System  Stock / System Stock / SYS  -> Stock quantity per your ERP system',
+      'HOW TO USE THIS TEMPLATE:',
+      '  1. Fill in the Plant (or Store Code) and Material columns for each item.',
+      '  2. Leave System Stock and Physical Stock blank -- store managers fill these in.',
+      '  3. Upload this file via the Upload page to create an inventory cycle.',
       '',
-      'OPTIONAL COLUMNS:',
-      '  - Remarks / Remark / Note  -> Pre-filled remarks (managers can edit)',
+      'REQUIRED COLUMNS (accepted header names):',
+      '  - Plant / Plant Code / Store / Store Code -> Your store identifier',
+      '  - Material / Material Code / SKU          -> Item code',
+      '  - Material Description / Description      -> Item name',
+      '',
+      'COLUMNS FILLED BY STORE MANAGERS (leave blank in this file):',
+      '  - System  Stock / System Stock -> Quantity per store ERP/records',
+      '  - Physical Stock               -> Actual physical count',
       '',
       'NOTES:',
-      '  - Each store code in this file will be matched against your store list.',
-      '  - If a store code does not exist it will be automatically created',
-      '    with the name "Store {code}" -- rename it afterwards in Store Management.',
-      '  - Store codes are case-sensitive.',
+      '  - If a store code in this file does not exist, it will be created automatically.',
+      '  - Store codes are matched exactly (case-sensitive).',
       '  - Maximum file size: 10 MB.',
       '  - Supported formats: .xlsx, .xls, .csv',
     ];
