@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/img/logo 32px32px.png';
 
 const Icons = {
   dashboard: (
@@ -34,7 +35,7 @@ export default function StoreLayout({ children }) {
       <header className="store-header">
         <div className="store-header-inner">
           <div className="store-brand">
-            <div className="store-logo">K</div>
+            <img src={logoImg} alt="KinMarché" className="store-logo-img" />
             <span className="store-brand-name">KinMarché</span>
             {user?.store && (
               <span className="store-chip">{user.store.storeName}</span>
