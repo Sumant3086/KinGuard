@@ -8,6 +8,10 @@ export async function getDashboard(req, res, next) {
   try {
     const storeId = req.user.storeId;
 
+    if (!req.user.store) {
+      throw new AppError('Your store has been removed. Please contact your administrator.', 403);
+    }
+
     // Get latest batch WHERE this store has inventory records - optimized query
     const latestBatch = await prisma.uploadBatch.findFirst({
       where: {
@@ -298,24 +302,20 @@ export async function submitInventory(req, res, next) {
     }).catch(() => {});
     detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(() => {});
 
-    // Email admin on submission
+    // Email ALL active admins on submission
     const shortageCount = records.filter(r => (r.difference ?? 0) < 0).length;
-    prisma.uploadBatch.findUnique({ where: { id: parsedBatchId }, select: { inventoryDate: true } })
-      .then(b => prisma.user.findFirst({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } } })
-        .then(admin => {
-          if (!admin || !b) return;
-          import('../services/emailService.js').then(({ sendSubmissionEmail }) => {
-            sendSubmissionEmail({
-              adminEmail: admin.email,
-              adminName:  admin.name,
-              store:      req.user.store,
-              batchDate:  b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-              recordCount: count,
-              shortages:   shortageCount,
-            });
-          });
-        })
-      ).catch(() => {});
+    Promise.all([
+      prisma.uploadBatch.findUnique({ where: { id: parsedBatchId }, select: { inventoryDate: true } }),
+      prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } }, select: { email: true, name: true } }),
+    ]).then(([b, admins]) => {
+      if (!b || admins.length === 0) return;
+      import('../services/emailService.js').then(({ sendSubmissionEmail }) => {
+        const batchDate = b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        for (const admin of admins) {
+          sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount });
+        }
+      });
+    }).catch(() => {});
 
     res.json({
       message: 'Inventory submitted successfully',
@@ -369,7 +369,7 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
   await createAuditLog({
     userId,
     action: 'REPEAT_DISCREPANCY',
-    entityType: 'INVENTORY_RECORD',
+    entityType: 'UPLOAD_BATCH',
     entityId: batchId,
     metadata: {
       storeId,
@@ -383,26 +383,26 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
 export async function downloadInventory(req, res, next) {
   try {
     const storeId = req.user.storeId;
+    const { batchId: queryBatchId } = req.query;
 
-    // Get latest batch WHERE this store has inventory records
-    const latestBatch = await prisma.uploadBatch.findFirst({
-      where: {
-        inventoryRecords: {
-          some: { storeId },
-        },
-      },
-      orderBy: { inventoryDate: 'desc' },
-    });
-
-    if (!latestBatch) {
-      throw new AppError('No inventory records found for your store', 404);
+    let targetBatchId;
+    if (queryBatchId) {
+      targetBatchId = parseInt(queryBatchId);
+    } else {
+      // Fall back to latest batch for this store
+      const latestBatch = await prisma.uploadBatch.findFirst({
+        where: { inventoryRecords: { some: { storeId } } },
+        orderBy: { inventoryDate: 'desc' },
+      });
+      if (!latestBatch) throw new AppError('No inventory records found for your store', 404);
+      targetBatchId = latestBatch.id;
     }
 
-    // Get records for this store in latest batch only
+    // Get records for this store in the selected batch
     const records = await prisma.inventoryRecord.findMany({
       where: {
         storeId,
-        batchId: latestBatch.id,
+        batchId: targetBatchId,
       },
       include: {
         batch: {

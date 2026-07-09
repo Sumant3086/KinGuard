@@ -21,6 +21,8 @@ export default function AdminInventory() {
     discrepancy: searchParams.get('discrepancy') || '',
     batchId:     searchParams.get('batchId')     || '',
   });
+  // appliedFilters are what's actually loaded — pagination uses these, not the live filter dropdowns
+  const [appliedFilters, setAppliedFilters] = useState(null);
 
   // Override modal
   const [overrideRecord, setOverrideRecord] = useState(null);
@@ -51,7 +53,8 @@ export default function AdminInventory() {
         setFilters(initFilters);
 
         // Immediately load records with the resolved filters
-        if (initFilters.batchId || initFilters.storeId || initFilters.discrepancy || initFilters.status) {
+        if (initFilters.batchId || initFilters.storeId || initFilters.discrepancy || initFilters.status || initFilters.search) {
+          setAppliedFilters(initFilters);
           await fetchInventory(initFilters, 1);
         }
       } catch (err) {
@@ -75,7 +78,7 @@ export default function AdminInventory() {
       setRecords(data.data);
       setPagination(data.pagination);
     } catch (err) {
-      console.error('Failed to load inventory:', err);
+      toast.error(err.response?.data?.error || 'Failed to load inventory.');
     } finally {
       setLoading(false);
     }
@@ -86,6 +89,7 @@ export default function AdminInventory() {
   }
 
   async function applyFilters() {
+    setAppliedFilters(filters);
     await fetchInventory(filters, 1);
   }
 
@@ -136,7 +140,7 @@ export default function AdminInventory() {
     }
   }
 
-  function changePage(p) { fetchInventory(filters, p); }
+  function changePage(p) { fetchInventory(appliedFilters || filters, p); }
 
   const selectedBatch = batches.find(b => String(b.id) === filters.batchId);
 

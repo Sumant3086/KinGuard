@@ -87,6 +87,7 @@ export default function AdminUsers() {
   const [users, setUsers]   = useState([]);
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -106,7 +107,7 @@ export default function AdminUsers() {
       setUsers(u);
       setStores(s);
     } catch (err) {
-      console.error(err);
+      setLoadError('Failed to load users. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -198,7 +199,9 @@ export default function AdminUsers() {
       </div>
 
       {loading ? (
-        <div className="loading"><div className="spinner" />Loading users…</div>
+        loadError
+          ? <div className="alert alert-error">{loadError}</div>
+          : <div className="loading"><div className="spinner" />Loading users…</div>
       ) : users.length === 0 ? (
         <div className="card">
           <div className="empty-state">

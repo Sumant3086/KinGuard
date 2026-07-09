@@ -10,8 +10,8 @@ router.use(authenticate, requireStoreManager);
 router.get('/dashboard', storeController.getDashboard);
 router.get('/batches', storeController.getBatches);
 router.get('/inventory', storeController.getInventory);
-router.patch('/inventory/:id', storeController.updateInventoryRecord);
 router.post('/inventory/submit', storeController.submitInventory);
 router.get('/inventory/download', storeController.downloadInventory);
+router.patch('/inventory/:id', storeController.updateInventoryRecord);
 
 export default router;

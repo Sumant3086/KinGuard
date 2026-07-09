@@ -39,8 +39,9 @@ export async function submitInventory(batchId) {
   return data;
 }
 
-export async function downloadInventory() {
+export async function downloadInventory(batchId) {
   const response = await client.get('/store/inventory/download', {
+    params: batchId ? { batchId } : {},
     responseType: 'blob',
   });
   return response.data;

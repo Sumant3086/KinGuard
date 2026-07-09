@@ -32,6 +32,8 @@ export default function AdminReports() {
         includeInactive: includeInactive ? 'true' : undefined,
       });
       setRecords(data);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to load report. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -138,8 +140,8 @@ export default function AdminReports() {
               Include inactive stores
             </label>
           </div>
-          <button onClick={loadReport} className="btn btn-primary" style={{ alignSelf: 'flex-end' }}>
-            Load Report
+          <button onClick={loadReport} className="btn btn-primary" style={{ alignSelf: 'flex-end' }} disabled={loading}>
+            {loading ? 'Loading...' : 'Load Report'}
           </button>
         </div>
       </div>
