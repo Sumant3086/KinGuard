@@ -27,22 +27,22 @@ function findColumn(row, possibleNames) {
 // Safely extract plain text from any ExcelJS cell value.
 // Handles: plain string, number, boolean, RichText ({richText:[{text}]}), Hyperlink ({text}).
 function cellText(val) {
-  if (val === null || val === undefined) return ‘’;
-  if (typeof val === ‘string’)  return val.trim();
-  if (typeof val === ‘number’ || typeof val === ‘boolean’) return String(val);
-  if (Array.isArray(val?.richText)) return val.richText.map(r => r.text ?? ‘’).join(‘’).trim();
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string')  return val.trim();
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (Array.isArray(val?.richText)) return val.richText.map(r => r.text ?? '').join('').trim();
   if (val?.text !== undefined)  return String(val.text).trim();
   return String(val).trim();
 }
 
 async function parseFileToRows(file) {
-  if (file.mimetype.includes(‘csv’)) {
+  if (file.mimetype.includes('csv')) {
     return parse(file.buffer, { columns: true, skip_empty_lines: true, trim: true });
   }
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(file.buffer);
   const worksheet = workbook.worksheets[0];
-  // Map column number → header name; bold/rich-text headers are flattened to plain string
+  // Map column number -> header name; bold/rich-text headers are flattened to plain string
   const headerMap = {};
   worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
     headerMap[colNumber] = cellText(cell.value) || `col_${colNumber}`;
@@ -55,7 +55,7 @@ async function parseFileToRows(file) {
       const key = headerMap[colNumber] ?? `col_${colNumber}`;
       // Flatten RichText data cells too (e.g. bold material codes)
       const v = cell.value;
-      rowData[key] = (v && typeof v === ‘object’ && (Array.isArray(v.richText) || v.text !== undefined))
+      rowData[key] = (v && typeof v === 'object' && (Array.isArray(v.richText) || v.text !== undefined))
         ? cellText(v)
         : v;
     });
@@ -123,7 +123,7 @@ export async function getDashboard(req, res, next) {
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true } }),
     ]);
 
-    // Top remark per store + last 4 batches â€” run in parallel (B5)
+    // Top remark per store + last 4 batches " run in parallel (B5)
     const [topRemarkRows, last4Batches] = await Promise.all([
       prisma.$queryRaw`
         SELECT "storeId", remarks, COUNT(*)::int AS cnt
@@ -172,7 +172,7 @@ export async function getDashboard(req, res, next) {
       };
     }).sort((a, b) => b.shortageRate - a.shortageRate);
 
-    // Shrinkage hotspots: (storeId, materialCode) pairs with shortages in â‰¥2 of the last 4 batches.
+    // Shrinkage hotspots: (storeId, materialCode) pairs with shortages in 2 of the last 4 batches.
     const batchIds = last4Batches.map((b) => b.id);
 
     let hotspots = [];
@@ -336,7 +336,7 @@ export async function deleteStore(req, res, next) {
 
     if (store._count.inventoryRecords > 0) {
       throw new AppError(
-        `Cannot delete â€” this store has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
+        `Cannot delete " this store has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
         409
       );
     }
@@ -487,7 +487,7 @@ export async function updateUser(req, res, next) {
       if (storeId) {
         data.store = { connect: { id: parseInt(storeId) } };
       } else {
-        // Only issue disconnect if the user actually has a store — Prisma P2025
+        // Only issue disconnect if the user actually has a store -- Prisma P2025
         // is thrown when disconnecting an already-null optional relation.
         const current = await prisma.user.findUnique({
           where: { id: parseInt(id) },
@@ -557,7 +557,7 @@ export async function uploadInventory(req, res, next) {
     const rows = await parseFileToRows(file);
 
     if (rows.length > 0) {
-      console.log('ðŸ“‹ Upload Headers:', Object.keys(rows[0]));
+      console.log('" Upload Headers:', Object.keys(rows[0]));
     }
 
     // Create upload batch
@@ -622,7 +622,7 @@ export async function uploadInventory(req, res, next) {
           continue;
         }
 
-        // System quantity is optional â€” default to 0 when not in the file
+        // System quantity is optional " default to 0 when not in the file
         const qty = (rawQty !== null && rawQty !== undefined && rawQty !== '')
           ? parseFloat(rawQty)
           : 0;
@@ -653,7 +653,7 @@ export async function uploadInventory(req, res, next) {
       }
     }
 
-    // Insert successful records â€” skipDuplicates prevents re-uploading the same
+    // Insert successful records " skipDuplicates prevents re-uploading the same
     // (batch, store, material) from creating duplicate rows
     if (successfulRecords.length > 0) {
       await prisma.inventoryRecord.createMany({
@@ -728,7 +728,7 @@ export async function previewUpload(req, res, next) {
       throw new AppError('No data rows found in file', 400);
     }
 
-    console.log('ðŸ“‹ Preview Headers:', Object.keys(rows[0]));
+    console.log('" Preview Headers:', Object.keys(rows[0]));
 
     // Fetch all store codes for validation
     const stores = await prisma.store.findMany({
@@ -770,9 +770,9 @@ export async function previewUpload(req, res, next) {
         errors.push('Missing Material Code');
       }
 
-      // System quantity is optional â€” default 0 when absent
+      // System quantity is optional " default 0 when absent
       if (rawQty === null || rawQty === undefined || rawQty === '') {
-        warnings.push('System qty not in file â€” defaults to 0');
+        warnings.push('System qty not in file " defaults to 0');
       } else {
         const qty = parseFloat(rawQty);
         if (isNaN(qty)) {
@@ -884,7 +884,7 @@ export async function getInventory(req, res, next) {
       }),
     ]);
 
-    // Attach repeat discrepancy flag â€” only check shortages in current page (B4)
+    // Attach repeat discrepancy flag " only check shortages in current page (B4)
     const shortageKeys = new Set(
       records
         .filter(r => r.difference !== null && r.difference < 0 && r.status === 'SUBMITTED')
@@ -1264,7 +1264,7 @@ export async function getAuditLogs(req, res, next) {
   }
 }
 
-// â”€â”€â”€ C1: New batch management endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ C1: New batch management endpoints """""""""""""""""""""""""""""""""""""""
 
 export async function getBatches(req, res, next) {
   try {
@@ -1452,7 +1452,7 @@ export async function getBatchExport(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ Excel sample template â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ Excel sample template """"""""""""""""""""""""""""""""""""""""""""""""""""
 
 export async function downloadSampleTemplate(req, res, next) {
   try {
@@ -1496,24 +1496,24 @@ export async function downloadSampleTemplate(req, res, next) {
     const info = workbook.addWorksheet('Instructions');
     info.getColumn(1).width = 70;
     const lines = [
-      'KinMarchÃ© â€” Inventory Upload Template',
+      'KinMarche -- Inventory Upload Template',
       '',
       'REQUIRED COLUMNS (exact header names or accepted aliases):',
-      '  â€¢ Plant / Store Code / StoreCode  â†’  Store Code from your store list',
-      '  â€¢ Material / Material Code / SKU  â†’  Item identifier',
-      '  â€¢ Material Description / Description  â†’  Item name',
-      '  â€¢ System  Stock / System Stock / SYS  â†’  Stock quantity per your ERP system',
+      '  - Plant / Store Code / StoreCode  -> Store Code from your store list',
+      '  - Material / Material Code / SKU  -> Item identifier',
+      '  - Material Description / Description  -> Item name',
+      '  - System  Stock / System Stock / SYS  -> Stock quantity per your ERP system',
       '',
       'OPTIONAL COLUMNS:',
-      '  â€¢ Remarks / Remark / Note  â†’  Pre-filled remarks (managers can edit)',
+      '  - Remarks / Remark / Note  -> Pre-filled remarks (managers can edit)',
       '',
       'NOTES:',
-      '  â€¢ Each store code in this file will be matched against your store list.',
-      '  â€¢ If a store code does not exist it will be automatically created',
-      '    with the name "Store {code}" â€” rename it afterwards in Store Management.',
-      '  â€¢ Store codes are case-sensitive.',
-      '  â€¢ Maximum file size: 10 MB.',
-      '  â€¢ Supported formats: .xlsx, .xls, .csv',
+      '  - Each store code in this file will be matched against your store list.',
+      '  - If a store code does not exist it will be automatically created',
+      '    with the name "Store {code}" -- rename it afterwards in Store Management.',
+      '  - Store codes are case-sensitive.',
+      '  - Maximum file size: 10 MB.',
+      '  - Supported formats: .xlsx, .xls, .csv',
     ];
     lines.forEach((line, i) => {
       const cell = info.getCell(`A${i + 1}`);
@@ -1531,7 +1531,7 @@ export async function downloadSampleTemplate(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ User deletion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ User deletion """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 export async function deleteUser(req, res, next) {
   try {
@@ -1571,7 +1571,7 @@ export async function deleteUser(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ Bulk store delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ Bulk store delete """"""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 export async function bulkDeleteStores(req, res, next) {
   try {
@@ -1624,13 +1624,13 @@ export async function bulkDeleteStores(req, res, next) {
       deleted: deletableIds.length,
       blocked: blockedIds.size,
       message: blockedIds.size > 0
-        ? `Deleted ${deletableIds.length} store(s). ${blockedIds.size} skipped (have records â€” use force delete).`
+        ? `Deleted ${deletableIds.length} store(s). ${blockedIds.size} skipped (have records " use force delete).`
         : `${deletableIds.length} store(s) deleted`,
     });
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ Store force-delete (cascade all data) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ Store force-delete (cascade all data) """"""""""""""""""""""""""""""""""""
 
 export async function forceDeleteStore(req, res, next) {
   try {
@@ -1655,7 +1655,7 @@ export async function forceDeleteStore(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ Batch (cycle) deletion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ Batch (cycle) deletion """""""""""""""""""""""""""""""""""""""""""""""""""
 
 export async function deleteBatch(req, res, next) {
   try {
@@ -1682,7 +1682,7 @@ export async function deleteBatch(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ Unlock a store's submission so they can re-count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ Unlock a store's submission so they can re-count """""""""""""""""""""""""
 
 export async function unlockStoreForBatch(req, res, next) {
   try {
@@ -1712,7 +1712,7 @@ export async function unlockStoreForBatch(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ Admin override of any inventory record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ Admin override of any inventory record """""""""""""""""""""""""""""""""""
 
 export async function overrideInventoryRecord(req, res, next) {
   try {
@@ -1770,7 +1770,7 @@ export async function overrideInventoryRecord(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// â”€â”€â”€ Export audit log to Excel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// """ Export audit log to Excel """"""""""""""""""""""""""""""""""""""""""""""""
 
 export async function exportAuditLogs(req, res, next) {
   try {
@@ -1801,7 +1801,7 @@ export async function exportAuditLogs(req, res, next) {
 
     logs.forEach(log => ws.addRow({
       time:       log.createdAt.toISOString().replace('T', ' ').substring(0, 19),
-      empId:      log.user?.employeeId || 'â€”',
+      empId:      log.user?.employeeId || '"',
       name:       log.user?.name || 'System',
       action:     log.action,
       entityType: log.entityType || '',
@@ -1817,7 +1817,7 @@ export async function exportAuditLogs(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// ─── PDF Exports ──────────────────────────────────────────────────────────────
+// -- PDF Exports --
 
 export async function downloadInventoryExportPDF(req, res, next) {
   try {
@@ -1847,7 +1847,7 @@ export async function downloadInventoryExportPDF(req, res, next) {
     const today = new Date().toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
-      ...baseDocDef({ title: 'Inventory Submissions', subtitle: `${records.length} records · ${today}` }),
+      ...baseDocDef({ title: 'Inventory Submissions', subtitle: `${records.length} records - ${today}` }),
       content: [{
         table: {
           headerRows: 1,
@@ -1899,7 +1899,7 @@ export async function downloadReconciliationReportPDF(req, res, next) {
     const today = new Date().toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
-      ...baseDocDef({ title: 'Reconciliation Report', subtitle: `${records.length} records · ${today}` }),
+      ...baseDocDef({ title: 'Reconciliation Report', subtitle: `${records.length} records - ${today}` }),
       content: [{
         table: {
           headerRows: 1,
@@ -1950,7 +1950,7 @@ export async function sendBatchReminders(req, res, next) {
     });
 
     if (pendingRecords.length === 0) {
-      return res.json({ sent: 0, pending: 0, message: 'All stores have submitted — no reminders needed.' });
+      return res.json({ sent: 0, pending: 0, message: 'All stores have submitted -- no reminders needed.' });
     }
 
     const storeIds = pendingRecords.map(r => r.storeId);
@@ -2006,7 +2006,7 @@ export async function downloadBatchExportPDF(req, res, next) {
     const dateStr = batch.inventoryDate.toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
-      ...baseDocDef({ title: 'Cycle Export', subtitle: `Date: ${dateStr} · ${records.length} records` }),
+      ...baseDocDef({ title: 'Cycle Export', subtitle: `Date: ${dateStr} - ${records.length} records` }),
       content: [{
         table: {
           headerRows: 1,
