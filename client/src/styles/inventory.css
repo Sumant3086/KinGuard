@@ -1,0 +1,323 @@
+/* ─── Inventory progress bar ─────────────────────────────────────── */
+.inv-progress-bar {
+  position: sticky;
+  top: var(--bar-h);
+  z-index: 90;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.inv-progress-left     { display:flex; align-items:baseline; gap:5px; white-space:nowrap; }
+.inv-progress-fraction { font-size:14px; color:var(--t1); }
+.inv-progress-fraction strong { font-weight:800; }
+.inv-progress-label    { font-size:11px; color:var(--t3); font-weight:500; }
+.inv-progress-track-wrap { display:flex; align-items:center; gap:10px; flex:1; max-width:340px; }
+.inv-progress-track {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+.inv-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
+  transition: width 0.5s var(--ease);
+}
+.inv-progress-fill.warn { background:linear-gradient(90deg, var(--amber) 0%, #fbbf24 100%); }
+.inv-progress-pct   { font-size:12px; font-weight:800; color:var(--t2); min-width:34px; text-align:right; }
+.inv-progress-right { display:flex; align-items:center; gap:10px; margin-left:auto; white-space:nowrap; }
+.inv-blank-count  { font-size:11.5px; font-weight:700; color:#fbbf24; background:rgba(217,119,6,0.10); border:1px solid rgba(217,119,6,0.20); padding:3px 9px; border-radius:99px; }
+.inv-all-entered  { font-size:11.5px; font-weight:700; color:#15803d; background:rgba(22,163,74,0.09); border:1px solid rgba(22,163,74,0.18); padding:3px 9px; border-radius:99px; }
+
+/* Jump to next blank */
+.btn-jump {
+  padding: 6px 13px;
+  border-radius: var(--r);
+  background: var(--vi);
+  color: #fff;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  transition: background var(--fast), box-shadow var(--fast);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.20);
+}
+.btn-jump:hover { background:var(--vi-deep); box-shadow:0 4px 14px rgba(220,38,38,0.28); }
+
+/* ─── Entry/progress bar (alias) ─────────────────────────────────── */
+.entry-bar, .entry-progress {
+  position: sticky;
+  top: var(--bar-h);
+  z-index: 90;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.entry-label, .progress-label { font-size:12px; font-weight:600; color:var(--t2); white-space:nowrap; min-width:120px; }
+.progress-wrap, .progress-track { flex:1; height:7px; background:var(--surface-2); border-radius:99px; overflow:hidden; max-width:260px; border:1px solid var(--border-subtle); }
+.progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#16a34a,#22c55e); transition:width var(--slow) var(--ease); }
+.progress-fill.partial, .progress-fill.warning { background:linear-gradient(90deg,var(--amber),#fbbf24); }
+
+/* ─── Autosave notice ────────────────────────────────────────────── */
+.autosave-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 99px;
+  background: rgba(220,38,38,0.06);
+  border: 1px solid rgba(220,38,38,0.16);
+  color: var(--vi);
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-bottom: 13px;
+}
+.autosave-dot { width:6px; height:6px; border-radius:50%; background:var(--vi); animation:dot-pulse 1.4s ease-in-out infinite; }
+
+/* ─── Inventory filters ──────────────────────────────────────────── */
+.inv-filters { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; }
+.search-wrap { position:relative; display:flex; align-items:center; }
+.search-icon { position:absolute; left:9px; color:var(--t4); pointer-events:none; }
+.search-input {
+  padding: 7px 11px 7px 30px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  font-size: 13px;
+  color: var(--t1);
+  background: var(--surface-2);
+  min-width: 170px;
+  transition: border-color var(--fast), box-shadow var(--fast);
+}
+.search-input:focus { outline:none; border-color:var(--vi); box-shadow:0 0 0 3px var(--vi-tint); }
+
+/* ─── Inventory table card ───────────────────────────────────────── */
+.inv-table-card {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(220,38,38,0.09);
+  margin-bottom: 18px;
+  overflow: hidden;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+}
+.inv-table { width:100%; border-collapse:collapse; font-size:13px; }
+.inv-table thead tr { background:var(--surface-2); }
+.inv-table th {
+  padding: 10px 13px;
+  text-align: left;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  border-bottom: 2px solid rgba(220,38,38,0.12);
+  white-space: nowrap;
+}
+.inv-table td { padding:10px 13px; border-bottom:1px solid var(--border-subtle); color:var(--t1); vertical-align:middle; }
+.inv-table tbody tr:last-child td { border-bottom:none; }
+.inv-table tbody tr { transition:background var(--fast); }
+.inv-table tbody tr:hover td { background:rgba(220,38,38,0.03); }
+.inv-table .row-blank td           { background:rgba(217,119,6,0.05); }
+.inv-table .row-blank td:first-child{ box-shadow:inset 3px 0 0 var(--amber); }
+.inv-table .row-editing td          { background:rgba(220,38,38,0.04); }
+.inv-table .row-editing td:first-child { box-shadow:inset 3px 0 0 var(--vi); }
+.inv-table .row-flash-saved td { animation:row-save-flash 1.4s ease forwards; }
+
+/* Material/qty display */
+.mat-name    { font-weight:700; color:var(--t1); font-size:13px; }
+.mat-desc    { font-size:12px; color:var(--t3); }
+.qty-sys     { font-size:13px; color:var(--t2); font-variant-numeric:tabular-nums; }
+.qty-val     { font-size:13px; font-weight:600; color:var(--t1); font-variant-numeric:tabular-nums; }
+.diff-empty  { font-size:12.5px; color:var(--t4); }
+.remark-text { font-size:12px; color:var(--t3); }
+.diff-badge  { animation:diff-pop 0.15s ease; }
+
+/* Quantity inputs */
+.qty-input {
+  width: 80px;
+  padding: 5px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t1);
+  background: var(--surface-2);
+  text-align: right;
+  transition: border-color var(--fast), box-shadow var(--fast);
+  font-variant-numeric: tabular-nums;
+}
+.qty-input:focus { outline:none; border-color:var(--vi); box-shadow:0 0 0 3px var(--vi-tint); }
+/* System stock — amber tint so user knows it's editable but different */
+.qty-input-sys { background:#fffbf0; border-color:rgba(217,119,6,0.30); }
+.qty-input-sys:focus { border-color:var(--amber); box-shadow:0 0 0 3px rgba(217,119,6,0.12); }
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.qty-input[type=number] { -moz-appearance:textfield; }
+
+/* ─── Row save controls ───────────────────────────────────────────── */
+.save-col-header { width:76px; }
+.save-col        { width:76px; text-align:center; }
+.save-spinner {
+  display: inline-block;
+  width: 15px; height: 15px;
+  border: 2px solid var(--surface-2);
+  border-top-color: var(--vi);
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  vertical-align: middle;
+}
+.save-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  background: rgba(22,163,74,0.12);
+  border: 1px solid rgba(22,163,74,0.25);
+  border-radius: 50%;
+  color: var(--green);
+  animation: check-pop 0.18s ease;
+}
+.btn-row-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--vi);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(220,38,38,0.20);
+  animation: fade-up 0.12s ease;
+}
+.btn-row-save:hover  { background:var(--vi-deep); transform:translateY(-1px); box-shadow:0 3px 10px rgba(220,38,38,0.28); }
+.btn-row-save:active { transform:translateY(1px); }
+.btn-row-retry { background:rgba(220,38,38,0.10); color:#f87171; box-shadow:none; border:1px solid rgba(220,38,38,0.20); }
+.btn-row-retry:hover { background:rgba(220,38,38,0.15); transform:none; box-shadow:none; }
+
+/* Table footer */
+.inv-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--t3);
+  background: var(--surface-2);
+}
+.footer-unsaved-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(217,119,6,0.10);
+  padding: 2px 9px;
+  border-radius: 99px;
+  border: 1px solid rgba(217,119,6,0.18);
+}
+
+/* ─── Upload steps ───────────────────────────────────────────────── */
+.upload-steps {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+}
+.upload-step      { display:flex; align-items:center; gap:8px; flex:1; }
+.upload-step-num  {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--t4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+  transition: all var(--fast);
+}
+.upload-step.active .upload-step-num { background:var(--vi); color:#fff; }
+.upload-step.done   .upload-step-num { background:#16a34a; color:#fff; }
+.upload-step-text { font-size:12px; font-weight:600; color:var(--t4); transition:color var(--fast); }
+.upload-step.active .upload-step-text { color:var(--t1); }
+.upload-step.done   .upload-step-text { color:#16a34a; }
+.upload-step-sep  { flex:1; height:1px; background:var(--border); max-width:32px; flex-shrink:0; }
+
+/* ─── Submit summary ─────────────────────────────────────────────── */
+.submit-summary        { max-width:680px; margin:44px auto; padding:0 20px; }
+.submit-summary-header { text-align:center; margin-bottom:28px; }
+.submit-success-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(22,163,74,0.08);
+  border: 2px solid rgba(22,163,74,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--green);
+}
+.submit-summary-header h2 { font-size:21px; font-weight:800; color:var(--t1); letter-spacing:-0.3px; margin-bottom:5px; }
+.submit-summary-header p  { font-size:13px; color:var(--t3); }
+
+.summary-metrics, .summary-wrap { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+.summary-metric, .sum-metric {
+  padding: 18px 14px;
+  text-align: center;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--sh-xs);
+}
+.summary-metric h4, .sum-metric-label {
+  font-size: 9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;
+}
+.summary-metric .metric-value, .sum-metric-value { font-size:30px; font-weight:800; line-height:1; letter-spacing:-1px; }
+.summary-metric.matched, .sum-matched  { background:rgba(22,163,74,0.04);  border-color:rgba(22,163,74,0.18); }
+.summary-metric.shortage,.sum-shortage { background:rgba(220,38,38,0.04);  border-color:rgba(220,38,38,0.18); }
+.summary-metric.excess,  .sum-excess   { background:rgba(139,92,246,0.04); border-color:rgba(139,92,246,0.18); }
+.summary-metric.matched  h4, .sum-matched  .sum-metric-label { color:#16a34a; }
+.summary-metric.shortage h4, .sum-shortage .sum-metric-label { color:#f87171; }
+.summary-metric.excess   h4, .sum-excess   .sum-metric-label { color:#a78bfa; }
+.summary-metric.matched  .metric-value, .sum-matched  .sum-metric-value { color:#16a34a; }
+.summary-metric.shortage .metric-value, .sum-shortage .sum-metric-value { color:#f87171; }
+.summary-metric.excess   .metric-value, .sum-excess   .sum-metric-value { color:#a78bfa; }
+
+/* ─── Responsive — inventory ─────────────────────────────────────── */
+@media (max-width:768px) {
+  .inv-progress-bar      { padding:9px 16px; gap:10px; }
+  .inv-progress-track-wrap { max-width:none; }
+  .inv-filters           { gap:8px; }
+  .search-input          { min-width:140px; }
+  .btn-row-save          { padding:4px 8px; font-size:10.5px; }
+  .qty-input             { width:68px; }
+  .entry-bar, .entry-progress { padding:8px 16px; }
+}
+@media (max-width:520px) {
+  .inv-progress-right { display:none; }
+  .summary-metrics, .summary-wrap { grid-template-columns:1fr; }
+  .submit-summary, .summary-wrap  { padding:0 12px; }
+  .upload-steps  { flex-direction:column; gap:8px; align-items:flex-start; }
+  .upload-step-sep { display:none; }
+}
