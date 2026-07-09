@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import logoImg   from '../assets/img/logo 32px32px.png';
+import bgStore   from '../assets/img/home creen.jpg';
 
 export default function Login() {
   const [employeeId, setEmployeeId] = useState('');
@@ -26,10 +28,17 @@ export default function Login() {
     <div className="login-page">
       <div className="login-shell">
 
-        {/* ── Left — brand + warehouse imagery ── */}
-        <div className="login-left">
+        {/* ── Left — brand + supermarket background ── */}
+        <div
+          className="login-left"
+          style={{
+            backgroundImage: `linear-gradient(155deg, rgba(153,27,27,0.82) 0%, rgba(185,28,28,0.75) 40%, rgba(220,38,38,0.65) 100%), url(${bgStore})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
           <div className="ll-brand">
-            <div className="ll-logo">K</div>
+            <img src={logoImg} alt="KinMarché" className="ll-logo-img" />
             <span className="ll-name">KinMarché</span>
           </div>
 
@@ -84,7 +93,7 @@ export default function Login() {
         {/* ── Right — sign-in form ── */}
         <div className="login-right">
           <div className="lr-header">
-            <div className="lr-logo">K</div>
+            <img src={logoImg} alt="KinMarché" className="lr-logo-img" />
             <div className="lr-header-text">
               <h2>Sign In</h2>
               <p>Enter your credentials to continue.</p>
