@@ -37,6 +37,47 @@ export async function deleteStore(id) {
   return data;
 }
 
+export async function forceDeleteStore(id) {
+  const { data } = await client.delete(`/admin/stores/${id}/force`);
+  cacheInvalidate('admin:stores', 'admin:dashboard');
+  return data;
+}
+
+export async function bulkDeleteStores(ids, force = false) {
+  const { data } = await client.delete('/admin/stores/bulk', { data: { ids, force } });
+  cacheInvalidate('admin:stores', 'admin:dashboard');
+  return data;
+}
+
+export async function deleteUser(id) {
+  const { data } = await client.delete(`/admin/users/${id}`);
+  cacheInvalidate('admin:users');
+  return data;
+}
+
+export async function deleteBatch(id) {
+  const { data } = await client.delete(`/admin/batches/${id}`);
+  cacheInvalidate('admin:batches', 'admin:dashboard', 'admin:uploads');
+  return data;
+}
+
+export async function unlockStoreForBatch(batchId, storeId) {
+  const { data } = await client.post(`/admin/batches/${batchId}/unlock-store`, { storeId });
+  cacheInvalidate('admin:dashboard');
+  return data;
+}
+
+export async function overrideRecord(id, payload) {
+  const { data } = await client.patch(`/admin/inventory/${id}/override`, payload);
+  cacheInvalidate('admin:dashboard');
+  return data;
+}
+
+export async function exportAuditLogs(filters) {
+  const response = await client.get('/admin/audit-logs/export', { params: filters, responseType: 'blob' });
+  return response.data;
+}
+
 export async function getUsers() {
   const key = 'admin:users';
   const cached = cacheGet(key);
@@ -82,6 +123,11 @@ export async function previewUpload(file, inventoryDate) {
   return data;
 }
 
+export async function downloadSampleTemplate() {
+  const response = await client.get('/admin/uploads/template', { responseType: 'blob' });
+  return response.data;
+}
+
 export async function getUploads() {
   const key = 'admin:uploads';
   const cached = cacheGet(key);
@@ -95,6 +141,16 @@ export async function getInventory(filters) {
   // Do not cache — paginated and filtered, always needs fresh data
   const { data } = await client.get('/admin/inventory', { params: filters });
   return data;
+}
+
+export async function downloadInventoryExportPDF(filters) {
+  const response = await client.get('/admin/inventory/export-pdf', { params: filters, responseType: 'blob' });
+  return response.data;
+}
+
+export async function getBatchExportPDF(batchId) {
+  const response = await client.get(`/admin/batches/${batchId}/export-pdf`, { responseType: 'blob' });
+  return response.data;
 }
 
 export async function downloadInventoryExport(filters) {
@@ -119,6 +175,19 @@ export async function downloadReconciliationReport(filters) {
     responseType: 'blob',
   });
   return response.data;
+}
+
+export async function downloadReconciliationReportPDF(filters) {
+  const response = await client.get('/admin/reports/reconciliation/download-pdf', {
+    params: filters,
+    responseType: 'blob',
+  });
+  return response.data;
+}
+
+export async function sendBatchReminders(batchId) {
+  const { data } = await client.post(`/admin/batches/${batchId}/send-reminders`);
+  return data;
 }
 
 export async function getAuditLogs(action, limit) {

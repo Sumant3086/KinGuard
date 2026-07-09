@@ -25,7 +25,9 @@
     "express-rate-limit": "^7.4.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3",
+    "pdfmake": "^0.3.11"
   },
   "devDependencies": {
     "prisma": "^5.22.0"
