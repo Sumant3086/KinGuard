@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
+import ConfirmModal from '../../components/ConfirmModal';
 import * as adminApi from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
 
@@ -15,6 +16,53 @@ export default function AdminUpload() {
   const [result, setResult] = useState(null);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState('');
+  const [showDateConfirm, setShowDateConfirm] = useState(false);
+  const [dateConfirmAction, setDateConfirmAction] = useState(null);
+  const [dateWarningMessage, setDateWarningMessage] = useState('');
+
+  // Kinshasa timezone formatting
+  const formatKinshasaDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric',
+      timeZone: 'Africa/Kinshasa'
+    });
+  };
+
+  // Date validation
+  const validateDate = (dateStr, action) => {
+    if (!dateStr) return true;
+    
+    const selectedDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const daysDiff = Math.floor((selectedDate - today) / (1000 * 60 * 60 * 24));
+    
+    // Warn if more than 90 days in past
+    if (daysDiff < -90) {
+      setDateWarningMessage(
+        `The inventory date you selected is ${Math.abs(daysDiff)} days in the past (${formatKinshasaDate(dateStr)}). This seems quite old. Do you want to proceed?`
+      );
+      setDateConfirmAction(() => action);
+      setShowDateConfirm(true);
+      return false;
+    }
+    
+    // Warn if more than 30 days in future
+    if (daysDiff > 30) {
+      setDateWarningMessage(
+        `The inventory date you selected is ${daysDiff} days in the future (${formatKinshasaDate(dateStr)}). This seems too far ahead. Do you want to proceed?`
+      );
+      setDateConfirmAction(() => action);
+      setShowDateConfirm(true);
+      return false;
+    }
+    
+    return true;
+  };
 
   function resetForm() {
     setFile(null);
@@ -23,7 +71,6 @@ export default function AdminUpload() {
     setPreview(null);
     setResult(null);
     setError('');
-    // Clear the file input
     const input = document.getElementById('file-input');
     if (input) input.value = '';
   }
@@ -32,12 +79,22 @@ export default function AdminUpload() {
     e.preventDefault();
     setError('');
     setResult(null);
+    
+    // Validate date first
+    const isValid = validateDate(inventoryDate, () => executePreview());
+    if (!isValid) return; // Wait for confirmation
+    
+    executePreview();
+  }
+
+  async function executePreview() {
     setPreviewing(true);
     try {
       const data = await adminApi.previewUpload(file, inventoryDate);
       setPreview(data);
     } catch (err) {
       setError(err.response?.data?.error || 'Preview failed. Check your file format.');
+      toast.error(err.response?.data?.error || 'Preview failed');
     } finally {
       setPreviewing(false);
     }
@@ -111,7 +168,7 @@ export default function AdminUpload() {
       <div className="page-header">
         <div>
           <h2>Upload Inventory File</h2>
-          <p>Upload a master Excel or CSV file to start a new inventory cycle for all stores</p>
+          <p>Upload a master Excel or CSV file to start a new inventory cycle for all plants</p>
         </div>
         <button onClick={handleDownloadTemplate} className="btn btn-secondary">
           ↓ Download Template
@@ -263,7 +320,7 @@ export default function AdminUpload() {
               onClick={handleConfirmUpload}
               disabled={uploading || allErrors}
             >
-              {uploading ? 'Publishing…' : '✓ Confirm & Publish to Stores'}
+              {uploading ? 'Publishing…' : '✓ Confirm & Publish to Plants'}
             </button>
             <button className="btn btn-secondary" onClick={resetForm} disabled={uploading}>
               Cancel
@@ -276,7 +333,7 @@ export default function AdminUpload() {
       {result && (
         <div className="card">
           <div className="alert alert-success" style={{ marginBottom: 16 }}>
-            <strong>Upload published successfully.</strong> Store managers can now begin counting.
+            <strong>Upload published successfully.</strong> Plant managers can now begin counting.
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
@@ -295,6 +352,24 @@ export default function AdminUpload() {
               <div style={{ fontSize: 12, color: 'var(--t3)' }}>Rejected rows</div>
             </div>
           </div>
+
+          {/* Auto-created pending users notice */}
+          {result.autoCreatedUsers && result.autoCreatedUsers.length > 0 && (
+            <div style={{ display: 'flex', gap: 12, padding: '12px 16px', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: 'var(--r)', marginBottom: 16 }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>⏳</span>
+              <div style={{ flex: 1 }}>
+                <strong style={{ fontSize: 13, color: '#d97706' }}>
+                  {result.autoCreatedUsers.length} new plant account{result.autoCreatedUsers.length !== 1 ? 's' : ''} pending approval
+                </strong>
+                <p style={{ fontSize: 12, color: 'var(--t3)', margin: '4px 0 8px' }}>
+                  A login account was automatically created for each new plant found in this file ({result.autoCreatedUsers.map(u => u.storeCode).join(', ')}). Go to User Management to approve them and get their login credentials.
+                </p>
+                <button className="btn btn-sm" style={{ background: 'rgba(217,119,6,0.14)', color: '#d97706', border: '1px solid rgba(217,119,6,0.28)' }} onClick={() => navigate('/admin/users')}>
+                  Go to User Management →
+                </button>
+              </div>
+            </div>
+          )}
 
           {result.errors && result.errors.length > 0 && (
             <div style={{ marginBottom: 16 }}>
@@ -317,6 +392,21 @@ export default function AdminUpload() {
           </div>
         </div>
       )}
+
+      {/* ── Date Confirmation Modal ── */}
+      <ConfirmModal
+        isOpen={showDateConfirm}
+        onClose={() => setShowDateConfirm(false)}
+        onConfirm={() => {
+          setShowDateConfirm(false);
+          if (dateConfirmAction) dateConfirmAction();
+        }}
+        title="Date Confirmation"
+        message={dateWarningMessage}
+        confirmText="Proceed Anyway"
+        cancelText="Cancel"
+        type="warning"
+      />
     </AdminLayout>
   );
 }

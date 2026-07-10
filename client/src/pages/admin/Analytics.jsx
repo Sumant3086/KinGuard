@@ -88,13 +88,30 @@ export default function AdminAnalytics() {
 
   if (loading) return (
     <AdminLayout>
-      <div className="loading"><div className="spinner" />Loading analytics…</div>
+      <div className="card" style={{ padding: '40px 20px' }}>
+        <div className="skeleton skeleton-text" style={{ width: '30%', height: 32, marginBottom: 24 }} />
+        <div className="skeleton skeleton-card" style={{ height: 100, marginBottom: 16 }} />
+        <div className="skeleton skeleton-card" style={{ height: 300 }} />
+      </div>
     </AdminLayout>
   );
 
   if (error) return (
     <AdminLayout>
-      <div className="alert alert-error">{error}</div>
+      <div className="empty-state">
+        <div className="empty-state-illustration error">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <h3 className="empty-state-title">Failed to Load Analytics</h3>
+        <p className="empty-state-description">{error}</p>
+        <button onClick={() => window.location.reload()} className="btn btn-primary empty-state-cta">
+          Retry
+        </button>
+      </div>
     </AdminLayout>
   );
 
@@ -169,7 +186,19 @@ export default function AdminAnalytics() {
           <span style={{ fontSize: 11, color: 'var(--t3)' }}>↑ worsening · ↓ improving</span>
         </div>
         {trendBatches.length === 0 ? (
-          <div className="empty"><div className="empty-icon">📊</div><p>No cycle data yet.</p></div>
+          <div className="empty-state" style={{ padding: '40px 20px' }}>
+            <div className="empty-state-illustration">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </div>
+            <h4 className="empty-state-title">No Trend Data</h4>
+            <p className="empty-state-description">
+              Complete at least 2 inventory cycles to see performance trends
+            </p>
+          </div>
         ) : (
           <div className="table-wrap">
             <table className="scorecard">
@@ -283,7 +312,7 @@ export default function AdminAnalytics() {
 
         {batchA && batchB && comparisonRows.length > 0 ? (
           <div className="table-wrap">
-            <table className="scorecard">
+            <table className="scorecard table-hover">
               <thead>
                 <tr>
                   <th>Store</th>
@@ -327,7 +356,19 @@ export default function AdminAnalytics() {
             </table>
           </div>
         ) : (
-          <div className="empty"><div className="empty-icon">📊</div><p>Select two cycles above to compare stores.</p></div>
+          <div className="empty-state" style={{ padding: '40px 20px' }}>
+            <div className="empty-state-illustration">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </div>
+            <h4 className="empty-state-title">Select Cycles to Compare</h4>
+            <p className="empty-state-description">
+              Choose two inventory cycles above to compare store performance
+            </p>
+          </div>
         )}
       </div>
     </AdminLayout>
