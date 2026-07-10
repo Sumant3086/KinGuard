@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import ExcelJS from 'exceljs';
 import { parse } from 'csv-parse/sync';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import prisma from '../config/prisma.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
+import { parseId, requireId, parsePage, parsePageSize, parseIntParam } from '../utils/params.js';
 
 // Shared column name aliases for Excel/CSV parsing
 const COLUMN_MAP = {
@@ -293,7 +295,7 @@ export async function createStore(req, res, next) {
     const { storeCode, storeName, isActive } = req.body;
 
     if (!storeCode || !storeName) {
-      throw new AppError('Store code and name are required', 400);
+      throw new AppError('Plant code and name are required', 400);
     }
 
     const store = await prisma.store.create({
@@ -316,7 +318,7 @@ export async function createStore(req, res, next) {
     res.status(201).json(store);
   } catch (error) {
     if (error.code === 'P2002') {
-      next(new AppError('Store code already exists', 409));
+      next(new AppError('Plant code already exists', 409));
     } else {
       next(error);
     }
@@ -325,8 +327,7 @@ export async function createStore(req, res, next) {
 
 export async function deleteStore(req, res, next) {
   try {
-    const { id } = req.params;
-    const storeId = parseInt(id);
+    const storeId = requireId(req.params.id, 'storeId');
 
     const store = await prisma.store.findUnique({
       where: { id: storeId },
@@ -367,11 +368,11 @@ export async function deleteStore(req, res, next) {
 
 export async function updateStore(req, res, next) {
   try {
-    const { id } = req.params;
+    const storeId = requireId(req.params.id, 'storeId');
     const { storeName, isActive } = req.body;
 
     const store = await prisma.store.update({
-      where: { id: parseInt(id) },
+      where: { id: storeId },
       data: {
         storeName: storeName !== undefined ? storeName : undefined,
         isActive: isActive !== undefined ? isActive : undefined,
@@ -446,7 +447,7 @@ export async function createUser(req, res, next) {
         name,
         passwordHash,
         role,
-        storeId: storeId ? parseInt(storeId) : null,
+        storeId: storeId ? requireId(storeId, 'storeId') : null,
         isActive: isActive !== undefined ? isActive : true,
         email: email || null,
         phone: phone || null,
@@ -477,7 +478,7 @@ export async function createUser(req, res, next) {
 
 export async function updateUser(req, res, next) {
   try {
-    const { id } = req.params;
+    const userId = requireId(req.params.id, 'userId');
     const { name, password, storeId, isActive, email, phone } = req.body;
 
     const data = {
@@ -488,17 +489,18 @@ export async function updateUser(req, res, next) {
     };
 
     if (storeId !== undefined) {
+      const parsedStoreId = storeId ? requireId(storeId, 'storeId') : null;
       // Fetch current user role to enforce: ADMIN users cannot have a store
       const currentUser = await prisma.user.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: userId },
         select: { storeId: true, role: true },
       });
       if (!currentUser) throw new AppError('User not found', 404);
-      if (storeId && currentUser.role === 'ADMIN') {
+      if (parsedStoreId && currentUser.role === 'ADMIN') {
         throw new AppError('Administrator accounts cannot be assigned to a store', 400);
       }
-      if (storeId) {
-        data.store = { connect: { id: parseInt(storeId) } };
+      if (parsedStoreId) {
+        data.store = { connect: { id: parsedStoreId } };
       } else if (currentUser.storeId) {
         // Only issue disconnect if user actually has a store (prevents Prisma P2025)
         data.store = { disconnect: true };
@@ -506,11 +508,12 @@ export async function updateUser(req, res, next) {
     }
 
     if (password) {
+      if (password.length < 8) throw new AppError('Password must be at least 8 characters', 400);
       data.passwordHash = await bcrypt.hash(password, 10);
     }
 
     const user = await prisma.user.update({
-      where: { id: parseInt(id) },
+      where: { id: userId },
       data,
       include: { store: true },
     });
@@ -606,6 +609,35 @@ export async function uploadInventory(req, res, next) {
     const allStores = await prisma.store.findMany({ select: { id: true, storeCode: true } });
     const storeMap = new Map(allStores.map(s => [s.storeCode, s.id]));
 
+    // Auto-create inactive placeholder users for every newly created store.
+    // Accounts are inactive until an admin approves them in User Management.
+    // A fresh password is generated at approval time, not here.
+    const autoCreatedUsers = [];
+    if (newStoreCodes.length > 0) {
+      const placeholder = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+      for (const code of newStoreCodes) {
+        const storeId = storeMap.get(code);
+        if (!storeId) continue;
+        const employeeId = `MGR${code}`;
+        const existing = await prisma.user.findUnique({ where: { employeeId } });
+        if (!existing) {
+          await prisma.user.create({
+            data: {
+              employeeId,
+              name: `Manager ${code}`,
+              passwordHash: placeholder,
+              role: 'STORE_MANAGER',
+              storeId,
+              isActive: false,
+              pendingApproval: true,
+              source: 'AUTO_STORE',
+            },
+          });
+          autoCreatedUsers.push({ employeeId, storeCode: code });
+        }
+      }
+    }
+
     // Process each row
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -619,7 +651,7 @@ export async function uploadInventory(req, res, next) {
         const materialName = materialDescription || materialCode;
 
         if (!storeCode) {
-          errors.push({ row: rowNum, error: 'Missing Plant / Store Code' });
+          errors.push({ row: rowNum, error: 'Missing Plant Code' });
           continue;
         }
         if (!materialCode) {
@@ -713,6 +745,7 @@ export async function uploadInventory(req, res, next) {
       successfulRows: successfulRecords.length,
       rejectedRows: errors.length,
       errors: errors.slice(0, 50),
+      autoCreatedUsers: autoCreatedUsers.length > 0 ? autoCreatedUsers : undefined,
     });
   } catch (error) {
     next(error);
@@ -738,7 +771,7 @@ export async function previewUpload(req, res, next) {
     }
 
 
-    // Fetch all store codes for validation — retry once on transient DB errors
+    // Fetch all plant codes for validation — retry once on transient DB errors
     let stores;
     try {
       stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
@@ -773,26 +806,29 @@ export async function previewUpload(req, res, next) {
 
       // Validation
       if (!storeCode) {
-        errors.push('Missing Plant / Store Code');
+        errors.push('Missing Plant Code');
       } else if (!storeMap.has(storeCode)) {
-        warnings.push(`New store will be created: ${storeCode}`);
+        warnings.push(`New plant will be created: ${storeCode}`);
       }
 
       if (!materialCode) {
         errors.push('Missing Material Code');
       }
 
-      // System quantity is optional " default 0 when absent
-      if (rawQty === null || rawQty === undefined || rawQty === '') {
-        warnings.push('System qty not in file " defaults to 0');
-      } else {
+      // System quantity validation - Optional, defaults to 0 if empty
+      // Store managers will fill the actual counted quantity later
+      let systemQty = 0;
+      if (rawQty !== null && rawQty !== undefined && rawQty !== '') {
         const qty = parseFloat(rawQty);
         if (isNaN(qty)) {
           errors.push('Invalid System Quantity (not a number)');
         } else if (qty < 0) {
           errors.push('Invalid System Quantity (negative)');
+        } else {
+          systemQty = qty;
         }
       }
+      // If empty, systemQty stays 0 (no error, no warning)
 
       if (errors.length > 0) {
         status = 'error';
@@ -814,7 +850,7 @@ export async function previewUpload(req, res, next) {
         storeName: storeCode ? (storeMap.get(storeCode) || `(new) ${storeCode}`) : '',
         materialCode: materialCode || '',
         materialName: materialName || '',
-        systemQuantity: (rawQty !== null && rawQty !== undefined && rawQty !== '') ? rawQty : '0',
+        systemQuantity: systemQty,
         remarks,
         status,
         message,
@@ -862,13 +898,17 @@ export async function getUploads(req, res, next) {
 export async function getInventory(req, res, next) {
   const startTime = Date.now();
   try {
-    const { storeId, status, search, batchId, discrepancy, page = 1, pageSize = 50 } = req.query;
+    const { status, search, discrepancy } = req.query;
+    const storeId     = parseId(req.query.storeId, 'storeId');
+    const batchId     = parseId(req.query.batchId, 'batchId');
+    const pageNum     = parsePage(req.query.page, 1);
+    const pageSizeNum = parsePageSize(req.query.pageSize, 50, 200);
 
     const where = {};
 
-    if (storeId)  where.storeId  = parseInt(storeId);
+    if (storeId)  where.storeId  = storeId;
     if (status)   where.status   = status;
-    if (batchId)  where.batchId  = parseInt(batchId);
+    if (batchId)  where.batchId  = batchId;
     if (search) {
       where.OR = [
         { materialCode: { contains: search, mode: 'insensitive' } },
@@ -879,9 +919,7 @@ export async function getInventory(req, res, next) {
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
     if (discrepancy === 'matched')  where.difference = { equals: 0 };
 
-    const pageNum     = parseInt(page);
-    const pageSizeNum = parseInt(pageSize);
-    const skip        = (pageNum - 1) * pageSizeNum;
+    const skip = (pageNum - 1) * pageSizeNum;
 
     const [totalRecords, records] = await Promise.all([
       prisma.inventoryRecord.count({ where }),
@@ -948,12 +986,13 @@ export async function getInventory(req, res, next) {
 
 export async function getReconciliationReport(req, res, next) {
   try {
-    const { storeId, status, discrepancy, includeInactive } = req.query;
+    const { status, discrepancy, includeInactive } = req.query;
+    const storeId = parseId(req.query.storeId, 'storeId');
 
     const where = {};
 
     if (storeId) {
-      where.storeId = parseInt(storeId);
+      where.storeId = storeId;
     }
     if (status) {
       where.status = status;
@@ -997,12 +1036,13 @@ export async function getReconciliationReport(req, res, next) {
 
 export async function downloadReconciliationReport(req, res, next) {
   try {
-    const { storeId, status, discrepancy, includeInactive } = req.query;
+    const { status, discrepancy, includeInactive } = req.query;
+    const storeId = parseId(req.query.storeId, 'storeId');
 
     const where = {};
 
     if (storeId) {
-      where.storeId = parseInt(storeId);
+      where.storeId = storeId;
     }
     if (status) {
       where.status = status;
@@ -1042,8 +1082,8 @@ export async function downloadReconciliationReport(req, res, next) {
 
     // Add headers
     worksheet.columns = [
-      { header: 'Store Code', key: 'storeCode', width: 12 },
-      { header: 'Store Name', key: 'storeName', width: 20 },
+      { header: 'Plant Code', key: 'storeCode', width: 12 },
+      { header: 'Plant Name', key: 'storeName', width: 20 },
       { header: 'Date', key: 'inventoryDate', width: 15 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Material Description', key: 'materialName', width: 30 },
@@ -1106,19 +1146,15 @@ export async function downloadReconciliationReport(req, res, next) {
 export async function downloadInventoryExport(req, res, next) {
   const startTime = Date.now();
   try {
-    const { storeId, status, search, batchId, discrepancy } = req.query;
+    const { status, search, discrepancy } = req.query;
+    const storeId = parseId(req.query.storeId, 'storeId');
+    const batchId = parseId(req.query.batchId, 'batchId');
 
     const where = {};
 
-    if (storeId) {
-      where.storeId = parseInt(storeId);
-    }
-    if (status) {
-      where.status = status;
-    }
-    if (batchId) {
-      where.batchId = parseInt(batchId);
-    }
+    if (storeId) { where.storeId = storeId; }
+    if (status)  { where.status  = status;  }
+    if (batchId) { where.batchId = batchId; }
     if (search) {
       where.OR = [
         { materialCode: { contains: search, mode: 'insensitive' } },
@@ -1161,8 +1197,8 @@ export async function downloadInventoryExport(req, res, next) {
 
     // Define columns with business-friendly names
     worksheet.columns = [
-      { header: 'Store Code', key: 'storeCode', width: 12 },
-      { header: 'Store Name', key: 'storeName', width: 25 },
+      { header: 'Plant Code', key: 'storeCode', width: 12 },
+      { header: 'Plant Name', key: 'storeName', width: 25 },
       { header: 'Date', key: 'inventoryDate', width: 15 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Material Description', key: 'materialName', width: 35 },
@@ -1211,7 +1247,7 @@ export async function downloadInventoryExport(req, res, next) {
       });
     });
 
-    // Format Store Code and Material Code as text to preserve leading zeros
+    // Format Plant Code and Material Code as text to preserve leading zeros
     const storeCodeCol = worksheet.getColumn('storeCode');
     storeCodeCol.numFmt = '@';
     const materialCodeCol = worksheet.getColumn('materialCode');
@@ -1312,10 +1348,10 @@ export async function getBatches(req, res, next) {
 
 export async function updateBatch(req, res, next) {
   try {
-    const { id } = req.params;
+    const batchId = requireId(req.params.id, 'batchId');
     const { submissionDeadline } = req.body;
     const batch = await prisma.uploadBatch.update({
-      where: { id: parseInt(id) },
+      where: { id: batchId },
       data: { submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : null },
     });
     await createAuditLog({
@@ -1329,25 +1365,27 @@ export async function updateBatch(req, res, next) {
 
 export async function grantStoreExtension(req, res, next) {
   try {
-    const { batchId, storeId, newDeadline, note } = req.body;
-    if (!batchId || !storeId || !newDeadline) throw new AppError('batchId, storeId, newDeadline required', 400);
+    const { newDeadline, note } = req.body;
+    const batchId = requireId(req.body.batchId, 'batchId');
+    const storeId = requireId(req.body.storeId, 'storeId');
+    if (!newDeadline) throw new AppError('newDeadline is required', 400);
     const deadlineDate = new Date(newDeadline);
     if (isNaN(deadlineDate.getTime())) throw new AppError('Invalid deadline date', 400);
     if (deadlineDate <= new Date()) throw new AppError('Extension deadline must be in the future', 400);
     const [batch, store] = await Promise.all([
-      prisma.uploadBatch.findUnique({ where: { id: parseInt(batchId) }, select: { id: true } }),
-      prisma.store.findUnique({ where: { id: parseInt(storeId) }, select: { id: true } }),
+      prisma.uploadBatch.findUnique({ where: { id: batchId }, select: { id: true } }),
+      prisma.store.findUnique({ where: { id: storeId }, select: { id: true } }),
     ]);
     if (!batch) throw new AppError('Batch not found', 404);
     if (!store) throw new AppError('Store not found', 404);
     const ext = await prisma.batchDeadlineExtension.upsert({
-      where: { batchId_storeId: { batchId: parseInt(batchId), storeId: parseInt(storeId) } },
+      where: { batchId_storeId: { batchId, storeId } },
       update: { newDeadline: new Date(newDeadline), grantedBy: req.user.id, grantedAt: new Date(), note: note || null },
-      create: { batchId: parseInt(batchId), storeId: parseInt(storeId), newDeadline: new Date(newDeadline), grantedBy: req.user.id, note: note || null },
+      create: { batchId, storeId, newDeadline: new Date(newDeadline), grantedBy: req.user.id, note: note || null },
     });
     await createAuditLog({
       userId: req.user.id, action: 'GRANT_STORE_EXTENSION',
-      entityType: 'UPLOAD_BATCH', entityId: parseInt(batchId),
+      entityType: 'UPLOAD_BATCH', entityId: batchId,
       metadata: { storeId, newDeadline, note },
     });
     res.json(ext);
@@ -1356,10 +1394,10 @@ export async function grantStoreExtension(req, res, next) {
 
 export async function getTrends(req, res, next) {
   try {
-    const { cycles = 6 } = req.query;
+    const cycles = parseIntParam(req.query.cycles, 'cycles', 6, 1, 24);
     const batches = (await prisma.uploadBatch.findMany({
       orderBy: { inventoryDate: 'desc' },
-      take: parseInt(cycles),
+      take: cycles,
       select: { id: true, inventoryDate: true },
     })).reverse(); // most-recent N, oldest-first for chart left-to-right ordering
     if (batches.length === 0) return res.json({ batches: [], series: [] });
@@ -1399,10 +1437,10 @@ export async function getTrends(req, res, next) {
 
 export async function getStoreDrilldown(req, res, next) {
   try {
-    const { storeId } = req.params;
-    const { batchId } = req.query;
+    const storeId = requireId(req.params.storeId, 'storeId');
+    const batchIdParam = parseId(req.query.batchId, 'batchId');
 
-    let targetBatchId = batchId ? parseInt(batchId) : null;
+    let targetBatchId = batchIdParam ?? null;
     if (!targetBatchId) {
       const latest = await prisma.uploadBatch.findFirst({ orderBy: { inventoryDate: 'desc' }, select: { id: true } });
       if (!latest) return res.json([]);
@@ -1410,7 +1448,7 @@ export async function getStoreDrilldown(req, res, next) {
     }
 
     const records = await prisma.inventoryRecord.findMany({
-      where: { storeId: parseInt(storeId), batchId: targetBatchId, status: 'SUBMITTED', difference: { lt: 0 } },
+      where: { storeId, batchId: targetBatchId, status: 'SUBMITTED', difference: { lt: 0 } },
       orderBy: { difference: 'asc' },
       select: { id: true, materialCode: true, materialName: true, systemQuantity: true, physicalQuantity: true, difference: true, remarks: true, shrinkageCategory: true },
     });
@@ -1420,15 +1458,15 @@ export async function getStoreDrilldown(req, res, next) {
 
 export async function getBatchExport(req, res, next) {
   try {
-    const { batchId } = req.params;
+    const batchId = requireId(req.params.batchId, 'batchId');
     const batch = await prisma.uploadBatch.findUnique({
-      where: { id: parseInt(batchId) },
+      where: { id: batchId },
       select: { inventoryDate: true, originalFileName: true },
     });
     if (!batch) throw new AppError('Batch not found', 404);
 
     const records = await prisma.inventoryRecord.findMany({
-      where: { batchId: parseInt(batchId) },
+      where: { batchId },
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
       include: {
         store: { select: { storeCode: true, storeName: true } },
@@ -1439,8 +1477,8 @@ export async function getBatchExport(req, res, next) {
     const workbook = new ExcelJS.Workbook();
     const ws = workbook.addWorksheet('Batch Export');
     ws.columns = [
-      { header: 'Store Code',    key: 'storeCode',    width: 12 },
-      { header: 'Store Name',    key: 'storeName',    width: 22 },
+      { header: 'Plant Code',    key: 'storeCode',    width: 12 },
+      { header: 'Plant Name',    key: 'storeName',    width: 22 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Description',   key: 'materialName', width: 32 },
       { header: 'System Stock',   key: 'sys',          width: 14 },
@@ -1465,7 +1503,7 @@ export async function getBatchExport(req, res, next) {
       submittedBy: r.submitter ? `${r.submitter.name} (${r.submitter.employeeId})` : '',
     }));
 
-    await createAuditLog({ userId: req.user.id, action: 'DOWNLOAD_BATCH_EXPORT', entityType: 'UPLOAD_BATCH', entityId: parseInt(batchId), metadata: { recordCount: records.length } });
+    await createAuditLog({ userId: req.user.id, action: 'DOWNLOAD_BATCH_EXPORT', entityType: 'UPLOAD_BATCH', entityId: batchId, metadata: { recordCount: records.length } });
 
     const dateStr = batch.inventoryDate.toISOString().split('T')[0];
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1524,12 +1562,12 @@ export async function downloadSampleTemplate(req, res, next) {
       'KinMarche -- Inventory Upload Template',
       '',
       'HOW TO USE THIS TEMPLATE:',
-      '  1. Fill in the Plant (or Store Code) and Material columns for each item.',
-      '  2. Leave System Stock and Physical Stock blank -- store managers fill these in.',
+      '  1. Fill in the Plant Code and Material columns for each item.',
+      '  2. Leave System Stock and Physical Stock blank -- plant managers fill these in.',
       '  3. Upload this file via the Upload page to create an inventory cycle.',
       '',
       'REQUIRED COLUMNS (accepted header names):',
-      '  - Plant / Plant Code / Store / Store Code -> Your store identifier',
+      '  - Plant / Plant Code -> Your plant identifier',
       '  - Material / Material Code / SKU          -> Item code',
       '  - Material Description / Description      -> Item name',
       '',
@@ -1538,8 +1576,8 @@ export async function downloadSampleTemplate(req, res, next) {
       '  - Physical Stock               -> Actual physical count',
       '',
       'NOTES:',
-      '  - If a store code in this file does not exist, it will be created automatically.',
-      '  - Store codes are matched exactly (case-sensitive).',
+      '  - If a plant code in this file does not exist, it will be created automatically.',
+      '  - Plant codes are matched exactly (case-sensitive).',
       '  - Maximum file size: 10 MB.',
       '  - Supported formats: .xlsx, .xls, .csv',
     ];
@@ -1563,7 +1601,7 @@ export async function downloadSampleTemplate(req, res, next) {
 
 export async function deleteUser(req, res, next) {
   try {
-    const userId = parseInt(req.params.id);
+    const userId = requireId(req.params.id, 'userId');
 
     if (userId === req.user.id) {
       throw new AppError('You cannot delete your own account', 400);
@@ -1608,7 +1646,7 @@ export async function bulkDeleteStores(req, res, next) {
       throw new AppError('ids must be a non-empty array', 400);
     }
 
-    const storeIds = ids.map(Number);
+    const storeIds = ids.map((id, i) => requireId(id, `ids[${i}]`));
 
     if (force) {
       await prisma.batchDeadlineExtension.deleteMany({ where: { storeId: { in: storeIds } } });
@@ -1662,7 +1700,7 @@ export async function bulkDeleteStores(req, res, next) {
 
 export async function forceDeleteStore(req, res, next) {
   try {
-    const storeId = parseInt(req.params.id);
+    const storeId = requireId(req.params.id, 'storeId');
 
     const store = await prisma.store.findUnique({ where: { id: storeId } });
     if (!store) throw new AppError('Store not found', 404);
@@ -1687,7 +1725,7 @@ export async function forceDeleteStore(req, res, next) {
 
 export async function deleteBatch(req, res, next) {
   try {
-    const batchId = parseInt(req.params.id);
+    const batchId = requireId(req.params.id, 'batchId');
 
     const batch = await prisma.uploadBatch.findUnique({
       where: { id: batchId },
@@ -1714,12 +1752,11 @@ export async function deleteBatch(req, res, next) {
 
 export async function unlockStoreForBatch(req, res, next) {
   try {
-    const batchId = parseInt(req.params.id);
-    const { storeId } = req.body;
-    if (!storeId) throw new AppError('storeId is required', 400);
+    const batchId = requireId(req.params.id, 'batchId');
+    const storeId = requireId(req.body.storeId, 'storeId');
 
     const result = await prisma.inventoryRecord.updateMany({
-      where: { batchId, storeId: parseInt(storeId), status: 'SUBMITTED' },
+      where: { batchId, storeId, status: 'SUBMITTED' },
       data: {
         status: 'PENDING',
         physicalQuantity: null,
@@ -1744,7 +1781,7 @@ export async function unlockStoreForBatch(req, res, next) {
 
 export async function overrideInventoryRecord(req, res, next) {
   try {
-    const recordId = parseInt(req.params.id);
+    const recordId = requireId(req.params.id, 'recordId');
     const { physicalQuantity, remarks, shrinkageCategory, status } = req.body;
 
     const record = await prisma.inventoryRecord.findUnique({ where: { id: recordId } });
@@ -1860,11 +1897,13 @@ export async function exportAuditLogs(req, res, next) {
 
 export async function downloadInventoryExportPDF(req, res, next) {
   try {
-    const { storeId, status, batchId, discrepancy, search } = req.query;
+    const { status, discrepancy, search } = req.query;
+    const storeId = parseId(req.query.storeId, 'storeId');
+    const batchId = parseId(req.query.batchId, 'batchId');
     const where = {};
-    if (storeId)     where.storeId  = parseInt(storeId);
+    if (storeId)     where.storeId  = storeId;
     if (status)      where.status   = status;
-    if (batchId)     where.batchId  = parseInt(batchId);
+    if (batchId)     where.batchId  = batchId;
     if (search)      where.OR = [
       { materialCode: { contains: search, mode: 'insensitive' } },
       { materialName: { contains: search, mode: 'insensitive' } },
@@ -1923,9 +1962,10 @@ export async function downloadInventoryExportPDF(req, res, next) {
 
 export async function downloadReconciliationReportPDF(req, res, next) {
   try {
-    const { storeId, status, discrepancy } = req.query;
+    const { status, discrepancy } = req.query;
+    const storeId = parseId(req.query.storeId, 'storeId');
     const where = {};
-    if (storeId)  where.storeId = parseInt(storeId);
+    if (storeId)  where.storeId = storeId;
     if (status)   where.status  = status;
     if (discrepancy === 'shortage') where.difference = { lt: 0 };
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
@@ -1981,7 +2021,7 @@ export async function downloadReconciliationReportPDF(req, res, next) {
 
 export async function sendBatchReminders(req, res, next) {
   try {
-    const batchId = parseInt(req.params.id);
+    const batchId = requireId(req.params.id, 'batchId');
     const batch = await prisma.uploadBatch.findUnique({
       where: { id: batchId },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
@@ -2016,35 +2056,46 @@ export async function sendBatchReminders(req, res, next) {
       });
     }
     const { sendDeadlineReminderEmail } = await import('../services/emailService.js');
-    await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline: batch.submissionDeadline });
+    const emailResult = await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline: batch.submissionDeadline });
 
     await createAuditLog({
       userId: req.user.id, action: 'SEND_BATCH_REMINDERS',
       entityType: 'UPLOAD_BATCH', entityId: batchId,
-      metadata: { managerCount: managers.length, pendingStores: storeIds.length },
+      metadata: { managerCount: managers.length, pendingStores: storeIds.length, emailsSent: emailResult.sent, smtpConfigured: emailResult.configured },
     });
 
+    const managersWithEmail = managers.length;
+    let message;
+    if (!emailResult.configured) {
+      message = `${storeIds.length} store(s) pending, but SMTP is not configured — no emails sent. Set SMTP_HOST, SMTP_USER, and SMTP_PASS to enable email.`;
+    } else if (managersWithEmail === 0) {
+      message = `${storeIds.length} store(s) still pending but no email addresses on file. Add emails in User Management.`;
+    } else {
+      const failedPart = emailResult.failed > 0 ? ` (${emailResult.failed} failed to deliver)` : '';
+      message = `Email reminder sent to ${emailResult.sent} store manager(s)${failedPart} (${storeIds.length} store(s) pending).`;
+    }
+
     res.json({
-      sent: managers.length,
+      sent: emailResult.sent,
+      failed: emailResult.failed,
+      smtpConfigured: emailResult.configured,
       pending: storeIds.length,
-      message: managers.length > 0
-        ? `Email reminder sent to ${managers.length} store manager(s) (${storeIds.length} store(s) pending).`
-        : `${storeIds.length} store(s) still pending but no email addresses on file. Add emails in User Management.`,
+      message,
     });
   } catch (error) { next(error); }
 }
 
 export async function downloadBatchExportPDF(req, res, next) {
   try {
-    const { batchId } = req.params;
+    const batchId = requireId(req.params.batchId, 'batchId');
     const batch = await prisma.uploadBatch.findUnique({
-      where: { id: parseInt(batchId) },
+      where: { id: batchId },
       select: { inventoryDate: true },
     });
     if (!batch) throw new AppError('Batch not found', 404);
 
     const records = await prisma.inventoryRecord.findMany({
-      where: { batchId: parseInt(batchId) },
+      where: { batchId },
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
       include: {
         store: { select: { storeCode: true, storeName: true } },
@@ -2153,4 +2204,537 @@ export async function getNotifications(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+// """ Approve a pending (inactive) user — generates temp credentials and activates """"""""""
+
+export async function approveUser(req, res, next) {
+  try {
+    const userId = requireId(req.params.id, 'userId');
+
+    // Use serializable to prevent two admins simultaneously approving the same pending user
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          include: { store: { select: { id: true, storeCode: true, storeName: true } } },
+        });
+        if (!user) throw new AppError('User not found', 404);
+        if (user.isActive) throw new AppError('User is already active', 409);
+        if (!user.pendingApproval) throw new AppError('This user is not in pending approval state', 409);
+
+        const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+        const updated = await tx.user.update({
+          where: { id: userId },
+          data: { isActive: true, pendingApproval: false, passwordHash },
+          include: { store: { select: { id: true, storeCode: true, storeName: true } } },
+        });
+        return { updated, tempPassword, original: user };
+      }, { isolationLevel: 'Serializable' });
+    } catch (txErr) {
+      if (txErr?.code === 'P2034') throw new AppError('This user is being approved simultaneously. Please refresh.', 409);
+      throw txErr;
+    }
+
+    await createAuditLog({
+      userId: req.user.id,
+      action: 'APPROVE_USER',
+      entityType: 'USER',
+      entityId: userId,
+      metadata: { employeeId: result.original.employeeId, name: result.original.name, source: result.original.source },
+    });
+
+    sInvalidate('admin:dashboard');
+    const { passwordHash: _, ...safeUser } = result.updated;
+    res.json({ ...safeUser, tempPassword: result.tempPassword });
+  } catch (error) { next(error); }
+}
+
+// """ Batch user creation for plants without managers """"""""""""""""""""""""""
+
+export async function getPlantsWithoutUsers(req, res, next) {
+  try {
+    // Find all plants that have no assigned users
+    const plantsWithoutUsers = await prisma.store.findMany({
+      where: {
+        isActive: true,
+        users: {
+          none: {}  // No users assigned
+        }
+      },
+      select: {
+        id: true,
+        storeCode: true,
+        storeName: true,
+      },
+      orderBy: { storeCode: 'asc' }
+    });
+
+    res.json(plantsWithoutUsers);
+  } catch (error) { next(error); }
+}
+
+export async function batchCreateUsersForPlants(req, res, next) {
+  try {
+    const { plants } = req.body;
+
+    if (!Array.isArray(plants) || plants.length === 0) {
+      throw new AppError('plants must be a non-empty array', 400);
+    }
+
+    const createdUsers = [];
+    const errors = [];
+
+    for (const plant of plants) {
+      let parsedStoreId;
+      try {
+        parsedStoreId = requireId(plant.storeId, 'storeId');
+      } catch (e) {
+        errors.push({ storeId: plant.storeId, error: e.message });
+        continue;
+      }
+
+      try {
+        const { customName } = plant;
+
+        const store = await prisma.store.findUnique({
+          where: { id: parsedStoreId },
+          select: { id: true, storeCode: true, storeName: true },
+        });
+
+        if (!store) {
+          errors.push({ storeId: parsedStoreId, error: 'Plant not found' });
+          continue;
+        }
+
+        const employeeId = `MGR${store.storeCode}`;
+
+        const existing = await prisma.user.findUnique({ where: { employeeId } });
+        if (existing) {
+          errors.push({ storeId: parsedStoreId, storeCode: store.storeCode, error: `Username ${employeeId} already exists` });
+          continue;
+        }
+
+        const userName = customName && customName.trim()
+          ? customName.trim()
+          : `Manager ${store.storeCode}`;
+
+        // Generate a cryptographically random temporary password per user.
+        // 12 random bytes → 16 base64 chars. Append '1!' to guarantee a digit
+        // and special character so the password meets all strength requirements.
+        // The plaintext is returned once in the API response for the admin to distribute.
+        const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+        const newUser = await prisma.user.create({
+          data: {
+            employeeId,
+            name: userName,
+            passwordHash,
+            role: 'STORE_MANAGER',
+            storeId: store.id,
+            isActive: true,
+          },
+          include: { store: { select: { storeCode: true, storeName: true } } },
+        });
+
+        await createAuditLog({
+          userId: req.user.id,
+          action: 'CREATE_USER',
+          entityType: 'USER',
+          entityId: newUser.id,
+          metadata: { employeeId: newUser.employeeId, name: newUser.name, role: newUser.role, storeId: newUser.storeId, batchCreation: true },
+        });
+
+        createdUsers.push({
+          id: newUser.id,
+          employeeId: newUser.employeeId,
+          name: newUser.name,
+          storeCode: store.storeCode,
+          storeName: store.storeName,
+          password: tempPassword, // Shown once to admin so they can distribute credentials
+        });
+
+      } catch (err) {
+        errors.push({ storeId: parsedStoreId, error: err.message || 'Failed to create user' });
+      }
+    }
+
+    sInvalidate('admin:dashboard');
+
+    res.json({
+      message: `Created ${createdUsers.length} user(s)`,
+      created: createdUsers,
+      errors: errors.length > 0 ? errors : undefined,
+      totalRequested: plants.length,
+      successCount: createdUsers.length,
+      errorCount: errors.length,
+    });
+  } catch (error) { next(error); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BATCH USER IMPORT  (Excel/CSV upload → preview → commit → pending approval)
+// ══════════════════════════════════════════════════════════════════
+
+const USER_IMPORT_COL = {
+  name:       ['Name', 'Full Name', 'FullName', 'Employee Name', 'User Name', 'USERNAME', 'NAME'],
+  employeeId: ['Employee ID', 'EmployeeID', 'Username', 'Login', 'ID', 'EMPLOYEE_ID', 'EMPLOYEE ID'],
+  email:      ['Email', 'Email Address', 'E-mail', 'EMAIL'],
+  role:       ['Role', 'ROLE', 'User Role'],
+  storeCode:  ['Plant', 'Plant Code', 'Store Code', 'Store', 'StoreCode', 'PLANT', 'STORE CODE'],
+  storeName:  ['Plant Name', 'Store Name', 'StoreName', 'PLANT NAME', 'STORE NAME'],
+};
+
+function findUserCol(row, aliases) {
+  for (const alias of aliases) {
+    if (row[alias] !== undefined && row[alias] !== null && String(row[alias]).trim() !== '') {
+      return cellText(row[alias]);
+    }
+  }
+  return '';
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function normalizeRole(raw) {
+  if (!raw) return 'STORE_MANAGER';
+  const r = raw.toString().trim().toUpperCase();
+  if (r === 'ADMIN' || r === 'ADMINISTRATOR') return 'ADMIN';
+  return 'STORE_MANAGER';
+}
+
+function deriveEmployeeId(storeCode, name) {
+  if (storeCode) return 'MGR' + storeCode.toString().toUpperCase().replace(/\s+/g, '');
+  if (name) return 'USR' + name.toString().toUpperCase().replace(/\s+/g, '').slice(0, 8);
+  return null;
+}
+
+/**
+ * POST /admin/users/batch-import/preview
+ * Parse file, validate all rows, return preview — NO DB writes.
+ */
+export async function previewUserBatchImport(req, res, next) {
+  try {
+    if (!req.file) throw new AppError('File is required', 400);
+
+    const rows = await parseFileToRows(req.file);
+    if (rows.length === 0) throw new AppError('No data rows found in file', 400);
+
+    const [existingStores, existingUsers] = await Promise.all([
+      prisma.store.findMany({ select: { id: true, storeCode: true, storeName: true } }),
+      prisma.user.findMany({ select: { employeeId: true, email: true } }),
+    ]);
+    const storeMap       = new Map(existingStores.map(s => [s.storeCode.trim(), s]));
+    const existingIds    = new Set(existingUsers.map(u => u.employeeId));
+    const existingEmails = new Set(existingUsers.map(u => u.email).filter(Boolean).map(e => e.toLowerCase()));
+
+    const seenEmailsInFile = new Set();
+    const seenIdsInFile    = new Set();
+    const preview = [];
+    let validCount = 0, invalidCount = 0;
+    const newStoreCodes = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row       = rows[i];
+      const rowNum    = i + 2;
+      const name      = findUserCol(row, USER_IMPORT_COL.name).trim();
+      const emailRaw  = findUserCol(row, USER_IMPORT_COL.email).trim();
+      const roleRaw   = findUserCol(row, USER_IMPORT_COL.role);
+      const storeCode = findUserCol(row, USER_IMPORT_COL.storeCode).trim().toUpperCase();
+      let   empId     = findUserCol(row, USER_IMPORT_COL.employeeId).trim();
+      const email     = emailRaw ? emailRaw.toLowerCase() : null;
+      const role      = normalizeRole(roleRaw);
+
+      if (!empId) empId = deriveEmployeeId(storeCode, name) || '';
+
+      const errors = [];
+      if (!name)   errors.push('Missing Name');
+      if (!empId)  errors.push('Cannot derive Employee ID — provide a Plant Code or Name');
+      if (email && !isValidEmail(email)) errors.push('Invalid email format');
+      if (email && seenEmailsInFile.has(email)) errors.push('Duplicate email in this file');
+      if (empId && seenIdsInFile.has(empId))    errors.push('Duplicate Employee ID in this file');
+      if (empId && existingIds.has(empId))       errors.push('Employee ID already exists in system');
+      if (email && existingEmails.has(email))    errors.push('Email already exists in system');
+      if (role === 'STORE_MANAGER' && !storeCode) errors.push('Store Manager must have a Plant Code');
+
+      if (email && !seenEmailsInFile.has(email)) seenEmailsInFile.add(email);
+      if (empId && !seenIdsInFile.has(empId))    seenIdsInFile.add(empId);
+
+      let storeStatus = null;
+      let resolvedStoreId = null;
+      if (storeCode) {
+        if (storeMap.has(storeCode)) {
+          resolvedStoreId = storeMap.get(storeCode).id;
+          storeStatus = 'existing';
+        } else {
+          storeStatus = 'new';
+          newStoreCodes.add(storeCode);
+        }
+      }
+
+      const isValid = errors.length === 0;
+      if (isValid) validCount++; else invalidCount++;
+
+      preview.push({
+        row: rowNum, name, employeeId: empId || null, email,
+        role, storeCode: storeCode || null,
+        storeName: storeCode && storeMap.get(storeCode)?.storeName || null,
+        storeStatus, resolvedStoreId,
+        status: isValid ? 'valid' : 'invalid',
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    }
+
+    res.json({
+      fileName: req.file.originalname,
+      totalRows: rows.length,
+      validRows: validCount,
+      invalidRows: invalidCount,
+      newStores: Array.from(newStoreCodes),
+      preview,
+      canCommit: validCount > 0,
+    });
+  } catch (error) { next(error); }
+}
+
+/**
+ * POST /admin/users/batch-import/commit
+ * Re-parse + re-validate (never trust frontend alone), create missing stores,
+ * create pending (isActive=false, pendingApproval=true, source=BATCH_IMPORT) users.
+ * Wrapped in a serializable transaction for safety.
+ */
+export async function commitUserBatchImport(req, res, next) {
+  try {
+    if (!req.file) throw new AppError('File is required', 400);
+
+    const rows = await parseFileToRows(req.file);
+    if (rows.length === 0) throw new AppError('No data rows found in file', 400);
+
+    const adminId  = req.user.id;
+    const fileName = req.file.originalname;
+
+    let txResult;
+    try {
+      txResult = await prisma.$transaction(async (tx) => {
+        const [existingStores, existingUsers] = await Promise.all([
+          tx.store.findMany({ select: { id: true, storeCode: true, storeName: true } }),
+          tx.user.findMany({ select: { employeeId: true, email: true } }),
+        ]);
+        const storeMap       = new Map(existingStores.map(s => [s.storeCode.trim(), s]));
+        const existingIds    = new Set(existingUsers.map(u => u.employeeId));
+        const existingEmails = new Set(existingUsers.map(u => u.email).filter(Boolean).map(e => e.toLowerCase()));
+
+        const seenEmailsInFile = new Set();
+        const seenIdsInFile    = new Set();
+
+        // Collect new store codes from valid rows
+        const newStoreCodes = new Set();
+        for (const row of rows) {
+          const sc = findUserCol(row, USER_IMPORT_COL.storeCode).trim().toUpperCase();
+          if (sc && !storeMap.has(sc)) newStoreCodes.add(sc);
+        }
+
+        // Create missing stores (check again inside tx for concurrent creates)
+        const createdStores = [];
+        for (const code of newStoreCodes) {
+          const already = await tx.store.findUnique({ where: { storeCode: code } });
+          if (!already) {
+            const newStore = await tx.store.create({
+              data: { storeCode: code, storeName: 'Store ' + code, isActive: true },
+            });
+            storeMap.set(code, newStore);
+            createdStores.push({ storeCode: code, storeName: newStore.storeName });
+          } else {
+            storeMap.set(code, already);
+          }
+        }
+
+        const created = [];
+        const skipped = [];
+        const placeholder = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+
+        for (let i = 0; i < rows.length; i++) {
+          const row       = rows[i];
+          const rowNum    = i + 2;
+          const name      = findUserCol(row, USER_IMPORT_COL.name).trim();
+          const emailRaw  = findUserCol(row, USER_IMPORT_COL.email).trim();
+          const roleRaw   = findUserCol(row, USER_IMPORT_COL.role);
+          const storeCode = findUserCol(row, USER_IMPORT_COL.storeCode).trim().toUpperCase();
+          let   empId     = findUserCol(row, USER_IMPORT_COL.employeeId).trim();
+          const email     = emailRaw ? emailRaw.toLowerCase() : null;
+          const role      = normalizeRole(roleRaw);
+          if (!empId) empId = deriveEmployeeId(storeCode, name) || '';
+
+          const errors = [];
+          if (!name)   errors.push('Missing Name');
+          if (!empId)  errors.push('Cannot derive Employee ID');
+          if (email && !isValidEmail(email)) errors.push('Invalid email');
+          if (email && seenEmailsInFile.has(email)) errors.push('Duplicate email in file');
+          if (empId && seenIdsInFile.has(empId))    errors.push('Duplicate Employee ID in file');
+          if (empId && existingIds.has(empId))       errors.push('Employee ID already exists');
+          if (email && existingEmails.has(email))    errors.push('Email already exists');
+          if (role === 'STORE_MANAGER' && !storeCode) errors.push('Missing Plant Code');
+
+          if (email) seenEmailsInFile.add(email);
+          if (empId) { seenIdsInFile.add(empId); existingIds.add(empId); }
+          if (email) existingEmails.add(email);
+
+          if (errors.length > 0) {
+            skipped.push({ row: rowNum, employeeId: empId, name, errors });
+            continue;
+          }
+
+          const storeEntry = storeCode ? storeMap.get(storeCode) : null;
+          const newUser = await tx.user.create({
+            data: {
+              employeeId: empId, name, passwordHash: placeholder, role,
+              storeId: storeEntry?.id ?? null,
+              isActive: false, pendingApproval: true, source: 'BATCH_IMPORT',
+              email: email || null,
+            },
+          });
+          created.push({
+            id: newUser.id, employeeId: newUser.employeeId,
+            name: newUser.name, email: newUser.email, role: newUser.role,
+            storeCode: storeCode || null,
+          });
+        }
+
+        return { created, skipped, createdStores };
+      }, { isolationLevel: 'Serializable' });
+    } catch (txErr) {
+      if (txErr?.code === 'P2034') {
+        return next(new AppError('Another import is in progress. Please try again.', 409));
+      }
+      return next(txErr);
+    }
+
+    createAuditLog({
+      userId: adminId, action: 'BATCH_USER_IMPORT', entityType: 'USER', entityId: null,
+      metadata: {
+        fileName, totalRows: rows.length,
+        created: txResult.created.length, skipped: txResult.skipped.length,
+        newStores: txResult.createdStores.map(s => s.storeCode),
+        createdUserIds: txResult.created.map(u => u.id),
+      },
+    }).catch(() => {});
+
+    sInvalidate('admin:dashboard');
+    res.status(201).json({
+      message:       txResult.created.length + ' pending user(s) created, awaiting admin approval',
+      created:       txResult.created,
+      skipped:       txResult.skipped.length > 0 ? txResult.skipped : undefined,
+      newStores:     txResult.createdStores,
+      createdCount:  txResult.created.length,
+      skippedCount:  txResult.skipped.length,
+      newStoreCount: txResult.createdStores.length,
+    });
+  } catch (error) { next(error); }
+}
+
+/**
+ * POST /admin/users/:id/reject
+ * Delete a pending user and record the rejection in AuditLog.
+ * Does NOT delete the associated store.
+ */
+export async function rejectUser(req, res, next) {
+  try {
+    const userId    = requireId(req.params.id, 'userId');
+    const { reason } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, employeeId: true, name: true, source: true, pendingApproval: true, isActive: true },
+    });
+    if (!user)                throw new AppError('User not found', 404);
+    if (!user.pendingApproval) throw new AppError('User is not in pending approval state', 409);
+    if (user.isActive)         throw new AppError('Cannot reject an already active user', 409);
+
+    await prisma.user.delete({ where: { id: userId } });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'REJECT_USER',
+      entityType: 'USER', entityId: userId,
+      metadata: { employeeId: user.employeeId, name: user.name, source: user.source, reason: reason || null },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json({ message: 'User "' + user.name + '" (' + user.employeeId + ') rejected and removed' });
+  } catch (error) { next(error); }
+}
+
+/**
+ * POST /admin/users/bulk-review
+ * Body: { action: 'approve'|'reject', userIds: number[], reason?: string }
+ * Approve or reject multiple pending users at once.
+ */
+export async function bulkReviewUsers(req, res, next) {
+  try {
+    const { action, userIds, reason } = req.body;
+    if (!['approve', 'reject'].includes(action)) throw new AppError('action must be "approve" or "reject"', 400);
+    if (!Array.isArray(userIds) || userIds.length === 0) throw new AppError('userIds must be a non-empty array', 400);
+
+    const parsedIds = userIds.map((id, i) => requireId(id, 'userIds[' + i + ']'));
+
+    const candidates = await prisma.user.findMany({
+      where: { id: { in: parsedIds }, pendingApproval: true, isActive: false },
+      include: { store: { select: { id: true, storeCode: true, storeName: true } } },
+    });
+
+    if (candidates.length === 0) throw new AppError('No pending users found for the provided IDs', 404);
+
+    const approved = [];
+    const rejected = [];
+    const errors   = [];
+
+    if (action === 'approve') {
+      for (const user of candidates) {
+        try {
+          const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
+          const passwordHash = await bcrypt.hash(tempPassword, 10);
+          await prisma.user.update({
+            where: { id: user.id, pendingApproval: true, isActive: false },
+            data:  { isActive: true, pendingApproval: false, passwordHash },
+          });
+          await createAuditLog({
+            userId: req.user.id, action: 'APPROVE_USER',
+            entityType: 'USER', entityId: user.id,
+            metadata: { employeeId: user.employeeId, name: user.name, bulk: true },
+          });
+          approved.push({ id: user.id, employeeId: user.employeeId, name: user.name, tempPassword, store: user.store });
+        } catch (e) {
+          errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
+        }
+      }
+    } else {
+      for (const user of candidates) {
+        try {
+          await prisma.user.delete({ where: { id: user.id, pendingApproval: true, isActive: false } });
+          await createAuditLog({
+            userId: req.user.id, action: 'REJECT_USER',
+            entityType: 'USER', entityId: user.id,
+            metadata: { employeeId: user.employeeId, name: user.name, bulk: true, reason: reason || null },
+          });
+          rejected.push({ id: user.id, employeeId: user.employeeId, name: user.name });
+        } catch (e) {
+          errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
+        }
+      }
+    }
+
+    sInvalidate('admin:dashboard');
+    res.json({
+      action,
+      approved: approved.length > 0 ? approved : undefined,
+      rejected: rejected.length > 0 ? rejected : undefined,
+      errors:   errors.length   > 0 ? errors   : undefined,
+      summary:  (approved.length + rejected.length) + ' processed, ' + errors.length + ' failed',
+    });
+  } catch (error) { next(error); }
 }

@@ -1,14 +1,20 @@
 import nodemailer from 'nodemailer';
 
+// Returns { transporter, configured } so callers can distinguish "not set up" from errors.
 function getTransporter() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: parseInt(SMTP_PORT || '587'),
-    secure: SMTP_PORT === '465',
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    return { transporter: null, configured: false };
+  }
+  return {
+    transporter: nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: parseInt(SMTP_PORT || '587'),
+      secure: SMTP_PORT === '465',
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    }),
+    configured: true,
+  };
 }
 
 const FROM = process.env.SMTP_FROM || 'KinMarché <noreply@kinmarche.com>';
@@ -36,17 +42,22 @@ function row(label, value, valueColor) {
 }
 
 // ── Notify all store managers when a new cycle is uploaded ────────────────────
+// Returns { configured, sent, failed } for caller observability.
 export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
-  const t = getTransporter();
-  if (!t) return;
+  const { transporter, configured } = getTransporter();
+  if (!configured) {
+    console.log('[email] SMTP not configured — skipping new-cycle notifications');
+    return { configured: false, sent: 0, failed: 0 };
+  }
   const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr   = deadline
     ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : 'No deadline set';
 
+  let sent = 0; let failed = 0;
   for (const m of managers.filter(m => m.email)) {
     try {
-      await t.sendMail({
+      await transporter.sendMail({
         from: FROM,
         to: m.email,
         subject: `New Inventory Cycle — ${dateStr}`,
@@ -61,28 +72,37 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
           <p style="color:#64748b;font-size:13px;margin:20px 0 0">Complete and submit your count before the deadline above. Contact your administrator if you need an extension.</p>
         `),
       });
+      sent++;
     } catch (e) {
-      console.error(`[email] Failed for ${m.email}:`, e.message);
+      failed++;
+      console.error(`[email] New-cycle notification failed for ${m.email}:`, e.message);
     }
   }
+  console.log(`[email] New-cycle: sent=${sent}, failed=${failed}`);
+  return { configured: true, sent, failed };
 }
 
 // ── Remind pending stores before deadline ─────────────────────────────────────
+// Returns { configured, sent, failed }.
 export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadline }) {
-  const t = getTransporter();
-  if (!t) return;
+  const { transporter, configured } = getTransporter();
+  if (!configured) {
+    console.log('[email] SMTP not configured — skipping reminder notifications');
+    return { configured: false, sent: 0, failed: 0 };
+  }
   const dateStr  = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr    = new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
   const hoursLeft = Math.max(0, Math.round((new Date(deadline) - Date.now()) / 3_600_000));
 
+  let sent = 0; let failed = 0;
   for (const m of managers.filter(m => m.email)) {
     try {
-      await t.sendMail({
+      await transporter.sendMail({
         from: FROM,
         to: m.email,
-        subject: `⏰ Reminder — Submit inventory by ${dlStr}`,
+        subject: `Reminder — Submit inventory by ${dlStr}`,
         html: html(`
-          <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">⏰ Submission Deadline Approaching</p>
+          <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">Submission Deadline Approaching</p>
           <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
           <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
             ${row('Deadline', dlStr, '#dc2626')}
@@ -91,18 +111,27 @@ export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadl
           <p style="color:#64748b;font-size:13px;margin:20px 0 0">Please log in and complete your count before the deadline. If you cannot meet it, contact your administrator for an extension.</p>
         `),
       });
+      sent++;
     } catch (e) {
+      failed++;
       console.error(`[email] Reminder failed for ${m.email}:`, e.message);
     }
   }
+  console.log(`[email] Reminder: sent=${sent}, failed=${failed}`);
+  return { configured: true, sent, failed };
 }
 
 // ── Notify admin when a store submits ─────────────────────────────────────────
+// Fire-and-forget; does not throw; logs result for observability.
 export async function sendSubmissionEmail({ adminEmail, adminName, store, batchDate, recordCount, shortages }) {
-  const t = getTransporter();
-  if (!t || !adminEmail) return;
+  const { transporter, configured } = getTransporter();
+  if (!configured) {
+    console.log('[email] SMTP not configured — skipping submission notification');
+    return;
+  }
+  if (!adminEmail) return;
   try {
-    await t.sendMail({
+    await transporter.sendMail({
       from: FROM,
       to: adminEmail,
       subject: `${store.storeName} submitted inventory`,
@@ -117,7 +146,8 @@ export async function sendSubmissionEmail({ adminEmail, adminName, store, batchD
         </table>
       `),
     });
+    console.log(`[email] Submission notification sent to ${adminEmail}`);
   } catch (e) {
-    console.error('[email] Submission notify failed:', e.message);
+    console.error(`[email] Submission notification failed for ${adminEmail}:`, e.message);
   }
 }

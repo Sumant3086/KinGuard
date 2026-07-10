@@ -2,6 +2,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import ExcelJS from 'exceljs';
 import prisma from '../config/prisma.js';
+import { parseId, requireId } from '../utils/params.js';
 
 export async function getDashboard(req, res, next) {
   const startTime = Date.now();
@@ -104,12 +105,13 @@ export async function getInventory(req, res, next) {
   const startTime = Date.now();
   try {
     const storeId = req.user.storeId;
-    const { search, status, batchId } = req.query;
+    const { search, status } = req.query;
+    const batchId = parseId(req.query.batchId, 'batchId');
 
     const where = { storeId };
 
     if (batchId) {
-      where.batchId = parseInt(batchId);
+      where.batchId = batchId;
     }
 
     if (search) {
@@ -130,7 +132,7 @@ export async function getInventory(req, res, next) {
       }),
       batchId
         ? prisma.uploadBatch.findUnique({
-            where: { id: parseInt(batchId) },
+            where: { id: batchId },
             select: { submissionDeadline: true },
           })
         : Promise.resolve(null),
@@ -139,7 +141,7 @@ export async function getInventory(req, res, next) {
     // C2: Check for per-store deadline extension override
     const extension = batchInfo?.submissionDeadline && batchId
       ? await prisma.batchDeadlineExtension.findUnique({
-          where: { batchId_storeId: { batchId: parseInt(batchId), storeId } },
+          where: { batchId_storeId: { batchId, storeId } },
           select: { newDeadline: true },
         })
       : null;
@@ -158,8 +160,7 @@ export async function getInventory(req, res, next) {
 export async function updateInventoryRecord(req, res, next) {
   const startTime = Date.now();
   try {
-    const { id } = req.params;
-    const recordId = parseInt(id);
+    const recordId = requireId(req.params.id, 'recordId');
     const storeId = req.user.storeId;
     const { physicalQuantity: rawPhys, systemQuantity: rawSys, remarks, shrinkageCategory } = req.body;
 
@@ -256,64 +257,66 @@ export async function updateInventoryRecord(req, res, next) {
 export async function submitInventory(req, res, next) {
   try {
     const storeId = req.user.storeId;
-    const { batchId } = req.body;
-
-    if (!batchId) {
-      throw new AppError('Batch ID is required', 400);
-    }
-
-    const parsedBatchId = parseInt(batchId);
+    const parsedBatchId = requireId(req.body.batchId, 'batchId');
     const submittedAt   = new Date();
 
-    // Fetch + validate pending records, then submit — all in one transaction
-    const { count, records } = await prisma.$transaction(async (tx) => {
-      const pending = await tx.inventoryRecord.findMany({
-        where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
-      });
+    // Serializable isolation prevents two concurrent submissions from both
+    // reading the same PENDING rows. PostgreSQL aborts one with P2034 if it
+    // detects a write-write conflict, making this concurrency-safe.
+    let txResult;
+    try {
+      txResult = await prisma.$transaction(async (tx) => {
+        const pending = await tx.inventoryRecord.findMany({
+          where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
+        });
 
-      if (pending.length === 0) throw new AppError('No pending records found', 400);
+        if (pending.length === 0) throw new AppError('No pending records found', 400);
 
-      // All items must have physical stock entered
-      const missingPhysical = pending.filter(r => r.physicalQuantity === null);
-      if (missingPhysical.length > 0) {
-        throw new AppError(
-          `${missingPhysical.length} item(s) are missing Physical Stock. Please fill in all quantities before submitting.`,
-          400
-        );
+        const missingPhysical = pending.filter(r => r.physicalQuantity === null);
+        if (missingPhysical.length > 0) {
+          throw new AppError(
+            `${missingPhysical.length} item(s) are missing Physical Stock. Please fill in all quantities before submitting.`,
+            400
+          );
+        }
+
+        const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
+        const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
+        if (missingCategory.length > 0) {
+          throw new AppError(
+            `${missingCategory.length} item(s) with discrepancies are missing a Category. Please select a category for each.`,
+            400
+          );
+        }
+        const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
+        if (missingDetail.length > 0) {
+          throw new AppError(
+            `${missingDetail.length} item(s) with discrepancies are missing Issue Details. Please provide details for each discrepancy.`,
+            400
+          );
+        }
+
+        const { count } = await tx.inventoryRecord.updateMany({
+          where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
+          data: { status: 'SUBMITTED', submittedBy: req.user.id, submittedAt },
+        });
+
+        return {
+          count,
+          records: pending
+            .map(r => ({ ...r, status: 'SUBMITTED', submittedBy: req.user.id, submittedAt }))
+            .sort((a, b) => (a.difference ?? 0) - (b.difference ?? 0)),
+        };
+      }, { isolationLevel: 'Serializable' });
+    } catch (txErr) {
+      if (txErr?.code === 'P2034') {
+        throw new AppError('This inventory has already been submitted. Please refresh the page.', 409);
       }
+      throw txErr;
+    }
 
-      // Items with a discrepancy (diff != 0) must have Category and Issue Detail
-      const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
-      const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
-      if (missingCategory.length > 0) {
-        throw new AppError(
-          `${missingCategory.length} item(s) with discrepancies are missing a Category. Please select a category for each.`,
-          400
-        );
-      }
-      const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
-      if (missingDetail.length > 0) {
-        throw new AppError(
-          `${missingDetail.length} item(s) with discrepancies are missing Issue Details. Please provide details for each discrepancy.`,
-          400
-        );
-      }
+    const { count, records } = txResult;
 
-      await tx.inventoryRecord.updateMany({
-        where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
-        data: { status: 'SUBMITTED', submittedBy: req.user.id, submittedAt },
-      });
-
-      // Return the records with updated status so we don't need a second fetch
-      return {
-        count: pending.length,
-        records: pending
-          .map(r => ({ ...r, status: 'SUBMITTED', submittedBy: req.user.id, submittedAt }))
-          .sort((a, b) => (a.difference ?? 0) - (b.difference ?? 0)),
-      };
-    });
-
-    // Fire-and-forget side effects — don't block the response
     createAuditLog({
       userId: req.user.id,
       action: 'SUBMIT_INVENTORY',
@@ -454,7 +457,7 @@ export async function downloadInventory(req, res, next) {
 
     let targetBatchId;
     if (queryBatchId) {
-      targetBatchId = parseInt(queryBatchId);
+      targetBatchId = requireId(queryBatchId, 'batchId');
     } else {
       // Fall back to latest batch for this store
       const latestBatch = await prisma.uploadBatch.findFirst({
@@ -496,7 +499,7 @@ export async function downloadInventory(req, res, next) {
 
     // Add headers
     worksheet.columns = [
-      { header: 'Store Code', key: 'storeCode', width: 12 },
+      { header: 'Plant Code', key: 'storeCode', width: 12 },
       { header: 'Date', key: 'inventoryDate', width: 15 },
       { header: 'Material Name', key: 'materialCode', width: 20 },
       { header: 'Material Description', key: 'materialName', width: 30 },
