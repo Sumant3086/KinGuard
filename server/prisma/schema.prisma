@@ -40,17 +40,19 @@ model Store {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  employeeId   String   @unique
-  name         String
-  passwordHash String
-  role         UserRole
-  storeId      Int?
-  isActive     Boolean  @default(true)
-  email        String?
-  phone        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  employeeId      String   @unique
+  name            String
+  passwordHash    String
+  role            UserRole
+  storeId         Int?
+  isActive        Boolean  @default(true)
+  pendingApproval Boolean  @default(false)
+  source          String   @default("MANUAL")
+  email           String?
+  phone           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   store                Store?            @relation(fields: [storeId], references: [id])
   uploadBatches        UploadBatch[]
