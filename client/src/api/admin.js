@@ -55,6 +55,50 @@ export async function deleteUser(id) {
   return data;
 }
 
+export async function approveUser(id) {
+  const { data } = await client.post(`/admin/users/${id}/approve`);
+  cacheInvalidate('admin:users', 'admin:stores', 'admin:dashboard');
+  return data;
+}
+
+export async function rejectUser(id, reason) {
+  const { data } = await client.post(`/admin/users/${id}/reject`, { reason });
+  cacheInvalidate('admin:users', 'admin:dashboard');
+  return data;
+}
+
+export async function bulkReviewUsers(action, userIds, reason) {
+  const { data } = await client.post('/admin/users/bulk-review', { action, userIds, reason });
+  cacheInvalidate('admin:users', 'admin:dashboard');
+  return data;
+}
+
+export async function previewUserBatchImport(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await client.post('/admin/users/batch-import/preview', formData);
+  return data;
+}
+
+export async function commitUserBatchImport(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await client.post('/admin/users/batch-import/commit', formData);
+  cacheInvalidate('admin:users', 'admin:stores', 'admin:dashboard');
+  return data;
+}
+
+export async function getPlantsWithoutUsers() {
+  const { data } = await client.get('/admin/users/plants-without-users');
+  return data;
+}
+
+export async function batchCreateUsersForPlants(plants) {
+  const { data } = await client.post('/admin/users/batch-create-for-plants', { plants });
+  cacheInvalidate('admin:users', 'admin:stores', 'admin:dashboard');
+  return data;
+}
+
 export async function deleteBatch(id) {
   const { data } = await client.delete(`/admin/batches/${id}`);
   cacheInvalidate('admin:batches', 'admin:dashboard', 'admin:uploads');
