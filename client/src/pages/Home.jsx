@@ -40,11 +40,11 @@ export default function Home() {
           <div className="home-eyebrow">Retail Inventory Reconciliation</div>
           <h1>
             Catch shrinkage early.<br />
-            <em>Across every store.</em>
+            <em>Across every plant.</em>
           </h1>
           <p>
             Upload one master Excel file for your entire network. KinMarché separates
-            records by Store Code automatically — every manager sees only their store,
+            records by Plant Code automatically — every manager sees only their plant,
             every discrepancy is calculated server-side, and your L&amp;P team gets
             instant risk visibility.
           </p>
@@ -63,9 +63,9 @@ export default function Home() {
       {/* ── Workflow ── */}
       <div className="home-workflow">
         {[
-          { n: '1', title: 'Upload Master File',    sub: 'Single Excel for all stores' },
-          { n: '2', title: 'Auto Store Split',      sub: 'Records separated by Store Code' },
-          { n: '3', title: 'Manager Reconciliation',sub: 'Each store enters Sold quantities' },
+          { n: '1', title: 'Upload Master File',    sub: 'Single Excel for all plants' },
+          { n: '2', title: 'Auto Plant Split',      sub: 'Records separated by Plant Code' },
+          { n: '3', title: 'Manager Reconciliation',sub: 'Each plant enters Sold quantities' },
           { n: '4', title: 'L&P Insights',          sub: 'Central risk monitoring & export' },
         ].map((s, i) => (
           <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
@@ -84,12 +84,12 @@ export default function Home() {
       {/* ── Feature cards ── */}
       <div className="home-features">
         {[
-          { icon: '🔒', title: 'Store Isolation',     desc: 'Each manager sees only their assigned store. Enforced at the server level — not just the UI.' },
-          { icon: '📤', title: 'Single Upload',        desc: 'One master Excel file for the whole network. Records separate by Store Code automatically.' },
+          { icon: '🔒', title: 'Plant Isolation',     desc: 'Each manager sees only their assigned plant. Enforced at the server level — not just the UI.' },
+          { icon: '📤', title: 'Single Upload',        desc: 'One master Excel file for the whole network. Records separate by Plant Code automatically.' },
           { icon: '⚡', title: 'Server-Side Diff',    desc: 'Diff = Sold − SYS is calculated and stored server-side. Managers cannot manipulate figures.' },
-          { icon: '📊', title: 'Risk Scorecard',       desc: 'Every store ranked High Risk / Watch / On Track by shortage rate. Worst performers surface first.' },
-          { icon: '🔁', title: 'Repeat Hotspots',     desc: 'Automatically flags (store, item) pairs with shortages across two or more consecutive cycles.' },
-          { icon: '📥', title: 'Excel Export',         desc: 'Download full reconciliation reports filtered by store, cycle, status, or discrepancy type.' },
+          { icon: '📊', title: 'Risk Scorecard',       desc: 'Every plant ranked High Risk / Watch / On Track by shortage rate. Worst performers surface first.' },
+          { icon: '🔁', title: 'Repeat Hotspots',     desc: 'Automatically flags (plant, item) pairs with shortages across two or more consecutive cycles.' },
+          { icon: '📥', title: 'Excel Export',         desc: 'Download full reconciliation reports filtered by plant, cycle, status, or discrepancy type.' },
         ].map((f) => (
           <div key={f.title} className="home-feat">
             <div className="home-feat-icon">{f.icon}</div>
