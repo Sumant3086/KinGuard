@@ -24,15 +24,19 @@ export function AuthProvider({ children }) {
   // If invalid, the Axios 401 interceptor clears storage and hard-redirects to /login.
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      setUser(null);
+      return;
+    }
     authApi.getCurrentUser()
       .then(u => {
         setUser(u);
         localStorage.setItem('kg_user', JSON.stringify(u));
       })
-      .catch(() => {
+      .catch((err) => {
         // 401 interceptor in client.js already handles the redirect + storage cleanup.
         // This catch is a safety net for non-401 network errors.
+        console.error('Auth validation error:', err);
         localStorage.removeItem('token');
         localStorage.removeItem('kg_user');
         setUser(null);

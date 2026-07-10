@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -35,105 +36,125 @@ function PrivateRoute({ children, role }) {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
+    <>
+      {/* Skip to content link for accessibility (#14) */}
+      <a href="#main-content" className="skip-to-content">
+        Skip to main content
+      </a>
 
-      {/* Admin Routes */}
-      <Route
-        path="/admin/dashboard"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminDashboard />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/stores"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminStores />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/users"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminUsers />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/upload"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminUpload />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/inventory"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminInventory />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/reports"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminReports />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/audit-logs"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminAuditLogs />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/analytics"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminAnalytics />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/batches"
-        element={
-          <PrivateRoute role="ADMIN">
-            <AdminBatches />
-          </PrivateRoute>
-        }
+      {/* Keyboard shortcuts overlay (#18) */}
+      <KeyboardShortcuts />
+
+      {/* Live region for screen readers (#14) */}
+      <div 
+        role="status" 
+        aria-live="polite" 
+        aria-atomic="true"
+        className="live-region"
       />
 
-      {/* Store Manager Routes */}
-      <Route
-        path="/store/dashboard"
-        element={
-          <PrivateRoute role="STORE_MANAGER">
-            <StoreDashboard />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/store/inventory"
-        element={
-          <PrivateRoute role="STORE_MANAGER">
-            <StoreInventory />
-          </PrivateRoute>
-        }
-      />
+      <main id="main-content">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
 
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+          {/* Admin Routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/stores"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminStores />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminUsers />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/upload"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminUpload />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/inventory"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminInventory />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminReports />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminAuditLogs />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/analytics"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminAnalytics />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/batches"
+            element={
+              <PrivateRoute role="ADMIN">
+                <AdminBatches />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Store Manager Routes */}
+          <Route
+            path="/store/dashboard"
+            element={
+              <PrivateRoute role="STORE_MANAGER">
+                <StoreDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/store/inventory"
+            element={
+              <PrivateRoute role="STORE_MANAGER">
+                <StoreInventory />
+              </PrivateRoute>
+            }
+          />
+
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+    </>
   );
 }
 

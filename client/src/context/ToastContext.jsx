@@ -12,12 +12,21 @@ export function ToastProvider({ children }) {
 
   const push = useCallback((message, type, duration) => {
     const id = ++counter.current;
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+    setToasts(prev => [...prev, { id, message, type, duration }]);
+    setTimeout(() => {
+      // Add exit animation class before removing
+      setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 150); // Match toast-out animation duration
+    }, duration);
   }, []);
 
   function dismiss(id) {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t));
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 150);
   }
 
   const toast = {
@@ -33,7 +42,12 @@ export function ToastProvider({ children }) {
       {toasts.length > 0 && (
         <div className="toast-stack" aria-live="polite" aria-label="Notifications">
           {toasts.map(t => (
-            <div key={t.id} className={`toast toast-${t.type}`} role="alert">
+            <div 
+              key={t.id} 
+              className={`toast toast-${t.type}${t.exiting ? ' toast-exit' : ''}`} 
+              role="alert"
+              style={{ '--toast-duration': `${t.duration}ms` }}
+            >
               <div className="toast-icon">
                 {t.type === 'success' && '✓'}
                 {t.type === 'error'   && '✕'}
@@ -41,7 +55,13 @@ export function ToastProvider({ children }) {
                 {t.type === 'info'    && 'ℹ'}
               </div>
               <span className="toast-msg">{t.message}</span>
-              <button className="toast-x" onClick={() => dismiss(t.id)} aria-label="Dismiss">×</button>
+              <button 
+                className="toast-x" 
+                onClick={() => dismiss(t.id)} 
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>
