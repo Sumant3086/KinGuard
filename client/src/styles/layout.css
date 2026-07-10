@@ -212,6 +212,14 @@
   margin: 0 auto;
   box-sizing: border-box;
   animation: fade-in-up 0.18s ease both;
+  /* Subtle retail background with high transparency for professional look */
+  background-image:
+    linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)),
+    url('../assets/img/page.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: calc(100vh - 52px);
 }
 
 /* ─── Store layout ──────────────────────────────────────────────── */
