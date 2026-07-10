@@ -32,7 +32,7 @@ export default function Login() {
         <div
           className="login-left"
           style={{
-            backgroundImage: `linear-gradient(155deg, rgba(153,27,27,0.82) 0%, rgba(185,28,28,0.75) 40%, rgba(220,38,38,0.65) 100%), url(${bgStore})`,
+            backgroundImage: `linear-gradient(160deg, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.40) 100%), url(${bgStore})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
