@@ -1,118 +1,278 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import * as adminApi from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
+// ── Password strength indicator ──────────────────────────────────
 function pwScore(pw) {
-  let score = 0;
-  if (pw.length >= 8)  score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  return score; // 0-5
+  let s = 0;
+  if (pw.length >= 8)        s++;
+  if (pw.length >= 12)       s++;
+  if (/[A-Z]/.test(pw))     s++;
+  if (/[0-9]/.test(pw))     s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s++;
+  return s;
 }
 
 function PasswordStrength({ pw }) {
   const score = pwScore(pw);
   const label = score <= 1 ? 'Weak' : score <= 3 ? 'Fair' : 'Strong';
   const color = score <= 1 ? 'var(--red)' : score <= 3 ? 'var(--amber)' : 'var(--green)';
-  const pct   = Math.min(100, score * 20);
   return (
     <div style={{ marginTop: 6 }}>
       <div style={{ height: 3, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.3s, background 0.3s' }} />
+        <div style={{ height: '100%', width: `${Math.min(100, score * 20)}%`, background: color, borderRadius: 99, transition: 'width 0.3s, background 0.3s' }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11 }}>
-        <span style={{ color }}>Password strength: {label}</span>
-        {score < 3 && (
-          <span style={{ color: 'var(--t4)' }}>
-            {!/[A-Z]/.test(pw) && 'Add uppercase · '}
-            {!/[0-9]/.test(pw) && 'Add number · '}
-            {pw.length < 8 && 'Min 8 chars'}
-          </span>
-        )}
-      </div>
+      <span style={{ fontSize: 11, color }}>Password strength: {label}</span>
     </div>
   );
 }
 
-function UserRow({ user, self, adminCount, onEdit, onDelete }) {
-  const isSelf = user.id === self?.id;
+// ── Status badge helper ───────────────────────────────────────────
+function StatusBadge({ user }) {
+  if (user.pendingApproval) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 99, background: 'rgba(217,119,6,0.14)', color: '#d97706', fontSize: 11, fontWeight: 700, border: '1px solid rgba(217,119,6,0.25)' }}>
+        ⏳ Pending Approval
+      </span>
+    );
+  }
+  if (!user.isActive) {
+    return <span className="badge badge-inactive">Inactive</span>;
+  }
+  return <span className="badge badge-active">Active</span>;
+}
+
+// ── Source badge ─────────────────────────────────────────────────
+function SourceBadge({ source }) {
+  if (source === 'BATCH_IMPORT') return (
+    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.22)', fontWeight: 600 }}>Batch Upload</span>
+  );
+  if (source === 'AUTO_STORE') return (
+    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.22)', fontWeight: 600 }}>Auto (Store Upload)</span>
+  );
+  return null;
+}
+
+// ── Single user table row ─────────────────────────────────────────
+function UserRow({ user, self, adminCount, selected, onSelect, onEdit, onDelete, onApprove, onReject, approving, rejecting }) {
+  const isSelf      = user.id === self?.id;
   const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1;
-  const canDelete = !isSelf && !isLastAdmin;
+  const canDelete   = !isSelf && !isLastAdmin;
+  const isPending   = user.pendingApproval;
+
   return (
-    <tr>
+    <tr style={isPending ? { background: 'rgba(217,119,6,0.04)' } : {}}>
+      <td style={{ width: 36, textAlign: 'center' }}>
+        {isPending && (
+          <input type="checkbox" checked={selected} onChange={e => onSelect(user.id, e.target.checked)}
+            style={{ cursor: 'pointer' }} />
+        )}
+      </td>
       <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--vi-light)' }}>
         {user.employeeId}
       </td>
-      <td style={{ fontWeight: 600 }}>{user.name}</td>
+      <td>
+        <div style={{ fontWeight: 600 }}>{user.name}</div>
+        {user.email && <div style={{ fontSize: 11, color: 'var(--t3)' }}>{user.email}</div>}
+        <SourceBadge source={user.source} />
+      </td>
       <td>
         <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`}>
-          {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
+          {user.role === 'ADMIN' ? 'Administrator' : 'Plant Manager'}
         </span>
       </td>
       <td style={{ color: 'var(--t3)', fontSize: 12 }}>
-        {user.store ? `${user.store.storeCode} -- ${user.store.storeName}` : '--'}
+        {user.store ? `${user.store.storeCode} — ${user.store.storeName}` : '—'}
       </td>
-      <td>
-        <span className={`badge ${user.isActive ? 'badge-active' : 'badge-inactive'}`}>
-          {user.isActive ? 'Active' : 'Inactive'}
-        </span>
+      <td style={{ fontSize: 11, color: 'var(--t4)' }}>
+        {new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
       </td>
-      <td style={{ display: 'flex', gap: 6 }}>
-        <button onClick={() => onEdit(user)} className="btn btn-secondary btn-sm">Edit</button>
+      <td><StatusBadge user={user} /></td>
+      <td style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+        {isPending && (
+          <>
+            <button onClick={() => onApprove(user)} disabled={approving || rejecting}
+              className="btn btn-sm"
+              style={{ background: 'rgba(22,163,74,0.12)', color: 'var(--green)', border: '1px solid rgba(22,163,74,0.25)', fontWeight: 700 }}>
+              {approving ? '…' : 'Approve'}
+            </button>
+            <button onClick={() => onReject(user)} disabled={approving || rejecting}
+              className="btn btn-sm"
+              style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
+              {rejecting ? '…' : 'Reject'}
+            </button>
+          </>
+        )}
+        {!isPending && (
+          <button onClick={() => onEdit(user)} className="btn btn-secondary btn-sm">Edit</button>
+        )}
         {canDelete ? (
-          <button
-            onClick={() => onDelete(user)}
-            className="btn btn-sm"
-            style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}
-          >
+          <button onClick={() => onDelete(user)} className="btn btn-sm"
+            style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
             Delete
           </button>
         ) : (
-          <span style={{ fontSize: 11, color: 'var(--t4)', alignSelf: 'center', paddingLeft: 4 }}>
-            {isSelf ? 'You' : 'Last admin'}
-          </span>
+          !isPending && <span style={{ fontSize: 11, color: 'var(--t4)', alignSelf: 'center', paddingLeft: 4 }}>{isSelf ? 'You' : 'Last admin'}</span>
         )}
       </td>
     </tr>
   );
 }
 
+// ── Main component ───────────────────────────────────────────────
 export default function AdminUsers() {
   const { user: self } = useAuth();
   const toast = useToast();
-  const [users, setUsers]   = useState([]);
-  const [stores, setStores] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  const [users, setUsers]       = useState([]);
+  const [stores, setStores]     = useState([]);
+  const [loading, setLoading]   = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [tab, setTab]           = useState('all'); // all | pending | active | inactive
+
+  // Single-user CRUD
+  const [showModal, setShowModal]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({
+  const [formError, setFormError]   = useState('');
+  const [editingId, setEditingId]   = useState(null);
+  const [formData, setFormData]     = useState({
     employeeId: '', name: '', password: '',
-    role: 'STORE_MANAGER', storeId: '', isActive: true,
-    email: '', phone: '',
+    role: 'STORE_MANAGER', storeId: '', isActive: true, email: '', phone: '',
   });
+
+  // Single approve/reject
+  const [approvingId, setApprovingId]   = useState(null);
+  const [rejectingId, setRejectingId]   = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Credentials modal after approval
+  const [approvedCredentials, setApprovedCredentials] = useState(null);
+
+  // Bulk selection
+  const [selected, setSelected] = useState(new Set());
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkResult, setBulkResult]   = useState(null);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [showBulkConfirm, setShowBulkConfirm]   = useState(false);
+
+  // Batch import Excel workflow
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile]     = useState(null);
+  const [importStep, setImportStep]     = useState('upload'); // upload | preview | result
+  const [importPreview, setImportPreview] = useState(null);
+  const [importResult, setImportResult]   = useState(null);
+  const [importPreviewing, setImportPreviewing] = useState(false);
+  const [importCommitting, setImportCommitting] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Legacy batch-by-plant modal (kept but de-emphasized)
+  const [showBatchModal, setShowBatchModal]       = useState(false);
+  const [plantsWithoutUsers, setPlantsWithoutUsers] = useState([]);
+  const [batchCreating, setBatchCreating]           = useState(false);
+  const [batchFormData, setBatchFormData]           = useState({});
+  const [batchResult, setBatchResult]               = useState(null);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     try {
       setLoading(true);
+      setLoadError('');
       const [u, s] = await Promise.all([adminApi.getUsers(), adminApi.getStores()]);
       setUsers(u);
       setStores(s);
+      setSelected(new Set());
     } catch (err) {
-      setLoadError('Failed to load users. Please refresh the page.');
+      setLoadError('Failed to load users. Please refresh.');
     } finally {
       setLoading(false);
     }
   }
 
+  // ── Tab filtering ────────────────────────────────────────────────
+  const pendingUsers = users.filter(u => u.pendingApproval);
+  const activeUsers  = users.filter(u => u.isActive);
+  const inactiveUsers= users.filter(u => !u.isActive && !u.pendingApproval);
+
+  const visibleUsers = tab === 'pending'  ? pendingUsers
+                     : tab === 'active'   ? activeUsers
+                     : tab === 'inactive' ? inactiveUsers
+                     : users;
+
+  const adminCount = users.filter(u => u.role === 'ADMIN' && u.isActive).length;
+
+  // ── Selection helpers ────────────────────────────────────────────
+  function toggleSelect(id, checked) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      checked ? next.add(id) : next.delete(id);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    const pendingVisible = visibleUsers.filter(u => u.pendingApproval);
+    if (selected.size === pendingVisible.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(pendingVisible.map(u => u.id)));
+    }
+  }
+
+  // ── Single approve ───────────────────────────────────────────────
+  async function handleApprove(user) {
+    setApprovingId(user.id);
+    try {
+      const result = await adminApi.approveUser(user.id);
+      setApprovedCredentials({ employeeId: result.employeeId, name: result.name, tempPassword: result.tempPassword, store: result.store });
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Approval failed');
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
+  // ── Single reject ────────────────────────────────────────────────
+  function openReject(user) { setRejectTarget(user); setRejectReason(''); }
+
+  async function confirmReject() {
+    if (!rejectTarget) return;
+    setRejectingId(rejectTarget.id);
+    try {
+      await adminApi.rejectUser(rejectTarget.id, rejectReason);
+      toast.success(`"${rejectTarget.name}" rejected and removed`);
+      setRejectTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Rejection failed');
+    } finally {
+      setRejectingId(null);
+    }
+  }
+
+  // ── Bulk review ──────────────────────────────────────────────────
+  function openBulkConfirm(action) { setBulkAction(action); setBulkRejectReason(''); setShowBulkConfirm(true); }
+
+  async function confirmBulkAction() {
+    setBulkWorking(true);
+    setShowBulkConfirm(false);
+    try {
+      const result = await adminApi.bulkReviewUsers(bulkAction, Array.from(selected), bulkRejectReason);
+      setBulkResult(result);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Bulk action failed');
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
+  // ── Single user CRUD ─────────────────────────────────────────────
   function openCreate() {
     setEditingId(null);
     setFormData({ employeeId: '', name: '', password: '', role: 'STORE_MANAGER', storeId: '', isActive: true, email: '', phone: '' });
@@ -122,26 +282,12 @@ export default function AdminUsers() {
 
   function openEdit(user) {
     setEditingId(user.id);
-    setFormData({
-      employeeId: user.employeeId,
-      name: user.name,
-      password: '',
-      role: user.role,
-      storeId: user.storeId || '',
-      isActive: user.isActive,
-      email: user.email || '',
-      phone: user.phone || '',
-    });
+    setFormData({ employeeId: user.employeeId, name: user.name, password: '', role: user.role, storeId: user.storeId || '', isActive: user.isActive, email: user.email || '', phone: user.phone || '' });
     setFormError('');
     setShowModal(true);
   }
 
-  function closeModal() {
-    if (submitting) return;
-    setShowModal(false);
-    setEditingId(null);
-    setFormError('');
-  }
+  function closeModal() { if (submitting) return; setShowModal(false); setEditingId(null); setFormError(''); }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -151,11 +297,8 @@ export default function AdminUsers() {
       const payload = { ...formData };
       if (payload.role === 'ADMIN') payload.storeId = null;
       if (!payload.password) delete payload.password;
-      if (editingId) {
-        await adminApi.updateUser(editingId, payload);
-      } else {
-        await adminApi.createUser(payload);
-      }
+      if (editingId) { await adminApi.updateUser(editingId, payload); }
+      else           { await adminApi.createUser(payload); }
       setShowModal(false);
       setEditingId(null);
       await load();
@@ -167,48 +310,228 @@ export default function AdminUsers() {
   }
 
   async function handleDelete(user) {
-    if (!confirm(
-      `Delete user "${user.name}" (${user.employeeId})?\n\n` +
-      `• Their uploaded batches and granted extensions will be reassigned to you.\n` +
-      `• Their submitted records will be unlinked.\n\n` +
-      `This cannot be undone.`
-    )) return;
+    if (!confirm(`Delete user "${user.name}" (${user.employeeId})?\n\nThis cannot be undone.`)) return;
+    try { await adminApi.deleteUser(user.id); await load(); }
+    catch (err) { toast.error(err.response?.data?.error || 'Delete failed'); }
+  }
+
+  // ── Batch import Excel workflow ──────────────────────────────────
+  function openImportModal() {
+    setImportFile(null);
+    setImportStep('upload');
+    setImportPreview(null);
+    setImportResult(null);
+    setShowImportModal(true);
+  }
+
+  async function handleImportPreview(e) {
+    e.preventDefault();
+    if (!importFile) return;
+    setImportPreviewing(true);
     try {
-      await adminApi.deleteUser(user.id);
-      await load();
+      const preview = await adminApi.previewUserBatchImport(importFile);
+      setImportPreview(preview);
+      setImportStep('preview');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Delete failed');
+      toast.error(err.response?.data?.error || 'Preview failed');
+    } finally {
+      setImportPreviewing(false);
     }
   }
 
-  const adminUsers   = users.filter(u => u.role === 'ADMIN');
-  const managerUsers = users.filter(u => u.role === 'STORE_MANAGER');
+  async function handleImportCommit() {
+    if (!importFile) return;
+    setImportCommitting(true);
+    try {
+      const result = await adminApi.commitUserBatchImport(importFile);
+      setImportResult(result);
+      setImportStep('result');
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Import failed');
+    } finally {
+      setImportCommitting(false);
+    }
+  }
+
+  // ── Legacy batch-by-plant ────────────────────────────────────────
+  async function openBatchCreateModal() {
+    try {
+      const plants = await adminApi.getPlantsWithoutUsers();
+      if (plants.length === 0) { toast.info('All plants already have assigned users.'); return; }
+      const defaultNames = {};
+      plants.forEach(p => { defaultNames[p.id] = `Manager ${p.storeCode}`; });
+      setPlantsWithoutUsers(plants);
+      setBatchFormData(defaultNames);
+      setBatchResult(null);
+      setShowBatchModal(true);
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to load plants'); }
+  }
+
+  async function handleBatchCreate() {
+    setBatchCreating(true);
+    try {
+      const plantsData = plantsWithoutUsers.map(p => ({ storeId: p.id, customName: batchFormData[p.id] || `Manager ${p.storeCode}` }));
+      const result = await adminApi.batchCreateUsersForPlants(plantsData);
+      setBatchResult(result);
+      await load();
+      if (result.errorCount === 0) toast.success(`Created ${result.successCount} user(s)`);
+      else toast.warning(`Created ${result.successCount}, ${result.errorCount} failed`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Batch creation failed'); }
+    finally { setBatchCreating(false); }
+  }
+
+  // ── Import preview row status colour ─────────────────────────────
+  function previewRowClass(status) {
+    if (status === 'valid') return '';
+    return '';
+  }
+
+  const selectedPendingIds = Array.from(selected).filter(id => {
+    const u = users.find(u => u.id === id);
+    return u && u.pendingApproval;
+  });
 
   return (
     <AdminLayout>
+      {/* ── Page header ── */}
       <div className="page-header">
         <div>
           <h2>User Management</h2>
           <p>
-            {users.length === 0
-              ? 'No users yet.'
-              : `${adminUsers.length} admin${adminUsers.length !== 1 ? 's' : ''} · ${managerUsers.length} store manager${managerUsers.length !== 1 ? 's' : ''}`}
+            {activeUsers.length} active · {pendingUsers.length} pending approval · {inactiveUsers.length} inactive
           </p>
         </div>
-        <button onClick={openCreate} className="btn btn-primary">+ Add User</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={openImportModal} className="btn btn-secondary">
+            ↑ Batch Upload Users
+          </button>
+          <button onClick={openBatchCreateModal} className="btn btn-secondary btn-sm" style={{ fontSize: 11 }}>
+            + By Plant
+          </button>
+          <button onClick={openCreate} className="btn btn-primary">+ Add User</button>
+        </div>
       </div>
 
-      {loading ? (
-        loadError
-          ? <div className="alert alert-error">{loadError}</div>
-          : <div className="loading"><div className="spinner" />Loading users…</div>
-      ) : users.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">👤</div>
-            <p>No users yet. Add your first user to get started.</p>
-            <button onClick={openCreate} className="btn btn-primary" style={{ marginTop: 16 }}>+ Add User</button>
+      {/* ── Pending approval banner ── */}
+      {pendingUsers.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: 'var(--r)', marginBottom: 16 }}>
+          <span style={{ fontSize: 20 }}>⏳</span>
+          <div style={{ flex: 1 }}>
+            <strong style={{ fontSize: 13, color: '#d97706' }}>
+              {pendingUsers.length} account{pendingUsers.length !== 1 ? 's' : ''} awaiting approval
+            </strong>
+            <p style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>
+              Review and approve or reject each pending user before they can log in.
+            </p>
           </div>
+          {tab !== 'pending' && (
+            <button className="btn btn-sm" style={{ background: 'rgba(217,119,6,0.14)', color: '#d97706', border: '1px solid rgba(217,119,6,0.28)' }} onClick={() => setTab('pending')}>
+              Review Pending →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Tabs ── */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+        {[
+          { key: 'all',      label: `All (${users.length})` },
+          { key: 'pending',  label: `Pending (${pendingUsers.length})`, color: pendingUsers.length > 0 ? '#d97706' : undefined },
+          { key: 'active',   label: `Active (${activeUsers.length})` },
+          { key: 'inactive', label: `Inactive (${inactiveUsers.length})` },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            style={{
+              padding: '7px 14px', fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
+              background: 'none', border: 'none', borderBottom: tab === t.key ? '2px solid var(--vi)' : '2px solid transparent',
+              cursor: 'pointer', color: tab === t.key ? 'var(--vi)' : (t.color || 'var(--t2)'),
+              marginBottom: -1,
+            }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Bulk action bar (shows when items are selected) ── */}
+      {selectedPendingIds.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{selectedPendingIds.length} selected</span>
+          <button className="btn btn-sm" disabled={bulkWorking}
+            style={{ background: 'rgba(22,163,74,0.12)', color: 'var(--green)', border: '1px solid rgba(22,163,74,0.25)', fontWeight: 700 }}
+            onClick={() => openBulkConfirm('approve')}>
+            Approve Selected
+          </button>
+          <button className="btn btn-sm" disabled={bulkWorking}
+            style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}
+            onClick={() => openBulkConfirm('reject')}>
+            Reject Selected
+          </button>
+          <button className="btn btn-sm btn-ghost" onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto' }}>
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* ── Bulk result ── */}
+      {bulkResult && (
+        <div style={{ padding: '12px 16px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 12, fontSize: 13 }}>
+          <strong>Bulk {bulkResult.action}:</strong> {bulkResult.summary}
+          {bulkResult.approved && bulkResult.approved.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <strong style={{ fontSize: 12, color: 'var(--green)' }}>Approved — save these credentials:</strong>
+              <div style={{ maxHeight: 200, overflowY: 'auto', marginTop: 6, border: '1px solid var(--border)', borderRadius: 4 }}>
+                <table style={{ fontSize: 11 }}>
+                  <thead><tr style={{ background: 'var(--surface-2)' }}><th>Username</th><th>Name</th><th>Temp Password</th><th>Plant</th></tr></thead>
+                  <tbody>
+                    {bulkResult.approved.map(u => (
+                      <tr key={u.id}>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--vi)' }}>{u.employeeId}</td>
+                        <td>{u.name}</td>
+                        <td style={{ fontFamily: 'monospace', color: 'var(--green)', fontWeight: 700 }}>{u.tempPassword}</td>
+                        <td>{u.store?.storeCode || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--amber)', marginTop: 6 }}>⚠ Save these now — passwords cannot be retrieved later.</p>
+            </div>
+          )}
+          <button className="btn btn-sm btn-ghost" style={{ marginTop: 8 }} onClick={() => setBulkResult(null)}>Dismiss</button>
+        </div>
+      )}
+
+      {/* ── Main table ── */}
+      {loading ? (
+        <div className="card" style={{ padding: '40px 20px' }}>
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-text" style={{ width: '50%', margin: '0 auto' }} />
+        </div>
+      ) : loadError ? (
+        <div className="empty-state">
+          <div className="empty-state-illustration error">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3 className="empty-state-title">Failed to Load Users</h3>
+          <p className="empty-state-description">{loadError}</p>
+          <button onClick={() => { setLoadError(''); load(); }} className="btn btn-primary empty-state-cta">Retry</button>
+        </div>
+      ) : visibleUsers.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-illustration">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <h3 className="empty-state-title">No Users in This View</h3>
+          <p className="empty-state-description">
+            {tab === 'pending' ? 'No users are pending approval.' : tab === 'active' ? 'No active users.' : 'No users found.'}
+          </p>
+          {tab === 'all' && <button onClick={openCreate} className="btn btn-primary empty-state-cta">+ Add First User</button>}
         </div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
@@ -216,22 +539,294 @@ export default function AdminUsers() {
             <table>
               <thead>
                 <tr>
-                  <th>Employee ID</th>
-                  <th>Name</th>
+                  <th style={{ width: 36 }}>
+                    {pendingUsers.length > 0 && (
+                      <input type="checkbox"
+                        checked={selectedPendingIds.length > 0 && selectedPendingIds.length === visibleUsers.filter(u => u.pendingApproval).length}
+                        onChange={selectAllVisible}
+                        style={{ cursor: 'pointer' }} />
+                    )}
+                  </th>
+                  <th>ID</th>
+                  <th>Name / Email</th>
                   <th>Role</th>
-                  <th>Assigned Store</th>
+                  <th>Plant</th>
+                  <th>Created</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => <UserRow key={u.id} user={u} self={self} adminCount={adminUsers.length} onEdit={openEdit} onDelete={handleDelete} />)}
+                {visibleUsers.map(u => (
+                  <UserRow
+                    key={u.id} user={u} self={self} adminCount={adminCount}
+                    selected={selected.has(u.id)}
+                    onSelect={toggleSelect}
+                    onEdit={openEdit} onDelete={handleDelete}
+                    onApprove={handleApprove} onReject={openReject}
+                    approving={approvingId === u.id}
+                    rejecting={rejectingId === u.id}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
+      {/* ══════════════════════════════════════════════════════════════
+           APPROVED CREDENTIALS MODAL
+          ══════════════════════════════════════════════════════════════ */}
+      {approvedCredentials && (
+        <div className="modal" onClick={() => setApprovedCredentials(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="modal-header">
+              <h3>Account Approved</h3>
+              <button className="close-btn" onClick={() => setApprovedCredentials(null)}>&times;</button>
+            </div>
+            <div className="alert alert-success" style={{ marginBottom: 16 }}>
+              <strong>{approvedCredentials.name}</strong> can now log in.
+              {approvedCredentials.store && <span> ({approvedCredentials.store.storeCode})</span>}
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 16 }}>Share these credentials with the user. The password is shown only once.</p>
+            <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '14px 16px', marginBottom: 12 }}>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--t3)', marginBottom: 4 }}>Username</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: 'var(--vi)' }}>{approvedCredentials.employeeId}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--t3)', marginBottom: 4 }}>Temporary Password</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: 'var(--green)', wordBreak: 'break-all' }}>{approvedCredentials.tempPassword}</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--amber)', marginBottom: 16 }}>⚠ Save these now. This dialog cannot be reopened. Ask the user to change their password after first login.</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-primary" onClick={() => setApprovedCredentials(null)}>Done — I've saved the credentials</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+           REJECT CONFIRMATION MODAL
+          ══════════════════════════════════════════════════════════════ */}
+      {rejectTarget && (
+        <div className="modal" onClick={() => !rejectingId && setRejectTarget(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h3>Reject User</h3>
+              <button className="close-btn" onClick={() => setRejectTarget(null)} disabled={!!rejectingId}>&times;</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 16 }}>
+              Reject and permanently remove <strong>{rejectTarget.name}</strong> ({rejectTarget.employeeId})?
+              The associated plant will NOT be deleted.
+            </p>
+            <div className="form-group">
+              <label style={{ fontSize: 12 }}>Reason (optional)</label>
+              <input type="text" value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+                placeholder="e.g. duplicate entry, wrong role…" disabled={!!rejectingId} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn btn-secondary" onClick={() => setRejectTarget(null)} disabled={!!rejectingId}>Cancel</button>
+              <button className="btn btn-danger" onClick={confirmReject} disabled={!!rejectingId}>
+                {rejectingId ? 'Rejecting…' : 'Confirm Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+           BULK CONFIRM MODAL
+          ══════════════════════════════════════════════════════════════ */}
+      {showBulkConfirm && (
+        <div className="modal" onClick={() => !bulkWorking && setShowBulkConfirm(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h3>Bulk {bulkAction === 'approve' ? 'Approve' : 'Reject'}</h3>
+              <button className="close-btn" onClick={() => setShowBulkConfirm(false)}>&times;</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 16 }}>
+              {bulkAction === 'approve'
+                ? `Approve ${selectedPendingIds.length} pending user(s)? Each will receive a unique temporary password.`
+                : `Reject and remove ${selectedPendingIds.length} pending user(s)? This cannot be undone.`}
+            </p>
+            {bulkAction === 'reject' && (
+              <div className="form-group">
+                <label style={{ fontSize: 12 }}>Reason (optional)</label>
+                <input type="text" value={bulkRejectReason} onChange={e => setBulkRejectReason(e.target.value)}
+                  placeholder="Reason for rejection…" />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn btn-secondary" onClick={() => setShowBulkConfirm(false)}>Cancel</button>
+              <button
+                className={bulkAction === 'approve' ? 'btn btn-primary' : 'btn btn-danger'}
+                onClick={confirmBulkAction}>
+                Confirm {bulkAction === 'approve' ? 'Approve' : 'Reject'} ({selectedPendingIds.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+           BATCH IMPORT MODAL  (Excel → preview → commit → pending)
+          ══════════════════════════════════════════════════════════════ */}
+      {showImportModal && (
+        <div className="modal" onClick={() => !importPreviewing && !importCommitting && setShowImportModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 780 }}>
+            <div className="modal-header">
+              <h3>Batch Upload Users</h3>
+              <button className="close-btn" onClick={() => setShowImportModal(false)}
+                disabled={importPreviewing || importCommitting}>&times;</button>
+            </div>
+
+            {/* Step 1 — Upload */}
+            {importStep === 'upload' && (
+              <>
+                <div style={{ marginBottom: 16, padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--r)', fontSize: 12, color: 'var(--t3)' }}>
+                  <strong style={{ color: 'var(--t1)' }}>Required Excel columns:</strong>
+                  <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                    <div><code>Name</code> — full name <span style={{ color: 'var(--red)' }}>*</span></div>
+                    <div><code>Plant Code</code> — plant/store code <span style={{ color: 'var(--red)' }}>*</span> (for managers)</div>
+                    <div><code>Employee ID</code> — login ID (auto-generated if blank)</div>
+                    <div><code>Email</code> — for notifications (optional)</div>
+                    <div><code>Role</code> — STORE_MANAGER (default) or ADMIN</div>
+                    <div><code>Plant Name</code> — used if plant is new (optional)</div>
+                  </div>
+                  <div style={{ marginTop: 8, color: 'var(--t4)' }}>
+                    Uploaded users will be created as <strong>Pending Approval</strong> — they cannot log in until approved.
+                    New plants found in the file will be created automatically.
+                  </div>
+                </div>
+                <form onSubmit={handleImportPreview}>
+                  <div className="form-group">
+                    <label>Excel or CSV File</label>
+                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
+                      onChange={e => { setImportFile(e.target.files[0]); }} required />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowImportModal(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={!importFile || importPreviewing}>
+                      {importPreviewing ? 'Validating…' : 'Validate File →'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* Step 2 — Preview */}
+            {importStep === 'preview' && importPreview && (
+              <>
+                <div style={{ display: 'flex', gap: 20, padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 'var(--r)', marginBottom: 14, fontSize: 13 }}>
+                  <span><strong style={{ color: 'var(--green)' }}>{importPreview.validRows}</strong> valid</span>
+                  <span><strong style={{ color: 'var(--red)' }}>{importPreview.invalidRows}</strong> invalid</span>
+                  <span><strong>{importPreview.totalRows}</strong> total rows</span>
+                  {importPreview.newStores.length > 0 && (
+                    <span style={{ color: 'var(--violet)' }}><strong>{importPreview.newStores.length}</strong> new plant(s) will be created</span>
+                  )}
+                </div>
+
+                {importPreview.newStores.length > 0 && (
+                  <div style={{ padding: '8px 12px', background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 'var(--r)', marginBottom: 12, fontSize: 12 }}>
+                    New plants to create: {importPreview.newStores.join(', ')}
+                  </div>
+                )}
+
+                {!importPreview.canCommit && (
+                  <div className="alert alert-error" style={{ marginBottom: 12 }}>All rows have errors — fix the file and re-upload.</div>
+                )}
+
+                <div style={{ maxHeight: 340, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 14 }}>
+                  <table style={{ fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ background: 'var(--surface-2)', position: 'sticky', top: 0, zIndex: 1 }}>
+                        <th>#</th><th>Employee ID</th><th>Name</th><th>Email</th><th>Role</th>
+                        <th>Plant Code</th><th>Plant Status</th><th>Status</th><th>Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.preview.map(row => (
+                        <tr key={row.row} style={row.status === 'invalid' ? { background: 'rgba(220,38,38,0.04)' } : {}}>
+                          <td style={{ color: 'var(--t4)' }}>{row.row}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: 10 }}>{row.employeeId || '—'}</td>
+                          <td>{row.name || '—'}</td>
+                          <td style={{ fontSize: 10, color: 'var(--t3)' }}>{row.email || '—'}</td>
+                          <td>{row.role}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: 10 }}>{row.storeCode || '—'}</td>
+                          <td>
+                            {row.storeStatus === 'new' && <span style={{ color: 'var(--violet)', fontWeight: 600, fontSize: 10 }}>NEW</span>}
+                            {row.storeStatus === 'existing' && <span style={{ color: 'var(--green)', fontSize: 10 }}>Exists</span>}
+                          </td>
+                          <td>
+                            {row.status === 'valid'
+                              ? <span style={{ color: 'var(--green)', fontWeight: 700 }}>✓ Valid</span>
+                              : <span style={{ color: 'var(--red)', fontWeight: 700 }}>✗ Error</span>}
+                          </td>
+                          <td style={{ color: 'var(--red)', fontSize: 10 }}>{row.errors?.join('; ')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary" onClick={() => { setImportStep('upload'); setImportPreview(null); }}>← Back</button>
+                  <button className="btn btn-primary" onClick={handleImportCommit}
+                    disabled={!importPreview.canCommit || importCommitting}>
+                    {importCommitting ? 'Creating pending users…' : `Confirm — Create ${importPreview.validRows} Pending User(s)`}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Step 3 — Result */}
+            {importStep === 'result' && importResult && (
+              <>
+                <div className="alert alert-success" style={{ marginBottom: 16 }}>
+                  <strong>{importResult.createdCount} pending user(s)</strong> created and awaiting approval.
+                  {importResult.newStoreCount > 0 && ` ${importResult.newStoreCount} new plant(s) were created.`}
+                </div>
+
+                {importResult.newStores?.length > 0 && (
+                  <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--t3)' }}>
+                    New plants created: {importResult.newStores.map(s => s.storeCode).join(', ')}
+                  </div>
+                )}
+
+                {importResult.skipped?.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 12, color: 'var(--red)' }}>{importResult.skippedCount} row(s) skipped:</strong>
+                    <ul style={{ fontSize: 11, color: 'var(--t3)', paddingLeft: 20, marginTop: 4 }}>
+                      {importResult.skipped.slice(0, 10).map((s, i) => (
+                        <li key={i}>Row {s.row}: {s.errors?.join('; ')}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 16 }}>
+                  Go to the <strong>Pending</strong> tab to review and approve users.
+                </p>
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary" onClick={() => { setShowImportModal(false); setTab('pending'); }}>
+                    View Pending Users →
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => { setImportStep('upload'); setImportFile(null); setImportPreview(null); setImportResult(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
+                    Import Another File
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+           SINGLE USER CREATE/EDIT MODAL
+          ══════════════════════════════════════════════════════════════ */}
       {showModal && (
         <div className="modal" onClick={closeModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -239,105 +834,51 @@ export default function AdminUsers() {
               <h3>{editingId ? 'Edit User' : 'Add User'}</h3>
               <button className="close-btn" onClick={closeModal} disabled={submitting}>&times;</button>
             </div>
-
-            {formError && (
-              <div className="alert alert-error" style={{ marginBottom: 16, fontSize: 13 }}>{formError}</div>
-            )}
-
+            {formError && <div className="alert alert-error" style={{ marginBottom: 16, fontSize: 13 }}>{formError}</div>}
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Employee ID</label>
-                <input
-                  type="text"
-                  value={formData.employeeId}
-                  onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
-                  required
-                  disabled={!!editingId || submitting}
-                  placeholder="e.g. MGR001"
-                  autoFocus
-                />
-                {!editingId && (
-                  <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>
-                    Cannot be changed after creation.
-                  </small>
-                )}
+                <input type="text" value={formData.employeeId} onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
+                  required disabled={!!editingId || submitting} placeholder="e.g. MGR001" autoFocus />
+                {!editingId && <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>Cannot be changed after creation.</small>}
               </div>
               <div className="form-group">
                 <label>Full Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  disabled={submitting}
-                  placeholder="Employee full name"
-                />
+                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  required disabled={submitting} placeholder="Employee full name" />
               </div>
               <div className="form-group">
-                <label>
-                  Password{' '}
-                  {editingId && <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(leave blank to keep current)</span>}
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  required={!editingId}
-                  disabled={submitting}
-                  placeholder="••••••••"
-                />
+                <label>Password {editingId && <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(leave blank to keep current)</span>}</label>
+                <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })}
+                  required={!editingId} disabled={submitting} placeholder="••••••••" />
                 {formData.password && <PasswordStrength pw={formData.password} />}
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label>
-                    Email{' '}
-                    <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(for notifications)</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    disabled={submitting}
-                    placeholder="manager@company.com"
-                  />
+                  <label>Email <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(for notifications)</span></label>
+                  <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    disabled={submitting} placeholder="manager@company.com" />
                 </div>
                 <div className="form-group">
-                  <label>
-                    WhatsApp Phone{' '}
-                    <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(with country code)</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                    disabled={submitting}
-                    placeholder="+243 812 345 678"
-                  />
+                  <label>Phone <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(with country code)</span></label>
+                  <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={submitting} placeholder="+243 812 345 678" />
                 </div>
               </div>
               <div className="form-group">
                 <label>Role</label>
-                <select
-                  value={formData.role}
-                  onChange={e => setFormData({ ...formData, role: e.target.value, storeId: '' })}
-                  required
-                  disabled={!!editingId || submitting}
-                >
-                  <option value="STORE_MANAGER">Store Manager</option>
+                <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value, storeId: '' })}
+                  required disabled={!!editingId || submitting}>
+                  <option value="STORE_MANAGER">Plant Manager</option>
                   <option value="ADMIN">Administrator</option>
                 </select>
               </div>
               {formData.role === 'STORE_MANAGER' && (
                 <div className="form-group">
-                  <label>Assigned Store</label>
-                  <select
-                    value={formData.storeId}
-                    onChange={e => setFormData({ ...formData, storeId: e.target.value })}
-                    required
-                    disabled={submitting}
-                  >
-                    <option value="">Select a store…</option>
+                  <label>Assigned Plant</label>
+                  <select value={formData.storeId} onChange={e => setFormData({ ...formData, storeId: e.target.value })}
+                    required disabled={submitting}>
+                    <option value="">Select a plant…</option>
                     {stores.filter(s => s.isActive).map(s => (
                       <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>
                     ))}
@@ -346,13 +887,8 @@ export default function AdminUsers() {
               )}
               <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: submitting ? 'default' : 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
-                    style={{ width: 'auto' }}
-                    disabled={submitting}
-                  />
+                  <input type="checkbox" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+                    style={{ width: 'auto' }} disabled={submitting} />
                   Active account
                 </label>
               </div>
@@ -363,6 +899,87 @@ export default function AdminUsers() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+           LEGACY BATCH-BY-PLANT MODAL
+          ══════════════════════════════════════════════════════════════ */}
+      {showBatchModal && (
+        <div className="modal" onClick={() => !batchCreating && setShowBatchModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
+            <div className="modal-header">
+              <h3>Create Managers for Unassigned Plants</h3>
+              <button className="close-btn" onClick={() => setShowBatchModal(false)} disabled={batchCreating}>&times;</button>
+            </div>
+            {!batchResult ? (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--t3)', marginBottom: 16 }}>
+                  Plants below have no assigned users. Create plant managers (username: <strong>MGR{'{plantCode}'}</strong>) with unique temp passwords.
+                </p>
+                <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
+                  <table style={{ fontSize: 12 }}>
+                    <thead><tr style={{ background: 'var(--surface-2)' }}>
+                      <th>Plant Code</th><th>Plant Name</th><th>Username</th><th>User Name</th>
+                    </tr></thead>
+                    <tbody>
+                      {plantsWithoutUsers.map(plant => (
+                        <tr key={plant.id}>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--vi-light)' }}>{plant.storeCode}</td>
+                          <td style={{ fontSize: 12 }}>{plant.storeName}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--t3)' }}>MGR{plant.storeCode}</td>
+                          <td>
+                            <input type="text" value={batchFormData[plant.id] || ''} disabled={batchCreating}
+                              onChange={e => setBatchFormData({ ...batchFormData, [plant.id]: e.target.value })}
+                              placeholder={`Manager ${plant.storeCode}`} style={{ fontSize: 12, padding: '4px 8px', width: '100%' }} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary" onClick={() => setShowBatchModal(false)} disabled={batchCreating}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleBatchCreate} disabled={batchCreating}>
+                    {batchCreating ? 'Creating…' : `Create ${plantsWithoutUsers.length} User(s)`}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="alert alert-success" style={{ marginBottom: 16 }}>
+                  <strong>{batchResult.successCount} user(s) created.</strong>
+                  {batchResult.errorCount > 0 && ` ${batchResult.errorCount} failed.`}
+                </div>
+                {batchResult.created?.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Save these credentials:</h4>
+                    <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
+                      <table style={{ fontSize: 12 }}>
+                        <thead><tr style={{ background: 'var(--surface-2)' }}>
+                          <th>Plant</th><th>Username</th><th>Name</th><th>Password</th>
+                        </tr></thead>
+                        <tbody>
+                          {batchResult.created.map(u => (
+                            <tr key={u.id}>
+                              <td style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--vi-light)' }}>{u.storeCode}</td>
+                              <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{u.employeeId}</td>
+                              <td>{u.name}</td>
+                              <td style={{ fontFamily: 'monospace', color: 'var(--green)', fontWeight: 600 }}>{u.password}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--amber)', marginTop: 8 }}>⚠ Save now — passwords cannot be retrieved later.</p>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-primary" onClick={() => setShowBatchModal(false)}>Close</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
