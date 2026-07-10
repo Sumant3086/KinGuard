@@ -31,11 +31,11 @@
   background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
   transition: width 0.5s var(--ease);
 }
-.inv-progress-fill.warn { background:linear-gradient(90deg, var(--amber) 0%, #fbbf24 100%); }
+.inv-progress-fill.warn { background:linear-gradient(90deg, var(--amber) 0%, var(--amber-light) 100%); }
 .inv-progress-pct   { font-size:12px; font-weight:800; color:var(--t2); min-width:34px; text-align:right; }
 .inv-progress-right { display:flex; align-items:center; gap:10px; margin-left:auto; white-space:nowrap; }
-.inv-blank-count  { font-size:11.5px; font-weight:700; color:#fbbf24; background:rgba(217,119,6,0.10); border:1px solid rgba(217,119,6,0.20); padding:3px 9px; border-radius:99px; }
-.inv-all-entered  { font-size:11.5px; font-weight:700; color:#15803d; background:rgba(22,163,74,0.09); border:1px solid rgba(22,163,74,0.18); padding:3px 9px; border-radius:99px; }
+.inv-blank-count  { font-size:11.5px; font-weight:700; color:var(--amber-light); background:rgba(217,119,6,0.10); border:1px solid rgba(217,119,6,0.20); padding:3px 9px; border-radius:99px; }
+.inv-all-entered  { font-size:11.5px; font-weight:700; color:var(--green-dark); background:rgba(22,163,74,0.09); border:1px solid rgba(22,163,74,0.18); padding:3px 9px; border-radius:99px; }
 
 /* Jump to next blank */
 .btn-jump {
@@ -68,7 +68,7 @@
 .entry-label, .progress-label { font-size:12px; font-weight:600; color:var(--t2); white-space:nowrap; min-width:120px; }
 .progress-wrap, .progress-track { flex:1; height:7px; background:var(--surface-2); border-radius:99px; overflow:hidden; max-width:260px; border:1px solid var(--border-subtle); }
 .progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#16a34a,#22c55e); transition:width var(--slow) var(--ease); }
-.progress-fill.partial, .progress-fill.warning { background:linear-gradient(90deg,var(--amber),#fbbf24); }
+.progress-fill.partial, .progress-fill.warning { background:linear-gradient(90deg,var(--amber),var(--amber-light)); }
 
 /* ─── Autosave notice ────────────────────────────────────────────── */
 .autosave-notice {
@@ -254,7 +254,7 @@
 }
 .btn-row-save:hover  { background:var(--vi-deep); transform:translateY(-1px); box-shadow:0 3px 10px rgba(220,38,38,0.28); }
 .btn-row-save:active { transform:translateY(1px); }
-.btn-row-retry { background:rgba(220,38,38,0.10); color:#f87171; box-shadow:none; border:1px solid rgba(220,38,38,0.20); }
+.btn-row-retry { background:rgba(220,38,38,0.10); color:var(--red-light); box-shadow:none; border:1px solid rgba(220,38,38,0.20); }
 .btn-row-retry:hover { background:rgba(220,38,38,0.15); transform:none; box-shadow:none; }
 
 /* Table footer */
@@ -271,7 +271,7 @@
 .footer-unsaved-count {
   font-size: 11.5px;
   font-weight: 700;
-  color: #fbbf24;
+  color: var(--amber-light);
   background: rgba(217,119,6,0.10);
   padding: 2px 9px;
   border-radius: 99px;
@@ -345,11 +345,11 @@
 .summary-metric.shortage,.sum-shortage { background:rgba(220,38,38,0.04);  border-color:rgba(220,38,38,0.18); }
 .summary-metric.excess,  .sum-excess   { background:rgba(139,92,246,0.04); border-color:rgba(139,92,246,0.18); }
 .summary-metric.matched  h4, .sum-matched  .sum-metric-label { color:#16a34a; }
-.summary-metric.shortage h4, .sum-shortage .sum-metric-label { color:#f87171; }
-.summary-metric.excess   h4, .sum-excess   .sum-metric-label { color:#a78bfa; }
+.summary-metric.shortage h4, .sum-shortage .sum-metric-label { color:var(--red-light); }
+.summary-metric.excess   h4, .sum-excess   .sum-metric-label { color:var(--violet-light); }
 .summary-metric.matched  .metric-value, .sum-matched  .sum-metric-value { color:#16a34a; }
-.summary-metric.shortage .metric-value, .sum-shortage .sum-metric-value { color:#f87171; }
-.summary-metric.excess   .metric-value, .sum-excess   .sum-metric-value { color:#a78bfa; }
+.summary-metric.shortage .metric-value, .sum-shortage .sum-metric-value { color:var(--red-light); }
+.summary-metric.excess   .metric-value, .sum-excess   .sum-metric-value { color:var(--violet-light); }
 
 /* ─── Responsive — inventory ─────────────────────────────────────── */
 @media (max-width:768px) {

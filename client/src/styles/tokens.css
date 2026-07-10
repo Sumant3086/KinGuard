@@ -8,22 +8,29 @@
   --vi-tint2: rgba(220,38,38,0.05);
   --vi-glow:  0 4px 20px rgba(220,38,38,0.30);
 
-  /* Semantic status - ENHANCED (#2) */
-  --green:        #16a34a;
-  --green-bg:     rgba(22,163,74,0.11);
-  --green-muted:  rgba(22,163,74,0.06);
-  --red:          #dc2626;
-  --red-bg:       rgba(220,38,38,0.10);
-  --red-muted:    rgba(220,38,38,0.05);
-  --amber:        #d97706;
-  --amber-bg:     rgba(217,119,6,0.11);
-  --cyan:         #06b6d4;
-  --blue:         #3b82f6;
-  --blue-bg:      rgba(59,130,246,0.10);
-  --violet:       #8b5cf6;
-  --violet-bg:    rgba(139,92,246,0.12);
-  --neutral-gray: #64748b;
-  --info-blue:    #3b82f6;
+  /* Semantic status */
+  --green:         #16a34a;
+  --green-dark:    #15803d;   /* badge/text on green-bg */
+  --green-bg:      rgba(22,163,74,0.11);
+  --green-bg-2:    rgba(22,163,74,0.12);  /* badge background */
+  --green-muted:   rgba(22,163,74,0.06);
+  --red:           #dc2626;
+  --red-light:     #f87171;   /* badge/text on red-bg */
+  --red-bg:        rgba(220,38,38,0.10);
+  --red-bg-2:      rgba(220,38,38,0.14);  /* badge background */
+  --red-muted:     rgba(220,38,38,0.05);
+  --amber:         #d97706;
+  --amber-light:   #fbbf24;   /* badge/text on amber-bg */
+  --amber-bg:      rgba(217,119,6,0.11);
+  --amber-bg-2:    rgba(217,119,6,0.14);  /* badge background */
+  --cyan:          #06b6d4;
+  --blue:          #3b82f6;
+  --blue-bg:       rgba(59,130,246,0.10);
+  --violet:        #8b5cf6;
+  --violet-light:  #a78bfa;
+  --violet-bg:     rgba(139,92,246,0.12);
+  --neutral-gray:  #64748b;
+  --info-blue:     #3b82f6;
   --success-muted: rgba(22,163,74,0.04);
   --error-muted:   rgba(220,38,38,0.04);
 
