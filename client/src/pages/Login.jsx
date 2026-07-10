@@ -49,8 +49,8 @@ export default function Login() {
               <em>Complete network visibility.</em>
             </p>
             <p className="ll-desc" style={{ marginBottom: 0 }}>
-              Track shrinkage across every store in real time. KinMarché splits one
-              master file by Store Code, lets each manager reconcile their stock, and
+              Track shrinkage across every plant in real time. KinMarché splits one
+              master file by Plant Code, lets each manager reconcile their stock, and
               gives your L&amp;P team a central risk view of the entire network.
             </p>
 
@@ -71,11 +71,11 @@ export default function Login() {
 
             <div className="ll-features">
               {[
-                'One master file auto-split by Store Code',
+                'One master file auto-split by Plant Code',
                 'Diff = Physical Stock − System Stock, enforced server-side',
                 'Risk scorecard: High Risk · Watch · On Track',
                 'Repeat loss hotspot detection across cycles',
-                'Per-store deadline control with extensions',
+                'Per-plant deadline control with extensions',
               ].map(f => (
                 <div key={f} className="ll-feat">
                   <span className="ll-feat-dot" />
@@ -162,11 +162,11 @@ export default function Login() {
           <div className="lr-roles">
             <div className="lr-role">
               <span className="lr-role-badge admin">Admin</span>
-              <span>Full dashboard, uploads, all stores &amp; reports</span>
+              <span>Full dashboard, uploads, all plants &amp; reports</span>
             </div>
             <div className="lr-role">
               <span className="lr-role-badge mgr">Manager</span>
-              <span>Your assigned store only</span>
+              <span>Your assigned plant only</span>
             </div>
           </div>
         </div>

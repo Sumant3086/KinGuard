@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import StoreLayout from '../../components/StoreLayout';
 import * as storeApi from '../../api/store';
 import { useToast } from '../../context/ToastContext';
+import { triggerConfetti } from '../../utils/confetti';
 
 // Category -> Issue Detail sub-reasons mapping
 const ISSUE_REASONS = {
@@ -97,8 +98,50 @@ export default function StoreInventory() {
   const editTimestampRef  = useRef({});
   const blankRowRefs      = useRef({});
   const batchesReadyRef   = useRef(false);
+  const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
 
   useEffect(() => { loadBatches(); }, []);
+
+  // Keyboard navigation for inventory table
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Only handle when no input is focused
+      if (document.activeElement.tagName === 'INPUT' || 
+          document.activeElement.tagName === 'SELECT' ||
+          document.activeElement.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      const pendingRows = records.filter(r => r.status === 'PENDING' && !isLocked);
+      
+      if (e.key === 'j' && selectedRowIndex < pendingRows.length - 1) {
+        // Navigate down
+        e.preventDefault();
+        const newIndex = selectedRowIndex + 1;
+        setSelectedRowIndex(newIndex);
+        const record = pendingRows[newIndex];
+        const el = blankRowRefs.current[record.id];
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (e.key === 'k' && selectedRowIndex > 0) {
+        // Navigate up
+        e.preventDefault();
+        const newIndex = selectedRowIndex - 1;
+        setSelectedRowIndex(newIndex);
+        const record = pendingRows[newIndex];
+        const el = blankRowRefs.current[record.id];
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (e.key === 'Enter' && selectedRowIndex >= 0 && selectedRowIndex < pendingRows.length) {
+        // Focus on physical quantity input
+        e.preventDefault();
+        const record = pendingRows[selectedRowIndex];
+        const el = blankRowRefs.current[record.id];
+        if (el) el.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [records, selectedRowIndex, isLocked]);
 
   // Debounce search: only send API request 400ms after typing stops
   useEffect(() => {
@@ -284,6 +327,9 @@ export default function StoreInventory() {
       setSubmitting(true);
       const res = await storeApi.submitInventory(batchId);
       setSubmitResult(res);
+      // Trigger celebration confetti on successful submission
+      triggerConfetti();
+      toast.success('Inventory submitted successfully!', 5000);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to submit inventory');
     } finally {
@@ -527,18 +573,34 @@ export default function StoreInventory() {
 
       {/* ── Table ── */}
       {loading ? (
-        <div className="loading"><div className="loading-spinner" />Loading inventory…</div>
-      ) : records.length === 0 ? (
         <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">📭</div>
-            <p>No items assigned to your store for this cycle.</p>
+          <div style={{ padding: '40px 20px' }}>
+            <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+            <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+            <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+            <div className="skeleton skeleton-text" style={{ width: '60%', margin: '0 auto' }} />
+          </div>
+        </div>
+      ) : records.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-illustration">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+          </div>
+          <h3 className="empty-state-title">No Inventory Items</h3>
+          <p className="empty-state-description">
+            No items are assigned to your store for this cycle. Check back later or contact your manager.
+          </p>
+          <div className="empty-state-help">
+            Try selecting a different count period or refresh the page.
           </div>
         </div>
       ) : (
         <div className="inv-table-card">
           <div className="table-container">
-            <table className="inv-table">
+            <table className="inv-table table-sticky table-hover">
               <thead>
                 <tr>
                   <th>Item Code</th>
@@ -560,6 +622,7 @@ export default function StoreInventory() {
                   const isEditing  = !!editedRecords[record.id];
                   const isBlank    = isPending && record.physicalQuantity === null && !editedRecords[record.id]?.physicalQuantity;
                   const instantDiff = getInstantDiff(record);
+                  const isSelected = selectedRowIndex >= 0 && records.filter(r => r.status === 'PENDING' && !isLocked)[selectedRowIndex]?.id === record.id;
 
                   return (
                     <tr
@@ -568,6 +631,7 @@ export default function StoreInventory() {
                         isBlank   ? 'row-blank'   : '',
                         isEditing ? 'row-editing'  : '',
                         saveState === 'saved' ? 'row-flash-saved' : '',
+                        isSelected ? 'row-selected' : '',
                       ].filter(Boolean).join(' ')}
                     >
                       {/* Material Name */}

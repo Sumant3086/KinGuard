@@ -25,23 +25,58 @@ export default function StoreDashboard() {
   if (loading) {
     return (
       <StoreLayout>
-        <div className="loading"><div className="loading-spinner" />Loading…</div>
+        <div className="card" style={{ padding: '40px 20px' }}>
+          <div className="skeleton skeleton-text" style={{ width: '40%', height: 32, marginBottom: 24 }} />
+          <div className="skeleton skeleton-card" style={{ height: 140, marginBottom: 16 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div className="skeleton skeleton-card" style={{ height: 100 }} />
+            <div className="skeleton skeleton-card" style={{ height: 100 }} />
+            <div className="skeleton skeleton-card" style={{ height: 100 }} />
+          </div>
+        </div>
       </StoreLayout>
     );
   }
 
   if (error) {
-    return <StoreLayout><div className="alert alert-error">{error}</div></StoreLayout>;
+    return (
+      <StoreLayout>
+        <div className="empty-state">
+          <div className="empty-state-illustration error">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3 className="empty-state-title">Failed to Load Dashboard</h3>
+          <p className="empty-state-description">{error}</p>
+          <button onClick={() => window.location.reload()} className="btn btn-primary empty-state-cta">
+            Retry
+          </button>
+        </div>
+      </StoreLayout>
+    );
   }
 
   if (!dashboard?.batch) {
     return (
       <StoreLayout>
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">📭</div>
-            <p>No active stock count right now — check back later.</p>
-            <p style={{ marginTop: 8, fontSize: 13 }}>Contact your administrator if you believe this is incorrect.</p>
+        <div className="empty-state">
+          <div className="empty-state-illustration">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="8" width="18" height="4" rx="1"/>
+              <rect x="3" y="16" width="18" height="2" rx="1"/>
+              <line x1="7" y1="6" x2="7" y2="3"/>
+              <line x1="17" y1="6" x2="17" y2="3"/>
+            </svg>
+          </div>
+          <h3 className="empty-state-title">No Active Stock Count</h3>
+          <p className="empty-state-description">
+            There's no inventory cycle active right now. Your administrator will notify you when the next count begins.
+          </p>
+          <div className="empty-state-help">
+            Check back later or contact your manager if you believe this is incorrect
           </div>
         </div>
       </StoreLayout>
