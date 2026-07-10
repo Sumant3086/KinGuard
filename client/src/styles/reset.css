@@ -24,16 +24,72 @@ button   { cursor:pointer; font-family:inherit; }
 a        { color:inherit; text-decoration:none; }
 input, select, textarea { font-family:inherit; }
 
+/* ─── Global Focus Visible (#12, #14) ─────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--vi);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Skip to content link for accessibility (#14) */
+.skip-to-content {
+  position: absolute;
+  top: -100px;
+  left: var(--space-4);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  background: var(--vi);
+  color: white;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--duration-base) var(--ease);
+}
+.skip-to-content:focus {
+  top: var(--space-4);
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
 /* ─── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:99px; }
 ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,0.26); }
 
-/* ─── Loading skeleton ──────────────────────────────────────────── */
+/* ─── Loading skeleton - ENHANCED (#10) ──────────────────────────── */
 .skeleton {
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease infinite;
-  border-radius: var(--r);
+  border-radius: var(--radius-md);
+}
+.skeleton-text {
+  height: 12px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton-text:last-child { margin-bottom: 0; }
+.skeleton-card {
+  background: linear-gradient(
+    90deg,
+    rgba(241,245,249,1) 0%,
+    rgba(226,232,240,1) 50%,
+    rgba(241,245,249,1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-lg);
+  height: 120px;
+  margin-bottom: var(--space-4);
+}
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+.skeleton-button {
+  width: 100px;
+  height: 36px;
+  border-radius: var(--radius-md);
 }

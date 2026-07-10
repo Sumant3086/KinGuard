@@ -1,69 +1,156 @@
 /* ─── Design tokens ─────────────────────────────────────────────── */
 :root {
-  /* Brand — KinMarché Red */
+  /* Brand — KinGuard Red & White */
   --vi:       #dc2626;
   --vi-deep:  #b91c1c;
   --vi-light: #ef4444;
   --vi-tint:  rgba(220,38,38,0.10);
   --vi-tint2: rgba(220,38,38,0.05);
-  --vi-glow:  0 4px 16px rgba(220,38,38,0.25);
+  --vi-glow:  0 4px 20px rgba(220,38,38,0.30);
 
-  /* Semantic status */
-  --green:     #16a34a;
-  --green-bg:  rgba(22,163,74,0.11);
-  --red:       #dc2626;
-  --red-bg:    rgba(220,38,38,0.10);
-  --amber:     #d97706;
-  --amber-bg:  rgba(217,119,6,0.11);
-  --cyan:      #06b6d4;
-  --blue:      #3b82f6;
-  --violet:    #8b5cf6;
-  --violet-bg: rgba(139,92,246,0.12);
+  /* Semantic status - ENHANCED (#2) */
+  --green:        #16a34a;
+  --green-bg:     rgba(22,163,74,0.11);
+  --green-muted:  rgba(22,163,74,0.06);
+  --red:          #dc2626;
+  --red-bg:       rgba(220,38,38,0.10);
+  --red-muted:    rgba(220,38,38,0.05);
+  --amber:        #d97706;
+  --amber-bg:     rgba(217,119,6,0.11);
+  --cyan:         #06b6d4;
+  --blue:         #3b82f6;
+  --blue-bg:      rgba(59,130,246,0.10);
+  --violet:       #8b5cf6;
+  --violet-bg:    rgba(139,92,246,0.12);
+  --neutral-gray: #64748b;
+  --info-blue:    #3b82f6;
+  --success-muted: rgba(22,163,74,0.04);
+  --error-muted:   rgba(220,38,38,0.04);
 
-  /* Surfaces */
-  --page:      #f8fafc;
+  /* Surfaces — Clean White */
+  --page:      #fafafa;
   --surface:   #ffffff;
-  --surface-2: #f1f5f9;
+  --surface-2: #f9fafb;
+  --surface-3: #f1f5f9;
 
   /* Sidebar / nav tokens */
   --sb-bg:       #ffffff;
-  --sb-border:   rgba(0,0,0,0.07);
-  --sb-hover:    rgba(220,38,38,0.06);
-  --sb-active:   rgba(220,38,38,0.11);
-  --sb-text:     rgba(15,23,42,0.65);
-  --sb-text-dim: rgba(15,23,42,0.38);
+  --sb-border:   rgba(220,38,38,0.10);
+  --sb-hover:    rgba(220,38,38,0.08);
+  --sb-active:   rgba(220,38,38,0.14);
+  --sb-text:     rgba(15,23,42,0.70);
+  --sb-text-dim: rgba(15,23,42,0.45);
 
   /* Borders */
-  --border:        rgba(0,0,0,0.08);
-  --border-subtle: rgba(0,0,0,0.04);
+  --border:        rgba(220,38,38,0.12);
+  --border-subtle: rgba(220,38,38,0.06);
 
-  /* Text */
+  /* Text - ENHANCED (#3) */
   --t1: #0f172a;
   --t2: #334155;
   --t3: #64748b;
   --t4: #94a3b8;
 
-  /* Shadows */
-  --sh-xs: 0 1px 3px rgba(0,0,0,0.06);
-  --sh-sm: 0 1px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --sh-md: 0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
-  --sh-lg: 0 20px 56px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08);
+  /* Typography Scale (#3) */
+  --text-2xs: 10px;
+  --text-xs:  11px;
+  --text-sm:  12px;
+  --text-base: 13px;
+  --text-md:  14px;
+  --text-lg:  16px;
+  --text-xl:  18px;
+  --text-2xl: 21px;
+  --text-3xl: 30px;
+  --text-4xl: 54px;
 
-  /* Layout */
+  /* Spacing System (#4) */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Shadows with red tint - ENHANCED (#1) */
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md:  0 4px 6px rgba(0,0,0,0.07);
+  --shadow-lg:  0 10px 15px rgba(0,0,0,0.1);
+  --shadow-xl:  0 20px 25px rgba(0,0,0,0.15);
+  --sh-xs:      0 1px 3px rgba(220,38,38,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --sh-sm:      0 2px 8px rgba(220,38,38,0.10), 0 1px 3px rgba(0,0,0,0.05);
+  --sh-md:      0 4px 20px rgba(220,38,38,0.15), 0 2px 6px rgba(0,0,0,0.06);
+  --sh-lg:      0 20px 56px rgba(220,38,38,0.20), 0 4px 12px rgba(0,0,0,0.08);
+
+  /* Layout - ENHANCED (#5) */
   --bar-h:     56px;
   --mob-nav-h: 60px;
+  --container-sm:  640px;
+  --container-md:  768px;
+  --container-lg:  1024px;
+  --container-xl:  1280px;
+  --container-2xl: 1400px;
 
-  /* Border radius */
-  --r:    6px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 20px;
+  /* Border radius - ENHANCED (#23) */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-2xl:  24px;
+  --radius-full: 9999px;
+  --r:    var(--radius-md);
+  --r-md: var(--radius-lg);
+  --r-lg: var(--radius-xl);
+  --r-xl: var(--radius-2xl);
 
-  /* Motion */
+  /* Motion - ENHANCED (#11) */
   --ease: cubic-bezier(.4,0,.2,1);
-  --fast: 0.12s;
-  --mid:  0.2s;
-  --slow: 0.32s;
+  --ease-in:  cubic-bezier(.4,0,1,1);
+  --ease-out: cubic-bezier(0,0,.2,1);
+  --ease-in-out: cubic-bezier(.4,0,.2,1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --fast: var(--duration-fast);
+  --mid:  var(--duration-base);
+  --slow: var(--duration-slow);
+
+  /* Z-index Scale (#23) */
+  --z-base:     0;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-fixed:    300;
+  --z-modal:    1000;
+  --z-popover:  1010;
+  --z-toast:    9999;
+}
+
+/* Dark Mode Support (#15) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page:      #0f172a;
+    --surface:   #1e293b;
+    --surface-2: #334155;
+    --surface-3: #475569;
+    --t1: #f1f5f9;
+    --t2: #cbd5e1;
+    --t3: #94a3b8;
+    --t4: #64748b;
+    --border:        rgba(255,255,255,0.12);
+    --border-subtle: rgba(255,255,255,0.06);
+  }
+}
+
+/* High Contrast Mode (#14) */
+@media (prefers-contrast: high) {
+  :root {
+    --border: rgba(0,0,0,0.3);
+    --border-subtle: rgba(0,0,0,0.15);
+    --t3: #4a5568;
+  }
 }
 
 /* ─── Keyframes ─────────────────────────────────────────────────── */
