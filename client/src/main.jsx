@@ -9,6 +9,7 @@ import './styles/components.css';
 import './styles/inventory.css';
 import './styles/pages.css';
 import './styles/toast.css';
+import './styles/utilities.css';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 
