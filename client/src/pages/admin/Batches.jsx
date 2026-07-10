@@ -38,8 +38,9 @@ export default function AdminBatches() {
       setBatches(b);
       setStores(s);
       setUsers(u);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Failed to load cycles. Please refresh.');
+    } finally { setLoading(false); }
   }
 
   async function handleSaveDeadline(batchId) {
@@ -54,7 +55,7 @@ export default function AdminBatches() {
   }
 
   async function handleGrantExtension() {
-    if (!extStoreId || !extDeadline) { toast.warning('Store and deadline are required'); return; }
+    if (!extStoreId || !extDeadline) { toast.warning('Plant and deadline are required'); return; }
     setSavingExt(true);
     try {
       await adminApi.grantStoreExtension({
@@ -72,11 +73,11 @@ export default function AdminBatches() {
   }
 
   async function handleUnlockStore() {
-    if (!unlockStoreId) { toast.warning('Select a store to unlock'); return; }
+    if (!unlockStoreId) { toast.warning('Select a plant to unlock'); return; }
     setUnlocking(true);
     try {
       const res = await adminApi.unlockStoreForBatch(unlockModal.batchId, parseInt(unlockStoreId));
-      toast.success(`${res.count} record(s) reset to pending. The store manager can now re-count.`);
+      toast.success(`${res.count} record(s) reset to pending. The plant manager can now re-count.`);
       await load();
       setUnlockModal(null);
       setUnlockStoreId('');
@@ -172,11 +173,26 @@ export default function AdminBatches() {
       </div>
 
       {loading ? (
-        <div className="loading"><div className="spinner" />Loading cycles…</div>
+        <div className="card" style={{ padding: '40px 20px' }}>
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-text" style={{ width: '60%', margin: '0 auto' }} />
+        </div>
       ) : batches.length === 0 ? (
-        <div className="card">
-          <div className="empty"><div className="empty-icon">📦</div>
-            <p>No inventory cycles yet. Upload a master file to start your first cycle.</p>
+        <div className="empty-state">
+          <div className="empty-state-illustration">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <h3 className="empty-state-title">No Inventory Cycles</h3>
+          <p className="empty-state-description">
+            Upload a master Excel file to create your first inventory cycle and assign items to plants.
+          </p>
+          <div className="empty-state-help">
+            Go to Upload → Select Excel file → All plants will receive their assigned inventory
           </div>
         </div>
       ) : (
@@ -265,16 +281,16 @@ export default function AdminBatches() {
                             className="btn btn-ghost btn-sm"
                             onClick={() => setExtendModal({ batchId: b.id })}
                           >
-                            Extend Store
+                            Extend Plant
                           </button>
 
                           {/* Unlock store submission */}
                           <button
                             className="btn btn-ghost btn-sm"
                             onClick={() => setUnlockModal({ batchId: b.id, batchDate: b.inventoryDate })}
-                            title="Reset a store's submission so they can re-count"
+                            title="Reset a plant's submission so they can re-count"
                           >
-                            Unlock Store
+                            Unlock Plant
                           </button>
 
                           {/* Export Excel */}
@@ -340,13 +356,13 @@ export default function AdminBatches() {
         <div className="modal" onClick={() => setExtendModal(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Extend Deadline for Store</h3>
+              <h3>Extend Deadline for Plant</h3>
               <button className="close-btn" onClick={() => setExtendModal(null)}>&times;</button>
             </div>
             <div className="form-group">
-              <label>Store</label>
+              <label>Plant</label>
               <select value={extStoreId} onChange={e => setExtStoreId(e.target.value)}>
-                <option value="">Select store…</option>
+                <option value="">Select plant…</option>
                 {stores.map(s => <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>)}
               </select>
             </div>
@@ -373,16 +389,16 @@ export default function AdminBatches() {
         <div className="modal" onClick={() => !unlocking && setUnlockModal(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Unlock Store Submission</h3>
+              <h3>Unlock Plant Submission</h3>
               <button className="close-btn" onClick={() => setUnlockModal(null)} disabled={unlocking}>&times;</button>
             </div>
             <p style={{ fontSize: 13, color: 'var(--t3)', marginBottom: 16 }}>
-              Resetting a store's submission clears their sold quantities and remarks, putting all their records back to <strong>Pending</strong>. The store manager can then re-count and re-submit.
+              Resetting a plant's submission clears their sold quantities and remarks, putting all their records back to <strong>Pending</strong>. The plant manager can then re-count and re-submit.
             </p>
             <div className="form-group">
-              <label>Store to unlock</label>
+              <label>Plant to unlock</label>
               <select value={unlockStoreId} onChange={e => setUnlockStoreId(e.target.value)} disabled={unlocking}>
-                <option value="">Select store…</option>
+                <option value="">Select plant…</option>
                 {stores.map(s => <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>)}
               </select>
             </div>
@@ -409,13 +425,13 @@ export default function AdminBatches() {
               <button className="close-btn" onClick={() => { setWhatsAppModal(null); setWaStoreId(''); }}>&times;</button>
             </div>
             <p style={{ fontSize: 13, color: 'var(--t3)', marginBottom: 16 }}>
-              Select a store to open WhatsApp with a pre-written reminder for that store's manager.
+              Select a plant to open WhatsApp with a pre-written reminder for that plant's manager.
               The manager must have a phone number set in User Management.
             </p>
             <div className="form-group">
-              <label>Store</label>
+              <label>Plant</label>
               <select value={waStoreId} onChange={e => setWaStoreId(e.target.value)}>
-                <option value="">Select store…</option>
+                <option value="">Select plant…</option>
                 {stores.map(s => {
                   const mgr = users.find(u => u.storeId === s.id && u.role === 'STORE_MANAGER' && u.isActive);
                   return (

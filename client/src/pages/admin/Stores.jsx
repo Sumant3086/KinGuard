@@ -57,15 +57,15 @@ export default function AdminStores() {
     const totalRecords   = withRecords.reduce((sum, s) => sum + s._count.inventoryRecords, 0);
 
     const msg =
-      `DELETE ${selected.size} STORE${selected.size !== 1 ? 'S' : ''}\n\n` +
+      `DELETE ${selected.size} PLANT${selected.size !== 1 ? 'S' : ''}\n\n` +
       (withRecords.length > 0
-        ? `⚠ ${withRecords.length} store(s) have a combined ${totalRecords} inventory record(s) that will also be permanently erased.\n\n`
+        ? `⚠ ${withRecords.length} plant(s) have a combined ${totalRecords} inventory record(s) that will also be permanently erased.\n\n`
         : '') +
       `This cannot be undone.\n\nType  DELETE  to confirm:`;
 
     const confirmed = prompt(msg);
     if (confirmed !== 'DELETE') {
-      if (confirmed !== null) toast.warning('Confirmation did not match — no stores deleted.');
+      if (confirmed !== null) toast.warning('Confirmation did not match — no plants deleted.');
       return;
     }
 
@@ -129,7 +129,7 @@ export default function AdminStores() {
   }
 
   async function handleDelete(store) {
-    if (!confirm(`Delete store "${store.storeName}" (${store.storeCode})?\n\nThis cannot be undone.`)) return;
+    if (!confirm(`Delete plant "${store.storeName}" (${store.storeCode})?\n\nThis cannot be undone.`)) return;
     try {
       await adminApi.deleteStore(store.id);
       await loadStores();
@@ -142,10 +142,10 @@ export default function AdminStores() {
     const confirmed = prompt(
       `FORCE DELETE "${store.storeName}" (${store.storeCode})\n\n` +
       `Will permanently erase ${store._count.inventoryRecords} inventory record(s), deadline extensions, and manager links.\n\n` +
-      `Type the store code to confirm:`
+      `Type the plant code to confirm:`
     );
     if (confirmed !== store.storeCode) {
-      if (confirmed !== null) toast.warning('Store code did not match — deletion cancelled.');
+      if (confirmed !== null) toast.warning('Plant code did not match — deletion cancelled.');
       return;
     }
     try {
@@ -163,14 +163,14 @@ export default function AdminStores() {
     <AdminLayout>
       <div className="page-header">
         <div>
-          <h2>Store Management</h2>
+          <h2>Plant Management</h2>
           <p>
             {stores.length === 0
-              ? 'No stores yet — add your first store to get started.'
+              ? 'No plants yet — add your first plant to get started.'
               : `${activeCount} active · ${inactiveCount} inactive · ${stores.length} total`}
           </p>
         </div>
-        <button onClick={openCreate} className="btn btn-primary">+ Add Store</button>
+        <button onClick={openCreate} className="btn btn-primary">+ Add Plant</button>
       </div>
 
       {/* ── Bulk action bar (shown when stores are selected) ── */}
@@ -182,7 +182,7 @@ export default function AdminStores() {
           borderRadius: 'var(--r-md)',
         }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>
-            {selected.size} store{selected.size !== 1 ? 's' : ''} selected
+            {selected.size} plant{selected.size !== 1 ? 's' : ''} selected
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -198,21 +198,34 @@ export default function AdminStores() {
               disabled={bulkDeleting}
               style={{ background: 'rgba(239,68,68,0.14)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.28)', fontWeight: 600 }}
             >
-              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
+              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Plant${selected.size !== 1 ? 's' : ''}`}
             </button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="loading"><div className="spinner" />Loading stores…</div>
+        <div className="card" style={{ padding: '40px 20px' }}>
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-text" style={{ width: '40%', margin: '0 auto' }} />
+        </div>
       ) : stores.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">🏪</div>
-            <p>Add your first store to get started.</p>
-            <button onClick={openCreate} className="btn btn-primary" style={{ marginTop: 16 }}>+ Add Store</button>
+        <div className="empty-state">
+          <div className="empty-state-illustration">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
           </div>
+          <h3 className="empty-state-title">No Plants Yet</h3>
+          <p className="empty-state-description">
+            Add your first plant location to start managing inventory across your network.
+          </p>
+          <button onClick={openCreate} className="btn btn-primary empty-state-cta">
+            + Add First Plant
+          </button>
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -230,8 +243,8 @@ export default function AdminStores() {
                       title={allSelected ? 'Deselect all' : 'Select all'}
                     />
                   </th>
-                  <th>Store Code</th>
-                  <th>Store Name</th>
+                  <th>Plant Code</th>
+                  <th>Plant Name</th>
                   <th>Managers</th>
                   <th>Records</th>
                   <th>Status</th>
@@ -297,7 +310,7 @@ export default function AdminStores() {
         <div className="modal" onClick={closeModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingId ? 'Edit Store' : 'Add Store'}</h3>
+              <h3>{editingId ? 'Edit Plant' : 'Add Plant'}</h3>
               <button className="close-btn" onClick={closeModal} disabled={submitting}>&times;</button>
             </div>
 
@@ -307,7 +320,7 @@ export default function AdminStores() {
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Store Code</label>
+                <label>Plant Code</label>
                 <input
                   type="text"
                   value={formData.storeCode}
@@ -324,7 +337,7 @@ export default function AdminStores() {
                 )}
               </div>
               <div className="form-group">
-                <label>Store Name</label>
+                <label>Plant Name</label>
                 <input
                   type="text"
                   value={formData.storeName}
@@ -349,7 +362,7 @@ export default function AdminStores() {
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving…' : editingId ? 'Update Store' : 'Create Store'}
+                  {submitting ? 'Saving…' : editingId ? 'Update Plant' : 'Create Plant'}
                 </button>
               </div>
             </form>

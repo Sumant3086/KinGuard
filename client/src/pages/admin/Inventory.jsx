@@ -152,7 +152,7 @@ export default function AdminInventory() {
           <p>
             {selectedBatch
               ? `Cycle: ${new Date(selectedBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} · ${pagination.totalRecords.toLocaleString()} record(s)`
-              : 'View and filter inventory records across all stores and cycles'}
+              : 'View and filter inventory records across all plants and cycles'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -194,9 +194,9 @@ export default function AdminInventory() {
             ))}
           </select>
 
-          {/* Store */}
+          {/* Plant */}
           <select value={filters.storeId} onChange={e => handleFilterChange('storeId', e.target.value)}>
-            <option value="">All Stores</option>
+            <option value="">All Plants</option>
             {stores.map(s => <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>)}
           </select>
 
@@ -233,27 +233,55 @@ export default function AdminInventory() {
 
       {/* Results */}
       {loading && !initialized ? (
-        <div className="loading"><div className="spinner" />Loading submissions…</div>
+        <div className="card" style={{ padding: '40px 20px' }}>
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-text" style={{ width: '50%', margin: '0 auto' }} />
+        </div>
       ) : records.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">📋</div>
-            <p>{initialized ? 'No records match the current filters.' : 'Select filters and click Apply.'}</p>
+        <div className="empty-state">
+          <div className="empty-state-illustration">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
           </div>
+          <h3 className="empty-state-title">
+            {initialized ? 'No Records Found' : 'Ready to Search'}
+          </h3>
+          <p className="empty-state-description">
+            {initialized 
+              ? 'No records match the current filters. Try adjusting your search criteria.'
+              : 'Select filters and click "Apply Filters" to view inventory records.'}
+          </p>
+          {initialized && (
+            <button 
+              onClick={() => {
+                setFilters({ storeId: '', status: '', search: '', discrepancy: '', batchId: batches.length > 0 ? String(batches[0].id) : '' });
+                applyFilters();
+              }} 
+              className="btn btn-secondary empty-state-cta"
+            >
+              Clear All Filters
+            </button>
+          )}
         </div>
       ) : (
         <>
           <div className="card" style={{ padding: 0 }}>
             <div className="table-container">
-              <table>
+              <table className="table-sticky table-sortable table-hover">
                 <thead>
                   <tr>
-                    <th>Store</th>
-                    <th>Material Name</th>
+                    <th className="th-sortable">Plant</th>
+                    <th className="th-sortable">Material Name</th>
                     <th>Description</th>
-                    <th style={{ textAlign: 'right' }}>System Stock</th>
-                    <th style={{ textAlign: 'right' }}>Physical Stock</th>
-                    <th>Variance</th>
+                    <th style={{ textAlign: 'right' }} className="th-sortable">System Stock</th>
+                    <th style={{ textAlign: 'right' }} className="th-sortable">Physical Stock</th>
+                    <th className="th-sortable">Variance</th>
                     <th>Remarks</th>
                     <th>Status</th>
                     <th>Flag</th>
@@ -336,7 +364,7 @@ export default function AdminInventory() {
             <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r)', padding: '10px 14px', marginBottom: 16, fontSize: 12, color: 'var(--t3)' }}>
               <strong style={{ color: 'var(--t1)' }}>{overrideRecord.materialCode}</strong> — {overrideRecord.materialName}
               <br />
-              Store: <strong style={{ color: 'var(--vi-light)' }}>{overrideRecord.store.storeCode}</strong>
+              Plant: <strong style={{ color: 'var(--vi-light)' }}>{overrideRecord.store.storeCode}</strong>
               {' · '}System Stock: <strong>{overrideRecord.systemQuantity}</strong>
               {' · '}Current Physical Stock: <strong>{overrideRecord.physicalQuantity ?? '—'}</strong>
             </div>

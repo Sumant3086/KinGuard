@@ -97,9 +97,35 @@ export default function AdminDashboard() {
   return (
     <AdminLayout>
       {loading ? (
-        <div className="loading"><div className="spinner" />Loading dashboard…</div>
+        <div className="card" style={{ padding: '40px 20px' }}>
+          <div className="skeleton skeleton-text" style={{ width: '40%', height: 32, marginBottom: 24 }} />
+          <div className="kpi-grid">
+            <div className="skeleton skeleton-card" style={{ height: 120 }} />
+            <div className="skeleton skeleton-card" style={{ height: 120 }} />
+            <div className="skeleton skeleton-card" style={{ height: 120 }} />
+            <div className="skeleton skeleton-card" style={{ height: 120 }} />
+            <div className="skeleton skeleton-card" style={{ height: 120 }} />
+            <div className="skeleton skeleton-card" style={{ height: 120 }} />
+          </div>
+          <div className="skeleton skeleton-card" style={{ height: 300, marginTop: 32 }} />
+        </div>
       ) : !data ? (
-        <div className="alert alert-error">Failed to load dashboard data.</div>
+        <div className="empty-state">
+          <div className="empty-state-illustration error">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3 className="empty-state-title">Failed to Load Dashboard</h3>
+          <p className="empty-state-description">
+            We couldn't retrieve dashboard data. Please check your connection and try again.
+          </p>
+          <button onClick={() => window.location.reload()} className="btn btn-primary empty-state-cta">
+            Retry
+          </button>
+        </div>
       ) : (
         <DashboardContent data={data} navigate={navigate} />
       )}
@@ -129,7 +155,7 @@ function DashboardContent({ data, navigate }) {
             <span className={`dash-cmd-badge ${submittedPct === 100 ? 'good' : submittedPct >= 50 ? 'warning' : 'danger'}`}>
               {submittedPct}% reported
             </span>
-            <span className="dash-cmd-badge">{totalStores} store{totalStores !== 1 ? 's' : ''}</span>
+            <span className="dash-cmd-badge">{totalStores} plant{totalStores !== 1 ? 's' : ''}</span>
             {cb.submissionDeadline && (
               <span className={`dash-cmd-badge ${now > new Date(cb.submissionDeadline) ? 'danger' : 'warning'}`}>
                 Deadline: {new Date(cb.submissionDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
@@ -148,7 +174,7 @@ function DashboardContent({ data, navigate }) {
           <div className="deadline-banner overdue" style={{ marginBottom: 16 }}>
             <span className="deadline-banner-icon">🔒</span>
             <div>
-              <p><strong>Deadline passed.</strong> {cb.overdueStores.length} store{cb.overdueStores.length > 1 ? 's have' : ' has'} not submitted.</p>
+              <p><strong>Deadline passed.</strong> {cb.overdueStores.length} plant{cb.overdueStores.length > 1 ? 's have' : ' has'} not submitted.</p>
               <div className="overdue-chips">
                 {cb.overdueStores.map(s => <span key={s} className="overdue-chip">{s}</span>)}
               </div>
@@ -158,7 +184,7 @@ function DashboardContent({ data, navigate }) {
         if (!passed && hrs <= 48 && cb.storesPending > 0) return (
           <div className="deadline-banner" style={{ marginBottom: 16 }}>
             <span className="deadline-banner-icon">⏰</span>
-            <p><strong>Submission deadline</strong> in {hrs < 1 ? '<1' : hrs}h — {cb.storesPending} store{cb.storesPending > 1 ? 's' : ''} still pending.</p>
+            <p><strong>Submission deadline</strong> in {hrs < 1 ? '<1' : hrs}h — {cb.storesPending} plant{cb.storesPending > 1 ? 's' : ''} still pending.</p>
           </div>
         );
         return null;
@@ -182,7 +208,7 @@ function DashboardContent({ data, navigate }) {
       <div className="kpi-grid">
         <div className="kpi-card kpi-blue">
           <div className="kpi-icon"><IcoStores /></div>
-          <div className="kpi-label">Active Stores</div>
+          <div className="kpi-label">Active Plants</div>
           <div className="kpi-value">{totalStores}</div>
           <div className="kpi-sub">active locations</div>
         </div>
@@ -226,7 +252,7 @@ function DashboardContent({ data, navigate }) {
           <div className="card-header">
             <span className="card-title">
               <IcoBarChart />
-              Store Submission Status
+              Plant Submission Status
             </span>
             {cb && (
               <span className="card-header-meta">
@@ -236,13 +262,26 @@ function DashboardContent({ data, navigate }) {
           </div>
 
           {storeScorecard.length === 0 ? (
-            <div className="empty"><div className="empty-icon">📭</div><p>No inventory data available yet.</p></div>
+            <div className="empty-state">
+              <div className="empty-state-illustration">
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="3" width="7" height="7"/>
+                  <rect x="14" y="3" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+              </div>
+              <h4 className="empty-state-title">No Inventory Data</h4>
+              <p className="empty-state-description">
+                Upload a master file to begin a new inventory cycle.
+              </p>
+            </div>
           ) : (
             <div className="table-wrap">
               <table className="scorecard">
                 <thead>
                   <tr>
-                    <th>Store</th>
+                    <th>Plant</th>
                     <th>Risk</th>
                     <th>Shortage Rate</th>
                     <th>Shortages</th>
@@ -309,9 +348,17 @@ function DashboardContent({ data, navigate }) {
           <p className="card-sub">Items missing in 2+ consecutive cycles</p>
 
           {hotspots.length === 0 ? (
-            <div className="empty">
-              <div className="empty-icon">✅</div>
-              <p>No recurring shortages detected.</p>
+            <div className="empty-state">
+              <div className="empty-state-illustration success">
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <h4 className="empty-state-title">All Clear!</h4>
+              <p className="empty-state-description">
+                No recurring shortages detected in recent cycles.
+              </p>
             </div>
           ) : (
             <div className="hotspot-list">
