@@ -1,11 +1,6 @@
-<div align="center">
-<img src="../client/src/assets/img/logo 32px32px.png" alt="KinMarché" width="56" height="56" />
+# KinMarché — Documentation
 
-# KinMarché Documentation
-
-</div>
-
-Welcome to the KinMarché technical and user documentation. Use the table below to navigate to the guide you need.
+> Technical and user documentation for the KinMarché Loss & Prevention Platform.
 
 ---
 
@@ -24,36 +19,8 @@ Welcome to the KinMarché technical and user documentation. Use the table below 
 
 ---
 
-## Quick Links
-
-- [Back to main README](../README.md)
-- [Open an issue on GitHub](https://github.com/Sumant3086/KinGuard/issues)
-
----
-
-## System at a Glance
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    KinMarché Platform                        │
-│                                                             │
-│  ┌──────────────────┐        ┌──────────────────────────┐  │
-│  │  Administrator   │        │    Store Manager (×N)    │  │
-│  │                  │        │                          │  │
-│  │ • Upload cycles  │        │ • Enter physical counts  │  │
-│  │ • Set deadlines  │        │ • Note discrepancies     │  │
-│  │ • Monitor stores │        │ • Submit by deadline     │  │
-│  │ • Export reports │        │ • Download own report    │  │
-│  └────────┬─────────┘        └───────────┬──────────────┘  │
-│           │                              │                  │
-│           └──────────┬───────────────────┘                  │
-│                      │                                      │
-│              ┌───────▼────────┐                             │
-│              │  Express API   │                             │
-│              │  + PostgreSQL  │                             │
-│              └────────────────┘                             │
-└─────────────────────────────────────────────────────────────┘
-```
+- [Project README](../README.md)
+- [Open an issue](https://github.com/Sumant3086/KinGuard/issues)
 
 ---
 

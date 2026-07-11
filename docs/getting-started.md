@@ -130,21 +130,27 @@ cd server && npx prisma studio
 
 ## Running in Development
 
-Start both servers simultaneously (in two separate terminals):
+Start both servers with a single command:
 
 ```bash
-# Terminal 1 — Backend API server (port 5000)
+npm run dev
+```
+
+This uses `concurrently` to start the API server (port 5000) and the React dev server (port 5173) together, with colour-coded output per process.
+
+To start them separately (e.g. for isolated debugging):
+
+```bash
+# API server only — restarts automatically on file changes
 npm run dev:server
 
-# Terminal 2 — Frontend React app (port 5173)
+# React dev server only
 npm run dev:client
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-The frontend Vite dev server proxies all `/api/*` requests to `localhost:5000`, so CORS is not an issue in development.
-
-The backend uses Node.js `--watch` mode — it restarts automatically when server files change.
+The Vite dev server proxies all `/api/*` requests to `localhost:5000`, so there are no CORS issues in development. The backend uses Node.js `--watch` mode for automatic restarts.
 
 ---
 
@@ -168,25 +174,25 @@ Before uploading inventory data, you need stores and store manager accounts.
 
 ### Create a Store
 
-1. Go to **Admin → Stores → + New Store**
+1. Go to **Admin → Stores → + Add Store**
 2. Enter a **Store Code** (must match the code in your Excel files exactly — case-sensitive)
 3. Enter a **Store Name**
-4. Click **Save**
+4. Click **Create Store**
 
-Alternatively, stores are auto-created from the Store Code column when you upload an inventory file.
+Alternatively, stores are created automatically from the Store Code column when you upload an inventory file.
 
 ### Create a Store Manager
 
-1. Go to **Admin → Users → + New User**
+1. Go to **Admin → Users → + Add User**
 2. Fill in:
    - **Employee ID** — unique identifier (e.g. `MGR2001`)
    - **Full Name**
    - **Password** — share securely with the manager
    - **Role** — `Store Manager`
    - **Assigned Store** — select from the dropdown
-3. Click **Save**
+3. Click **Create User**
 
-The store manager can now log in at the same URL and will see only their assigned store.
+The store manager can now log in at the same URL and will see only their assigned store's data.
 
 ---
 
@@ -201,11 +207,11 @@ The store manager can now log in at the same URL and will see only their assigne
    - **System Stock** — the quantity the system expects (from your ERP/POS)
 4. Set the **Inventory Date** (the date this count is for)
 5. Optionally set a **Submission Deadline**
-6. Click **Validate File** to preview the data row by row
+6. Click **Validate & Preview** to see a row-by-row validation summary
 7. Review the preview (valid / warning / error rows are colour-coded)
-8. Click **Confirm & Publish to Stores**
+8. Click **Confirm & Publish**
 
-Store managers will immediately see their assigned items in their **Stock Count** page.
+Store managers will immediately see their assigned items in their **Inventory Count** page.
 
 ---
 
@@ -237,11 +243,13 @@ npm run build:client
 
 ### `prisma generate` error on fresh install
 
+The Prisma client is generated automatically as part of `npm install` (via the `postinstall` script in `server/package.json`). If you need to regenerate it manually:
+
 ```bash
 cd server && npx prisma generate
 ```
 
-Prisma generates its client into the root `node_modules` due to workspace hoisting. Always run `prisma generate` from the `server/` directory.
+Prisma generates its client into the root `node_modules` due to workspace hoisting. Always run from the `server/` directory.
 
 ### 503 error on first login after server restart
 

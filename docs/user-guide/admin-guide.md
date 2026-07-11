@@ -111,14 +111,14 @@ Click **↓ Download Template** on the Upload page to get a correctly-formatted 
 1. Go to **Admin → Upload**
 2. Set the **Inventory Date** — the date this stock count is *for*
 3. Optionally set a **Submission Deadline** — the date/time by which all stores must submit
-4. Select your file and click **Validate File**
+4. Select your file and click **Validate & Preview**
 5. Review the preview:
    - **Green rows** — valid, ready to publish
    - **Amber rows** — warnings (e.g. new store code found — it will be auto-created)
    - **Red rows** — errors that will be skipped (e.g. missing item code)
-6. If you are happy with the preview, click **Confirm & Publish to Stores**
+6. If you are happy with the preview, click **Confirm & Publish**
 
-Store managers will immediately see their items in their **Stock Count** page.
+Store managers will immediately see their items in their **Inventory Count** page.
 
 **Duplicate date warning:** If a cycle already exists within ±3 days of the date you selected, a warning appears. Click **Upload anyway** to proceed with the force override.
 
@@ -163,7 +163,7 @@ To remove a deadline, clear the date field and save.
 ### What Happens When the Deadline Passes
 
 - The `isLocked` flag is returned as `true` for that cycle
-- Store managers see a lock banner: *"Submission locked. The deadline has passed."*
+- Store managers see a lock banner: *"Count Cycle Locked. The submission deadline has passed."*
 - Existing submitted records remain accessible (read-only)
 - You can extend the deadline globally or grant per-store extensions
 
@@ -174,11 +174,11 @@ To remove a deadline, clear the date field and save.
 If one store needs more time without extending the deadline for all stores:
 
 1. Go to **Admin → Cycles**
-2. Find the cycle and click **Grant Extension**
+2. Find the cycle and click **Extend Store**
 3. Select the store
 4. Set a new deadline for that store only
 5. Optionally add a note (e.g., "Public holiday delayed counting")
-6. Click **Grant**
+6. Click **Grant Extension**
 
 The store manager will see their personal deadline instead of the cycle's global deadline. The extension can be updated by granting again with a different date.
 
@@ -191,7 +191,7 @@ If a store manager submits incorrect counts and needs to recount:
 1. Go to **Admin → Cycles**
 2. Find the cycle and click **Unlock Store**
 3. Select the store to unlock
-4. Click **Unlock**
+4. Click **Unlock & Reset**
 
 This resets all that store's `SUBMITTED` records back to `PENDING` and clears their physical count values. The store manager can then re-enter all counts and submit again.
 
@@ -205,7 +205,7 @@ Go to **Admin → Stores**.
 
 ### Create a Store
 
-Click **+ New Store**, enter:
+Click **+ Add Store**, enter:
 - **Store Code** — must match your ERP (case-sensitive)
 - **Store Name** — human-readable name
 
@@ -229,7 +229,7 @@ Go to **Admin → Users**.
 
 ### Create a Store Manager
 
-Click **+ New User**:
+Click **+ Add User**:
 - **Employee ID** — used for login (must be unique)
 - **Full Name**
 - **Password** — share securely; the manager should change it on first login
@@ -327,7 +327,7 @@ Admins can correct any inventory record directly from **Admin → Inventory**:
    - Variance category
    - Issue detail (remarks)
    - Status (set to SUBMITTED or reset to PENDING)
-4. Click **Save Override**
+4. Click **Apply Override**
 
 All overrides are logged in the Activity Log with before/after values.
 
