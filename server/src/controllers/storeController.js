@@ -59,7 +59,7 @@ export async function getDashboard(req, res, next) {
     const olderPendingBatches = allPendingBatches.filter(b => b.id !== latestBatch.id);
 
     const duration = Date.now() - startTime;
-    console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
 
     res.json({
       store: req.user.store,
@@ -93,7 +93,7 @@ export async function getBatches(req, res, next) {
     `;
 
     const duration = Date.now() - startTime;
-    console.log(`[PERF] GET_BATCHES (${batches.length} batches): ${duration}ms`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_BATCHES (${batches.length} batches): ${duration}ms`);
 
     res.json(batches);
   } catch (error) {
@@ -149,7 +149,7 @@ export async function getInventory(req, res, next) {
     const isLocked = effectiveDeadline ? new Date() > new Date(effectiveDeadline) : false;
 
     const duration = Date.now() - startTime;
-    console.log(`[PERF] GET_INVENTORY (${records.length} records): ${duration}ms`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_INVENTORY (${records.length} records): ${duration}ms`);
 
     res.json({ records, isLocked });
   } catch (error) {
@@ -245,7 +245,7 @@ export async function updateInventoryRecord(req, res, next) {
     }).catch(() => {});
 
     const duration = Date.now() - startTime;
-    console.log(`[PERF] UPDATE_INVENTORY record ${id}: ${duration}ms`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] UPDATE_INVENTORY record ${recordId}: ${duration}ms`);
 
     res.json(result);
   } catch (error) {
@@ -259,6 +259,25 @@ export async function submitInventory(req, res, next) {
     const storeId = req.user.storeId;
     const parsedBatchId = requireId(req.body.batchId, 'batchId');
     const submittedAt   = new Date();
+
+    // Enforce deadline — same logic as updateInventoryRecord.
+    // Without this check, a store manager could bypass the lock by POSTing
+    // directly to /store/inventory/submit after the deadline passed.
+    const batchForDeadline = await prisma.uploadBatch.findUnique({
+      where: { id: parsedBatchId },
+      select: { submissionDeadline: true },
+    });
+    if (!batchForDeadline) throw new AppError('Batch not found', 404);
+    if (batchForDeadline.submissionDeadline) {
+      const extension = await prisma.batchDeadlineExtension.findUnique({
+        where: { batchId_storeId: { batchId: parsedBatchId, storeId } },
+        select: { newDeadline: true },
+      });
+      const effectiveDeadline = extension ? extension.newDeadline : batchForDeadline.submissionDeadline;
+      if (new Date() > new Date(effectiveDeadline)) {
+        throw new AppError('This batch is locked. The submission deadline has passed. Contact your administrator.', 403);
+      }
+    }
 
     // Serializable isolation prevents two concurrent submissions from both
     // reading the same PENDING rows. PostgreSQL aborts one with P2034 if it
@@ -336,7 +355,7 @@ export async function submitInventory(req, res, next) {
       import('../services/emailService.js').then(({ sendSubmissionEmail }) => {
         const batchDate = b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         for (const admin of admins) {
-          sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount });
+          if (req.user.store) sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount });
         }
       });
     }).catch(() => {});
@@ -533,13 +552,13 @@ export async function downloadInventory(req, res, next) {
       });
     });
 
-    await createAuditLog({
+    createAuditLog({
       userId: req.user.id,
       action: 'DOWNLOAD_INVENTORY',
       entityType: 'INVENTORY_RECORD',
       entityId: targetBatchId,
       metadata: { recordCount: records.length, batchId: targetBatchId },
-    });
+    }).catch(err => console.error('[audit] DOWNLOAD_INVENTORY log failed:', err.message));
 
     // Send file
     res.setHeader(

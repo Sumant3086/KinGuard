@@ -7,6 +7,20 @@ import { createAuditLog } from '../services/auditService.js';
 import prisma from '../config/prisma.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { parseId, requireId, parsePage, parsePageSize, parseIntParam } from '../utils/params.js';
+import { invalidateUserCache } from '../middleware/auth.js';
+import { validatePassword } from '../controllers/authController.js';
+
+// Hard cap on rows returned by report/export endpoints.
+// Prevents OOM when an admin exports with no filters on a large dataset.
+const EXPORT_ROW_LIMIT = 10_000;
+
+/** Validate and parse a date string from user input. Throws 400 on invalid format. */
+function parseUserDate(value, fieldName) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) throw new AppError(`Invalid ${fieldName} — expected a valid ISO date string`, 400);
+  return d;
+}
 
 // Shared column name aliases for Excel/CSV parsing
 const COLUMN_MAP = {
@@ -70,10 +84,7 @@ export async function getDashboard(req, res, next) {
   const startTime = Date.now();
   try {
     const cached = sGet('admin:dashboard');
-    if (cached) {
-      
-      return res.json(cached);
-    }
+    if (cached) return res.json(cached);
 
     const [totalStores, latestBatch] = await Promise.all([
       prisma.store.count({ where: { isActive: true } }),
@@ -99,8 +110,9 @@ export async function getDashboard(req, res, next) {
       ? now > new Date(latestBatch.submissionDeadline)
       : false;
 
-    // Per-store stats for the latest batch
-    const [perStoreStats, networkStats, allStores] = await Promise.all([
+    // Round 2 — all stat queries + last-4-batches in one parallel burst
+    // (moved last4Batches here so hotspot SQL can run in round 3, not round 4)
+    const [perStoreStats, networkStats, allStores, last4Batches] = await Promise.all([
       prisma.$queryRaw`
         SELECT
           ir."storeId",
@@ -124,10 +136,14 @@ export async function getDashboard(req, res, next) {
         WHERE "batchId" = ${latestBatch.id}
       `,
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true } }),
+      prisma.uploadBatch.findMany({ orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
     ]);
 
-    // Top remark per store + last 4 batches " run in parallel (B5)
-    const [topRemarkRows, last4Batches] = await Promise.all([
+    const batchIds = last4Batches.map((b) => b.id);
+
+    // Round 3 — top remarks + hotspot detection run in parallel
+    // Hotspot: single GROUP BY SQL instead of loading all shortage rows into Node memory
+    const [topRemarkRows, hotspotRows] = await Promise.all([
       prisma.$queryRaw`
         SELECT "storeId", remarks, COUNT(*)::int AS cnt
         FROM "InventoryRecord"
@@ -135,11 +151,27 @@ export async function getDashboard(req, res, next) {
         GROUP BY "storeId", remarks
         ORDER BY "storeId", cnt DESC
       `,
-      prisma.uploadBatch.findMany({
-        orderBy: { inventoryDate: 'desc' },
-        take: 4,
-        select: { id: true },
-      }),
+      batchIds.length >= 2
+        ? prisma.$queryRaw`
+            SELECT
+              ir."storeId",
+              s."storeCode",
+              s."storeName",
+              ir."materialCode",
+              ir."materialName",
+              COUNT(DISTINCT ir."batchId")::int                             AS "batchCount",
+              ROUND(SUM(ABS(ir.difference))::numeric, 1)::float             AS "totalShortage"
+            FROM "InventoryRecord" ir
+            JOIN "Store" s ON s.id = ir."storeId"
+            WHERE ir."batchId" = ANY(${batchIds})
+              AND ir.status = 'SUBMITTED'
+              AND ir.difference < 0
+            GROUP BY ir."storeId", s."storeCode", s."storeName", ir."materialCode", ir."materialName"
+            HAVING COUNT(DISTINCT ir."batchId") >= 2
+            ORDER BY "batchCount" DESC, "totalShortage" DESC
+            LIMIT 5
+          `
+        : Promise.resolve([]),
     ]);
 
     const topRemarkMap = new Map();
@@ -175,63 +207,16 @@ export async function getDashboard(req, res, next) {
       };
     }).sort((a, b) => b.shortageRate - a.shortageRate);
 
-    // Shrinkage hotspots: (storeId, materialCode) pairs with shortages in 2 of the last 4 batches.
-    const batchIds = last4Batches.map((b) => b.id);
-
-    let hotspots = [];
-    if (batchIds.length >= 2) {
-      const shortageRows = await prisma.inventoryRecord.findMany({
-        where: {
-          batchId:    { in: batchIds },
-          status:     'SUBMITTED',
-          difference: { lt: 0 },
-        },
-        select: {
-          storeId:      true,
-          materialCode: true,
-          materialName: true,
-          difference:   true,
-          remarks:      true,
-          batchId:      true,
-          store: { select: { storeCode: true, storeName: true } },
-        },
-      });
-
-      const pairMap = new Map();
-      shortageRows.forEach((r) => {
-        const key = `${r.storeId}::${r.materialCode}`;
-        if (!pairMap.has(key)) {
-          pairMap.set(key, {
-            storeCode:    r.store.storeCode,
-            storeName:    r.store.storeName,
-            materialCode: r.materialCode,
-            materialName: r.materialName,
-            batches:      new Set(),
-            totalShortage: 0,
-            remarkCounts: {},
-          });
-        }
-        const p = pairMap.get(key);
-        p.batches.add(r.batchId);
-        p.totalShortage += Math.abs(r.difference);
-        if (r.remarks) p.remarkCounts[r.remarks] = (p.remarkCounts[r.remarks] || 0) + 1;
-      });
-
-      hotspots = Array.from(pairMap.values())
-        .filter((p) => p.batches.size >= 2)
-        .map((p) => ({
-          storeCode:     p.storeCode,
-          storeName:     p.storeName,
-          materialCode:  p.materialCode,
-          materialName:  p.materialName,
-          batchCount:    p.batches.size,
-          totalShortage: Math.round(p.totalShortage * 10) / 10,
-          dominantRemark: Object.entries(p.remarkCounts)
-            .sort((a, b) => b[1] - a[1])[0]?.[0] || null,
-        }))
-        .sort((a, b) => b.batchCount - a.batchCount || b.totalShortage - a.totalShortage)
-        .slice(0, 5);
-    }
+    // Map SQL hotspot results (already sorted + limited to 5 by the query)
+    const hotspots = hotspotRows.map((r) => ({
+      storeCode:      r.storeCode,
+      storeName:      r.storeName,
+      materialCode:   r.materialCode,
+      materialName:   r.materialName,
+      batchCount:     Number(r.batchCount),
+      totalShortage:  Number(r.totalShortage),
+      dominantRemark: null, // omitted from SQL for performance; available on drilldown
+    }));
 
     const net = networkStats[0] || {};
     const storesPending = storeScorecard.filter((s) => s.status === 'PENDING').length;
@@ -239,7 +224,7 @@ export async function getDashboard(req, res, next) {
     const overdueStores = storeScorecard.filter((s) => s.isOverdue).map((s) => s.storeName);
 
     const duration = Date.now() - startTime;
-    console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);
 
     const result = {
       totalStores,
@@ -261,7 +246,7 @@ export async function getDashboard(req, res, next) {
         excessItems: Number(net.excessItems || 0),
       },
     };
-    sSet('admin:dashboard', result, 30_000);
+    sSet('admin:dashboard', result, 120_000); // 2-minute cache (was 30s)
     
     res.json(result);
   } catch (error) {
@@ -283,7 +268,6 @@ export async function getStores(req, res, next) {
       },
     });
 
-    
     res.json(stores);
   } catch (error) {
     next(error);
@@ -298,10 +282,17 @@ export async function createStore(req, res, next) {
       throw new AppError('Plant code and name are required', 400);
     }
 
+    const normalizedCode = storeCode.toString().trim();
+    if (!normalizedCode) throw new AppError('Plant code cannot be blank', 400);
+    if (normalizedCode.length > 50) throw new AppError('Plant code must be 50 characters or fewer', 400);
+
+    const normalizedName = storeName?.toString().trim();
+    if (!normalizedName) throw new AppError('Plant name cannot be blank', 400);
+
     const store = await prisma.store.create({
       data: {
-        storeCode: storeCode.toString(),
-        storeName,
+        storeCode: normalizedCode,
+        storeName: normalizedName,
         isActive: isActive !== undefined ? isActive : true,
       },
     });
@@ -343,13 +334,14 @@ export async function deleteStore(req, res, next) {
       );
     }
 
-    // Remove dependent records (no inventory, so these are safe to clear)
-    await prisma.batchDeadlineExtension.deleteMany({ where: { storeId } });
-    if (store._count.users > 0) {
-      await prisma.user.updateMany({ where: { storeId }, data: { storeId: null } });
-    }
-
-    await prisma.store.delete({ where: { id: storeId } });
+    // Remove dependent records in one atomic transaction to avoid race conditions
+    await prisma.$transaction(async (tx) => {
+      await tx.batchDeadlineExtension.deleteMany({ where: { storeId } });
+      if (store._count.users > 0) {
+        await tx.user.updateMany({ where: { storeId }, data: { storeId: null } });
+      }
+      await tx.store.delete({ where: { id: storeId } });
+    });
 
     await createAuditLog({
       userId: req.user.id,
@@ -401,18 +393,24 @@ export async function getUsers(req, res, next) {
   try {
     const users = await prisma.user.findMany({
       orderBy: { employeeId: 'asc' },
-      include: {
+      select: {
+        id: true,
+        employeeId: true,
+        name: true,
+        role: true,
+        storeId: true,
+        isActive: true,
+        pendingApproval: true,
+        source: true,
+        email: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true,
         store: {
-          select: {
-            id: true,
-            storeCode: true,
-            storeName: true,
-          },
+          select: { id: true, storeCode: true, storeName: true },
         },
       },
     });
-
-    
     res.json(users);
   } catch (error) {
     next(error);
@@ -435,9 +433,7 @@ export async function createUser(req, res, next) {
       throw new AppError('Admin users cannot be assigned to a store', 400);
     }
 
-    if (password.length < 8) {
-      throw new AppError('Password must be at least 8 characters', 400);
-    }
+    validatePassword(password);
 
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -481,6 +477,13 @@ export async function updateUser(req, res, next) {
     const userId = requireId(req.params.id, 'userId');
     const { name, password, storeId, isActive, email, phone } = req.body;
 
+    // Fetch current user to check role and current state
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, storeId: true, role: true, pendingApproval: true, isActive: true },
+    });
+    if (!currentUser) throw new AppError('User not found', 404);
+
     const data = {
       name:     name     !== undefined ? name     : undefined,
       isActive: isActive !== undefined ? isActive : undefined,
@@ -488,28 +491,29 @@ export async function updateUser(req, res, next) {
       phone:    phone    !== undefined ? (phone || null)  : undefined,
     };
 
+    // Handle store assignment
     if (storeId !== undefined) {
       const parsedStoreId = storeId ? requireId(storeId, 'storeId') : null;
-      // Fetch current user role to enforce: ADMIN users cannot have a store
-      const currentUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { storeId: true, role: true },
-      });
-      if (!currentUser) throw new AppError('User not found', 404);
       if (parsedStoreId && currentUser.role === 'ADMIN') {
         throw new AppError('Administrator accounts cannot be assigned to a store', 400);
       }
       if (parsedStoreId) {
         data.store = { connect: { id: parsedStoreId } };
       } else if (currentUser.storeId) {
-        // Only issue disconnect if user actually has a store (prevents Prisma P2025)
         data.store = { disconnect: true };
       }
     }
 
+    // Handle password update
     if (password) {
-      if (password.length < 8) throw new AppError('Password must be at least 8 characters', 400);
+      validatePassword(password);
       data.passwordHash = await bcrypt.hash(password, 10);
+      data.mustChangePassword = false; // Admin resetting password clears the force-change flag
+    }
+
+    // Prevent editing users in pending approval state - they should be approved/rejected instead
+    if (currentUser.pendingApproval) {
+      throw new AppError('Cannot edit users in pending approval state. Please approve or reject first.', 400);
     }
 
     const user = await prisma.user.update({
@@ -526,6 +530,7 @@ export async function updateUser(req, res, next) {
       metadata: { name, storeId, isActive },
     });
 
+    invalidateUserCache(userId);
     const { passwordHash: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
@@ -544,8 +549,8 @@ export async function uploadInventory(req, res, next) {
       throw new AppError('Inventory date is required', 400);
     }
 
-    // Check if a batch already exists within 3 days of this inventory date (B7)
-    const targetDate = new Date(inventoryDate);
+    const targetDate     = parseUserDate(inventoryDate, 'inventoryDate');
+    const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
     const windowStart = new Date(targetDate); windowStart.setDate(windowStart.getDate() - 3);
     const windowEnd   = new Date(targetDate); windowEnd.setDate(windowEnd.getDate() + 3);
     const existingBatch = await prisma.uploadBatch.findFirst({
@@ -571,8 +576,8 @@ export async function uploadInventory(req, res, next) {
       data: {
         originalFileName: file.originalname,
         uploadedBy: req.user.id,
-        inventoryDate: new Date(inventoryDate),
-        submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : null,
+        inventoryDate: targetDate,
+        submissionDeadline: parsedDeadline,
         totalRows: rows.length,
         successfulRows: 0,
         rejectedRows: 0,
@@ -615,26 +620,32 @@ export async function uploadInventory(req, res, next) {
     const autoCreatedUsers = [];
     if (newStoreCodes.length > 0) {
       const placeholder = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+      
+      // Build list of users to create
+      const usersToCreate = [];
       for (const code of newStoreCodes) {
         const storeId = storeMap.get(code);
         if (!storeId) continue;
         const employeeId = `MGR${code}`;
-        const existing = await prisma.user.findUnique({ where: { employeeId } });
-        if (!existing) {
-          await prisma.user.create({
-            data: {
-              employeeId,
-              name: `Manager ${code}`,
-              passwordHash: placeholder,
-              role: 'STORE_MANAGER',
-              storeId,
-              isActive: false,
-              pendingApproval: true,
-              source: 'AUTO_STORE',
-            },
-          });
-          autoCreatedUsers.push({ employeeId, storeCode: code });
-        }
+        usersToCreate.push({
+          employeeId,
+          name: `Manager ${code}`,
+          passwordHash: placeholder,
+          role: 'STORE_MANAGER',
+          storeId,
+          isActive: false,
+          pendingApproval: true,
+          source: 'AUTO_STORE',
+        });
+        autoCreatedUsers.push({ employeeId, storeCode: code });
+      }
+      
+      // Batch create all users at once (much faster!)
+      if (usersToCreate.length > 0) {
+        await prisma.user.createMany({
+          data: usersToCreate,
+          skipDuplicates: true, // Skip if employeeId already exists
+        });
       }
     }
 
@@ -700,6 +711,15 @@ export async function uploadInventory(req, res, next) {
       await prisma.inventoryRecord.createMany({
         data: successfulRecords,
         skipDuplicates: true,
+      });
+    }
+
+    // If every row failed, delete the orphan batch and surface a clean error
+    if (successfulRecords.length === 0) {
+      await prisma.uploadBatch.delete({ where: { id: batch.id } });
+      return res.status(422).json({
+        error: 'No valid rows found — batch rejected. Check your file format.',
+        errors: errors.slice(0, 20),
       });
     }
 
@@ -771,13 +791,21 @@ export async function previewUpload(req, res, next) {
     }
 
 
-    // Fetch all plant codes for validation — retry once on transient DB errors
+    // Fetch all plant codes for validation — retry with connection refresh on DB errors
     let stores;
     try {
       stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
-    } catch {
-      await prisma.$connect();
-      stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
+    } catch (firstErr) {
+      console.warn('[previewUpload] First DB query failed, retrying after reconnect:', firstErr.message);
+      try {
+        // Wait 300ms and force reconnect
+        await new Promise(r => setTimeout(r, 300));
+        await prisma.$connect();
+        stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
+      } catch (retryErr) {
+        console.error('[previewUpload] DB unavailable after retry:', retryErr.message);
+        throw new AppError('Unable to reach the database. Please try again in a moment.', 503);
+      }
     }
     const storeMap = new Map(stores.map(s => [s.storeCode, s.storeName]));
 
@@ -968,7 +996,7 @@ export async function getInventory(req, res, next) {
     }));
 
     const duration = Date.now() - startTime;
-    console.log(`[PERF] GET_ADMIN_INVENTORY (${records.length} records, page ${pageNum}): ${duration}ms`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_INVENTORY (${records.length} records, page ${pageNum}): ${duration}ms`);
 
     res.json({
       data: enrichedRecords,
@@ -988,42 +1016,34 @@ export async function getReconciliationReport(req, res, next) {
   try {
     const { status, discrepancy, includeInactive } = req.query;
     const storeId = parseId(req.query.storeId, 'storeId');
+    const batchId = parseId(req.query.batchId, 'batchId');
 
     const where = {};
 
-    if (storeId) {
-      where.storeId = storeId;
-    }
-    if (status) {
-      where.status = status;
-    }
+    if (storeId)  where.storeId = storeId;
+    if (batchId)  where.batchId = batchId;
+    if (status)   where.status  = status;
     if (discrepancy === 'shortage') where.difference = { lt: 0 };
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
     if (discrepancy === 'matched')  where.difference = { equals: 0 };
 
-    // I1: inactive store filter
+    // Inactive store filter
     if (includeInactive !== 'true') where.store = { isActive: true };
+
+    const count = await prisma.inventoryRecord.count({ where });
+    if (count > EXPORT_ROW_LIMIT) {
+      throw new AppError(
+        `This filter matches ${count.toLocaleString()} records. Apply more specific filters (e.g. select a single cycle or store) to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer.`,
+        413
+      );
+    }
 
     const records = await prisma.inventoryRecord.findMany({
       where,
       include: {
-        store: {
-          select: {
-            storeCode: true,
-            storeName: true,
-          },
-        },
-        batch: {
-          select: {
-            inventoryDate: true,
-          },
-        },
-        submitter: {
-          select: {
-            employeeId: true,
-            name: true,
-          },
-        },
+        store:    { select: { storeCode: true, storeName: true } },
+        batch:    { select: { inventoryDate: true } },
+        submitter:{ select: { employeeId: true, name: true } },
       },
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
     });
@@ -1038,40 +1058,32 @@ export async function downloadReconciliationReport(req, res, next) {
   try {
     const { status, discrepancy, includeInactive } = req.query;
     const storeId = parseId(req.query.storeId, 'storeId');
+    const batchId = parseId(req.query.batchId, 'batchId');
 
     const where = {};
 
-    if (storeId) {
-      where.storeId = storeId;
-    }
-    if (status) {
-      where.status = status;
-    }
+    if (storeId)  where.storeId = storeId;
+    if (batchId)  where.batchId = batchId;
+    if (status)   where.status  = status;
     if (discrepancy === 'shortage') where.difference = { lt: 0 };
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
     if (discrepancy === 'matched')  where.difference = { equals: 0 };
     if (includeInactive !== 'true') where.store = { isActive: true };
 
+    const dlCount = await prisma.inventoryRecord.count({ where });
+    if (dlCount > EXPORT_ROW_LIMIT) {
+      throw new AppError(
+        `This filter matches ${dlCount.toLocaleString()} records. Apply more specific filters to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer before downloading.`,
+        413
+      );
+    }
+
     const filtered = await prisma.inventoryRecord.findMany({
       where,
       include: {
-        store: {
-          select: {
-            storeCode: true,
-            storeName: true,
-          },
-        },
-        batch: {
-          select: {
-            inventoryDate: true,
-          },
-        },
-        submitter: {
-          select: {
-            employeeId: true,
-            name: true,
-          },
-        },
+        store:    { select: { storeCode: true, storeName: true } },
+        batch:    { select: { inventoryDate: true } },
+        submitter:{ select: { employeeId: true, name: true } },
       },
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
     });
@@ -1166,28 +1178,21 @@ export async function downloadInventoryExport(req, res, next) {
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
     if (discrepancy === 'matched')  where.difference = { equals: 0 };
 
-    // Fetch all matching records (no pagination limit for export)
+    const exportCount = await prisma.inventoryRecord.count({ where });
+    if (exportCount > EXPORT_ROW_LIMIT) {
+      throw new AppError(
+        `This filter matches ${exportCount.toLocaleString()} records. Apply more specific filters to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer before exporting.`,
+        413
+      );
+    }
+
     const records = await prisma.inventoryRecord.findMany({
       where,
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
       include: {
-        store: {
-          select: {
-            storeCode: true,
-            storeName: true,
-          },
-        },
-        batch: {
-          select: {
-            inventoryDate: true,
-          },
-        },
-        submitter: {
-          select: {
-            employeeId: true,
-            name: true,
-          },
-        },
+        store:    { select: { storeCode: true, storeName: true } },
+        batch:    { select: { inventoryDate: true } },
+        submitter:{ select: { employeeId: true, name: true } },
       },
     });
 
@@ -1262,7 +1267,7 @@ export async function downloadInventoryExport(req, res, next) {
     });
 
     const duration = Date.now() - startTime;
-    console.log(`[PERF] DOWNLOAD_ADMIN_EXPORT (${records.length} records): ${duration}ms`);
+    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] DOWNLOAD_ADMIN_EXPORT (${records.length} records): ${duration}ms`);
 
     // Generate filename
     const date = new Date().toISOString().split('T')[0];
@@ -1307,7 +1312,6 @@ export async function getAuditLogs(req, res, next) {
       },
     });
 
-    
     res.json(logs);
   } catch (error) {
     next(error);
@@ -1341,7 +1345,6 @@ export async function getBatches(req, res, next) {
 
     const statsMap = new Map(statsRows.map(r => [Number(r.batchId), r]));
     const result = batches.map(b => ({ ...b, stats: statsMap.get(b.id) || null }));
-    
     res.json(result);
   } catch (error) { next(error); }
 }
@@ -1350,9 +1353,10 @@ export async function updateBatch(req, res, next) {
   try {
     const batchId = requireId(req.params.id, 'batchId');
     const { submissionDeadline } = req.body;
+    const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
     const batch = await prisma.uploadBatch.update({
       where: { id: batchId },
-      data: { submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : null },
+      data: { submissionDeadline: parsedDeadline },
     });
     await createAuditLog({
       userId: req.user.id, action: 'UPDATE_BATCH_DEADLINE',
@@ -1430,7 +1434,6 @@ export async function getTrends(req, res, next) {
       });
     });
 
-    
     res.json({ batches: batches.map(b => ({ id: b.id, inventoryDate: b.inventoryDate })), series: Array.from(storeMap.values()) });
   } catch (error) { next(error); }
 }
@@ -1617,24 +1620,33 @@ export async function deleteUser(req, res, next) {
       }
     }
 
-    // Reassign non-nullable FK references to the deleting admin so data isn't orphaned
-    await prisma.uploadBatch.updateMany({ where: { uploadedBy: userId }, data: { uploadedBy: req.user.id } });
-    await prisma.batchDeadlineExtension.updateMany({ where: { grantedBy: userId }, data: { grantedBy: req.user.id } });
+    // Wrap all FK reassignments + delete in a single transaction
+    await prisma.$transaction(async (tx) => {
+      // Reassign non-nullable FK references to the deleting admin so data isn't orphaned
+      await tx.uploadBatch.updateMany({ where: { uploadedBy: userId }, data: { uploadedBy: req.user.id } });
+      await tx.batchDeadlineExtension.updateMany({ where: { grantedBy: userId }, data: { grantedBy: req.user.id } });
+      // Null out nullable FK references
+      await tx.inventoryRecord.updateMany({ where: { submittedBy: userId }, data: { submittedBy: null } });
+      await tx.auditLog.updateMany({ where: { userId }, data: { userId: null } });
+      await tx.user.delete({ where: { id: userId } });
+    });
 
-    // Null out nullable FK references
-    await prisma.inventoryRecord.updateMany({ where: { submittedBy: userId }, data: { submittedBy: null } });
-    await prisma.auditLog.updateMany({ where: { userId }, data: { userId: null } });
+    invalidateUserCache(userId);
 
-    await prisma.user.delete({ where: { id: userId } });
-
-    await createAuditLog({
+    createAuditLog({
       userId: req.user.id, action: 'DELETE_USER',
       entityType: 'USER', entityId: userId,
       metadata: { employeeId: user.employeeId, name: user.name, role: user.role },
-    });
+    }).catch(() => {});
 
     res.json({ message: 'User deleted' });
-  } catch (error) { next(error); }
+  } catch (error) {
+    // P2025 = record not found (already deleted, concurrent request, etc.)
+    if (error.code === 'P2025') {
+      return next(new AppError('User not found or already deleted', 404));
+    }
+    next(error);
+  }
 }
 
 // """ Bulk store delete """"""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -1649,16 +1661,19 @@ export async function bulkDeleteStores(req, res, next) {
     const storeIds = ids.map((id, i) => requireId(id, `ids[${i}]`));
 
     if (force) {
-      await prisma.batchDeadlineExtension.deleteMany({ where: { storeId: { in: storeIds } } });
-      await prisma.inventoryRecord.deleteMany({ where: { storeId: { in: storeIds } } });
-      await prisma.user.updateMany({ where: { storeId: { in: storeIds } }, data: { storeId: null } });
-      await prisma.store.deleteMany({ where: { id: { in: storeIds } } });
+      // Wrap cascade delete in a transaction — partial failure leaves DB consistent
+      await prisma.$transaction(async (tx) => {
+        await tx.batchDeadlineExtension.deleteMany({ where: { storeId: { in: storeIds } } });
+        await tx.inventoryRecord.deleteMany({ where: { storeId: { in: storeIds } } });
+        await tx.user.updateMany({ where: { storeId: { in: storeIds } }, data: { storeId: null } });
+        await tx.store.deleteMany({ where: { id: { in: storeIds } } });
+      });
 
-      await createAuditLog({
+      createAuditLog({
         userId: req.user.id, action: 'BULK_DELETE_STORES',
         entityType: 'STORE', entityId: null,
         metadata: { ids: storeIds, force: true, count: storeIds.length },
-      });
+      }).catch(() => {});
 
       sInvalidate('admin:dashboard');
       return res.json({ deleted: storeIds.length, message: `${storeIds.length} store(s) permanently deleted` });
@@ -1670,33 +1685,35 @@ export async function bulkDeleteStores(req, res, next) {
       select: { storeId: true },
       distinct: ['storeId'],
     });
-    const blockedIds  = new Set(withRecords.map(r => r.storeId));
+    const blockedIds   = new Set(withRecords.map(r => r.storeId));
     const deletableIds = storeIds.filter(id => !blockedIds.has(id));
 
     if (deletableIds.length > 0) {
-      await prisma.batchDeadlineExtension.deleteMany({ where: { storeId: { in: deletableIds } } });
-      await prisma.user.updateMany({ where: { storeId: { in: deletableIds } }, data: { storeId: null } });
-      await prisma.store.deleteMany({ where: { id: { in: deletableIds } } });
+      await prisma.$transaction(async (tx) => {
+        await tx.batchDeadlineExtension.deleteMany({ where: { storeId: { in: deletableIds } } });
+        await tx.user.updateMany({ where: { storeId: { in: deletableIds } }, data: { storeId: null } });
+        await tx.store.deleteMany({ where: { id: { in: deletableIds } } });
+      });
     }
 
-    await createAuditLog({
+    createAuditLog({
       userId: req.user.id, action: 'BULK_DELETE_STORES',
       entityType: 'STORE', entityId: null,
       metadata: { ids: storeIds, force: false, deleted: deletableIds.length, blocked: blockedIds.size },
-    });
+    }).catch(() => {});
 
     sInvalidate('admin:dashboard');
     res.json({
       deleted: deletableIds.length,
       blocked: blockedIds.size,
       message: blockedIds.size > 0
-        ? `Deleted ${deletableIds.length} store(s). ${blockedIds.size} skipped (have records " use force delete).`
+        ? `Deleted ${deletableIds.length} store(s). ${blockedIds.size} skipped (have records — use force delete).`
         : `${deletableIds.length} store(s) deleted`,
     });
   } catch (error) { next(error); }
 }
 
-// """ Store force-delete (cascade all data) """"""""""""""""""""""""""""""""""""
+// ── Store force-delete (cascade all data) ──────────────────────────────────────
 
 export async function forceDeleteStore(req, res, next) {
   try {
@@ -1705,10 +1722,12 @@ export async function forceDeleteStore(req, res, next) {
     const store = await prisma.store.findUnique({ where: { id: storeId } });
     if (!store) throw new AppError('Store not found', 404);
 
-    await prisma.batchDeadlineExtension.deleteMany({ where: { storeId } });
-    await prisma.inventoryRecord.deleteMany({ where: { storeId } });
-    await prisma.user.updateMany({ where: { storeId }, data: { storeId: null } });
-    await prisma.store.delete({ where: { id: storeId } });
+    await prisma.$transaction(async (tx) => {
+      await tx.batchDeadlineExtension.deleteMany({ where: { storeId } });
+      await tx.inventoryRecord.deleteMany({ where: { storeId } });
+      await tx.user.updateMany({ where: { storeId }, data: { storeId: null } });
+      await tx.store.delete({ where: { id: storeId } });
+    });
 
     await createAuditLog({
       userId: req.user.id, action: 'FORCE_DELETE_STORE',
@@ -1733,9 +1752,11 @@ export async function deleteBatch(req, res, next) {
     });
     if (!batch) throw new AppError('Cycle not found', 404);
 
-    await prisma.batchDeadlineExtension.deleteMany({ where: { batchId } });
-    await prisma.inventoryRecord.deleteMany({ where: { batchId } });
-    await prisma.uploadBatch.delete({ where: { id: batchId } });
+    await prisma.$transaction([
+      prisma.batchDeadlineExtension.deleteMany({ where: { batchId } }),
+      prisma.inventoryRecord.deleteMany({ where: { batchId } }),
+      prisma.uploadBatch.delete({ where: { id: batchId } }),
+    ]);
 
     await createAuditLog({
       userId: req.user.id, action: 'DELETE_BATCH',
@@ -1761,6 +1782,8 @@ export async function unlockStoreForBatch(req, res, next) {
         status: 'PENDING',
         physicalQuantity: null,
         difference: null,
+        shrinkageCategory: null,
+        remarks: null,
         submittedBy: null,
         submittedAt: null,
       },
@@ -1856,7 +1879,7 @@ export async function exportAuditLogs(req, res, next) {
     const logs = await prisma.auditLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: parseInt(limit),
+      take: limit,
       include: { user: { select: { employeeId: true, name: true } } },
     });
 
@@ -1912,6 +1935,11 @@ export async function downloadInventoryExportPDF(req, res, next) {
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
     if (discrepancy === 'matched')  where.difference = { equals: 0 };
 
+    const pdfExportCount = await prisma.inventoryRecord.count({ where });
+    if (pdfExportCount > EXPORT_ROW_LIMIT) {
+      throw new AppError(`This filter matches ${pdfExportCount.toLocaleString()} records. Apply more specific filters to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer.`, 413);
+    }
+
     const records = await prisma.inventoryRecord.findMany({
       where,
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
@@ -1964,12 +1992,19 @@ export async function downloadReconciliationReportPDF(req, res, next) {
   try {
     const { status, discrepancy } = req.query;
     const storeId = parseId(req.query.storeId, 'storeId');
+    const batchId = parseId(req.query.batchId, 'batchId');
     const where = {};
     if (storeId)  where.storeId = storeId;
+    if (batchId)  where.batchId = batchId;
     if (status)   where.status  = status;
     if (discrepancy === 'shortage') where.difference = { lt: 0 };
     if (discrepancy === 'excess')   where.difference = { gt: 0 };
     if (discrepancy === 'matched')  where.difference = { equals: 0 };
+
+    const reconPdfCount = await prisma.inventoryRecord.count({ where });
+    if (reconPdfCount > EXPORT_ROW_LIMIT) {
+      throw new AppError(`This filter matches ${reconPdfCount.toLocaleString()} records. Apply more specific filters to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer.`, 413);
+    }
 
     const records = await prisma.inventoryRecord.findMany({
       where,
@@ -2130,6 +2165,12 @@ export async function downloadBatchExportPDF(req, res, next) {
       }],
     });
 
+    await createAuditLog({
+      userId: req.user.id, action: 'DOWNLOAD_BATCH_EXPORT_PDF',
+      entityType: 'UPLOAD_BATCH', entityId: batchId,
+      metadata: { recordCount: records.length, date: dateStr },
+    });
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="KinGuard_Cycle_${dateStr}.pdf"`);
     res.end(pdfBuffer);
@@ -2229,7 +2270,7 @@ export async function approveUser(req, res, next) {
 
         const updated = await tx.user.update({
           where: { id: userId },
-          data: { isActive: true, pendingApproval: false, passwordHash },
+          data: { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: true },
           include: { store: { select: { id: true, storeCode: true, storeName: true } } },
         });
         return { updated, tempPassword, original: user };
@@ -2247,6 +2288,7 @@ export async function approveUser(req, res, next) {
       metadata: { employeeId: result.original.employeeId, name: result.original.name, source: result.original.source },
     });
 
+    invalidateUserCache(userId);
     sInvalidate('admin:dashboard');
     const { passwordHash: _, ...safeUser } = result.updated;
     res.json({ ...safeUser, tempPassword: result.tempPassword });
@@ -2285,81 +2327,65 @@ export async function batchCreateUsersForPlants(req, res, next) {
       throw new AppError('plants must be a non-empty array', 400);
     }
 
-    const createdUsers = [];
+    // Validate IDs upfront
+    const validPlants = [];
     const errors = [];
-
     for (const plant of plants) {
-      let parsedStoreId;
       try {
-        parsedStoreId = requireId(plant.storeId, 'storeId');
+        validPlants.push({ ...plant, parsedStoreId: requireId(plant.storeId, 'storeId') });
       } catch (e) {
         errors.push({ storeId: plant.storeId, error: e.message });
-        continue;
       }
+    }
 
+    // Fetch all stores first, then check for duplicate employeeIds using real store codes
+    const storeIds = validPlants.map(p => p.parsedStoreId);
+    const stores = await prisma.store.findMany({
+      where: { id: { in: storeIds } },
+      select: { id: true, storeCode: true, storeName: true },
+    });
+    const storeMap = new Map(stores.map(s => [s.id, s]));
+
+    // Build the correct employeeIds (MGR + storeCode, not MGR + dbId)
+    const expectedEmpIds = stores.map(s => `MGR${s.storeCode}`);
+    const existingUsers = await prisma.user.findMany({
+      where: { employeeId: { in: expectedEmpIds } },
+      select: { employeeId: true },
+    });
+    const existingIds = new Set(existingUsers.map(u => u.employeeId));
+
+    // Generate all temp passwords and bcrypt hashes IN PARALLEL (was sequential → ~100ms/store)
+    const plantData = validPlants.map(plant => {
+      const store = storeMap.get(plant.parsedStoreId);
+      if (!store) { errors.push({ storeId: plant.parsedStoreId, error: 'Plant not found' }); return null; }
+      const employeeId = `MGR${store.storeCode}`;
+      if (existingIds.has(employeeId)) { errors.push({ storeId: plant.parsedStoreId, storeCode: store.storeCode, error: `Username ${employeeId} already exists` }); return null; }
+      const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
+      const userName = plant.customName?.trim() || `Manager ${store.storeCode}`;
+      return { store, employeeId, userName, tempPassword };
+    }).filter(Boolean);
+
+    // All bcrypt operations in parallel — was O(n×100ms), now O(100ms) regardless of count
+    const hashes = await Promise.all(plantData.map(p => bcrypt.hash(p.tempPassword, 10)));
+
+    const createdUsers = [];
+    for (let i = 0; i < plantData.length; i++) {
+      const { store, employeeId, userName, tempPassword } = plantData[i];
       try {
-        const { customName } = plant;
-
-        const store = await prisma.store.findUnique({
-          where: { id: parsedStoreId },
-          select: { id: true, storeCode: true, storeName: true },
-        });
-
-        if (!store) {
-          errors.push({ storeId: parsedStoreId, error: 'Plant not found' });
-          continue;
-        }
-
-        const employeeId = `MGR${store.storeCode}`;
-
-        const existing = await prisma.user.findUnique({ where: { employeeId } });
-        if (existing) {
-          errors.push({ storeId: parsedStoreId, storeCode: store.storeCode, error: `Username ${employeeId} already exists` });
-          continue;
-        }
-
-        const userName = customName && customName.trim()
-          ? customName.trim()
-          : `Manager ${store.storeCode}`;
-
-        // Generate a cryptographically random temporary password per user.
-        // 12 random bytes → 16 base64 chars. Append '1!' to guarantee a digit
-        // and special character so the password meets all strength requirements.
-        // The plaintext is returned once in the API response for the admin to distribute.
-        const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
-        const passwordHash = await bcrypt.hash(tempPassword, 10);
-
         const newUser = await prisma.user.create({
-          data: {
-            employeeId,
-            name: userName,
-            passwordHash,
-            role: 'STORE_MANAGER',
-            storeId: store.id,
-            isActive: true,
-          },
+          data: { employeeId, name: userName, passwordHash: hashes[i], role: 'STORE_MANAGER', storeId: store.id, isActive: true },
           include: { store: { select: { storeCode: true, storeName: true } } },
+        }).catch(err => {
+          if (err.code === 'P2002') throw new AppError(`Username ${employeeId} already exists`, 409);
+          throw err;
         });
-
-        await createAuditLog({
-          userId: req.user.id,
-          action: 'CREATE_USER',
-          entityType: 'USER',
-          entityId: newUser.id,
+        createAuditLog({
+          userId: req.user.id, action: 'CREATE_USER', entityType: 'USER', entityId: newUser.id,
           metadata: { employeeId: newUser.employeeId, name: newUser.name, role: newUser.role, storeId: newUser.storeId, batchCreation: true },
-        });
-
-        createdUsers.push({
-          id: newUser.id,
-          employeeId: newUser.employeeId,
-          name: newUser.name,
-          storeCode: store.storeCode,
-          storeName: store.storeName,
-          password: tempPassword, // Shown once to admin so they can distribute credentials
-        });
-
+        }).catch(() => {});
+        createdUsers.push({ id: newUser.id, employeeId: newUser.employeeId, name: newUser.name, storeCode: store.storeCode, storeName: store.storeName, password: tempPassword });
       } catch (err) {
-        errors.push({ storeId: parsedStoreId, error: err.message || 'Failed to create user' });
+        errors.push({ storeId: store.id, error: err.message || 'Failed to create user' });
       }
     }
 
@@ -2657,16 +2683,20 @@ export async function rejectUser(req, res, next) {
     if (user.isActive)         throw new AppError('Cannot reject an already active user', 409);
 
     await prisma.user.delete({ where: { id: userId } });
+    invalidateUserCache(userId);
 
-    await createAuditLog({
+    createAuditLog({
       userId: req.user.id, action: 'REJECT_USER',
       entityType: 'USER', entityId: userId,
       metadata: { employeeId: user.employeeId, name: user.name, source: user.source, reason: reason || null },
-    });
+    }).catch(() => {});
 
     sInvalidate('admin:dashboard');
-    res.json({ message: 'User "' + user.name + '" (' + user.employeeId + ') rejected and removed' });
-  } catch (error) { next(error); }
+    res.json({ message: `"${user.name}" (${user.employeeId}) rejected and removed` });
+  } catch (error) {
+    if (error.code === 'P2025') return next(new AppError('User not found or already removed', 404));
+    next(error);
+  }
 }
 
 /**
@@ -2682,10 +2712,27 @@ export async function bulkReviewUsers(req, res, next) {
 
     const parsedIds = userIds.map((id, i) => requireId(id, 'userIds[' + i + ']'));
 
-    const candidates = await prisma.user.findMany({
-      where: { id: { in: parsedIds }, pendingApproval: true, isActive: false },
-      include: { store: { select: { id: true, storeCode: true, storeName: true } } },
-    });
+    // Fetch candidates with retry logic for cold DB connections
+    let candidates;
+    try {
+      candidates = await prisma.user.findMany({
+        where: { id: { in: parsedIds }, pendingApproval: true, isActive: false },
+        include: { store: { select: { id: true, storeCode: true, storeName: true } } },
+      });
+    } catch (firstErr) {
+      console.warn('[bulkReviewUsers] First DB query failed, retrying after reconnect:', firstErr.message);
+      try {
+        await new Promise(r => setTimeout(r, 300));
+        await prisma.$connect();
+        candidates = await prisma.user.findMany({
+          where: { id: { in: parsedIds }, pendingApproval: true, isActive: false },
+          include: { store: { select: { id: true, storeCode: true, storeName: true } } },
+        });
+      } catch (retryErr) {
+        console.error('[bulkReviewUsers] DB unavailable after retry:', retryErr.message);
+        throw new AppError('Unable to reach the database. Please try again in a moment.', 503);
+      }
+    }
 
     if (candidates.length === 0) throw new AppError('No pending users found for the provided IDs', 404);
 
@@ -2694,20 +2741,23 @@ export async function bulkReviewUsers(req, res, next) {
     const errors   = [];
 
     if (action === 'approve') {
-      for (const user of candidates) {
+      // Generate all temp passwords and hash them in parallel — avoids sequential bcrypt delays
+      const tempPasswords = candidates.map(() => randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!');
+      const passwordHashes = await Promise.all(tempPasswords.map(pw => bcrypt.hash(pw, 10)));
+
+      for (let i = 0; i < candidates.length; i++) {
+        const user = candidates[i];
         try {
-          const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
-          const passwordHash = await bcrypt.hash(tempPassword, 10);
           await prisma.user.update({
             where: { id: user.id, pendingApproval: true, isActive: false },
-            data:  { isActive: true, pendingApproval: false, passwordHash },
+            data:  { isActive: true, pendingApproval: false, passwordHash: passwordHashes[i], mustChangePassword: true },
           });
-          await createAuditLog({
+          createAuditLog({
             userId: req.user.id, action: 'APPROVE_USER',
             entityType: 'USER', entityId: user.id,
             metadata: { employeeId: user.employeeId, name: user.name, bulk: true },
-          });
-          approved.push({ id: user.id, employeeId: user.employeeId, name: user.name, tempPassword, store: user.store });
+          }).catch(() => {});
+          approved.push({ id: user.id, employeeId: user.employeeId, name: user.name, tempPassword: tempPasswords[i], store: user.store });
         } catch (e) {
           errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
         }
@@ -2737,4 +2787,62 @@ export async function bulkReviewUsers(req, res, next) {
       summary:  (approved.length + rejected.length) + ' processed, ' + errors.length + ' failed',
     });
   } catch (error) { next(error); }
+}
+
+// ── Bulk delete any users (not just pending) ───────────────────────────────────
+export async function bulkDeleteUsers(req, res, next) {
+  try {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      throw new AppError('userIds must be a non-empty array', 400);
+    }
+
+    const parsedIds = userIds.map((id, i) => requireId(id, `userIds[${i}]`));
+
+    // Cannot delete yourself
+    if (parsedIds.includes(req.user.id)) {
+      throw new AppError('You cannot delete your own account', 400);
+    }
+
+    // Fetch candidates and validate admin count
+    const [toDelete, totalAdmins] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: parsedIds } },
+        select: { id: true, role: true, employeeId: true, name: true },
+      }),
+      prisma.user.count({ where: { role: 'ADMIN', isActive: true } }),
+    ]);
+
+    if (toDelete.length === 0) throw new AppError('No matching users found', 404);
+
+    const deletingAdmins = toDelete.filter(u => u.role === 'ADMIN').length;
+    if (deletingAdmins > 0 && totalAdmins - deletingAdmins < 1) {
+      throw new AppError('Cannot delete all administrator accounts — at least one must remain', 400);
+    }
+
+    const validIds = toDelete.map(u => u.id);
+
+    // Transaction: clean up FK references then hard-delete
+    await prisma.$transaction(async (tx) => {
+      await tx.uploadBatch.updateMany({ where: { uploadedBy: { in: validIds } }, data: { uploadedBy: req.user.id } });
+      await tx.batchDeadlineExtension.updateMany({ where: { grantedBy: { in: validIds } }, data: { grantedBy: req.user.id } });
+      await tx.inventoryRecord.updateMany({ where: { submittedBy: { in: validIds } }, data: { submittedBy: null } });
+      await tx.auditLog.updateMany({ where: { userId: { in: validIds } }, data: { userId: null } });
+      await tx.user.deleteMany({ where: { id: { in: validIds } } });
+    });
+
+    validIds.forEach(id => invalidateUserCache(id));
+
+    createAuditLog({
+      userId: req.user.id, action: 'BULK_DELETE_USERS',
+      entityType: 'USER', entityId: null,
+      metadata: { ids: validIds, count: validIds.length },
+    }).catch(() => {});
+
+    sInvalidate('admin:dashboard');
+    res.json({ deleted: validIds.length, message: `${validIds.length} user(s) permanently deleted` });
+  } catch (error) {
+    if (error.code === 'P2025') return next(new AppError('One or more users not found', 404));
+    next(error);
+  }
 }

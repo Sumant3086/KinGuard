@@ -1,16 +1,15 @@
 import { env } from '../config/env.js';
 
-export function errorHandler(err, req, res, next) {
-  console.error('Error:', err);
-
-  // Default error response
+export function errorHandler(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
-  const message = err.message || 'An unexpected error occurred';
+  const message    = err.message    || 'An unexpected error occurred';
 
-  // Build response
-  const response = {
-    error: message,
-  };
+  // Only log unexpected server errors — not intentional 4xx validation failures
+  if (statusCode >= 500) {
+    console.error(`[error] ${req.method} ${req.path} → ${statusCode}:`, err);
+  }
+
+  const response = { error: message };
 
   // Include stack trace only in development
   if (env.server.nodeEnv === 'development') {

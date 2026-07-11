@@ -4,12 +4,44 @@ import prisma from './config/prisma.js';
 import { exec } from 'child_process';
 import { platform } from 'os';
 
+// Catch async errors that escape try/catch (e.g. background fire-and-forget that throws)
+// In development, log but DO NOT exit — let the server keep running for debugging
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] ❌ Unhandled promise rejection:', reason);
+  console.error('[server] Stack:', reason instanceof Error ? reason.stack : 'No stack trace');
+  // Only exit in production (where a process manager can restart)
+  const isDev = process.env.NODE_ENV === 'development';
+  if (!isDev) {
+    console.error('[server] Exiting due to unhandled rejection in production');
+    process.exit(1);
+  } else {
+    console.warn('[server] ⚠️  Continuing in development mode despite unhandled rejection');
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('[server] ❌ Uncaught exception:', error);
+  console.error('[server] Stack:', error.stack);
+  const isDev = process.env.NODE_ENV === 'development';
+  if (!isDev) {
+    console.error('[server] Exiting due to uncaught exception in production');
+    process.exit(1);
+  } else {
+    console.warn('[server] ⚠️  Continuing in development mode despite uncaught exception');
+  }
+});
+
 // Kill whatever process is holding the port so we never fight over it during development
 function freePort(port) {
+  // Validate port is a safe integer before interpolating into a shell command
+  const safePort = parseInt(port, 10);
+  if (!Number.isInteger(safePort) || safePort < 1 || safePort > 65535) {
+    return Promise.resolve();
+  }
   return new Promise((resolve) => {
     const cmd = platform() === 'win32'
-      ? `powershell -Command "$p=(Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue).OwningProcess; if($p){Stop-Process -Id $p -Force}"`
-      : `lsof -ti tcp:${port} | xargs kill -9 2>/dev/null || true`;
+      ? `powershell -Command "$p=(Get-NetTCPConnection -LocalPort ${safePort} -State Listen -ErrorAction SilentlyContinue).OwningProcess; if($p){Stop-Process -Id $p -Force}"`
+      : `lsof -ti tcp:${safePort} | xargs kill -9 2>/dev/null || true`;
     exec(cmd, () => resolve());
   });
 }
@@ -22,6 +54,21 @@ async function startServer() {
     // triggers the real DB handshake and can fail on cold start (watch reload).
     await prisma.$queryRaw`SELECT 1`;
     console.log('Database connected successfully');
+
+    // Purge expired refresh tokens left over from previous sessions.
+    // Best-effort — a failure here should not block startup.
+    prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: new Date() } } })
+      .then(r => { if (r.count > 0) console.log(`[startup] Purged ${r.count} expired refresh token(s)`); })
+      .catch(e => console.error('[startup] Failed to purge expired tokens:', e.message));
+
+    // Keep-alive: ping the DB every 4 minutes so Supabase's pooler doesn't
+    // drop idle connections (it times out after ~5 min of inactivity).
+    // Without this, the first request after a quiet period pays a cold-start
+    // reconnect penalty of 500–2000 ms.
+    setInterval(async () => {
+      try { await prisma.$queryRaw`SELECT 1`; }
+      catch { /* ignore — next real request will reconnect */ }
+    }, 240_000).unref();
 
     // Only kill the port in development — never do this in production
     if (env.server.nodeEnv === 'development') await freePort(env.server.port);
@@ -36,15 +83,29 @@ async function startServer() {
       process.exit(1);
     });
 
-    async function shutdown() {
+    async function shutdown(signal) {
+      console.log(`\n[server] ${signal} received — shutting down gracefully`);
+      // Cancel the force-exit timer if graceful shutdown succeeds first
+      const forceTimer = setTimeout(() => {
+        console.error('[server] Forced shutdown after timeout');
+        process.exit(1);
+      }, 10_000).unref();
+      // Stop accepting new connections; give in-flight requests 10 s to finish
       server.close(async () => {
-        await prisma.$disconnect();
-        process.exit(0);
+        clearTimeout(forceTimer);
+        try {
+          await prisma.$disconnect();
+          console.log('[server] Database disconnected');
+        } catch (err) {
+          console.error('[server] Error during DB disconnect:', err.message);
+        } finally {
+          process.exit(0);
+        }
       });
     }
 
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT',  shutdown);
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT',  () => shutdown('SIGINT'));
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

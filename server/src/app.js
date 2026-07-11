@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -13,9 +13,12 @@ app.use(helmet());
 app.use(
   cors({
     origin: env.client.url,
-    credentials: true,
+    credentials: true, // required for cross-origin cookies (dev proxy → server)
   })
 );
+
+// Parse cookies — required for HttpOnly JWT access/refresh token cookies
+app.use(cookieParser());
 
 // Compression
 app.use(compression());
@@ -24,35 +27,44 @@ app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// ── Rate limiting ─────────────────────────────────────────────────
-// Auth endpoints: 10 attempts per 15 minutes — brute-force guard
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many login attempts. Please wait 15 minutes and try again.' },
-});
-
-// General API: 300 requests per minute — allows normal use, blocks scrapers
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests. Please slow down.' },
-  skip: () => env.server.nodeEnv === 'development',
-});
-
-// Suppress verbose dev logs in production
-if (process.env.NODE_ENV === 'production') {
-  const noop = () => {};
-  console.log = noop;
+// In production suppress only console.log (debug/perf noise).
+// console.error and console.warn are preserved for error tracking.
+if (env.server.nodeEnv === 'production') {
+  console.log = () => {};
+  console.debug = () => {};
 }
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check (no-store, checked frequently by proxies)
+app.get('/api/health', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Request logging middleware (development only)
+if (env.server.nodeEnv === 'development') {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    console.log(`🌐 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+    
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      console.log(`✓ [${new Date().toISOString()}] ${req.method} ${req.path} → ${res.statusCode} (${duration}ms)`);
+    });
+    
+    next();
+  });
+}
+
+// Tiny helper: stamp cacheable GET responses so browsers/CDNs cooperate.
+// Only applied to routes that explicitly call it — mutation routes never should.
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.cacheFor = (seconds) => {
+    res.setHeader('Cache-Control', `private, max-age=${seconds}`);
+    res.json = (body) => { res.json = originalJson; return originalJson(body); };
+    return res;
+  };
+  next();
 });
 
 // Import routes
@@ -60,10 +72,9 @@ import authRoutes from './routes/authRoutes.js';
 import storeRoutes from './routes/storeRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
-// Mount routes — auth gets the strict limiter, rest get the general one
-app.use('/api/auth',  authLimiter, authRoutes);
-app.use('/api/store', apiLimiter,  storeRoutes);
-app.use('/api/admin', apiLimiter,  adminRoutes);
+app.use('/api/auth',  authRoutes);
+app.use('/api/store', storeRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling
 app.use(errorHandler);

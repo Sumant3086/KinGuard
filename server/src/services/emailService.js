@@ -1,20 +1,25 @@
 import nodemailer from 'nodemailer';
 
-// Returns { transporter, configured } so callers can distinguish "not set up" from errors.
+// Singleton transporter — reuses the SMTP connection pool across all emails.
+// Lazy-initialized so missing SMTP env vars don't crash the module on import.
+let _transporter = null;
+let _configured  = false;
+
 function getTransporter() {
+  if (_transporter) return { transporter: _transporter, configured: _configured };
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     return { transporter: null, configured: false };
   }
-  return {
-    transporter: nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: parseInt(SMTP_PORT || '587'),
-      secure: SMTP_PORT === '465',
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    }),
-    configured: true,
-  };
+  const smtpPort = parseInt(SMTP_PORT || '587');
+  _transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+  _configured = true;
+  return { transporter: _transporter, configured: true };
 }
 
 const FROM = process.env.SMTP_FROM || 'KinMarché <noreply@kinmarche.com>';
@@ -75,7 +80,7 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
       sent++;
     } catch (e) {
       failed++;
-      console.error(`[email] New-cycle notification failed for ${m.email}:`, e.message);
+      console.error('[email] New-cycle notification failed:', e.message);
     }
   }
   console.log(`[email] New-cycle: sent=${sent}, failed=${failed}`);
@@ -89,6 +94,10 @@ export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadl
   if (!configured) {
     console.log('[email] SMTP not configured — skipping reminder notifications');
     return { configured: false, sent: 0, failed: 0 };
+  }
+  if (!deadline) {
+    console.error('[email] sendDeadlineReminderEmail called without deadline — skipping');
+    return { configured: true, sent: 0, failed: 0 };
   }
   const dateStr  = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr    = new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -114,7 +123,7 @@ export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadl
       sent++;
     } catch (e) {
       failed++;
-      console.error(`[email] Reminder failed for ${m.email}:`, e.message);
+      console.error('[email] Reminder failed:', e.message);
     }
   }
   console.log(`[email] Reminder: sent=${sent}, failed=${failed}`);
@@ -146,8 +155,8 @@ export async function sendSubmissionEmail({ adminEmail, adminName, store, batchD
         </table>
       `),
     });
-    console.log(`[email] Submission notification sent to ${adminEmail}`);
+    console.log('[email] Submission notification sent');
   } catch (e) {
-    console.error(`[email] Submission notification failed for ${adminEmail}:`, e.message);
+    console.error('[email] Submission notification failed:', e.message);
   }
 }
