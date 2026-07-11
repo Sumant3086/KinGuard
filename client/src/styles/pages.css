@@ -1020,106 +1020,83 @@
   z-index: 1;
 }
 .home-feat {
-  background: linear-gradient(
-    135deg,
-    #c7d2fe 0%,
-    #ddd6fe 25%,
-    #e9d5ff 50%,
-    #f3e8ff 75%,
-    #fce7f3 100%
-  ) !important;
-  border: 2px solid rgba(220, 38, 38, 0.15);
+  background: rgba(15, 23, 42, 0.60);
+  backdrop-filter: blur(14px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-top: 2px solid rgba(220, 38, 38, 0.55);
   border-radius: 18px;
-  padding: 30px 26px;
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-top: 3px solid var(--vi);
+  padding: 28px 24px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.40),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: all 0.30s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
 .home-feat::before {
   content: '';
   position: absolute;
-  top: 0; right: 0;
-  width: 80px; height: 80px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at top right, rgba(220,38,38,0.08) 0%, transparent 70%);
+  inset: 0;
+  background: linear-gradient(135deg, rgba(220,38,38,0.06) 0%, transparent 55%);
   pointer-events: none;
-  transition: transform 0.3s ease;
+  transition: opacity 0.3s ease;
+  opacity: 1;
 }
 .home-feat::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(220,38,38,0.03), transparent);
+  background: linear-gradient(135deg, rgba(220,38,38,0.10) 0%, rgba(15,23,42,0.10) 100%);
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.3s ease;
 }
 .home-feat:hover {
-  transform: translateY(-6px) scale(1.02);
-  border-color: rgba(220, 38, 38, 0.25);
-  background: linear-gradient(
-    135deg,
-    #c4b5fd 0%,
-    #ddd6fe 25%,
-    #e9d5ff 50%,
-    #f5d0fe 75%,
-    #fbcfe8 100%
-  ) !important;
-  box-shadow: 
-    0 12px 40px rgba(220, 38, 38, 0.18),
-    0 6px 20px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transform: translateY(-5px) scale(1.015);
+  background: rgba(20, 30, 55, 0.72);
+  border-color: rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(220, 38, 38, 0.80);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(220, 38, 38, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
-.home-feat:hover::before {
-  transform: scale(1.5);
-}
-.home-feat:hover::after {
-  opacity: 1;
-}
+.home-feat:hover::after { opacity: 1; }
+
 .home-feat-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 18px;
-  width: 52px; height: 52px;
-  background: linear-gradient(135deg, rgba(220,38,38,0.10), rgba(220,38,38,0.06));
-  border: 1px solid rgba(220,38,38,0.12);
-  border-radius: 14px;
-  color: var(--vi);
-  transition: all 0.3s ease;
+  margin-bottom: 16px;
+  width: 50px; height: 50px;
+  background: rgba(220, 38, 38, 0.18);
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  border-radius: 13px;
+  color: #f87171;
+  transition: all 0.30s ease;
   position: relative;
   overflow: hidden;
-}
-.home-feat-icon::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.3), transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  flex-shrink: 0;
 }
 .home-feat:hover .home-feat-icon {
-  background: linear-gradient(135deg, rgba(220,38,38,0.15), rgba(220,38,38,0.10));
-  box-shadow: 0 4px 16px rgba(220,38,38,0.20);
-  transform: scale(1.1) rotate(5deg);
+  background: rgba(220, 38, 38, 0.28);
+  border-color: rgba(220, 38, 38, 0.50);
+  box-shadow: 0 4px 18px rgba(220, 38, 38, 0.30);
+  transform: scale(1.08) rotate(4deg);
+  color: #fca5a5;
 }
-.home-feat:hover .home-feat-icon::before {
-  opacity: 1;
+
+.home-feat h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 7px;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.50);
 }
-.home-feat h3 { 
-  font-size: 14.5px; 
-  font-weight: 800; 
-  color: #1e293b; 
-  margin-bottom: 8px;
-}
-.home-feat p { 
-  font-size: 12.5px; 
-  color: #334155; 
-  line-height: 1.65;
+.home-feat p {
+  font-size: 12.5px;
+  color: rgba(226, 232, 240, 0.75);
+  line-height: 1.62;
 }
 
 /* ── Footer — RED GRADIENT THEME ─────────────────────────────── */
