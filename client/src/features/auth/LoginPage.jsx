@@ -91,9 +91,10 @@ export default function LoginPage() {
                 <div className="ll-feat"><span className="ll-feat-ico"><IcoCheck /></span>Audit trail &amp; Excel reports</div>
               </div>
             </div>
-            <p className="ll-foot">
-              KinMarché &copy; {new Date().getFullYear()} &mdash; Kinshasa, DRC
-            </p>
+            <div className="ll-foot">
+              <span>KinMarché &copy; {new Date().getFullYear()} &mdash; Kinshasa, DRC</span>
+              <span className="ll-dev">Developed by Sumant Yadav</span>
+            </div>
           </div>
         </div>
 
