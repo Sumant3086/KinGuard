@@ -1,26 +1,63 @@
 /* ─── Screen-reader only ─────────────────────────────────────────── */
-/* Visually hidden but accessible to assistive technologies */
 .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+  position:absolute; width:1px; height:1px; padding:0;
+  margin:-1px; overflow:hidden; clip:rect(0,0,0,0);
+  white-space:nowrap; border-width:0;
+}
+.live-region { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
+
+/* ─── Animated gradient on nav ───────────────────────────────────── */
+@keyframes gradient-shift {
+  0%,100% { background-position:0% 50%; }
+  50%      { background-position:100% 50%; }
 }
 
-/* ─── Live region (screen reader announcements) ──────────────────── */
-/* Used by App.jsx for dynamic status updates */
-.live-region {
-  position: absolute;
-  left: -10000px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
+/* ─── Entrance animations ─────────────────────────────────────────── */
+@keyframes slide-in-right {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0); }
 }
+@keyframes slide-in-left {
+  from { opacity:0; transform:translateX(-20px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes fade-in-scale {
+  from { opacity:0; transform:scale(0.96); }
+  to   { opacity:1; transform:scale(1); }
+}
+
+.animate-slide-in-right { animation:slide-in-right 0.3s var(--ease-out); }
+.animate-slide-in-left  { animation:slide-in-left  0.3s var(--ease-out); }
+.animate-fade-scale      { animation:fade-in-scale  0.25s var(--ease-out); }
+
+/* Stagger delays */
+.stagger-1 { animation-delay:0.05s; }
+.stagger-2 { animation-delay:0.10s; }
+.stagger-3 { animation-delay:0.15s; }
+.stagger-4 { animation-delay:0.20s; }
+.stagger-5 { animation-delay:0.25s; }
+.stagger-6 { animation-delay:0.30s; }
+
+/* ─── Gradient text ───────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 60%, #b91c1c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Hover utilities ─────────────────────────────────────────────── */
+.hover-lift {
+  transition: transform var(--mid) var(--ease), box-shadow var(--mid) var(--ease);
+}
+.hover-lift:hover { transform:translateY(-2px); box-shadow:var(--sh-md); }
+
+.smooth-transition { transition:opacity var(--mid) var(--ease), transform var(--mid) var(--ease); }
+.gpu-accelerated   { transform:translateZ(0); will-change:transform; backface-visibility:hidden; }
+
+/* ─── Glow ────────────────────────────────────────────────────────── */
+.glow-red    { box-shadow:0 0 16px rgba(220,38,38,0.25); }
+.glow-subtle { box-shadow:0 0 12px rgba(220,38,38,0.12); }
 
 /* ─── Reduced motion ─────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
@@ -28,5 +65,6 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    animation-delay: 0s !important;
   }
 }

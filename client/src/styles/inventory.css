@@ -105,14 +105,14 @@
 /* ─── Inventory table card ───────────────────────────────────────── */
 .inv-table-card {
   background: var(--surface);
-  border-radius: var(--r-md);
+  border-radius: var(--r-lg);
   border: 1px solid rgba(220,38,38,0.09);
   margin-bottom: 18px;
   overflow: hidden;
-  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--sh-sm);
 }
 .inv-table { width:100%; border-collapse:collapse; font-size:13px; }
-.inv-table thead tr { background:var(--surface-2); }
+.inv-table thead tr { background: linear-gradient(180deg, #f4f6f9 0%, #f1f4f8 100%); }
 .inv-table th {
   padding: 10px 13px;
   text-align: left;
