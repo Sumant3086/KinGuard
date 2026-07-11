@@ -290,6 +290,63 @@ export default function Upload() {
             </div>
           )}
 
+          {/* Email notification status */}
+          {(() => {
+            const n = result.notifications;
+            if (!n) return null;
+            const noEmail = n.managersWithoutEmail || [];
+            if (n.emailsSent > 0) {
+              return (
+                <div style={{ display: 'flex', gap: 12, padding: '11px 14px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.22)', borderRadius: 'var(--r)', marginBottom: 16 }}>
+                  <span style={{ color: 'var(--green)', marginTop: 1 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  </span>
+                  <div>
+                    <strong style={{ fontSize: 13, color: 'var(--green)' }}>
+                      Email sent to {n.emailsSent} store manager{n.emailsSent !== 1 ? 's' : ''}
+                    </strong>
+                    {n.emailsFailed > 0 && <p style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>{n.emailsFailed} delivery failure{n.emailsFailed !== 1 ? 's' : ''} — check SMTP settings.</p>}
+                    {noEmail.length > 0 && <p style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>{noEmail.map(m => m.employeeId).join(', ')} — no email on file, skipped.</p>}
+                  </div>
+                </div>
+              );
+            }
+            if (!n.smtpConfigured) {
+              return (
+                <div style={{ display: 'flex', gap: 12, padding: '11px 14px', background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.20)', borderRadius: 'var(--r)', marginBottom: 16 }}>
+                  <span style={{ color: 'var(--t3)', marginTop: 1 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  </span>
+                  <p style={{ fontSize: 12, color: 'var(--t3)', margin: 0 }}>SMTP not configured — email notifications are disabled. Add SMTP credentials to <code>server/.env</code> to enable them.</p>
+                </div>
+              );
+            }
+            if (noEmail.length > 0) {
+              return (
+                <div style={{ display: 'flex', gap: 12, padding: '11px 14px', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: 'var(--r)', marginBottom: 16 }}>
+                  <span style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 13, color: '#d97706' }}>No email notifications sent</strong>
+                    <p style={{ fontSize: 12, color: 'var(--t3)', margin: '3px 0 6px' }}>
+                      {noEmail.length === 1
+                        ? `${noEmail[0].employeeId} (${noEmail[0].storeName}) has no email address on file.`
+                        : `${noEmail.length} store manager${noEmail.length !== 1 ? 's have' : ' has'} no email address on file: ${noEmail.map(m => m.employeeId).join(', ')}.`}
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--t3)', margin: '0 0 6px' }}>
+                      Add email addresses in User Management so managers receive cycle notifications automatically.
+                    </p>
+                    <button className="btn btn-sm" style={{ background: 'rgba(217,119,6,0.14)', color: '#d97706', border: '1px solid rgba(217,119,6,0.28)' }} onClick={() => navigate('/admin/users')}>
+                      Go to User Management →
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {result.errors?.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <strong style={{ fontSize: 13 }}>Rejected Rows (first 10):</strong>

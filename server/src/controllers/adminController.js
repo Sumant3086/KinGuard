@@ -766,16 +766,40 @@ export async function uploadInventory(req, res, next) {
 
     sInvalidate('admin:dashboard');
 
-    // Fire-and-forget: email only managers of stores that have records in this batch
+    // Email notification — run synchronously so we can report results to the caller.
+    // Distinguish managers WITH an email (can be notified) from those WITHOUT (need
+    // the admin to add an email address in User Management first).
     const affectedStoreIds = [...new Set(successfulRecords.map(r => r.storeId))];
-    prisma.user.findMany({
-      where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: affectedStoreIds } },
-      include: { store: true },
-    }).then(managers => {
-      import('../services/emailService.js').then(({ sendNewCycleEmail }) => {
-        sendNewCycleEmail({ managers, inventoryDate, deadline: submissionDeadline || null });
+    let emailsSent = 0;
+    let emailsFailed = 0;
+    let smtpConfigured = false;
+    const managersWithoutEmail = [];
+
+    try {
+      const allManagers = await prisma.user.findMany({
+        where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: affectedStoreIds } },
+        include: { store: true },
       });
-    }).catch(() => {});
+
+      allManagers.forEach(m => {
+        if (!m.email) managersWithoutEmail.push({ employeeId: m.employeeId, storeName: m.store?.storeName || m.storeId });
+      });
+
+      const notifiable = allManagers.filter(m => m.email);
+      if (notifiable.length > 0) {
+        const { sendNewCycleEmail } = await import('../services/emailService.js');
+        const emailResult = await sendNewCycleEmail({
+          managers: notifiable,
+          inventoryDate,
+          deadline: submissionDeadline || null,
+        });
+        emailsSent     = emailResult.sent;
+        emailsFailed   = emailResult.failed;
+        smtpConfigured = emailResult.configured;
+      }
+    } catch (emailErr) {
+      console.error('[upload] Email notification error:', emailErr.message);
+    }
 
     res.status(201).json({
       batchId: batch.id,
@@ -784,6 +808,12 @@ export async function uploadInventory(req, res, next) {
       rejectedRows: errors.length,
       errors: errors.slice(0, 50),
       autoCreatedUsers: autoCreatedUsers.length > 0 ? autoCreatedUsers : undefined,
+      notifications: {
+        emailsSent,
+        emailsFailed,
+        smtpConfigured,
+        managersWithoutEmail,
+      },
     });
   } catch (error) {
     next(error);
