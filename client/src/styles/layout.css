@@ -266,21 +266,29 @@
   background: #1a0e0a;
 }
 
-/* Background image — pinned below the 62 px sticky navbar */
+/* Background image — pinned below the 62 px sticky navbar.
+   Slow scale animation gives a subtle "living" feel without layout jank. */
 .store-shell::before {
   content: '';
   position: fixed;
-  top: 62px;       /* flush with the bottom edge of the navbar */
+  top: 62px;
   right: 0;
   bottom: 0;
   left: 0;
   background: url('../assets/img/Store manager background.png') center top / cover no-repeat;
   pointer-events: none;
   z-index: 0;
+  animation: store-bg-breathe 28s ease-in-out infinite;
+  will-change: transform;
 }
 
-/* Gradient overlay — darkest at very top and bottom, lighter in the middle
-   so the store image is clearly visible while content stays readable */
+@keyframes store-bg-breathe {
+  0%, 100% { transform: scale(1.00); }
+  50%       { transform: scale(1.04); }
+}
+
+/* Gradient overlay — warm dark vignette so cards stay fully readable
+   while enough image shows through to feel alive */
 .store-shell::after {
   content: '';
   position: fixed;
@@ -290,10 +298,10 @@
   left: 0;
   background: linear-gradient(
     180deg,
-    rgba(10, 6, 4, 0.45) 0%,
-    rgba(10, 6, 4, 0.18) 20%,
-    rgba(10, 6, 4, 0.14) 55%,
-    rgba(10, 6, 4, 0.30) 100%
+    rgba(10, 4, 2, 0.55) 0%,
+    rgba(10, 4, 2, 0.32) 25%,
+    rgba(10, 4, 2, 0.28) 60%,
+    rgba(10, 4, 2, 0.48) 100%
   );
   pointer-events: none;
   z-index: 0;
