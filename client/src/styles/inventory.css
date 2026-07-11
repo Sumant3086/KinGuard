@@ -353,18 +353,41 @@
 
 /* ─── Responsive — inventory ─────────────────────────────────────── */
 @media (max-width:768px) {
-  .inv-progress-bar      { padding:9px 16px; gap:10px; }
+  .inv-progress-bar        { padding:9px 16px; gap:10px; }
   .inv-progress-track-wrap { max-width:none; }
-  .inv-filters           { gap:8px; }
-  .search-input          { min-width:140px; }
-  .btn-row-save          { padding:4px 8px; font-size:10.5px; }
-  .qty-input             { width:68px; }
+  .inv-filters             { gap:8px; padding:12px 14px; border-radius:12px; }
+  .filter-label            { font-size:10.5px; }
+  .search-input            { min-width:130px; font-size:13px; }
+  .btn-row-save            { padding:4px 8px; font-size:10.5px; }
+  .qty-input               { width:64px; padding:5px 6px; font-size:12px; }
   .entry-bar, .entry-progress { padding:8px 16px; }
+  .remark-select           { font-size:11px; min-width:120px !important; }
+  .inv-table th            { font-size:10.5px; padding:8px 8px; }
+  .inv-table td            { font-size:12px; padding:7px 8px; }
+  .mat-name, .mat-desc     { font-size:12px; }
+  .inv-table-card          { border-radius:12px; }
 }
 @media (max-width:520px) {
   .inv-progress-right { display:none; }
-  .summary-metrics, .summary-wrap { grid-template-columns:1fr; }
-  .submit-summary, .summary-wrap  { padding:0 12px; }
-  .upload-steps  { flex-direction:column; gap:8px; align-items:flex-start; }
+  .inv-progress-left  { gap:4px; }
+  .inv-filters        { padding:10px 12px; border-radius:10px; }
+  .filter-group       { min-width:0; width:100%; }
+  .search-input       { width:100%; min-width:0; }
+
+  .summary-metrics, .summary-wrap { grid-template-columns:repeat(3,1fr); }
+  .submit-summary, .summary-wrap  { padding:0 10px; }
+  .summary-metric  { padding:14px 10px; border-radius:12px; }
+  .metric-value    { font-size:22px; }
+
+  .upload-steps    { flex-direction:column; gap:8px; align-items:flex-start; }
   .upload-step-sep { display:none; }
+
+  /* Hide less critical table columns on phones to prevent horizontal scroll */
+  .inv-table .save-col,
+  .inv-table .save-col-header { width:36px; }
+  .inv-table td, .inv-table th { padding:6px 7px; font-size:11.5px; }
+  .qty-input { width:56px; }
+}
+@media (max-width:480px) {
+  .summary-metrics, .summary-wrap { grid-template-columns:repeat(2,1fr); }
 }

@@ -797,6 +797,19 @@ export async function uploadInventory(req, res, next) {
         emailsFailed   = emailResult.failed;
         smtpConfigured = emailResult.configured;
       }
+
+      // Build list of attempted emails for the response so the admin can
+      // verify the addresses (e.g. spot a common typo like gmail.cc → gmail.com)
+      const SUSPICIOUS_DOMAINS = { 'gmail.cc':'gmail.com','gmail.co':'gmail.com','gmai.com':'gmail.com','gmial.com':'gmail.com','yahoo.cc':'yahoo.com','hotmail.cc':'hotmail.com','outlook.cc':'outlook.com' };
+      const managersEmailed = notifiable.map(m => {
+        const domain = m.email.split('@')[1]?.toLowerCase() || '';
+        return {
+          employeeId: m.employeeId,
+          email:      m.email,
+          storeName:  m.store?.storeName || '',
+          suspectedTypo: SUSPICIOUS_DOMAINS[domain] ? `Did you mean @${SUSPICIOUS_DOMAINS[domain].split('.').slice(-2).join('.')}?` : null,
+        };
+      });
     } catch (emailErr) {
       console.error('[upload] Email notification error:', emailErr.message);
     }
@@ -813,6 +826,7 @@ export async function uploadInventory(req, res, next) {
         emailsFailed,
         smtpConfigured,
         managersWithoutEmail,
+        managersEmailed: managersEmailed || [],
       },
     });
   } catch (error) {
