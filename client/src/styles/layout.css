@@ -410,6 +410,29 @@
   animation: fade-in-up 0.25s ease both;
 }
 
+/* ── Developer credit — shown at the bottom of every page ─────── */
+.dev-credit {
+  text-align: center;
+  padding: 20px 16px 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: rgba(100,116,139,0.55);
+  user-select: none;
+  transition: color 0.2s;
+}
+.dev-credit:hover {
+  color: rgba(220,38,38,0.60);
+}
+/* In store context the text shifts to warm cream to read over dark bg */
+.dev-credit-store {
+  color: rgba(255,222,180,0.28);
+}
+.dev-credit-store:hover {
+  color: rgba(255,222,180,0.60);
+}
+
 /* Store mobile bottom nav */
 .store-bottom-nav {
   display: none;
