@@ -52,10 +52,7 @@ input, select, textarea { font-family:inherit; }
 ::-webkit-scrollbar-thumb:hover { background:rgba(220,38,38,0.35); }
 
 /* ─── Loading skeleton ────────────────────────────────────────────── */
-@keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
-}
+/* shimmer keyframe lives in tokens.css */
 .skeleton {
   background: linear-gradient(90deg, #f1f5f9 30%, #e8edf3 50%, #f1f5f9 70%);
   background-size: 400px 100%;

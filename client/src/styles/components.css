@@ -1561,23 +1561,11 @@ input[type="checkbox"] {
   .modal-content{ border-radius:var(--r-md); }
 }
 
-/* ─── Store-context overrides (glass on dark image bg) ─────────────── */
-.store-shell .card {
-  background: rgba(255,255,255,0.11);
-  backdrop-filter: blur(18px) saturate(1.6);
-  border-color: rgba(255,255,255,0.16);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.10);
-}
-.store-shell .card:hover {
-  background: rgba(255,255,255,0.15);
-  border-color: rgba(255,255,255,0.22);
-  box-shadow: 0 8px 28px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.12);
-  transform: translateY(-1px);
-}
 /* ═══════════════════════════════════════════════════════════════════
-   STORE SHELL — unified dark-red palette
-   Base: deep charcoal #0c0402  Accent: KinMarché red #dc2626
-   Highlight: warm gold #f59e0b  All text: white / warm cream
+   STORE SHELL — warm amber-red palette matching admin panel tone
+   Mirrors the admin warm-brown glass but at higher opacity (90-95%)
+   to stay readable over the bright store photo background.
+   Base: rgba(68,36,14,…)   Accent: #dc2626   Gold: #f59e0b
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Headings ── */
@@ -1586,118 +1574,131 @@ input[type="checkbox"] {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
   background: none !important;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.80);
 }
 
 /* ── Page header ── */
 .store-shell .page-header,
 .store-shell .page-header-root {
-  background: rgba(12, 4, 2, 0.90) !important;
-  backdrop-filter: blur(20px) saturate(140%);
-  border: 1px solid rgba(220,38,38,0.40) !important;
-  box-shadow: 0 6px 28px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,138,0,0.12);
+  background: linear-gradient(135deg, rgba(68,36,14,0.95) 0%, rgba(50,24,8,0.93) 100%) !important;
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(220,38,38,0.45) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,138,0,0.18);
 }
 .store-shell .page-header h2,
 .store-shell .page-header-root h2 {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
   background: none !important;
-  font-size: 26px;
   text-shadow: 0 2px 10px rgba(0,0,0,0.70);
+  font-size: 26px;
 }
 .store-shell .page-header p,
 .store-shell .page-header-root p {
-  color: rgba(255, 222, 180, 0.90) !important;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.60);
+  color: rgba(255,222,180,0.90) !important;
 }
 
-/* ── Cards ── */
+/* ── General cards ── */
 .store-shell .card {
-  background: rgba(12, 4, 2, 0.88) !important;
-  border: 1px solid rgba(220,38,38,0.38) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,138,0,0.10);
-  backdrop-filter: blur(18px) saturate(130%);
+  background: linear-gradient(135deg, rgba(68,36,14,0.92) 0%, rgba(50,24,8,0.90) 100%) !important;
+  border: 1px solid rgba(220,38,38,0.35) !important;
+  box-shadow: 0 8px 36px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,138,0,0.14);
+  backdrop-filter: blur(22px) saturate(150%);
 }
 .store-shell .card::before {
-  background: linear-gradient(135deg, rgba(220,38,38,0.06) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(220,38,38,0.07) 0%, transparent 60%);
 }
 .store-shell .card:hover {
-  background: rgba(16, 6, 3, 0.92) !important;
+  background: linear-gradient(135deg, rgba(80,42,16,0.95) 0%, rgba(60,28,10,0.93) 100%) !important;
   border-color: rgba(220,38,38,0.55) !important;
-  box-shadow: 0 10px 38px rgba(0,0,0,0.60), 0 0 0 1px rgba(220,38,38,0.15);
+  box-shadow: 0 12px 44px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,138,0,0.20);
+  transform: translateY(-2px);
 }
 .store-shell .card-title,
-.store-shell .card h3      { color: #ffffff; }
+.store-shell .card h3         { color: #ffffff; }
 .store-shell .card-sub,
-.store-shell .card-header-meta { color: rgba(255,222,180,0.70); }
-.store-shell .card-header  { border-bottom-color: rgba(220,38,38,0.22); }
-.store-shell .card p       { color: rgba(255,222,180,0.80); }
+.store-shell .card-header-meta { color: rgba(255,222,180,0.68); }
+.store-shell .card-header      { border-bottom-color: rgba(255,138,0,0.18); }
+.store-shell .card p           { color: rgba(255,222,180,0.82); }
 .store-shell .card span:not(.badge):not(.autosave-dot) { color: rgba(255,255,255,0.90); }
 
 /* ── Stat cards ── */
 .store-shell .stat-card {
-  background: rgba(12, 4, 2, 0.84) !important;
-  border: 1px solid rgba(220,38,38,0.30);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 4px 18px rgba(0,0,0,0.50);
+  background: linear-gradient(135deg, rgba(56,30,10,0.93) 0%, rgba(38,18,6,0.92) 100%) !important;
+  border: 1px solid rgba(255,138,0,0.22) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,180,100,0.10);
 }
-.store-shell .stat-card h4    { color: rgba(255,222,180,0.68); }
-.store-shell .stat-card .value{ color: #ffffff; }
-.store-shell .stat-card p     { color: rgba(255,222,180,0.58); }
+.store-shell .stat-card h4     { color: rgba(255,200,120,0.65); }
+.store-shell .stat-card .value { color: #ffffff; text-shadow: 0 2px 8px rgba(0,0,0,0.60); }
+.store-shell .stat-card p      { color: rgba(255,200,120,0.55); }
 .store-shell .stat-card.danger .value  { color: #fca5a5; }
 .store-shell .stat-card.success .value { color: #86efac; }
 .store-shell .stat-card.warning .value { color: #fde68a; }
-.store-shell .stat-card:hover { border-color: rgba(220,38,38,0.50); }
+.store-shell .stat-card.info .value    { color: #93c5fd; }
+.store-shell .stat-card.accent .value  { color: #c4b5fd; }
+.store-shell .stat-card:hover {
+  border-color: rgba(255,138,0,0.38) !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,180,100,0.16);
+  transform: translateY(-3px);
+}
 
-/* ── Info grid ── */
-.store-shell .info-item .info-label { color: rgba(255,222,180,0.60); }
-.store-shell .info-item span        { color: #ffffff; }
+/* ── Info grid (cycle summary card) ── */
+.store-shell .info-item .info-label { color: rgba(255,200,120,0.62); font-size: 11px; }
+.store-shell .info-item span        { color: #ffffff; font-weight: 600; }
 
-/* ── Progress bar (sticky, below navbar) ── */
+/* ── Inventory table card ── */
+.store-shell .inv-table-card {
+  background: linear-gradient(135deg, rgba(68,36,14,0.94) 0%, rgba(50,24,8,0.92) 100%);
+  border: 1px solid rgba(220,38,38,0.30);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+}
+
+/* ── Progress bar (sticky) ── */
 .store-shell .inv-progress-bar {
-  background: rgba(12, 4, 2, 0.90);
+  background: linear-gradient(90deg, rgba(56,28,10,0.95) 0%, rgba(48,22,8,0.95) 100%);
   border-bottom: 1px solid rgba(220,38,38,0.30);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
 }
 .store-shell .inv-progress-fraction        { color: #ffffff; }
 .store-shell .inv-progress-fraction strong { color: #fbbf24; }
-.store-shell .inv-progress-label           { color: rgba(255,222,180,0.65); }
+.store-shell .inv-progress-label           { color: rgba(255,200,120,0.65); }
 .store-shell .inv-progress-pct             { color: rgba(255,255,255,0.85); }
 .store-shell .inv-progress-track {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,200,100,0.12);
+  border-color: rgba(255,138,0,0.10);
 }
 
-/* ── Filter row — give it a visible dark glass backing ── */
+/* ── Filter row ── */
 .store-shell .inv-filters {
-  background: rgba(12, 4, 2, 0.88);
+  background: linear-gradient(135deg, rgba(60,32,12,0.93) 0%, rgba(44,20,6,0.92) 100%);
   border: 1px solid rgba(220,38,38,0.30);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 14px 18px;
   margin-bottom: 16px;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.50);
 }
-.store-shell .filter-label { color: rgba(255,222,180,0.78) !important; }
-.store-shell .filter-group select,
-.store-shell .filter-group input { font-size: 13px; }
+.store-shell .filter-label { color: rgba(255,200,120,0.75) !important; font-size: 11px; }
 
-/* ── Lock / deadline banners ── */
+/* ── Banners ── */
 .store-shell .lock-banner {
-  background: rgba(12, 4, 2, 0.88);
-  border: 1px solid rgba(220,38,38,0.45);
+  background: linear-gradient(135deg, rgba(60,10,10,0.92) 0%, rgba(48,8,8,0.90) 100%);
+  border: 1px solid rgba(239,68,68,0.40);
   border-left: 3px solid #ef4444;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
 }
 .store-shell .lock-banner p    { color: #fca5a5; font-weight: 700; }
 .store-shell .lock-banner span { color: rgba(255,222,180,0.88) !important; }
 
 .store-shell .deadline-banner {
-  background: rgba(12, 4, 2, 0.88);
-  backdrop-filter: blur(14px);
+  background: linear-gradient(135deg, rgba(60,28,10,0.92) 0%, rgba(48,20,6,0.90) 100%);
+  backdrop-filter: blur(16px);
 }
 .store-shell .deadline-banner.overdue {
-  border: 1px solid rgba(251,146,60,0.45);
+  background: linear-gradient(135deg, rgba(60,28,6,0.92) 0%, rgba(48,20,4,0.90) 100%);
+  border: 1px solid rgba(251,146,60,0.42);
   border-left: 3px solid #fb923c;
 }
 .store-shell .deadline-banner.overdue p { color: #fdba74; }
@@ -1708,27 +1709,27 @@ input[type="checkbox"] {
 .store-shell .deadline-banner:not(.overdue) p { color: #fca5a5; }
 .store-shell .banner { color: rgba(255,255,255,0.92); }
 
-/* ── Alert in store context ── */
+/* ── Alerts & autosave ── */
 .store-shell .alert {
-  background: rgba(12, 4, 2, 0.85);
-  border-color: rgba(220,38,38,0.40);
-  color: rgba(255,222,180,0.90);
-  backdrop-filter: blur(12px);
-}
-.store-shell .alert-error  { border-color: rgba(239,68,68,0.45); color: #fca5a5; }
-.store-shell .autosave-notice {
-  background: rgba(12, 4, 2, 0.84);
+  background: rgba(50,22,8,0.90);
   border-color: rgba(220,38,38,0.38);
-  color: #fca5a5;
-  backdrop-filter: blur(12px);
+  color: rgba(255,222,180,0.92);
+  backdrop-filter: blur(14px);
+}
+.store-shell .alert-error { border-color: rgba(239,68,68,0.45); color: #fca5a5; }
+.store-shell .autosave-notice {
+  background: rgba(50,22,8,0.88);
+  border-color: rgba(255,138,0,0.28);
+  color: rgba(255,200,120,0.90);
+  backdrop-filter: blur(14px);
 }
 
 /* ── Inputs & selects ── */
 .store-shell input:not([type="checkbox"]):not([type="radio"]),
 .store-shell select,
 .store-shell textarea {
-  background: rgba(12, 4, 2, 0.88);
-  border: 1px solid rgba(220,38,38,0.38);
+  background: rgba(40,18,6,0.90);
+  border: 1px solid rgba(220,38,38,0.32);
   color: #ffffff;
 }
 .store-shell input:focus,
@@ -1736,63 +1737,58 @@ input[type="checkbox"] {
 .store-shell textarea:focus {
   border-color: #ef4444;
   box-shadow: 0 0 0 3px rgba(220,38,38,0.22);
-  background: rgba(16, 6, 3, 0.94);
+  background: rgba(50,22,6,0.95);
+  outline: none;
 }
 .store-shell input::placeholder,
-.store-shell textarea::placeholder { color: rgba(255,222,180,0.40); }
-.store-shell .search-icon { color: rgba(255,222,180,0.45); }
+.store-shell textarea::placeholder { color: rgba(255,200,120,0.38); }
+.store-shell .search-icon { color: rgba(255,200,120,0.42); }
 
-/* ── Table ── */
+/* ── Tables ── */
 .store-shell .table-wrap,
 .store-shell .table-container {
-  background: rgba(12, 4, 2, 0.92);
+  background: rgba(36,16,4,0.94);
   border-radius: 12px;
 }
 .store-shell table thead {
-  background: rgba(20, 6, 3, 0.96);
-  border-bottom: 2px solid rgba(220,38,38,0.38);
+  background: linear-gradient(90deg, rgba(56,22,6,0.98) 0%, rgba(44,16,4,0.98) 100%);
+  border-bottom: 2px solid rgba(220,38,38,0.35);
 }
 .store-shell table thead th {
-  color: rgba(255,222,180,0.90) !important;
+  color: rgba(255,200,120,0.88) !important;
   font-weight: 700;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.35px;
 }
-.store-shell table tbody tr {
-  border-bottom: 1px solid rgba(220,38,38,0.14);
-}
-.store-shell table tbody tr:hover {
-  background: rgba(220,38,38,0.08);
-}
+.store-shell table tbody tr { border-bottom: 1px solid rgba(255,138,0,0.10); }
+.store-shell table tbody tr:hover { background: rgba(220,38,38,0.07); }
 .store-shell table tbody td,
-.store-shell td {
-  color: rgba(255,255,255,0.92) !important;
-}
+.store-shell td { color: rgba(255,255,255,0.92) !important; }
 
 /* ── Badges ── */
 .store-shell .badge {
-  background: rgba(220,38,38,0.18);
-  border-color: rgba(220,38,38,0.35);
+  background: rgba(220,38,38,0.16);
+  border-color: rgba(220,38,38,0.32);
   color: #fca5a5;
 }
 .store-shell .badge-submitted,
 .store-shell .badge-matched {
-  background: rgba(34,197,94,0.16);
-  border-color: rgba(34,197,94,0.32);
+  background: rgba(34,197,94,0.14);
+  border-color: rgba(34,197,94,0.28);
   color: #86efac;
 }
 .store-shell .badge-pending {
-  background: rgba(251,191,36,0.16);
-  border-color: rgba(251,191,36,0.30);
+  background: rgba(251,191,36,0.14);
+  border-color: rgba(251,191,36,0.26);
   color: #fde68a;
 }
 .store-shell .badge-shortage {
-  background: rgba(239,68,68,0.18);
-  border-color: rgba(239,68,68,0.32);
+  background: rgba(239,68,68,0.16);
+  border-color: rgba(239,68,68,0.28);
   color: #fca5a5;
 }
 .store-shell .badge-excess {
-  background: rgba(59,130,246,0.16);
-  border-color: rgba(59,130,246,0.30);
+  background: rgba(59,130,246,0.14);
+  border-color: rgba(59,130,246,0.26);
   color: #93c5fd;
 }
 
@@ -1802,28 +1798,36 @@ input[type="checkbox"] {
 .store-shell .btn-accent,
 .store-shell .btn-success {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  box-shadow: 0 4px 14px rgba(220,38,38,0.45);
-  border: 1px solid rgba(220,38,38,0.35);
+  box-shadow: 0 4px 16px rgba(220,38,38,0.50);
+  border: 1px solid rgba(220,38,38,0.40);
+  color: #ffffff;
 }
 .store-shell .btn-primary:hover:not(:disabled),
 .store-shell .btn-gold:hover:not(:disabled),
 .store-shell .btn-accent:hover:not(:disabled),
 .store-shell .btn-success:hover:not(:disabled) {
-  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
-  box-shadow: 0 6px 20px rgba(220,38,38,0.55);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 6px 22px rgba(220,38,38,0.60);
+  transform: translateY(-1px);
 }
 .store-shell .btn-secondary,
 .store-shell .btn-ghost {
-  background: rgba(12, 4, 2, 0.78);
-  border-color: rgba(220,38,38,0.30);
+  background: rgba(50,22,6,0.85);
+  border-color: rgba(255,138,0,0.28);
   color: rgba(255,222,180,0.88);
 }
 .store-shell .btn-secondary:hover,
 .store-shell .btn-ghost:hover {
-  background: rgba(20,6,3,0.88);
-  border-color: rgba(220,38,38,0.50);
+  background: rgba(68,32,8,0.92);
+  border-color: rgba(255,138,0,0.45);
   color: #ffffff;
 }
+.store-shell .btn-row-save {
+  background: rgba(50,22,6,0.88);
+  border-color: rgba(255,138,0,0.30);
+  color: rgba(255,222,180,0.90);
+}
+.store-shell .btn-row-save:hover { background: rgba(68,32,8,0.94); }
 
 /* ─── Utility classes ─────────────────────────────────────────────── */
 .sr-only {

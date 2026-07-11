@@ -6,11 +6,7 @@
 }
 .live-region { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
 
-/* ─── Animated gradient on nav ───────────────────────────────────── */
-@keyframes gradient-shift {
-  0%,100% { background-position:0% 50%; }
-  50%      { background-position:100% 50%; }
-}
+/* gradient-shift keyframe lives in tokens.css */
 
 /* ─── Entrance animations ─────────────────────────────────────────── */
 @keyframes slide-in-right {
