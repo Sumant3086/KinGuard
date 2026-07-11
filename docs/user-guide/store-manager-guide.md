@@ -48,36 +48,36 @@ Your store's name will appear in the navigation bar at the top of the screen. Th
 
 ## Your Dashboard
 
-After signing in you land on your **Stock Count Dashboard**.
+After signing in you land on your **Inventory Count Dashboard**.
 
 ### What you see
 
 | Section | Description |
 |---------|-------------|
-| **Count Date** | The date this inventory cycle is for |
+| **Inventory Date** | The date this inventory cycle is for |
 | **Submission Deadline** | When your count is due (if set by your administrator) |
 | **Progress bar** | How many items you have counted out of the total |
-| **Summary cards** | Quick counts: Total Items, Still to Count, Counted, Exact Match, Missing Items, Surplus Items |
-| **Action card** | A direct link to open your Stock Count entry page |
+| **Summary cards** | Quick counts: Total Items, Pending Count, Submitted, Matched, Shortage Items, Excess Items |
+| **Action card** | A direct link to open your count sheet |
 
 ### Understanding the summary cards
 
 | Card | Meaning |
 |------|---------|
 | **Total Items** | Number of items assigned to your store for this cycle |
-| **Still to Count** | Items where you have not entered a count yet |
-| **Counted** | Items you have entered and saved |
-| **Exact Match** | Items where your count equals the book stock |
-| **Missing Items** | Items where your count is less than book stock (potential loss or theft) |
-| **Surplus Items** | Items where your count is more than book stock |
+| **Pending Count** | Items where you have not entered a count yet |
+| **Submitted** | Items you have entered and saved |
+| **Matched** | Items where your count equals the system stock |
+| **Shortage Items** | Items where your count is less than system stock (potential loss) |
+| **Excess Items** | Items where your count is more than system stock |
 
 ---
 
 ## Completing a Stock Count
 
-### Opening the Stock Count Page
+### Opening the Inventory Count Page
 
-Click **Start Counting →** on your dashboard, or **Stock Count** in the navigation bar.
+Click **Begin Count →** on your dashboard, or **Inventory Count** in the navigation bar.
 
 ### Understanding the Columns
 
@@ -110,8 +110,8 @@ You can also use the **Book Stock** field to correct the system quantity if it i
 **Tips:**
 - Use the **Search** box at the top to find a specific item quickly by name or code
 - Use the **Status** filter to show only items you have not yet counted (select **Pending**)
-- Use the **Count Period** dropdown to switch between different inventory cycles
-- The **Jump to next** button scrolls to the first uncounted item
+- Use the **Inventory Cycle** dropdown to switch between different cycles
+- The **Jump to Next Blank** button scrolls to the first uncounted item
 
 ### Recording Discrepancies
 
@@ -155,7 +155,7 @@ Here is how it works:
 
 You can also click the **Save** button in the last column to save immediately without waiting.
 
-The **autosave notice** at the top of the page appears while changes are in progress. It disappears once everything is saved.
+The **autosave notice** (*"Changes pending — saving automatically."*) appears while changes are in progress. It disappears once everything is saved.
 
 > **Do not close the browser tab** while the autosave indicator is spinning — wait for the green tick first.
 
@@ -175,7 +175,7 @@ Once you have entered counts for all items and the autosave is complete, you can
 ### How to submit:
 
 1. Click **Submit Count ({N} items)** in the top-right corner
-2. A confirmation dialog will appear — click **OK** to confirm
+2. A confirmation dialog will appear — click **Submit** to confirm
 3. Your count is submitted and records become read-only
 
 ### What happens after submission:
@@ -199,8 +199,8 @@ After submitting you will see a summary screen showing:
 If there are any discrepancies, a detail table shows each affected item with the variance and your entered category and notes.
 
 From this screen you can:
-- **View Submitted Records** — return to the Stock Count page in read-only mode
-- **Download My Report** — download your store's count as an Excel file
+- **View Submitted Records** — return to the Inventory Count page in read-only mode
+- **Download Reconciliation Report** — download your store's count as an Excel file
 
 Your records are now **locked**. If a correction is needed, contact your administrator — they can unlock your store's submission so you can recount.
 
@@ -212,11 +212,11 @@ Sometimes your administrator uploads inventory for a date in the past (for examp
 
 When this happens, your **Dashboard** will show a **blue notice** listing any earlier cycles that still need your count:
 
-> *"You have 1 earlier count cycle still pending: 1 Jun 2026"*
+> *"1 earlier inventory cycle is pending submission: 1 Jun 2026"*
 
 Click the date link to go directly to that cycle's stock count entry page.
 
-You can also select any past cycle from the **Count Period** dropdown on the Stock Count page to view or enter historical counts.
+You can also select any past cycle from the **Inventory Cycle** dropdown on the Inventory Count page to view historical counts.
 
 ---
 
@@ -246,7 +246,7 @@ A yellow warning banner appears on your dashboard:
 ### If the deadline has passed:
 
 A red lock banner appears:
-> *"Submission locked. The deadline has passed. Contact your administrator to request an extension."*
+> *"Count Cycle Locked. The submission deadline has passed. Contact your administrator to request an extension."*
 
 When locked, you cannot edit or submit records. Contact your administrator and ask them to grant you a deadline extension.
 
@@ -261,11 +261,11 @@ Your administrator can grant your store a later deadline than the rest of the ne
 At any time (before or after submission), you can download your store's count as an Excel file.
 
 **Before submission:**
-- Click the **Download** button in the top-right corner of the Stock Count page
+- Click the **Download Report** button in the top-right corner of the Inventory Count page
 
 **After submission:**
-- Click **Download My Report** on the post-submission summary screen
-- Or navigate to **Stock Count** in the navigation bar and click **Download**
+- Click **Download Reconciliation Report** on the post-submission summary screen
+- Or navigate to **Inventory Count** in the navigation bar and click **Download Report**
 
 The downloaded file includes all items for your store in the selected cycle: item code, item name, book stock, your count, variance, category, issue detail, and status.
 
@@ -276,8 +276,8 @@ The downloaded file includes all items for your store in the selected cycle: ite
 **Q: I submitted by mistake — can I undo it?**  
 A: No. Once submitted, records are locked and you cannot undo the submission yourself. Contact your administrator and ask them to unlock your store for the cycle so you can recount.
 
-**Q: I see a blank page or "No active stock count right now."**  
-A: Your administrator has not yet uploaded an inventory cycle, or your store was not included in the current cycle. Contact your administrator.
+**Q: I see "No Active Inventory Cycle" on my dashboard.**  
+A: Your administrator has not yet uploaded an inventory cycle for your store, or your store was not included in the current cycle. Contact your administrator.
 
 **Q: The Book Stock looks wrong for an item.**  
 A: The Book Stock comes from your organisation's ERP system at the time the file was uploaded. If it is clearly incorrect (e.g., missing a known delivery), you can edit the Book Stock field — but check with your administrator first. Any change is automatically logged.
