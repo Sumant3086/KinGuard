@@ -136,7 +136,7 @@ export default function Analytics() {
     <AdminLayout>
       <PageHeader
         title="Performance Analytics"
-        subtitle="Shortage rate trends and cycle-over-cycle comparisons across the network"
+        subtitle="Shortage rate trends and cycle-over-cycle comparisons across the store network."
       />
 
       {/* Network sparkline summary */}
@@ -177,7 +177,7 @@ export default function Analytics() {
           <EmptyState
             icon={NoTrendIcon}
             title="No Trend Data"
-            description="Complete at least 2 inventory cycles to see performance trends"
+            description="Complete at least 2 inventory cycles to see shortage rate trends."
           />
         ) : (
           <div className="table-wrap">

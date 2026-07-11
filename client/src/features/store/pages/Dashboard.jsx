@@ -76,12 +76,12 @@ export default function StoreDashboard() {
               <line x1="17" y1="6" x2="17" y2="3"/>
             </svg>
           </div>
-          <h3 className="empty-state-title">No Active Stock Count</h3>
+          <h3 className="empty-state-title">No Active Inventory Cycle</h3>
           <p className="empty-state-description">
-            There&apos;s no inventory cycle active right now. Your administrator will notify you when the next count begins.
+            No inventory cycle is currently active for your store. You will be notified when a cycle is uploaded.
           </p>
           <div className="empty-state-help">
-            Check back later or contact your manager if you believe this is incorrect
+            Contact your administrator if you believe this is an error.
           </div>
         </div>
       </StoreLayout>
@@ -104,12 +104,12 @@ export default function StoreDashboard() {
     <StoreLayout>
       <div className="page-header">
         <div>
-          <h2>Stock Count Dashboard</h2>
+          <h2>Inventory Count Dashboard</h2>
           <p>{store?.storeName} &mdash; {fmt(batch.inventoryDate)}</p>
         </div>
         {stats.pendingItems > 0 && (
           <Link to="/store/inventory" className="btn btn-primary">
-            Start Counting →
+            Begin Count →
           </Link>
         )}
       </div>
@@ -120,7 +120,7 @@ export default function StoreDashboard() {
           <span className="deadline-banner-icon"><IcoBannerInfo /></span>
           <div>
             <p>
-              <strong>You have {olderPendingBatches.length} earlier count cycle{olderPendingBatches.length > 1 ? 's' : ''} still pending:</strong>
+              <strong>{olderPendingBatches.length} earlier inventory cycle{olderPendingBatches.length > 1 ? 's' : ''} {olderPendingBatches.length > 1 ? 'are' : 'is'} pending submission:</strong>
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
               {olderPendingBatches.map(b => (
@@ -141,13 +141,13 @@ export default function StoreDashboard() {
       {isPastDue && (
         <div className="deadline-banner overdue">
           <span className="deadline-banner-icon"><IcoBannerLock /></span>
-          <p><strong>Submission locked.</strong> The deadline has passed. Contact your administrator to request an extension.</p>
+          <p><strong>Count Cycle Locked.</strong> The submission deadline has passed. Contact your administrator to request an extension.</p>
         </div>
       )}
       {isApproaching && !isPastDue && (
         <div className="deadline-banner">
           <span className="deadline-banner-icon"><IcoBannerClock /></span>
-          <p>Deadline approaching — please complete your count soon. Due: {deadline.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+          <p>Submission deadline approaching. Complete your count by: <strong>{deadline.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong></p>
         </div>
       )}
 
@@ -159,7 +159,7 @@ export default function StoreDashboard() {
             <span>{store?.storeName}</span>
           </div>
           <div className="info-item">
-            <span className="info-label">Count Date</span>
+            <span className="info-label">Inventory Date</span>
             <span>{fmt(batch.inventoryDate)}</span>
           </div>
           {deadline && (
@@ -198,37 +198,37 @@ export default function StoreDashboard() {
         )}
       </div>
 
-      {/* Summary stat cards — retail L&P language */}
+      {/* Summary stat cards */}
       <div className="stats-grid">
         <div className="stat-card info">
           <h4>Total Items</h4>
           <div className="value">{stats.totalItems}</div>
-          <p>assigned to your store</p>
+          <p>assigned to this store</p>
         </div>
         <div className="stat-card warning">
-          <h4>Still to Count</h4>
+          <h4>Pending Count</h4>
           <div className="value">{stats.pendingItems}</div>
-          <p>waiting for your count</p>
+          <p>awaiting physical count</p>
         </div>
         <div className="stat-card success">
-          <h4>Counted</h4>
+          <h4>Submitted</h4>
           <div className="value">{stats.submittedItems}</div>
-          <p>recorded &amp; saved</p>
+          <p>submitted and saved</p>
         </div>
         <div className="stat-card">
-          <h4>Exact Match</h4>
+          <h4>Matched</h4>
           <div className="value">{stats.matchedItems}</div>
-          <p>count = book stock</p>
+          <p>physical = system stock</p>
         </div>
         <div className="stat-card danger">
-          <h4>Missing Items</h4>
+          <h4>Shortage Items</h4>
           <div className="value">{stats.shortageItems}</div>
-          <p>count &lt; book stock</p>
+          <p>physical &lt; system stock</p>
         </div>
         <div className="stat-card accent">
-          <h4>Surplus Items</h4>
+          <h4>Excess Items</h4>
           <div className="value">{stats.excessItems}</div>
-          <p>count &gt; book stock</p>
+          <p>physical &gt; system stock</p>
         </div>
       </div>
 
@@ -236,30 +236,28 @@ export default function StoreDashboard() {
       <div className="card">
         {stats.pendingItems > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 28 }}>📦</span>
             <div>
               <p style={{ fontWeight: 700, marginBottom: 4 }}>
-                {stats.pendingItems} item{stats.pendingItems !== 1 ? 's' : ''} still need your physical count
+                {stats.pendingItems} item{stats.pendingItems !== 1 ? 's' : ''} require a physical count.
               </p>
               <p style={{ fontSize: 13, color: 'var(--t3)' }}>
-                Go to Stock Count to enter your counted quantities and note any discrepancies.
+                Open the count sheet to enter physical quantities for assigned items.
               </p>
             </div>
             <Link to="/store/inventory" className="btn btn-primary" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-              Open Stock Count →
+              Open Count Sheet →
             </Link>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 28 }}>✅</span>
             <div>
-              <p style={{ fontWeight: 700, marginBottom: 4 }}>All items counted and submitted</p>
+              <p style={{ fontWeight: 700, marginBottom: 4 }}>All items submitted for this cycle.</p>
               <p style={{ fontSize: 13, color: 'var(--t3)' }}>
-                Your count for this cycle is complete. Download your report below.
+                Submission complete. Download your reconciliation report below.
               </p>
             </div>
             <Link to="/store/inventory" className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-              View My Records
+              View Submitted Records
             </Link>
           </div>
         )}

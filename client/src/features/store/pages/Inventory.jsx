@@ -173,7 +173,7 @@ export default function StoreInventory() {
         loadInventory();
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load count periods. Please refresh the page.');
+      setError(err.response?.data?.error || 'Failed to load inventory cycles. Please refresh.');
       setLoading(false);
     }
   }
@@ -296,11 +296,11 @@ export default function StoreInventory() {
 
   async function handleSubmit() {
     if (!selectedBatch) {
-      toast.warning('Please select a specific date before submitting');
+      toast.warning('Select an inventory cycle before submitting.');
       return;
     }
     if (Object.keys(editedRecordsRef.current).length > 0) {
-      toast.warning('Please wait for all changes to save before submitting');
+      toast.warning('Wait for all changes to finish saving before submitting.');
       return;
     }
 
@@ -308,18 +308,18 @@ export default function StoreInventory() {
     const pending = records.filter(r => r.status === 'PENDING');
     const missingPhysical = pending.filter(r => r.physicalQuantity === null);
     if (missingPhysical.length > 0) {
-      toast.error(`${missingPhysical.length} item(s) are missing Physical Stock. Please fill in all quantities.`);
+      toast.error(`Physical count missing for ${missingPhysical.length} item(s). Enter all quantities before submitting.`);
       return;
     }
     const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
     const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
     if (missingCategory.length > 0) {
-      toast.error(`${missingCategory.length} item(s) with discrepancies need a Category selected.`);
+      toast.error(`${missingCategory.length} item(s) with variances require a category selection.`);
       return;
     }
     const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
     if (missingDetail.length > 0) {
-      toast.error(`${missingDetail.length} item(s) with discrepancies need Issue Details filled in.`);
+      toast.error(`${missingDetail.length} item(s) with variances are missing issue details.`);
       return;
     }
 
@@ -332,7 +332,7 @@ export default function StoreInventory() {
       setSubmitting(true);
       const res = await storeApi.submitInventory(batchId);
       setSubmitResult(res);
-      toast.success('Inventory submitted successfully!', 5000);
+      toast.success('Inventory submitted successfully.', 5000);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to submit inventory');
     } finally {
@@ -371,8 +371,8 @@ export default function StoreInventory() {
         <div className="submit-summary">
           <div className="submit-summary-header">
             <div className="submit-success-icon">✓</div>
-            <h2>Inventory Submitted!</h2>
-            <p>{submitResult.recordCount} items counted &amp; submitted successfully. Your manager has been notified.</p>
+            <h2>Submission Complete</h2>
+            <p>{submitResult.recordCount} item{submitResult.recordCount !== 1 ? 's' : ''} submitted. Your administrator has been notified.</p>
           </div>
           <div className="summary-metrics">
             <div className="summary-metric matched">
@@ -428,7 +428,7 @@ export default function StoreInventory() {
               View Submitted Records
             </button>
             <button className="btn btn-secondary" onClick={handleDownload}>
-              Download My Report
+              Download Reconciliation Report
             </button>
           </div>
         </div>
@@ -443,7 +443,7 @@ export default function StoreInventory() {
         onClose={() => setShowSubmitConfirm(false)}
         onConfirm={() => { setShowSubmitConfirm(false); executeSubmit(); }}
         title="Submit Inventory"
-        message="Once submitted, all items will become read-only and your manager will be notified. Are you sure?"
+        message="Once submitted, all items become read-only and your administrator will be notified. This action cannot be undone."
         confirmText="Submit"
         cancelText="Go Back"
         type="warning"
@@ -470,10 +470,10 @@ export default function StoreInventory() {
             {blankCount > 0 ? (
               <>
                 <span className="inv-blank-count">{blankCount} blank</span>
-                <button className="btn-jump" onClick={jumpToNextBlank}>Jump to next</button>
+                <button className="btn-jump" onClick={jumpToNextBlank}>Jump to Next Blank</button>
               </>
             ) : (
-              <span className="inv-all-entered">All entered</span>
+              <span className="inv-all-entered">All Filled</span>
             )}
           </div>
         </div>
@@ -482,7 +482,7 @@ export default function StoreInventory() {
       {/* ── Page header ── */}
       <div className="page-header" style={{ marginTop: 24 }}>
         <div>
-          <h2>Stock Count Entry</h2>
+          <h2>Inventory Count</h2>
           {selectedBatch && batches.length > 0 && (() => {
             const b = batches.find(b => b.id.toString() === selectedBatch);
             return b ? (
@@ -501,11 +501,11 @@ export default function StoreInventory() {
               >
                 {submitting ? 'Submitting…' : `Submit Count (${totalPending} items)`}
               </button>
-              <span style={{ fontSize: 11, color: 'var(--t3)' }}>Once submitted, your manager will be notified</span>
+              <span style={{ fontSize: 11, color: 'var(--t3)' }}>Once submitted, your administrator will be notified.</span>
             </div>
           )}
           <button onClick={handleDownload} className="btn btn-ghost btn-sm">
-            Download
+            Download Report
           </button>
         </div>
       </div>
@@ -518,7 +518,7 @@ export default function StoreInventory() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </span>
           <div>
-            <p>Your inventory is locked.</p>
+            <p>This count cycle is locked.</p>
             <span>Contact your administrator to make changes or request an extension.</span>
           </div>
         </div>
@@ -527,14 +527,14 @@ export default function StoreInventory() {
       {(hasUnsavedChanges || isSaving) && (
         <div className="autosave-notice">
           <div className="autosave-dot" />
-          {isSaving ? 'Saving changes…' : 'Unsaved changes — auto-saving in a moment'}
+          {isSaving ? 'Saving…' : 'Changes pending — saving automatically.'}
         </div>
       )}
 
       {/* ── Filters ── */}
       <div className="inv-filters">
         <div className="filter-group">
-          <span className="filter-label">Count Period</span>
+          <span className="filter-label">Inventory Cycle</span>
           <select
             value={selectedBatch}
             onChange={e => setSelectedBatch(e.target.value)}
@@ -549,7 +549,7 @@ export default function StoreInventory() {
             ))}
           </select>
           <span style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4, display: 'block' }}>
-            Select a past count period to view historical records (read-only)
+            Select a past cycle to view read-only historical records.
           </span>
         </div>
         <div className="filter-group">
@@ -560,7 +560,7 @@ export default function StoreInventory() {
             </svg>
             <input
               type="text"
-              placeholder="Search materials…"
+              placeholder="Search by material code or name…"
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               className="search-input"
@@ -596,10 +596,10 @@ export default function StoreInventory() {
               <line x1="12" y1="7" x2="12" y2="3"/><line x1="9" y1="3" x2="15" y2="3"/>
             </svg>
           </div>
-          <h3 className="empty-state-title">No Count Cycles Yet</h3>
+          <h3 className="empty-state-title">No Inventory Cycles Assigned</h3>
           <p className="empty-state-description">
-            Your administrator has not uploaded an inventory cycle for your store yet.
-            You will be notified by email when items are ready for counting.
+            No inventory cycles have been assigned to your store.
+            You will be notified when a cycle is uploaded and ready for counting.
           </p>
           <div className="empty-state-help">
             If you believe this is an error, contact your administrator.
@@ -613,10 +613,10 @@ export default function StoreInventory() {
               <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
             </svg>
           </div>
-          <h3 className="empty-state-title">No Items to Count</h3>
+          <h3 className="empty-state-title">No Items for This Cycle</h3>
           <p className="empty-state-description">
             No inventory items are assigned to your store for the selected cycle.
-            Try selecting a different count period above.
+            Try selecting a different cycle above.
           </p>
         </div>
       ) : (
@@ -732,7 +732,7 @@ export default function StoreInventory() {
                             className="remark-select"
                             style={{ width: '100%', minWidth: 110, fontSize: 12 }}
                           >
-                            <option value="">-- Select --</option>
+                            <option value="">Select category…</option>
                             {CATEGORIES.map(cat => (
                               <option key={cat} value={cat}>{cat}</option>
                             ))}
@@ -747,7 +747,7 @@ export default function StoreInventory() {
                         {isEditable ? (() => {
                           const cat = getFieldValue(record, 'shrinkageCategory');
                           if (!cat) {
-                            return <span style={{ fontSize: 11, color: 'var(--t4)' }}>Select category first</span>;
+                            return <span style={{ fontSize: 11, color: 'var(--t4)' }}>Select a category first.</span>;
                           }
                           if (cat === 'Other') {
                             return (
@@ -755,7 +755,7 @@ export default function StoreInventory() {
                                 type="text"
                                 value={getFieldValue(record, 'remarks')}
                                 onChange={e => updateField(record.id, 'remarks', e.target.value)}
-                                placeholder="Describe the issue…"
+                                placeholder="Provide issue details…"
                                 className="inline-input remark-input"
                                 style={{ minWidth: 160 }}
                               />
@@ -768,7 +768,7 @@ export default function StoreInventory() {
                               className="remark-select"
                               style={{ width: '100%', minWidth: 160, fontSize: 12 }}
                             >
-                              <option value="">-- Select issue --</option>
+                              <option value="">Select issue detail…</option>
                               {(ISSUE_REASONS[cat] || []).map(reason => (
                                 <option key={reason} value={reason}>{reason}</option>
                               ))}

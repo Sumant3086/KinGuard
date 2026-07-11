@@ -28,7 +28,7 @@ const NAV = [
   { to: '/admin/reports',   icon: 'reports',   label: 'Reports' },
   { to: '/admin/analytics', icon: 'analytics', label: 'Analytics' },
   { divider: true },
-  { to: '/admin/stores',    icon: 'stores',    label: 'Stores' },
+  { to: '/admin/stores',    icon: 'stores',    label: 'Stores'  },
   { to: '/admin/users',     icon: 'users',     label: 'Users' },
   { to: '/admin/audit-logs',icon: 'audit',     label: 'Activity Log' },
 ];
