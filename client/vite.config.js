@@ -9,7 +9,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-        timeout: 120000, // 2 minutes for file uploads
+        timeout: 120000,
       },
     },
   },
@@ -18,21 +18,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor:       ['react', 'react-dom', 'react-router-dom', 'axios'],
+          vendor:        ['react', 'react-dom', 'react-router-dom', 'axios'],
           'admin-pages': [
-            './src/pages/admin/Dashboard',
-            './src/pages/admin/Stores',
-            './src/pages/admin/Users',
-            './src/pages/admin/AuditLogs',
-            './src/pages/admin/Inventory',
-            './src/pages/admin/Reports',
-            './src/pages/admin/Upload',
-            './src/pages/admin/Analytics',
-            './src/pages/admin/Batches',
+            './src/features/admin/pages/Dashboard',
+            './src/features/admin/pages/Stores',
+            './src/features/admin/pages/Users',
+            './src/features/admin/pages/AuditLogs',
+            './src/features/admin/pages/Inventory',
+            './src/features/admin/pages/Reports',
+            './src/features/admin/pages/Upload',
+            './src/features/admin/pages/Analytics',
+            './src/features/admin/pages/Batches',
           ],
           'store-pages': [
-            './src/pages/store/Dashboard',
-            './src/pages/store/Inventory',
+            './src/features/store/pages/Dashboard',
+            './src/features/store/pages/Inventory',
           ],
         },
       },
