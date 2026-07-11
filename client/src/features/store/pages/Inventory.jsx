@@ -94,6 +94,8 @@ export default function StoreInventory() {
   const [submitting, setSubmitting]     = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [searchInput, setSearchInput]   = useState('');
+  // Track which records have "custom reason" mode active for the Other category
+  const [otherCustomIds, setOtherCustomIds] = useState(new Set());
   const search = useDebounce(searchInput, 400);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
@@ -190,6 +192,7 @@ export default function StoreInventory() {
       setSavingRecords(new Set());
       setSavedRecords(new Set());
       setErrorRecords(new Map());
+      setOtherCustomIds(new Set());
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load inventory');
     } finally {
@@ -742,34 +745,73 @@ export default function StoreInventory() {
                         )}
                       </td>
 
-                      {/* Issue Detail — dropdown or free-text depending on category */}
+                      {/* Issue Detail — dropdown for every category; Other also shows custom input */}
                       <td>
                         {isEditable ? (() => {
                           const cat = getFieldValue(record, 'shrinkageCategory');
                           if (!cat) {
                             return <span style={{ fontSize: 11, color: 'var(--t4)' }}>Select a category first.</span>;
                           }
+
+                          const remarks   = getFieldValue(record, 'remarks');
+                          const presets   = ISSUE_REASONS[cat] || [];
+                          const isPreset  = presets.includes(remarks);
+
+                          // Custom mode: user clicked "Type custom" OR existing value isn't a preset
+                          const isCustom  = otherCustomIds.has(record.id) ||
+                                            (cat === 'Other' && remarks !== '' && !isPreset);
+
                           if (cat === 'Other') {
                             return (
-                              <input
-                                type="text"
-                                value={getFieldValue(record, 'remarks')}
-                                onChange={e => updateField(record.id, 'remarks', e.target.value)}
-                                placeholder="Provide issue details…"
-                                className="inline-input remark-input"
-                                style={{ minWidth: 160 }}
-                              />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 180 }}>
+                                <select
+                                  value={isCustom ? '__CUSTOM__' : remarks}
+                                  onChange={e => {
+                                    if (e.target.value === '__CUSTOM__') {
+                                      setOtherCustomIds(prev => new Set(prev).add(record.id));
+                                      // Clear remarks so custom input starts blank
+                                      if (isPreset) updateField(record.id, 'remarks', '');
+                                    } else {
+                                      setOtherCustomIds(prev => {
+                                        const s = new Set(prev); s.delete(record.id); return s;
+                                      });
+                                      updateField(record.id, 'remarks', e.target.value);
+                                    }
+                                  }}
+                                  className="remark-select"
+                                  style={{ width: '100%', fontSize: 12 }}
+                                >
+                                  <option value="">Select issue detail…</option>
+                                  {presets.map(reason => (
+                                    <option key={reason} value={reason}>{reason}</option>
+                                  ))}
+                                  <option disabled style={{ color: 'var(--t4)' }}>──────────────</option>
+                                  <option value="__CUSTOM__">✏ Type a custom reason…</option>
+                                </select>
+                                {isCustom && (
+                                  <input
+                                    type="text"
+                                    value={!isPreset ? remarks : ''}
+                                    onChange={e => updateField(record.id, 'remarks', e.target.value)}
+                                    placeholder="Type custom reason…"
+                                    className="inline-input remark-input"
+                                    style={{ width: '100%', fontSize: 12 }}
+                                    autoFocus
+                                  />
+                                )}
+                              </div>
                             );
                           }
+
                           return (
                             <select
-                              value={getFieldValue(record, 'remarks')}
+                              value={remarks}
                               onChange={e => updateField(record.id, 'remarks', e.target.value)}
                               className="remark-select"
                               style={{ width: '100%', minWidth: 160, fontSize: 12 }}
                             >
                               <option value="">Select issue detail…</option>
-                              {(ISSUE_REASONS[cat] || []).map(reason => (
+                              {presets.map(reason => (
                                 <option key={reason} value={reason}>{reason}</option>
                               ))}
                             </select>
