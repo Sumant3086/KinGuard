@@ -1601,13 +1601,25 @@ input[type="checkbox"] {
 
 /* Page header in store context */
 .store-shell .page-header {
-  background: rgba(255,255,255,0.12);
-  backdrop-filter: blur(18px);
-  border-color: rgba(255,255,255,0.16);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.20);
+  background: rgba(15, 8, 5, 0.72) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgba(220,38,38,0.28) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,200,100,0.10);
 }
-.store-shell .page-header h2 { color: #ffffff; }
-.store-shell .page-header p  { color: rgba(255,255,255,0.70); }
+.store-shell .page-header h2 { color: #ffffff !important; -webkit-text-fill-color: #ffffff; background: none; }
+.store-shell .page-header p  { color: rgba(255,255,255,0.78) !important; }
+
+/* Progress bar in store context — dark glass to match card theme */
+.store-shell .inv-progress-bar {
+  background: rgba(15, 8, 5, 0.78);
+  border-bottom: 1px solid rgba(220,38,38,0.25);
+  backdrop-filter: blur(14px);
+}
+.store-shell .inv-progress-fraction { color: #ffffff; }
+.store-shell .inv-progress-fraction strong { color: #ffd699; }
+.store-shell .inv-progress-label { color: rgba(255,255,255,0.60); }
+.store-shell .inv-progress-pct { color: rgba(255,255,255,0.80); }
+.store-shell .inv-progress-track { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.08); }
 
 /* Banner text in store context - subtle red accents */
 .store-shell .banner   { color: rgba(255,255,255,0.90); }
