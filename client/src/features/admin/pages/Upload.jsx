@@ -295,19 +295,44 @@ export default function Upload() {
             const n = result.notifications;
             if (!n) return null;
             const noEmail = n.managersWithoutEmail || [];
-            if (n.emailsSent > 0) {
+            if (n.emailsSent > 0 || n.managersEmailed?.length > 0) {
+              const emailed = n.managersEmailed || [];
+              const typos   = emailed.filter(m => m.suspectedTypo);
               return (
-                <div style={{ display: 'flex', gap: 12, padding: '11px 14px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.22)', borderRadius: 'var(--r)', marginBottom: 16 }}>
-                  <span style={{ color: 'var(--green)', marginTop: 1 }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                  </span>
-                  <div>
-                    <strong style={{ fontSize: 13, color: 'var(--green)' }}>
-                      Email sent to {n.emailsSent} store manager{n.emailsSent !== 1 ? 's' : ''}
-                    </strong>
-                    {n.emailsFailed > 0 && <p style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>{n.emailsFailed} delivery failure{n.emailsFailed !== 1 ? 's' : ''} — check SMTP settings.</p>}
-                    {noEmail.length > 0 && <p style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>{noEmail.map(m => m.employeeId).join(', ')} — no email on file, skipped.</p>}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', gap: 12, padding: '11px 14px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.22)', borderRadius: 'var(--r)', marginBottom: typos.length ? 8 : 0 }}>
+                    <span style={{ color: 'var(--green)', marginTop: 1, flexShrink: 0 }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    </span>
+                    <div>
+                      <strong style={{ fontSize: 13, color: 'var(--green)' }}>
+                        Email sent to {n.emailsSent} store manager{n.emailsSent !== 1 ? 's' : ''}
+                      </strong>
+                      {emailed.map(m => (
+                        <p key={m.employeeId} style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>
+                          {m.employeeId} ({m.storeName}) — <code style={{ fontSize: 11 }}>{m.email}</code>
+                        </p>
+                      ))}
+                      {n.emailsFailed > 0 && <p style={{ fontSize: 12, color: 'var(--red)', margin: '4px 0 0' }}>{n.emailsFailed} failed to deliver — check SMTP settings.</p>}
+                      {noEmail.length > 0 && <p style={{ fontSize: 12, color: 'var(--t3)', margin: '4px 0 0' }}>{noEmail.map(m => m.employeeId).join(', ')} skipped — no email address on file.</p>}
+                    </div>
                   </div>
+                  {typos.length > 0 && (
+                    <div style={{ display: 'flex', gap: 10, padding: '10px 14px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.28)', borderRadius: 'var(--r)' }}>
+                      <span style={{ color: 'var(--red)', flexShrink: 0, marginTop: 1 }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      </span>
+                      <div>
+                        <strong style={{ fontSize: 12, color: 'var(--red)' }}>Possible email address typo detected</strong>
+                        {typos.map(m => (
+                          <p key={m.employeeId} style={{ fontSize: 12, color: 'var(--t3)', margin: '3px 0 0' }}>
+                            {m.employeeId}: <code style={{ fontSize: 11 }}>{m.email}</code> — {m.suspectedTypo} Fix it in{' '}
+                            <button onClick={() => navigate('/admin/users')} style={{ background: 'none', border: 'none', color: 'var(--vi)', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>User Management</button>.
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             }

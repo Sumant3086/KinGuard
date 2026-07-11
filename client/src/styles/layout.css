@@ -478,9 +478,41 @@
   .store-bottom-nav  { display:flex; }
   .store-content     { padding:14px 14px 76px; }
   .store-chip        { display:none; }
+
+  /* Admin navbar: reduce height + logo size on tablet */
+  .hl-nav         { height:54px; }
+  .hl-logo-img    { width:32px; height:32px; }
+  .hl-name        { font-size:14px; }
+  .hl-tagline     { font-size:8px; }
+
+  /* Store navbar */
+  .store-header-inner { height:54px; }
+  .store-logo-img     { width:34px; height:34px; }
+  .store-brand-name   { font-size:14px; }
+
+  /* Adjust before pseudo-element start to match new header height */
+  .store-shell::before,
+  .store-shell::after { top:54px; }
 }
 @media (max-width:520px) {
-  .hl-nav             { padding:0 12px; }
-  .hl-content         { padding:12px 12px 36px; }
-  .store-header-inner { padding:0 14px; }
+  /* Admin navbar compact */
+  .hl-nav              { padding:0 12px; height:50px; }
+  .hl-content          { padding:12px 12px 36px; }
+  .hl-logo-img         { width:28px; height:28px; }
+  .hl-brand-text .hl-name    { font-size:12px; }
+  .hl-brand-text .hl-tagline { font-size:7px; display:none; }
+  .hl-emp              { font-size:10px; }
+  .hl-role             { font-size:9px; }
+
+  /* Store navbar compact */
+  .store-header-inner { padding:0 12px; height:50px; }
+  .store-logo-img     { width:30px; height:30px; padding:4px; }
+  .store-brand-name   { font-size:13px; }
+
+  /* Adjust pseudo-element start for compact navbar */
+  .store-shell::before,
+  .store-shell::after { top:50px; }
+
+  /* Mobile menu */
+  .hl-mobile-menu { top:50px; }
 }
