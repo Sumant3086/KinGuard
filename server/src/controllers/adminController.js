@@ -2265,7 +2265,8 @@ export async function approveUser(req, res, next) {
         if (user.isActive) throw new AppError('User is already active', 409);
         if (!user.pendingApproval) throw new AppError('This user is not in pending approval state', 409);
 
-        const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
+        // Default password for all approved users
+        const tempPassword = 'Password123!';
         const passwordHash = await bcrypt.hash(tempPassword, 10);
 
         const updated = await tx.user.update({
@@ -2354,26 +2355,26 @@ export async function batchCreateUsersForPlants(req, res, next) {
     });
     const existingIds = new Set(existingUsers.map(u => u.employeeId));
 
-    // Generate all temp passwords and bcrypt hashes IN PARALLEL (was sequential → ~100ms/store)
+    // Generate all plant data with default password
+    const tempPassword = 'Password123!';
     const plantData = validPlants.map(plant => {
       const store = storeMap.get(plant.parsedStoreId);
       if (!store) { errors.push({ storeId: plant.parsedStoreId, error: 'Plant not found' }); return null; }
       const employeeId = `MGR${store.storeCode}`;
       if (existingIds.has(employeeId)) { errors.push({ storeId: plant.parsedStoreId, storeCode: store.storeCode, error: `Username ${employeeId} already exists` }); return null; }
-      const tempPassword = randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!';
       const userName = plant.customName?.trim() || `Manager ${store.storeCode}`;
       return { store, employeeId, userName, tempPassword };
     }).filter(Boolean);
 
-    // All bcrypt operations in parallel — was O(n×100ms), now O(100ms) regardless of count
-    const hashes = await Promise.all(plantData.map(p => bcrypt.hash(p.tempPassword, 10)));
+    // Single bcrypt hash for all users (same password)
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     const createdUsers = [];
     for (let i = 0; i < plantData.length; i++) {
       const { store, employeeId, userName, tempPassword } = plantData[i];
       try {
         const newUser = await prisma.user.create({
-          data: { employeeId, name: userName, passwordHash: hashes[i], role: 'STORE_MANAGER', storeId: store.id, isActive: true },
+          data: { employeeId, name: userName, passwordHash, role: 'STORE_MANAGER', storeId: store.id, isActive: true },
           include: { store: { select: { storeCode: true, storeName: true } } },
         }).catch(err => {
           if (err.code === 'P2002') throw new AppError(`Username ${employeeId} already exists`, 409);
@@ -2741,23 +2742,23 @@ export async function bulkReviewUsers(req, res, next) {
     const errors   = [];
 
     if (action === 'approve') {
-      // Generate all temp passwords and hash them in parallel — avoids sequential bcrypt delays
-      const tempPasswords = candidates.map(() => randomBytes(12).toString('base64').replace(/[+/=]/g, 'A') + '1!');
-      const passwordHashes = await Promise.all(tempPasswords.map(pw => bcrypt.hash(pw, 10)));
+      // Default password for all approved users
+      const tempPassword = 'Password123!';
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
 
       for (let i = 0; i < candidates.length; i++) {
         const user = candidates[i];
         try {
           await prisma.user.update({
             where: { id: user.id, pendingApproval: true, isActive: false },
-            data:  { isActive: true, pendingApproval: false, passwordHash: passwordHashes[i], mustChangePassword: true },
+            data:  { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: true },
           });
           createAuditLog({
             userId: req.user.id, action: 'APPROVE_USER',
             entityType: 'USER', entityId: user.id,
             metadata: { employeeId: user.employeeId, name: user.name, bulk: true },
           }).catch(() => {});
-          approved.push({ id: user.id, employeeId: user.employeeId, name: user.name, tempPassword: tempPasswords[i], store: user.store });
+          approved.push({ id: user.id, employeeId: user.employeeId, name: user.name, tempPassword, store: user.store });
         } catch (e) {
           errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
         }
