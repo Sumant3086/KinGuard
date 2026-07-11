@@ -1,94 +1,137 @@
 /* ─── Admin shell ───────────────────────────────────────────────── */
 .admin-shell { min-height:100vh; background:var(--page); display:flex; flex-direction:column; }
 
-/* ─── Admin horizontal navbar (hl-*) ───────────────────────────── */
+/* ─── Admin horizontal navbar (hl-*) - WARM WOOD THEME ──────────── */
 .hl-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* Actual KinMarché store photo at ~4% opacity — gives the admin area
-     a subtle retail context without competing with the data */
-  background-color: #f8fafc;
-  background-image:
-    linear-gradient(rgba(248,250,252,0.96), rgba(248,250,252,0.96)),
-    url('../assets/img/page.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  position: relative;
+  overflow: hidden;
+  background: #1a1410;
+}
+
+.hl-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(26,20,16,0.85) 0%,
+      rgba(26,20,16,0.75) 30%,
+      rgba(42,32,24,0.80) 60%,
+      rgba(26,20,16,0.88) 100%
+    ),
+    url('../assets/img/kinmarchae admin background.png') center center / cover no-repeat;
+  z-index: 0;
+  filter: brightness(0.75) saturate(1.2) contrast(1.1);
+}
+
+.hl-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(255,138,0,0.08) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hl-content {
+  position: relative;
+  z-index: 1;
 }
 
 .hl-nav {
-  height: 52px;
-  background: linear-gradient(90deg, var(--vi-deep) 0%, var(--vi) 50%, var(--vi-light) 100%);
-  background-size: 200% 100%;
-  animation: admin-nav-shimmer 6s ease infinite;
-  border-bottom: none;
-  box-shadow: 0 3px 16px rgba(220,38,38,0.35), 0 1px 4px rgba(0,0,0,0.10);
+  height: 60px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #dc2626 100%);
+  background-size: 200% 200%;
+  border-bottom: 3px solid rgba(255,255,255,0.15);
+  box-shadow: 0 4px 20px rgba(220,38,38,0.30), 0 2px 8px rgba(0,0,0,0.10);
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 28px;
   position: sticky;
   top: 0;
   z-index: 300;
   flex-shrink: 0;
+  animation: gradient-shift 15s ease infinite;
+  will-change: background-position;
 }
 
 .hl-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 12px;
   text-decoration: none;
   flex-shrink: 0;
-  margin-right: 16px;
+  margin-right: 28px;
 }
 .hl-logo-img {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
   flex-shrink: 0;
-  border-radius: 7px;
-  /* Solid white so the logo is visible on the red navbar */
+  border-radius: 10px;
   background: #ffffff;
-  padding: 4px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.30), 0 0 0 2px rgba(255,255,255,0.50);
+  padding: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.40);
+  transition: transform 0.2s ease;
 }
-.hl-brand-text { display:flex; flex-direction:column; line-height:1.1; }
-.hl-name       { font-size:13px; font-weight:800; color:#ffffff; letter-spacing:-0.1px; }
-.hl-tagline    { font-size:8px; text-transform:uppercase; letter-spacing:1.4px; color:rgba(255,255,255,0.65); }
+.hl-brand:hover .hl-logo-img {
+  transform: scale(1.05);
+}
+.hl-brand-text { display:flex; flex-direction:column; line-height:1.15; }
+.hl-name       { font-size:15px; font-weight:900; color:#ffffff; letter-spacing:-0.3px; text-shadow: 0 2px 4px rgba(0,0,0,0.20); }
+.hl-tagline    { font-size:9px; text-transform:uppercase; letter-spacing:1.6px; color:rgba(255,255,255,0.75); font-weight:700; }
 
 .hl-links {
   display: flex;
   align-items: center;
   flex: 1;
-  gap: 1px;
+  gap: 4px;
   overflow: hidden;
 }
 .hl-link {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  border-radius: var(--r);
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.78);
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff !important;
   text-decoration: none;
   white-space: nowrap;
-  transition: background var(--fast) var(--ease), transform var(--fast) var(--ease);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  position: relative;
+  background: rgba(255,255,255,0.10);
+  overflow: hidden;
+}
+.hl-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.hl-link:hover::before {
+  opacity: 1;
 }
 .hl-link:hover {
-  background: rgba(255,255,255,0.18);
-  color: #ffffff;
-  transform: translateY(-1px);
+  background: rgba(255,255,255,0.22);
+  color: #ffffff !important;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 .hl-link.active {
-  background: rgba(255,255,255,0.25);
-  color: #ffffff;
-  font-weight: 700;
-  box-shadow: inset 0 -3px 0 rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.30);
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.20), inset 0 -3px 0 rgba(255,255,255,0.95);
 }
-.hl-link-icon { display:flex; align-items:center; justify-content:center; opacity:0.7; flex-shrink:0; }
+.hl-link-icon { display:flex; align-items:center; justify-content:center; opacity:1; flex-shrink:0; }
 .hl-link.active .hl-link-icon { opacity:1; }
 
 .hl-sep { width:1px; height:22px; background:rgba(255,255,255,0.22); flex-shrink:0; margin:0 6px; }
@@ -99,9 +142,9 @@
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: rgba(255,255,255,0.22);
-  color: #ffffff;
-  border: 2px solid rgba(255,255,255,0.40);
+  background: rgba(255,255,255,0.25);
+  color: #ffffff !important;
+  border: 2px solid rgba(255,255,255,0.50);
   font-size: 10px;
   font-weight: 800;
   display: flex;
@@ -110,8 +153,8 @@
   flex-shrink: 0;
 }
 .hl-user-info { display:flex; flex-direction:column; line-height:1.1; }
-.hl-emp       { font-size:11px; font-weight:600; color:rgba(255,255,255,0.75); }
-.hl-role      { font-size:9px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.55); }
+.hl-emp       { font-size:11px; font-weight:600; color:#ffffff !important; }
+.hl-role      { font-size:9px; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.80) !important; }
 
 .hl-signout {
   display: flex;
@@ -119,9 +162,9 @@
   gap: 5px;
   padding: 5px 11px;
   border-radius: var(--r);
-  background: rgba(255,255,255,0.14);
-  border: 1px solid rgba(255,255,255,0.28);
-  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #ffffff !important;
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
@@ -129,7 +172,7 @@
   transition: background var(--fast), transform var(--fast);
   white-space: nowrap;
 }
-.hl-signout:hover { background:rgba(255,255,255,0.26); color:#ffffff; transform:translateY(-1px); }
+.hl-signout:hover { background:rgba(255,255,255,0.30); color:#ffffff !important; transform:translateY(-1px); }
 
 .hl-hamburger {
   display: none;
@@ -206,121 +249,143 @@
 /* Admin page content area */
 .hl-content {
   flex: 1;
-  padding: 28px 32px;
+  padding: 28px 32px 48px;
   max-width: 1600px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
-  animation: fade-in-up 0.18s ease both;
-  /* Subtle retail background with high transparency for professional look */
-  background-image:
-    linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)),
-    url('../assets/img/page.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  min-height: calc(100vh - 52px);
+  animation: fade-in 0.18s var(--ease) both;
+  min-height: calc(100vh - 60px);
 }
 
-/* ─── Store layout ──────────────────────────────────────────────── */
+/* ─── Store layout - DARK VIBRANT THEME ────────────────────────────── */
 .store-shell {
   min-height: 100vh;
-  /* Supermarket aisle background at ~3% — gives store managers a
-     recognisable retail context without distracting from the data */
-  background-color: #fff8f8;
-  background-image:
-    linear-gradient(rgba(255,248,248,0.97), rgba(255,248,248,0.97)),
-    url('../assets/img/home creen.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  position: relative;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.store-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      rgba(15,23,42,0.75) 0%,
+      rgba(30,41,59,0.70) 40%,
+      rgba(15,23,42,0.72) 60%,
+      rgba(30,41,59,0.77) 100%
+    ),
+    url('../assets/img/img3.png') center center / cover no-repeat;
+  z-index: 0;
+  filter: brightness(0.70) saturate(1.35) contrast(1.15);
+}
+
+.store-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 85% 75% at 50% 40%, rgba(220,38,38,0.10) 0%, transparent 65%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.store-content {
+  position: relative;
+  z-index: 1;
 }
 
 .store-header {
   background: #ffffff;
-  border-bottom: 3px solid var(--vi);
-  box-shadow: 0 2px 12px rgba(220,38,38,0.12), 0 1px 3px rgba(0,0,0,0.06);
+  border-bottom: 2px solid rgba(220,38,38,0.80);
+  box-shadow: 0 1px 8px rgba(220,38,38,0.08), 0 1px 3px rgba(0,0,0,0.04);
   position: sticky;
   top: 0;
   z-index: 200;
-  animation: store-border-pulse 3s ease-in-out infinite;
 }
 .store-header-inner {
-  max-width: 1400px;
+  max-width: 1440px;
   margin: 0 auto;
-  height: var(--bar-h);
+  height: 62px;
   padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.store-brand { display:flex; align-items:center; gap:10px; }
+.store-brand { display:flex; align-items:center; gap:14px; }
 .store-logo-img {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   flex-shrink: 0;
-  border-radius: 7px;
+  border-radius: 10px;
   background: #ffffff;
-  padding: 4px;
-  box-shadow: 0 2px 10px rgba(220,38,38,0.22), 0 0 0 1px rgba(220,38,38,0.12);
+  padding: 6px;
+  box-shadow: 0 4px 14px rgba(220,38,38,0.28), 0 0 0 2px rgba(220,38,38,0.10);
+  transition: transform 0.2s ease;
 }
-.store-brand-name { font-size:14px; font-weight:800; color:#0f172a; }
+.store-brand:hover .store-logo-img {
+  transform: scale(1.05);
+}
+.store-brand-name { font-size:16px; font-weight:900; color:#0f172a; letter-spacing:-0.2px; }
 .store-chip {
-  padding: 3px 10px;
+  padding: 5px 14px;
   border-radius: 99px;
-  background: rgba(220,38,38,0.08);
+  background: linear-gradient(135deg, rgba(220,38,38,0.12) 0%, rgba(220,38,38,0.08) 100%);
   color: var(--vi-deep);
-  border: 1px solid rgba(220,38,38,0.20);
-  font-size: 10.5px;
-  font-weight: 600;
+  border: 1.5px solid rgba(220,38,38,0.25);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(220,38,38,0.12);
 }
 
-.store-nav-desktop { display:flex; align-items:center; gap:2px; }
+.store-nav-desktop { display:flex; align-items:center; gap:6px; }
 .store-nav-link {
-  padding: 6px 13px;
-  border-radius: var(--r);
+  padding: 8px 16px;
+  border-radius: 8px;
   color: #475569;
-  font-size: 13px;
-  font-weight: 500;
-  transition: background var(--fast), color var(--fast), transform var(--fast);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background var(--fast), color var(--fast);
   position: relative;
 }
 .store-nav-link:hover {
-  background: rgba(220,38,38,0.07);
-  color: var(--vi);
-  transform: translateY(-1px);
+  background: rgba(220,38,38,0.08);
+  color: #dc2626;
 }
 .store-nav-link.active {
   background: rgba(220,38,38,0.10);
-  color: var(--vi);
+  color: #dc2626;
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--vi);
+  box-shadow: inset 0 -2px 0 #dc2626;
 }
-.store-nav-user { font-size:12px; color:#94a3b8; padding:0 8px; }
+.store-nav-user { font-size:13px; color:#64748b; padding:0 12px; font-weight:600; }
 .btn-signout {
-  padding: 6px 13px;
-  border-radius: var(--r);
-  background: rgba(220,38,38,0.07);
-  border: 1px solid rgba(220,38,38,0.20);
+  padding: 8px 18px;
+  border-radius: 10px;
+  background: rgba(220,38,38,0.10);
+  border: 1.5px solid rgba(220,38,38,0.25);
   color: var(--vi-deep);
-  font-size: 12.5px;
-  font-weight: 600;
-  transition: all var(--fast);
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: all 0.2s ease;
 }
 .btn-signout:hover {
   background: var(--vi);
   color: #ffffff;
   border-color: var(--vi);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220,38,38,0.35);
 }
 
 .store-content {
-  max-width: 1400px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 26px 24px;
+  padding: 32px 28px;
   background: transparent;
-  animation: fade-in-up 0.18s ease both;
+  animation: fade-in-up 0.25s ease both;
 }
 
 /* Store mobile bottom nav */
@@ -384,16 +449,16 @@
   .hl-user-info { display:none; }
   .hl-signout   { display:none; }
   .hl-hamburger { display:flex; }
-  .hl-content   { padding:16px; }
+  .hl-content   { padding:16px 16px 40px; }
 }
 @media (max-width:768px) {
   .store-nav-desktop { display:none !important; }
   .store-bottom-nav  { display:flex; }
-  .store-content     { padding:16px 16px 80px; }
+  .store-content     { padding:14px 14px 76px; }
   .store-chip        { display:none; }
 }
 @media (max-width:520px) {
-  .hl-nav     { padding:0 12px; }
-  .hl-content { padding:12px; }
-  .store-header-inner { padding:0 16px; }
+  .hl-nav             { padding:0 12px; }
+  .hl-content         { padding:12px 12px 36px; }
+  .store-header-inner { padding:0 14px; }
 }
