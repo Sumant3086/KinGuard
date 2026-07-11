@@ -150,7 +150,7 @@ function DashboardContent({ data, navigate }) {
             <span className={`dash-cmd-badge ${submittedPct === 100 ? 'good' : submittedPct >= 50 ? 'warning' : 'danger'}`}>
               {submittedPct}% reported
             </span>
-            <span className="dash-cmd-badge">{totalStores} plant{totalStores !== 1 ? 's' : ''}</span>
+            <span className="dash-cmd-badge">{totalStores} store{totalStores !== 1 ? 's' : ''}</span>
             {cb.submissionDeadline && (
               <span className={`dash-cmd-badge ${now > new Date(cb.submissionDeadline) ? 'danger' : 'warning'}`}>
                 Deadline: {fmtDate(cb.submissionDeadline, 'monthDay')}
@@ -169,7 +169,7 @@ function DashboardContent({ data, navigate }) {
           <div className="deadline-banner overdue" style={{ marginBottom: 16 }}>
             <span className="deadline-banner-icon"><IcoBannerLock /></span>
             <div>
-              <p><strong>Deadline passed.</strong> {cb.overdueStores.length} plant{cb.overdueStores.length > 1 ? 's have' : ' has'} not submitted.</p>
+              <p><strong>Submission deadline passed.</strong> {cb.overdueStores.length} store{cb.overdueStores.length > 1 ? 's have' : ' has'} not submitted.</p>
               <div className="overdue-chips">
                 {cb.overdueStores.map(s => <span key={s} className="overdue-chip">{s}</span>)}
               </div>
@@ -179,7 +179,7 @@ function DashboardContent({ data, navigate }) {
         if (!passed && hrs <= 48 && cb.storesPending > 0) return (
           <div className="deadline-banner" style={{ marginBottom: 16 }}>
             <span className="deadline-banner-icon"><IcoBannerClock /></span>
-            <p><strong>Submission deadline</strong> in {hrs < 1 ? '<1' : hrs}h — {cb.storesPending} plant{cb.storesPending > 1 ? 's' : ''} still pending.</p>
+            <p><strong>Submission deadline</strong> in {hrs < 1 ? '<1' : hrs}h — {cb.storesPending} store{cb.storesPending > 1 ? 's' : ''} still pending.</p>
           </div>
         );
         return null;
@@ -192,8 +192,8 @@ function DashboardContent({ data, navigate }) {
           <div>
             <strong>Recurring Loss Items Detected</strong>
             <p style={{ marginTop: 4, fontSize: 13 }}>
-              {hotspots.length} material{hotspots.length !== 1 ? 's' : ''} missing in 2+ consecutive cycles.{' '}
-              Top: <strong>{hotspots[0].materialCode}</strong> at {hotspots[0].storeName} — {hotspots[0].batchCount} cycles, −{hotspots[0].totalShortage} units lost.
+              {hotspots.length} material{hotspots.length !== 1 ? 's' : ''} with recurring shortages across 2 or more cycles.{' '}
+              Top: <strong>{hotspots[0].materialCode}</strong> at {hotspots[0].storeName} — {hotspots[0].batchCount} cycles, −{hotspots[0].totalShortage} units.
             </p>
           </div>
         </div>
@@ -203,9 +203,9 @@ function DashboardContent({ data, navigate }) {
       <div className="kpi-grid">
         <div className="kpi-card kpi-blue">
           <div className="kpi-icon"><IcoStores /></div>
-          <div className="kpi-label">Active Plants</div>
+          <div className="kpi-label">Active Stores</div>
           <div className="kpi-value">{totalStores}</div>
-          <div className="kpi-sub">active locations</div>
+          <div className="kpi-sub">active store locations</div>
         </div>
         <div className="kpi-card kpi-green">
           <div className="kpi-icon"><IcoCheckCircle /></div>
@@ -217,25 +217,25 @@ function DashboardContent({ data, navigate }) {
           <div className="kpi-icon"><IcoClock /></div>
           <div className="kpi-label">Awaiting Submission</div>
           <div className="kpi-value">{cb?.storesPending ?? 0}</div>
-          <div className="kpi-sub">not yet submitted</div>
+          <div className="kpi-sub">pending submission</div>
         </div>
         <div className="kpi-card kpi-red">
           <div className="kpi-icon"><IcoTrendDown /></div>
           <div className="kpi-label">Shortage Items</div>
           <div className="kpi-value">{ns.shortageItems}</div>
-          <div className="kpi-sub">counted &lt; system</div>
+          <div className="kpi-sub">physical &lt; system stock</div>
         </div>
         <div className="kpi-card kpi-teal">
           <div className="kpi-icon"><IcoCheck /></div>
           <div className="kpi-label">Matched Items</div>
           <div className="kpi-value">{ns.matchedItems}</div>
-          <div className="kpi-sub">counted = system</div>
+          <div className="kpi-sub">physical = system stock</div>
         </div>
         <div className="kpi-card kpi-purple">
           <div className="kpi-icon"><IcoTrendUp /></div>
           <div className="kpi-label">Excess Items</div>
           <div className="kpi-value">{ns.excessItems}</div>
-          <div className="kpi-sub">counted &gt; system</div>
+          <div className="kpi-sub">physical &gt; system stock</div>
         </div>
       </div>
 
@@ -247,7 +247,7 @@ function DashboardContent({ data, navigate }) {
           <div className="card-header">
             <span className="card-title">
               <IcoBarChart />
-              Plant Submission Status
+              Store Submission Status
             </span>
             {cb && (
               <span className="card-header-meta">
@@ -266,9 +266,9 @@ function DashboardContent({ data, navigate }) {
                   <rect x="3" y="14" width="7" height="7"/>
                 </svg>
               </div>
-              <h4 className="empty-state-title">No Inventory Data</h4>
+              <h4 className="empty-state-title">No Active Inventory Cycle</h4>
               <p className="empty-state-description">
-                Upload a master file to begin a new inventory cycle.
+                Upload a master file to create an inventory cycle for this network.
               </p>
             </div>
           ) : (
@@ -276,7 +276,7 @@ function DashboardContent({ data, navigate }) {
               <table className="scorecard">
                 <thead>
                   <tr>
-                    <th scope="col">Plant</th>
+                    <th scope="col">Store</th>
                     <th scope="col">Risk</th>
                     <th scope="col">Shortage Rate</th>
                     <th scope="col">Shortages</th>
@@ -340,7 +340,7 @@ function DashboardContent({ data, navigate }) {
               Recurring Loss Items
             </span>
           </div>
-          <p className="card-sub">Items missing in 2+ consecutive cycles</p>
+          <p className="card-sub">Items with shortages in 2 or more consecutive cycles</p>
 
           {hotspots.length === 0 ? (
             <div className="empty-state">
@@ -350,9 +350,9 @@ function DashboardContent({ data, navigate }) {
                   <polyline points="22 4 12 14.01 9 11.01"/>
                 </svg>
               </div>
-              <h4 className="empty-state-title">All Clear!</h4>
+              <h4 className="empty-state-title">No Recurring Loss Items Identified</h4>
               <p className="empty-state-description">
-                No recurring shortages detected in recent cycles.
+                No items with repeat shortages detected across recent cycles.
               </p>
             </div>
           ) : (

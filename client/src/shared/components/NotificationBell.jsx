@@ -90,7 +90,7 @@ export default function NotificationBell({ fetcher, role }) {
           {data.items.length === 0 ? (
             <div className="notif-empty">
               <span>✓</span>
-              All caught up — nothing needs your attention.
+              No pending notifications.
             </div>
           ) : (
             data.items.map((item, i) => (

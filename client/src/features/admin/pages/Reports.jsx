@@ -149,7 +149,7 @@ export default function Reports() {
           icon={ReportIcon}
           title="No Report Data"
           description={'Select a cycle and click "Load Report" to view reconciliation data.'}
-          help="Filter by cycle, store, status, or discrepancy type to generate your report"
+          help="Apply filters above and click Load Report to generate reconciliation data."
         />
       ) : (
         <>

@@ -82,7 +82,7 @@ function UserRow({ user, self, adminCount, selected, onSelect, onEdit, onDelete,
       </td>
       <td>
         <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`}>
-          {user.role === 'ADMIN' ? 'Administrator' : 'Plant Manager'}
+          {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
         </span>
       </td>
       <td style={{ color: 'var(--t3)', fontSize: 12 }}>
@@ -143,6 +143,7 @@ export default function AdminUsers() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState('');
   const [editingId, setEditingId]   = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData]     = useState({
     employeeId: '', name: '', password: '',
     role: 'STORE_MANAGER', storeId: '', isActive: true, email: '', phone: '',
@@ -426,14 +427,14 @@ export default function AdminUsers() {
   async function openBatchCreateModal() {
     try {
       const plants = await adminApi.getPlantsWithoutUsers();
-      if (plants.length === 0) { toast.info('All plants already have assigned users.'); return; }
+      if (plants.length === 0) { toast.info('All stores already have assigned users.'); return; }
       const defaultNames = {};
       plants.forEach(p => { defaultNames[p.id] = `Manager ${p.storeCode}`; });
       setPlantsWithoutUsers(plants);
       setBatchFormData(defaultNames);
       setBatchResult(null);
       setShowBatchModal(true);
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to load plants'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to load stores'); }
   }
 
   async function handleBatchCreate() {
@@ -464,7 +465,7 @@ export default function AdminUsers() {
             ↑ Batch Upload Users
           </button>
           <button onClick={openBatchCreateModal} className="btn btn-secondary btn-sm" style={{ fontSize: 11 }}>
-            + By Plant
+            + By Store
           </button>
           <button onClick={openCreate} className="btn btn-primary">+ Add User</button>
         </div>
@@ -554,7 +555,7 @@ export default function AdminUsers() {
               <strong style={{ fontSize: 12, color: 'var(--green)' }}>Approved — save these credentials:</strong>
               <div style={{ maxHeight: 200, overflowY: 'auto', marginTop: 6, border: '1px solid var(--border)', borderRadius: 4 }}>
                 <table style={{ fontSize: 11 }}>
-                  <thead><tr style={{ background: 'var(--surface-2)' }}><th scope="col">Username</th><th scope="col">Name</th><th scope="col">Temp Password</th><th scope="col">Plant</th></tr></thead>
+                  <thead><tr style={{ background: 'var(--surface-2)' }}><th scope="col">Username</th><th scope="col">Name</th><th scope="col">Temp Password</th><th scope="col">Store</th></tr></thead>
                   <tbody>
                     {bulkResult.approved.map(u => (
                       <tr key={u.id}>
@@ -631,7 +632,7 @@ export default function AdminUsers() {
                   <th scope="col">ID</th>
                   <th scope="col">Name / Email</th>
                   <th scope="col">Role</th>
-                  <th scope="col">Plant</th>
+                  <th scope="col">Store</th>
                   <th scope="col">Created</th>
                   <th scope="col">Status</th>
                   <th scope="col">Actions</th>
@@ -725,7 +726,7 @@ export default function AdminUsers() {
             </div>
             <p style={{ fontSize: 13, color: 'var(--t2)', marginBottom: 16 }}>
               Reject and permanently remove <strong>{rejectTarget.name}</strong> ({rejectTarget.employeeId})?
-              The associated plant will NOT be deleted.
+              The associated store will NOT be deleted.
             </p>
             <div className="form-group">
               <label htmlFor="reject-reason" style={{ fontSize: 12 }}>Reason (optional)</label>
@@ -821,15 +822,15 @@ export default function AdminUsers() {
                   <strong style={{ color: 'var(--t1)' }}>Required Excel columns:</strong>
                   <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                     <div><code>Name</code> — full name <span style={{ color: 'var(--red)' }}>*</span></div>
-                    <div><code>Plant Code</code> — plant/store code <span style={{ color: 'var(--red)' }}>*</span> (for managers)</div>
+                    <div><code>Store Code</code> — store code <span style={{ color: 'var(--red)' }}>*</span> (required for Store Managers)</div>
                     <div><code>Employee ID</code> — login ID (auto-generated if blank)</div>
                     <div><code>Email</code> — for notifications (optional)</div>
                     <div><code>Role</code> — STORE_MANAGER (default) or ADMIN</div>
-                    <div><code>Plant Name</code> — used if plant is new (optional)</div>
+                    <div><code>Store Name</code> — used if store is new (optional)</div>
                   </div>
                   <div style={{ marginTop: 8, color: 'var(--t4)' }}>
                     Uploaded users will be created as <strong>Pending Approval</strong> — they cannot log in until approved.
-                    New plants found in the file will be created automatically.
+                    New stores found in the file will be created automatically.
                   </div>
                 </div>
                 <form onSubmit={handleImportPreview}>
@@ -856,18 +857,18 @@ export default function AdminUsers() {
                   <span><strong style={{ color: 'var(--red)' }}>{importPreview.invalidRows}</strong> invalid</span>
                   <span><strong>{importPreview.totalRows}</strong> total rows</span>
                   {importPreview.newStores.length > 0 && (
-                    <span style={{ color: 'var(--violet)' }}><strong>{importPreview.newStores.length}</strong> new plant(s) will be created</span>
+                    <span style={{ color: 'var(--violet)' }}><strong>{importPreview.newStores.length}</strong> new store(s) will be created</span>
                   )}
                 </div>
 
                 {importPreview.newStores.length > 0 && (
                   <div style={{ padding: '8px 12px', background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 'var(--r)', marginBottom: 12, fontSize: 12 }}>
-                    New plants to create: {importPreview.newStores.join(', ')}
+                    New stores to create: {importPreview.newStores.join(', ')}
                   </div>
                 )}
 
                 {!importPreview.canCommit && (
-                  <div className="alert alert-error" style={{ marginBottom: 12 }}>All rows have errors — fix the file and re-upload.</div>
+                  <div className="alert alert-error" style={{ marginBottom: 12 }}>All rows have errors — correct the file and re-upload.</div>
                 )}
 
                 <div style={{ maxHeight: 340, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 14 }}>
@@ -875,7 +876,7 @@ export default function AdminUsers() {
                     <thead>
                       <tr style={{ background: 'var(--surface-2)', position: 'sticky', top: 0, zIndex: 1 }}>
                         <th scope="col">#</th><th scope="col">Employee ID</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th>
-                        <th scope="col">Plant Code</th><th scope="col">Plant Status</th><th scope="col">Status</th><th scope="col">Note</th>
+                        <th scope="col">Store Code</th><th scope="col">Store Status</th><th scope="col">Status</th><th scope="col">Note</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -918,12 +919,12 @@ export default function AdminUsers() {
               <>
                 <div className="alert alert-success" style={{ marginBottom: 16 }}>
                   <strong>{importResult.createdCount} pending user(s)</strong> created and awaiting approval.
-                  {importResult.newStoreCount > 0 && ` ${importResult.newStoreCount} new plant(s) were created.`}
+                  {importResult.newStoreCount > 0 && ` ${importResult.newStoreCount} new store(s) were created.`}
                 </div>
 
                 {importResult.newStores?.length > 0 && (
                   <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--t3)' }}>
-                    New plants created: {importResult.newStores.map(s => s.storeCode).join(', ')}
+                    New stores created: {importResult.newStores.map(s => s.storeCode).join(', ')}
                   </div>
                 )}
 
@@ -981,8 +982,53 @@ export default function AdminUsers() {
               </div>
               <div className="form-group">
                 <label htmlFor="user-pw">Password {editingId && <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(leave blank to keep current)</span>}</label>
-                <input id="user-pw" type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  required={!editingId} disabled={submitting} placeholder="••••••••" />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    id="user-pw" 
+                    type={showPassword ? 'text' : 'password'} 
+                    value={formData.password} 
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    required={!editingId} 
+                    disabled={submitting} 
+                    placeholder="••••••••"
+                    style={{ paddingRight: 38 }}
+                  />
+                  {formData.password && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: 'var(--t3)',
+                        transition: 'color 0.15s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--orange)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--t3)'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                          <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
                 {formData.password && <PasswordStrength pw={formData.password} />}
               </div>
               <div className="form-row">
@@ -1001,7 +1047,7 @@ export default function AdminUsers() {
                 <label htmlFor="user-role">Role</label>
                 <select id="user-role" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value, storeId: '' })}
                   required disabled={!!editingId || submitting}>
-                  <option value="STORE_MANAGER">Plant Manager</option>
+                  <option value="STORE_MANAGER">Store Manager</option>
                   <option value="ADMIN">Administrator</option>
                 </select>
                 {editingId && (
@@ -1012,17 +1058,17 @@ export default function AdminUsers() {
               </div>
               {formData.role === 'STORE_MANAGER' && (
                 <div className="form-group">
-                  <label htmlFor="user-store">Assigned Plant {!editingId && <span style={{ color: 'var(--red)' }}>*</span>}</label>
+                  <label htmlFor="user-store">Assigned Store {!editingId && <span style={{ color: 'var(--red)' }}>*</span>}</label>
                   <select id="user-store" value={formData.storeId} onChange={e => setFormData({ ...formData, storeId: e.target.value })}
                     required={!editingId} disabled={submitting}>
-                    <option value="">Select a plant…</option>
+                    <option value="">Select a store…</option>
                     {stores.filter(s => s.isActive).map(s => (
                       <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>
                     ))}
                   </select>
                   {editingId && !formData.storeId && (
                     <small style={{ color: 'var(--amber)', fontSize: 11, marginTop: 4, display: 'block' }}>
-                      No plant assigned — upload inventory first to create plants, then reassign.
+                      No store assigned — upload inventory first to create stores, then reassign.
                     </small>
                   )}
                 </div>
@@ -1052,18 +1098,18 @@ export default function AdminUsers() {
         <Modal onClose={() => !batchCreating && setShowBatchModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
             <div className="modal-header">
-              <h3>Create Managers for Unassigned Plants</h3>
+              <h3>Create Managers for Unassigned Stores</h3>
               <button className="close-btn" onClick={() => setShowBatchModal(false)} disabled={batchCreating}>&times;</button>
             </div>
             {!batchResult ? (
               <>
                 <p style={{ fontSize: 13, color: 'var(--t3)', marginBottom: 16 }}>
-                  Plants below have no assigned users. Create plant managers (username: <strong>MGR&#123;plantCode&#125;</strong>) with unique temp passwords.
+                  Stores below have no assigned users. Create store managers (username: <strong>MGR&#123;storeCode&#125;</strong>) with unique temporary passwords.
                 </p>
                 <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
                   <table style={{ fontSize: 12 }}>
                     <thead><tr style={{ background: 'var(--surface-2)' }}>
-                      <th scope="col">Plant Code</th><th scope="col">Plant Name</th><th scope="col">Username</th><th scope="col">User Name</th>
+                      <th scope="col">Store Code</th><th scope="col">Store Name</th><th scope="col">Username</th><th scope="col">Full Name</th>
                     </tr></thead>
                     <tbody>
                       {plantsWithoutUsers.map(plant => (

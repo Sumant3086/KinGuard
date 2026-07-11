@@ -1468,12 +1468,12 @@ input[type="checkbox"] {
 
 /* Store navbar bell */
 .store-header .notif-bell {
-  background: rgba(220,38,38,0.06);
-  border-color: rgba(220,38,38,0.16);
-  color: #b91c1c;
+  background: rgba(220,38,38,0.15);
+  border-color: rgba(220,38,38,0.30);
+  color: #dc2626;
 }
-.store-header .notif-bell:hover { background: rgba(220,38,38,0.12); color:#dc2626; }
-.store-header .notif-badge { border-color:#ffffff; }
+.store-header .notif-bell:hover { background: rgba(220,38,38,0.25); color:#dc2626; }
+.store-header .notif-badge { border-color:#7f1d1d; background:#dc2626; }
 
 /* Dropdown - WARM THEME */
 .notif-dropdown {
@@ -1609,11 +1609,151 @@ input[type="checkbox"] {
 .store-shell .page-header h2 { color: #ffffff; }
 .store-shell .page-header p  { color: rgba(255,255,255,0.70); }
 
-/* Banner text in store context */
+/* Banner text in store context - subtle red accents */
 .store-shell .banner   { color: rgba(255,255,255,0.90); }
-.store-shell .lock-banner p { color: #fca5a5; }
-.store-shell .deadline-banner.overdue p { color: #fca5a5; }
-.store-shell .deadline-banner:not(.overdue) p { color: #fde68a; }
+.store-shell .lock-banner { 
+  background: rgba(220,38,38,0.10); 
+  border: 1px solid rgba(220,38,38,0.25);
+  border-left: 3px solid #dc2626; 
+}
+.store-shell .lock-banner p { color: #fca5a5; font-weight: 700; }
+.store-shell .lock-banner span { color: rgba(255,245,230,0.85) !important; }
+.store-shell .deadline-banner.overdue { 
+  background: rgba(251,146,60,0.12);
+  border: 1px solid rgba(251,146,60,0.25);
+  border-left: 3px solid #fb923c;
+}
+.store-shell .deadline-banner.overdue p { color: #fdba74; }
+.store-shell .deadline-banner:not(.overdue) { 
+  background: rgba(220,38,38,0.10);
+  border: 1px solid rgba(220,38,38,0.20);
+  border-left: 3px solid #dc2626;
+}
+.store-shell .deadline-banner:not(.overdue) p { color: #ffd699; }
+
+/* Store cards with subtle red accents - highly transparent for visible background */
+.store-shell .card {
+  background: rgba(20,15,12,0.75) !important;
+  border: 1px solid rgba(220,38,38,0.30);
+  box-shadow: 
+    0 8px 32px rgba(0,0,0,0.40),
+    0 2px 8px rgba(0,0,0,0.30),
+    inset 0 1px 0 rgba(255,138,0,0.15);
+  backdrop-filter: blur(12px) saturate(140%);
+}
+.store-shell .card::before {
+  background: linear-gradient(135deg, rgba(220,38,38,0.08) 0%, transparent 100%);
+}
+.store-shell .card:hover {
+  background: rgba(20,15,12,0.82) !important;
+  border-color: rgba(220,38,38,0.40);
+  box-shadow: 
+    0 12px 40px rgba(0,0,0,0.45),
+    0 4px 12px rgba(220,38,38,0.20),
+    inset 0 1px 0 rgba(255,138,0,0.18);
+}
+
+/* Store button overrides - Red theme */
+.store-shell .btn-primary,
+.store-shell .btn-gold,
+.store-shell .btn-accent {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 4px 14px rgba(220,38,38,0.40);
+  border: 1px solid rgba(220,38,38,0.30);
+}
+.store-shell .btn-primary:hover:not(:disabled),
+.store-shell .btn-gold:hover:not(:disabled),
+.store-shell .btn-accent:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  box-shadow: 0 6px 20px rgba(220,38,38,0.50);
+}
+.store-shell .btn-success {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 4px 14px rgba(220,38,38,0.40);
+}
+.store-shell .btn-success:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  box-shadow: 0 6px 20px rgba(220,38,38,0.50);
+}
+
+/* Store text and heading colors - better contrast for visible background */
+.store-shell h2,
+.store-shell h3 {
+  color: #ffffff !important;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.80), 0 4px 16px rgba(0,0,0,0.60);
+}
+.store-shell .page-header h2 {
+  color: #ffffff !important;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.80);
+}
+.store-shell .page-header p {
+  color: rgba(255,255,255,0.90) !important;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.70);
+}
+
+/* Store table styles - better contrast */
+.store-shell table thead {
+  background: rgba(20,15,12,0.85);
+  border-bottom: 2px solid rgba(220,38,38,0.30);
+}
+.store-shell table thead th {
+  color: #ffffff !important;
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.60);
+}
+.store-shell table tbody tr {
+  border-bottom: 1px solid rgba(255,138,0,0.15);
+}
+.store-shell table tbody tr:hover {
+  background: rgba(220,38,38,0.10);
+}
+.store-shell table tbody td {
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.50);
+}
+
+/* Store input and select overrides - darker for contrast */
+.store-shell input:not([type="checkbox"]):not([type="radio"]),
+.store-shell select,
+.store-shell textarea {
+  background: rgba(20,15,12,0.85);
+  border: 1px solid rgba(220,38,38,0.30);
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.40);
+}
+.store-shell input:focus,
+.store-shell select:focus,
+.store-shell textarea:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.25);
+  background: rgba(20,15,12,0.92);
+}
+.store-shell input::placeholder,
+.store-shell textarea::placeholder {
+  color: rgba(255,255,255,0.45);
+}
+
+/* Store badge overrides - subtle colors */
+.store-shell .badge {
+  background: rgba(220,38,38,0.15);
+  border-color: rgba(220,38,38,0.30);
+  color: #fca5a5;
+}
+.store-shell .badge-matched {
+  background: rgba(34,197,94,0.15);
+  border-color: rgba(34,197,94,0.30);
+  color: #86efac;
+}
+.store-shell .badge-shortage {
+  background: rgba(251,146,60,0.15);
+  border-color: rgba(251,146,60,0.30);
+  color: #fdba74;
+}
+.store-shell .badge-excess {
+  background: rgba(59,130,246,0.15);
+  border-color: rgba(59,130,246,0.30);
+  color: #93c5fd;
+}
 
 /* General text fallback inside store cards */
 .store-shell .card p  { color: rgba(255,255,255,0.75); }

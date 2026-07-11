@@ -8,25 +8,25 @@ import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDateTime } from '../../../shared/utils/dateUtils';
 
 const ACTION_LABELS = {
-  LOGIN:                           'Signed in',
-  LOGOUT:                          'Signed out',
-  UPLOAD_INVENTORY:                'Uploaded inventory batch',
-  CREATE_USER:                     'Created user',
-  UPDATE_USER:                     'Updated user',
-  DELETE_USER:                     'Deleted user',
-  CREATE_STORE:                    'Created store',
-  UPDATE_STORE:                    'Updated store',
-  DELETE_STORE:                    'Deleted store',
-  FORCE_DELETE_STORE:              'Force-deleted store',
-  SUBMIT_INVENTORY:                'Store submitted inventory',
-  OVERRIDE_RECORD:                 'Admin override on record',
-  UNLOCK_STORE_SUBMISSION:         'Unlocked store submission',
-  UPDATE_BATCH_DEADLINE:           'Updated batch deadline',
-  GRANT_STORE_EXTENSION:           'Granted store deadline extension',
-  DELETE_BATCH:                    'Deleted inventory cycle',
-  DOWNLOAD_REPORT:                 'Downloaded reconciliation report',
-  DOWNLOAD_BATCH_EXPORT:           'Downloaded batch export',
-  DOWNLOAD_ADMIN_INVENTORY_EXPORT: 'Downloaded inventory export',
+  LOGIN:                           'User signed in',
+  LOGOUT:                          'User signed out',
+  UPLOAD_INVENTORY:                'Inventory cycle uploaded',
+  CREATE_USER:                     'User account created',
+  UPDATE_USER:                     'User account updated',
+  DELETE_USER:                     'User account deleted',
+  CREATE_STORE:                    'Store created',
+  UPDATE_STORE:                    'Store updated',
+  DELETE_STORE:                    'Store deleted',
+  FORCE_DELETE_STORE:              'Store force-deleted',
+  SUBMIT_INVENTORY:                'Inventory submitted by store',
+  OVERRIDE_RECORD:                 'Admin override applied',
+  UNLOCK_STORE_SUBMISSION:         'Store submission unlocked',
+  UPDATE_BATCH_DEADLINE:           'Cycle deadline updated',
+  GRANT_STORE_EXTENSION:           'Deadline extension granted',
+  DELETE_BATCH:                    'Inventory cycle deleted',
+  DOWNLOAD_REPORT:                 'Reconciliation report downloaded',
+  DOWNLOAD_BATCH_EXPORT:           'Cycle export downloaded',
+  DOWNLOAD_ADMIN_INVENTORY_EXPORT: 'Inventory export downloaded',
 };
 
 const ACTION_COLOR = {
@@ -105,7 +105,7 @@ export default function AuditLogs() {
     <AdminLayout>
       <PageHeader
         title="Activity Log"
-        subtitle="Complete immutable trail of every admin and store action"
+        subtitle="A complete, immutable audit trail of all system actions."
         actions={<>{limitSelect}<button onClick={handleExport} disabled={downloading} className="btn btn-success">↓ Export Excel</button></>}
       />
 
@@ -113,7 +113,7 @@ export default function AuditLogs() {
         <div className="loading"><div className="spinner" />Loading activity log…</div>
       ) : logs.length === 0 ? (
         <div className="card">
-          <EmptyState icon={EmptyIcon} title="No Activity Found" description="No log entries for the selected limit." />
+          <EmptyState icon={EmptyIcon} title="No Activity Found" description="No log entries found for the selected limit." />
         </div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
@@ -173,7 +173,7 @@ export default function AuditLogs() {
             </table>
           </div>
           <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--t3)', background: 'var(--surface-2)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Showing {logs.length} entries · Click a row to expand metadata</span>
+            <span>Showing {logs.length} entries · Click any row to expand metadata</span>
             <span>Actions with ▶ contain additional details</span>
           </div>
         </div>

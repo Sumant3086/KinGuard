@@ -47,13 +47,13 @@ export default function LoginPage() {
       await login(employeeId, password, from);
     } catch (err) {
       if (!err.response) {
-        setError('Cannot reach the server. Check your internet connection and try again.');
+        setError('Unable to connect to the server. Check your network and try again.');
       } else if (err.response.status === 401) {
         setError('Employee ID or password is incorrect.');
       } else if (err.response.status === 403) {
         setError(err.response.data?.error || 'Access denied.');
       } else if (err.response.status === 503) {
-        setError('Service is starting up. Please wait a moment and try again.');
+        setError('The service is starting. Please wait a moment and try again.');
       } else {
         setError(err.response?.data?.error || 'Login failed. Please try again.');
       }
@@ -79,11 +79,11 @@ export default function LoginPage() {
             <div className="ll-body">
               <span className="ll-eyebrow">Loss &amp; Prevention Platform</span>
               <h1 className="ll-headline">
-                One upload.<br />
-                <em>Complete visibility.</em>
+                Inventory Reconciliation.<br />
+                <em>Full Network Visibility.</em>
               </h1>
               <p className="ll-desc">
-                Server-side diff, risk scorecard and instant L&amp;P insights — all from a single Excel upload.
+                Upload a master file, assign inventory to stores, and monitor variances and discrepancies across the network.
               </p>
               <div className="ll-features">
                 <div className="ll-feat"><span className="ll-feat-ico"><IcoCheck /></span>Real-time shortage detection</div>
@@ -103,8 +103,8 @@ export default function LoginPage() {
             <div className="lr-logo-wrap">
               <img src={logoImg} alt="KinMarché" className="lr-logo-img" />
             </div>
-            <h2>Welcome back</h2>
-            <p>Sign in to your KinMarché account</p>
+            <h2>Sign In</h2>
+            <p>Access your KinMarché account</p>
           </div>
 
           {error && (
@@ -181,7 +181,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="lr-divider"><span>Access levels</span></div>
+          <div className="lr-divider"><span>User Roles</span></div>
 
           <div className="lr-roles-inline">
             <span className="lr-role-badge admin">Admin</span>

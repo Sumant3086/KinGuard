@@ -52,13 +52,13 @@ export default function Upload() {
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
     const daysDiff = Math.floor((new Date(dateStr) - todayStart) / 86_400_000);
     if (daysDiff < -90) {
-      setDateWarningMessage(`The inventory date you selected is ${Math.abs(daysDiff)} days in the past (${formatKinshasaDate(dateStr)}). This seems quite old. Do you want to proceed?`);
+      setDateWarningMessage(`The selected date is ${Math.abs(daysDiff)} days in the past (${formatKinshasaDate(dateStr)}). Confirm to proceed.`);
       setDateConfirmAction(() => action);
       setShowDateConfirm(true);
       return false;
     }
     if (daysDiff > 30) {
-      setDateWarningMessage(`The inventory date you selected is ${daysDiff} days in the future (${formatKinshasaDate(dateStr)}). This seems too far ahead. Do you want to proceed?`);
+      setDateWarningMessage(`The selected date is ${daysDiff} days in the future (${formatKinshasaDate(dateStr)}). Confirm to proceed.`);
       setDateConfirmAction(() => action);
       setShowDateConfirm(true);
       return false;
@@ -146,7 +146,7 @@ export default function Upload() {
     <AdminLayout>
       <PageHeader
         title="Upload Inventory File"
-        subtitle="Upload a master Excel or CSV file to start a new inventory cycle for all plants"
+        subtitle="Upload a master file to create a new inventory cycle and assign inventory items to all stores."
         actions={
           <button onClick={handleDownloadTemplate} disabled={dlTemplate} className="btn btn-secondary">
             {dlTemplate ? '…' : '↓'} Download Template
@@ -157,7 +157,7 @@ export default function Upload() {
       {/* Step 1 — File selection */}
       {!preview && !result && (
         <div className="card">
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18 }}>Step 1 — Select file and date</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18 }}>Step 1 — Select File and Date</h3>
 
           {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
@@ -180,11 +180,11 @@ export default function Upload() {
                 setFile(f); setError('');
               }} required disabled={previewing} />
               <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>
-                Max 10 MB. Required columns: Plant (Store Code), Material, Material Description, System Stock.
+                Max 10 MB · Required columns: Plant Code, Material, Material Description, System Stock.
               </small>
             </div>
             <button type="submit" className="btn btn-primary" disabled={previewing || !file}>
-              {previewing ? 'Validating file…' : 'Validate File →'}
+              {previewing ? 'Validating…' : 'Validate & Preview →'}
             </button>
           </form>
         </div>
@@ -195,7 +195,7 @@ export default function Upload() {
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Step 2 — Review file before publishing</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Step 2 — Review Before Publishing</h3>
               <p style={{ color: 'var(--t3)', fontSize: 13 }}>
                 {preview.fileName} · {preview.totalRows} rows · {fmtDateTZ(preview.inventoryDate + 'T00:00:00', KINSHASA_TZ, 'long')}
               </p>
@@ -212,7 +212,7 @@ export default function Upload() {
             {preview.showingPartial && <div style={{ color: 'var(--t3)', fontSize: 12 }}>(showing first {preview.previewRows} of {preview.totalRows} rows)</div>}
           </div>
 
-          {allErrors && <div className="alert alert-error" style={{ marginBottom: 16 }}>All rows have errors. Fix the file and start over.</div>}
+          {allErrors && <div className="alert alert-error" style={{ marginBottom: 16 }}>All rows contain errors. Correct the file and start over.</div>}
 
           <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 16 }}>
             <table style={{ fontSize: 12 }}>
@@ -242,7 +242,7 @@ export default function Upload() {
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn btn-primary" onClick={handleConfirmUpload} disabled={uploading || allErrors}>
-              {uploading ? 'Publishing…' : '✓ Confirm & Publish to Plants'}
+              {uploading ? 'Publishing…' : '✓ Confirm & Publish'}
             </button>
             <button className="btn btn-secondary" onClick={resetForm} disabled={uploading}>Cancel</button>
           </div>
@@ -253,7 +253,7 @@ export default function Upload() {
       {result && (
         <div className="card">
           <div className="alert alert-success" style={{ marginBottom: 16 }}>
-            <strong>Upload published successfully.</strong> Plant managers can now begin counting.
+            <strong>Inventory cycle published.</strong> Stores can now begin submitting their physical counts.
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
@@ -278,10 +278,10 @@ export default function Upload() {
               </span>
               <div style={{ flex: 1 }}>
                 <strong style={{ fontSize: 13, color: '#d97706' }}>
-                  {result.autoCreatedUsers.length} new plant account{result.autoCreatedUsers.length !== 1 ? 's' : ''} pending approval
+                  {result.autoCreatedUsers.length} new store account{result.autoCreatedUsers.length !== 1 ? 's' : ''} pending approval
                 </strong>
                 <p style={{ fontSize: 12, color: 'var(--t3)', margin: '4px 0 8px' }}>
-                  A login account was automatically created for each new plant found in this file ({result.autoCreatedUsers.map(u => u.storeCode).join(', ')}). Go to User Management to approve them and get their login credentials.
+                  A login account was automatically created for each new store found in this file ({result.autoCreatedUsers.map(u => u.storeCode).join(', ')}). Approve them in User Management to issue login credentials.
                 </p>
                 <button className="btn btn-sm" style={{ background: 'rgba(217,119,6,0.14)', color: '#d97706', border: '1px solid rgba(217,119,6,0.28)' }} onClick={() => navigate('/admin/users')}>
                   Go to User Management →
@@ -292,7 +292,7 @@ export default function Upload() {
 
           {result.errors?.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <strong style={{ fontSize: 13 }}>Rejected rows (first 10):</strong>
+              <strong style={{ fontSize: 13 }}>Rejected Rows (first 10):</strong>
               <ul style={{ marginTop: 8, fontSize: 12, color: 'var(--t3)', paddingLeft: 20 }}>
                 {result.errors.slice(0, 10).map((err, idx) => <li key={idx}>Row {err.row}: {err.error}</li>)}
               </ul>
@@ -300,7 +300,7 @@ export default function Upload() {
           )}
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-primary" onClick={resetForm}>Upload another file</button>
+            <button className="btn btn-primary" onClick={resetForm}>Upload New File</button>
             <button className="btn btn-secondary" onClick={() => navigate('/admin/batches')}>View in Cycles →</button>
           </div>
         </div>

@@ -142,7 +142,7 @@ export default function Inventory() {
   const selectedBatch = batches.find(b => String(b.id) === filters.batchId);
   const subtitle = selectedBatch
     ? `Cycle: ${fmtDate(selectedBatch.inventoryDate, 'long')} · ${pagination.totalRecords.toLocaleString()} record(s)`
-    : 'View and filter inventory records across all plants and cycles';
+    : 'View and filter inventory submissions across all stores and cycles.';
 
   return (
     <AdminLayout>
@@ -179,14 +179,14 @@ export default function Inventory() {
           </select>
 
           <select value={filters.storeId} onChange={e => handleFilterChange('storeId', e.target.value)}>
-            <option value="">All Plants</option>
+            <option value="">All Stores</option>
             {stores.map(s => <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>)}
           </select>
 
           <select value={filters.status} onChange={e => handleFilterChange('status', e.target.value)}>
             <option value="">All Status</option>
-            <option value="PENDING">Pending (not counted)</option>
-            <option value="SUBMITTED">Submitted (counted)</option>
+            <option value="PENDING">Pending</option>
+            <option value="SUBMITTED">Submitted</option>
           </select>
 
           <select value={filters.discrepancy} onChange={e => handleFilterChange('discrepancy', e.target.value)}>
@@ -242,7 +242,7 @@ export default function Inventory() {
               <table className="table-sticky table-sortable table-hover">
                 <thead>
                   <tr>
-                    <th scope="col" className="th-sortable">Plant</th>
+                    <th scope="col" className="th-sortable">Store</th>
                     <th scope="col" className="th-sortable">Material Name</th>
                     <th scope="col">Description</th>
                     <th scope="col" style={{ textAlign: 'right' }} className="th-sortable">System Stock</th>
@@ -316,7 +316,7 @@ export default function Inventory() {
             <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--r)', padding: '10px 14px', marginBottom: 16, fontSize: 12, color: 'var(--t3)' }}>
               <strong style={{ color: 'var(--t1)' }}>{overrideRecord.materialCode}</strong> — {overrideRecord.materialName}
               <br />
-              Plant: <strong style={{ color: 'var(--vi-light)' }}>{overrideRecord.store.storeCode}</strong>
+              Store: <strong style={{ color: 'var(--vi-light)' }}>{overrideRecord.store.storeCode}</strong>
               {' · '}System Stock: <strong>{overrideRecord.systemQuantity}</strong>
               {' · '}Current Physical Stock: <strong>{overrideRecord.physicalQuantity ?? '—'}</strong>
             </div>
@@ -333,7 +333,7 @@ export default function Inventory() {
                   <label htmlFor="ov-status">Status</label>
                   <select id="ov-status" value={overrideForm.status} onChange={e => setOverrideForm(f => ({ ...f, status: e.target.value }))} disabled={overriding}>
                     <option value="PENDING">Pending</option>
-                    <option value="SUBMITTED">Submitted (counted)</option>
+                    <option value="SUBMITTED">Submitted</option>
                   </select>
                 </div>
               </div>
@@ -346,7 +346,7 @@ export default function Inventory() {
                 <input id="ov-shrinkage" type="text" value={overrideForm.shrinkageCategory} onChange={e => setOverrideForm(f => ({ ...f, shrinkageCategory: e.target.value }))} placeholder="e.g. Theft, Damage, Admin Error…" disabled={overriding} />
               </div>
               <p style={{ fontSize: 11.5, color: 'var(--amber)', marginBottom: 14 }}>
-                ⚠ This action is recorded in the audit trail with your employee ID.
+                ⚠ This override will be recorded in the audit trail with your employee ID.
               </p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setOverrideRecord(null)} disabled={overriding}>Cancel</button>

@@ -45,10 +45,10 @@ export default function StoreLayout({ children }) {
 
           <nav className="store-nav-desktop">
             <Link to="/store/dashboard" className={`store-nav-link ${isActive('/store/dashboard') ? 'active' : ''}`}>
-              My Dashboard
+              Store Dashboard
             </Link>
             <Link to="/store/inventory" className={`store-nav-link ${isActive('/store/inventory') ? 'active' : ''}`}>
-              Stock Count
+              Inventory Count
             </Link>
             <span className="store-nav-user">{user?.name}</span>
             <NotificationBell fetcher={getNotifications} role="STORE_MANAGER" />
@@ -69,7 +69,7 @@ export default function StoreLayout({ children }) {
           </Link>
           <Link to="/store/inventory" className={`mob-nav-item ${isActive('/store/inventory') ? 'active' : ''}`}>
             {Icons.inventory}
-            Inventory
+            Inventory Count
           </Link>
           <button className="mob-logout" onClick={logout}>
             {Icons.logout}

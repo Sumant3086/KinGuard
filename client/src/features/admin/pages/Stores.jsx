@@ -20,7 +20,7 @@ export default function Stores() {
   useEffect(() => () => { mountedRef.current = false; }, []);
 
   const [stores, setStores]     = useState([]);
-  const [loading, setLoading]   = useState(false); // START WITH FALSE
+  const [loading, setLoading]   = useState(false);
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState(new Set());
 
@@ -42,45 +42,21 @@ export default function Stores() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkConfirmText, setBulkConfirmText] = useState('');
 
-  useEffect(() => { 
-    console.log('🔵🔵🔵 NEW VERSION - Stores component mounted');
-    loadStores(); 
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadStores(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadStores() {
-    console.log('🟢 loadStores START');
     setLoadError('');
     setLoading(true);
-    
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => {
-        console.error('⏱️⏱️⏱️ TIMEOUT FIRED');
-        reject(new Error('Request timed out after 5 seconds'));
-      }, 5000)
-    );
-    
     try {
       setSelected(new Set());
-      console.log('🟡 Making API call...');
-      
-      const data = await Promise.race([
-        adminApi.getStores(),
-        timeoutPromise
-      ]);
-      
-      console.log('✅✅✅ GOT DATA:', data, 'Length:', data?.length);
-      
-      // FORCE STATE UPDATE - ignore mountedRef
+      const data = await adminApi.getStores();
       setStores(data);
-      setLoading(false);
-      console.log('✅ Stores state FORCED update');
-      
     } catch (err) {
-      console.error('❌❌❌ ERROR:', err.message);
-      const errorMsg = err.response?.data?.error || err.message || 'Failed to load plants';
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to load stores.';
       setLoadError(errorMsg);
-      setLoading(false);
       toast.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -201,26 +177,26 @@ export default function Stores() {
   const inactiveCount = stores.filter(s => !s.isActive).length;
 
   const subtitle = loading
-    ? 'Loading plants…'
+    ? 'Loading stores…'
     : loadError
-      ? 'Failed to load plants — see below'
+      ? 'Failed to load stores — see below'
       : stores.length === 0
-        ? 'No plants yet — add your first plant to get started.'
+        ? 'No stores yet — add your first store to get started.'
         : `${activeCount} active · ${inactiveCount} inactive · ${stores.length} total`;
 
   return (
     <AdminLayout>
       <PageHeader
-        title="Plant Management"
+        title="Store Management"
         subtitle={subtitle}
-        actions={<button onClick={openCreate} className="btn btn-primary">+ Add Plant</button>}
+        actions={<button onClick={openCreate} className="btn btn-primary">+ Add Store</button>}
       />
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', marginBottom: 12, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--r-md)' }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>
-            {selected.size} plant{selected.size !== 1 ? 's' : ''} selected
+            {selected.size} store{selected.size !== 1 ? 's' : ''} selected
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary btn-sm" onClick={() => setSelected(new Set())} disabled={bulkDeleting}>
@@ -232,7 +208,7 @@ export default function Stores() {
               disabled={bulkDeleting}
               style={{ background: 'rgba(239,68,68,0.14)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.28)', fontWeight: 600 }}
             >
-              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Plant${selected.size !== 1 ? 's' : ''}`}
+              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
             </button>
           </div>
         </div>
@@ -247,16 +223,16 @@ export default function Stores() {
             <line x1="15" y1="9" x2="9" y2="15"/>
             <line x1="9" y1="9" x2="15" y2="15"/>
           </svg>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--t1)' }}>Failed to Load Plants</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--t1)' }}>Failed to Load Stores</h3>
           <p style={{ color: 'var(--t3)', marginBottom: 16 }}>{loadError}</p>
           <button onClick={loadStores} className="btn btn-primary">Retry</button>
         </div>
       ) : stores.length === 0 ? (
         <EmptyState
           icon={StoreIcon}
-          title="No Plants Yet"
-          description="Add your first plant location to start managing inventory across your network."
-          action={<button onClick={openCreate} className="btn btn-primary">+ Add First Plant</button>}
+          title="No Stores Yet"
+          description="Add your first store to start managing inventory across your network."
+          action={<button onClick={openCreate} className="btn btn-primary">+ Add First Store</button>}
         />
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -274,8 +250,8 @@ export default function Stores() {
                       title={allSelected ? 'Deselect all' : 'Select all'}
                     />
                   </th>
-                  <th scope="col">Plant Code</th>
-                  <th scope="col">Plant Name</th>
+                  <th scope="col">Store Code</th>
+                  <th scope="col">Store Name</th>
                   <th scope="col">Managers</th>
                   <th scope="col">Records</th>
                   <th scope="col">Status</th>
@@ -322,7 +298,7 @@ export default function Stores() {
         <Modal onClose={() => !singleDeleting && setDeleteTarget(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="modal-header">
-              <h3>Delete Plant</h3>
+              <h3>Delete Store</h3>
               <button className="close-btn" onClick={() => setDeleteTarget(null)} disabled={singleDeleting}>&times;</button>
             </div>
             <div className="alert alert-error" style={{ marginBottom: 16 }}>
@@ -331,7 +307,7 @@ export default function Stores() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setDeleteTarget(null)} disabled={singleDeleting}>Cancel</button>
               <button className="btn btn-danger" onClick={confirmDelete} disabled={singleDeleting}>
-                {singleDeleting ? 'Deleting…' : 'Delete Plant'}
+                {singleDeleting ? 'Deleting…' : 'Delete Store'}
               </button>
             </div>
           </div>
@@ -343,14 +319,14 @@ export default function Stores() {
         <Modal onClose={() => !singleDeleting && setForceDeleteTarget(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div className="modal-header">
-              <h3>Force Delete Plant</h3>
+              <h3>Force Delete Store</h3>
               <button className="close-btn" onClick={() => setForceDeleteTarget(null)} disabled={singleDeleting}>&times;</button>
             </div>
             <div className="alert alert-error" style={{ marginBottom: 16 }}>
               Permanently erase <strong>{forceDeleteTarget._count?.inventoryRecords ?? 0}</strong> inventory record(s), deadline extensions, and manager links for <strong>{forceDeleteTarget.storeName}</strong>.
             </div>
             <div className="form-group">
-              <label htmlFor="force-del-code" style={{ fontSize: 12 }}>Type the plant code <strong>{forceDeleteTarget.storeCode}</strong> to confirm</label>
+              <label htmlFor="force-del-code" style={{ fontSize: 12 }}>Type the store code <strong>{forceDeleteTarget.storeCode}</strong> to confirm</label>
               <input id="force-del-code" type="text" value={forceDeleteCode} onChange={e => setForceDeleteCode(e.target.value)} placeholder={forceDeleteTarget.storeCode} autoFocus disabled={singleDeleting} />
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
@@ -377,8 +353,8 @@ export default function Stores() {
                 const withRec = sel.filter(s => s._count.inventoryRecords > 0);
                 const total   = withRec.reduce((n, s) => n + s._count.inventoryRecords, 0);
                 return withRec.length > 0
-                  ? `${withRec.length} plant(s) have a combined ${total} inventory record(s) that will also be permanently erased.`
-                  : `Permanently delete ${selected.size} plant(s). This cannot be undone.`;
+                  ? `${withRec.length} store(s) have a combined ${total} inventory record(s) that will also be permanently erased.`
+                  : `Permanently delete ${selected.size} store(s). This cannot be undone.`;
               })()}
             </div>
             <div className="form-group">
@@ -388,7 +364,7 @@ export default function Stores() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="btn btn-secondary" onClick={() => setShowBulkConfirm(false)} disabled={bulkDeleting}>Cancel</button>
               <button className="btn btn-danger" onClick={confirmBulkDelete} disabled={bulkDeleting || bulkConfirmText !== 'DELETE'}>
-                {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Plant${selected.size !== 1 ? 's' : ''}`}
+                {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
               </button>
             </div>
           </div>
@@ -400,18 +376,18 @@ export default function Stores() {
         <Modal onClose={closeModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingId ? 'Edit Plant' : 'Add Plant'}</h3>
+              <h3>{editingId ? 'Edit Store' : 'Add Store'}</h3>
               <button className="close-btn" onClick={closeModal} disabled={submitting}>&times;</button>
             </div>
             {formError && <div className="alert alert-error" style={{ marginBottom: 16, fontSize: 13 }}>{formError}</div>}
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="store-code">Plant Code</label>
+                <label htmlFor="store-code">Store Code</label>
                 <input id="store-code" type="text" value={formData.storeCode} onChange={e => setFormData(f => ({ ...f, storeCode: e.target.value }))} required disabled={editingId !== null || submitting} placeholder="e.g. 2050" autoFocus />
-                {!editingId && <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>Must match the code in your Excel files. Cannot be changed after creation.</small>}
+                {!editingId && <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>Must match the code used in your Excel upload files. Cannot be changed after creation.</small>}
               </div>
               <div className="form-group">
-                <label htmlFor="store-name">Plant Name</label>
+                <label htmlFor="store-name">Store Name</label>
                 <input id="store-name" type="text" value={formData.storeName} onChange={e => setFormData(f => ({ ...f, storeName: e.target.value }))} required disabled={submitting} placeholder="e.g. Kinshasa Central Branch" />
               </div>
               <div className="form-group">
@@ -423,7 +399,7 @@ export default function Stores() {
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving…' : editingId ? 'Update Plant' : 'Create Plant'}
+                  {submitting ? 'Saving…' : editingId ? 'Update Store' : 'Create Store'}
                 </button>
               </div>
             </form>

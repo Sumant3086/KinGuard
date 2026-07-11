@@ -10,12 +10,12 @@ const IcoRepeat   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 const IcoDownload = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 
 const MANAGER_FEATURES = [
-  { icon: <IcoUpload />, n: '1', title: 'Receive Inventory', desc: 'Get your store\'s expected stock list automatically' },
-  { icon: <IcoBarChart />, n: '2', title: 'Count Your Stock', desc: 'Enter actual counts from your store shelves' },
-  { icon: <IcoPulse />, n: '3', title: 'Auto Calculate', desc: 'System instantly shows all differences' },
-  { icon: <IcoRepeat />, n: '4', title: 'Spot Issues', desc: 'See which items are short or over' },
-  { icon: <IcoDownload />, n: '5', title: 'Export Report', desc: 'Download your store report anytime' },
-  { icon: <IcoLock />, n: '6', title: 'Secure Access', desc: 'Only see your store data, nothing else' },
+  { icon: <IcoUpload />,   n: '1', title: 'Review Assigned Items',           desc: 'Receive your assigned item list at the start of each inventory cycle.' },
+  { icon: <IcoBarChart />, n: '2', title: 'Record Physical Counts',          desc: 'Enter the physically counted quantity for each assigned item.' },
+  { icon: <IcoPulse />,   n: '3', title: 'Automatic Variance Calculation',  desc: 'Variances against system stock are calculated automatically.' },
+  { icon: <IcoRepeat />,  n: '4', title: 'Identify Discrepancies',          desc: 'Review shortage and excess items before submitting your count.' },
+  { icon: <IcoDownload />, n: '5', title: 'Download Reconciliation Report',  desc: 'Export your store\'s reconciliation data at any time.' },
+  { icon: <IcoLock />,    n: '6', title: 'Store-Isolated Access',           desc: 'Access is limited to your store\'s inventory records only.' },
 ];
 
 export default function Home() {
@@ -55,18 +55,18 @@ export default function Home() {
       <section className="home-hero-bg">
         <div className="home-hero">
           <div className="home-eyebrow" style={{ background: 'rgba(34, 197, 94, 0.20)', borderColor: 'rgba(34, 197, 94, 0.40)', color: '#22c55e' }}>
-            Retail Inventory Reconciliation
+            Loss &amp; Prevention · Inventory Reconciliation
           </div>
           <h1>
-            Catch shrinkage early.<br />
-            <em>Across every store.</em>
+            Inventory Reconciliation<br />
+            <em>&amp; Loss Monitoring.</em>
           </h1>
           <p>
-            Simple inventory tracking for store managers. Upload once, each store counts their stock, and see all differences automatically.
+            Track store-level inventory variances, monitor submissions, and identify recurring discrepancies across your network.
           </p>
           {!user && (
             <Link to="/login" state={{ from: '/' }} className="home-cta-btn">
-              Get Started →
+              Sign In →
             </Link>
           )}
         </div>
@@ -78,9 +78,9 @@ export default function Home() {
           <div className="home-section-eyebrow" style={{ background: 'rgba(34, 197, 94, 0.10)', borderColor: 'rgba(34, 197, 94, 0.25)', color: '#22c55e' }}>
             For Store Managers
           </div>
-          <h2 className="home-section-heading home-section-heading-skyblue">Your Complete Workflow</h2>
+          <h2 className="home-section-heading home-section-heading-skyblue">How It Works</h2>
           <p style={{ color: '#cbd5e1', fontSize: '15px', marginTop: '12px', maxWidth: '580px', margin: '12px auto 0' }}>
-            Everything you need to track inventory and spot problems in your store
+            A structured process from upload to reconciliation.
           </p>
         </div>
         <div className="home-features">
@@ -88,7 +88,7 @@ export default function Home() {
             <div key={f.title} className="home-feat">
               <div className="home-feat-icon">{f.icon}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ 
+                <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
