@@ -11,8 +11,26 @@ import { invalidateUserCache } from '../middleware/auth.js';
 import { validatePassword } from '../controllers/authController.js';
 
 // Hard cap on rows returned by report/export endpoints.
-// Prevents OOM when an admin exports with no filters on a large dataset.
 const EXPORT_ROW_LIMIT = 10_000;
+
+// Supabase / PgBouncer drops idle connections after ~5 min.
+// This wrapper retries the first DB call once after a forced reconnect,
+// covering cold-start failures on upload and batch-list endpoints.
+async function withDbRetry(fn) {
+  try {
+    return await fn();
+  } catch (firstErr) {
+    console.warn('[db-retry] First query failed, reconnecting:', firstErr.message);
+    try {
+      await new Promise(r => setTimeout(r, 400));
+      await prisma.$connect();
+      return await fn();
+    } catch (retryErr) {
+      console.error('[db-retry] Retry also failed:', retryErr.message);
+      throw new AppError('Unable to reach the database. Please wait a moment and try again.', 503);
+    }
+  }
+}
 
 /** Validate and parse a date string from user input. Throws 400 on invalid format. */
 function parseUserDate(value, fieldName) {
@@ -553,10 +571,10 @@ export async function uploadInventory(req, res, next) {
     const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
     const windowStart = new Date(targetDate); windowStart.setDate(windowStart.getDate() - 3);
     const windowEnd   = new Date(targetDate); windowEnd.setDate(windowEnd.getDate() + 3);
-    const existingBatch = await prisma.uploadBatch.findFirst({
+    const existingBatch = await withDbRetry(() => prisma.uploadBatch.findFirst({
       where: { inventoryDate: { gte: windowStart, lte: windowEnd } },
       select: { id: true, inventoryDate: true, originalFileName: true },
-    });
+    }));
     if (existingBatch) {
       if (req.query.force !== 'true') {
         return res.status(409).json({
@@ -1322,14 +1340,14 @@ export async function getAuditLogs(req, res, next) {
 
 export async function getBatches(req, res, next) {
   try {
-    const batches = await prisma.uploadBatch.findMany({
+    const batches = await withDbRetry(() => prisma.uploadBatch.findMany({
       orderBy: { inventoryDate: 'desc' },
       include: {
         uploader: { select: { name: true, employeeId: true } },
         _count: { select: { inventoryRecords: true } },
         deadlineExtensions: { select: { storeId: true, newDeadline: true } },
       },
-    });
+    }));
 
     const batchIds = batches.map(b => b.id);
     const statsRows = batchIds.length > 0 ? await prisma.$queryRaw`
@@ -1566,11 +1584,11 @@ export async function downloadSampleTemplate(req, res, next) {
       '',
       'HOW TO USE THIS TEMPLATE:',
       '  1. Fill in the Plant Code and Material columns for each item.',
-      '  2. Leave System Stock and Physical Stock blank -- plant managers fill these in.',
+      '  2. Leave System Stock and Physical Stock blank -- store managers fill these in.',
       '  3. Upload this file via the Upload page to create an inventory cycle.',
       '',
       'REQUIRED COLUMNS (accepted header names):',
-      '  - Plant / Plant Code -> Your plant identifier',
+      '  - Plant / Plant Code -> Your plant/store identifier',
       '  - Material / Material Code / SKU          -> Item code',
       '  - Material Description / Description      -> Item name',
       '',
@@ -1583,15 +1601,109 @@ export async function downloadSampleTemplate(req, res, next) {
       '  - Plant codes are matched exactly (case-sensitive).',
       '  - Maximum file size: 10 MB.',
       '  - Supported formats: .xlsx, .xls, .csv',
+      '',
+      'See the "Shrinkage Reference" sheet for all valid shrinkage categories and issue details.',
     ];
     lines.forEach((line, i) => {
       const cell = info.getCell(`A${i + 1}`);
       cell.value = line;
       if (i === 0) cell.font = { bold: true, size: 13 };
-      if (line.startsWith('REQUIRED') || line.startsWith('OPTIONAL') || line.startsWith('NOTES')) {
+      if (line.startsWith('REQUIRED') || line.startsWith('OPTIONAL') || line.startsWith('NOTES') || line.startsWith('COLUMNS')) {
         cell.font = { bold: true };
       }
     });
+
+    // Shrinkage Reference sheet — mirrors ISSUE_REASONS in the store UI
+    const SHRINKAGE_CATEGORIES = {
+      'Dented': [
+        'Minor dent to packaging, product is ok',
+        'Moderate dent to packaging, product with lesser impact',
+        'Direct dent to product, product not ok',
+        'Dented due to warehouse handling error',
+        'Dented during transit/shipping',
+      ],
+      'Expiry': [
+        'Product has passed the expiry date',
+        'Product has passed the particular date',
+        'Expired stock identified during stock take',
+        'Expired stock designated for return to vendor',
+        'Expired stock designated for disposal',
+      ],
+      'Damage': [
+        'Physical breakage of product/component',
+        'Physical scratches/abrasions on product/packaging',
+        'Water exposure damage',
+        'Fire/smoke exposure damage',
+        'Electrical malfunction/damage',
+        'Manufacturing defect identified',
+        'Damage incurred during customer return process',
+        'Unsaleable due to damage',
+      ],
+      'In Transit': [
+        'Overage, Shortage, Damage (OS&D) report for transit damage',
+        'Damage/issue due to cargo shift during transport',
+        'Environmental exposure during transit (e.g., temperature, humidity)',
+        'Pilferage suspected during transit',
+        'Damage incurred due to transport accident',
+        'Discrepancy between physical count and shipping documentation',
+      ],
+      'Other': [
+        'Quality control hold, pending further inspection/decision',
+        'Incorrect labeling identified on product/packaging',
+        'Product subject to manufacturer recall',
+        'Product deemed obsolete, no longer marketable',
+        'Inventory adjustment due to system error/discrepancy',
+        'Stock designated for donation',
+        'Stock designated for sampling/testing',
+        'Stock shared to national employees',
+      ],
+    };
+
+    const ref = workbook.addWorksheet('Shrinkage Reference');
+    ref.getColumn(1).width = 18;
+    ref.getColumn(2).width = 62;
+
+    // Header row
+    const refHeader = ref.getRow(1);
+    refHeader.values = ['Category', 'Issue Detail'];
+    refHeader.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    refHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+    refHeader.height = 20;
+    ref.views = [{ state: 'frozen', ySplit: 1 }];
+
+    const catColors = {
+      'Dented':     'FFFFF3CD',
+      'Expiry':     'FFFCE5CD',
+      'Damage':     'FFFCD5D5',
+      'In Transit': 'FFD5EAF5',
+      'Other':      'FFE8E8E8',
+    };
+
+    let rowNum = 2;
+    for (const [cat, reasons] of Object.entries(SHRINKAGE_CATEGORIES)) {
+      const bgColor = catColors[cat] || 'FFFFFFFF';
+      for (let i = 0; i < reasons.length; i++) {
+        const row = ref.getRow(rowNum);
+        row.values = [i === 0 ? cat : '', reasons[i]];
+        row.getCell(1).font = { bold: i === 0, color: { argb: 'FF1E293B' } };
+        row.getCell(2).font = { color: { argb: 'FF1E293B' } };
+        row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+        row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+        row.getCell(1).border = { bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } } };
+        row.getCell(2).border = { bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } } };
+        rowNum++;
+      }
+      // Empty separator row between categories
+      rowNum++;
+    }
+
+    // Note at the bottom
+    const noteRow = ref.getRow(rowNum + 1);
+    noteRow.getCell(1).value = 'Note:';
+    noteRow.getCell(1).font = { bold: true, italic: true, color: { argb: 'FF64748B' } };
+    ref.getRow(rowNum + 2).getCell(1).value = 'For "Other" category, store managers may also type a custom issue detail in the text field.';
+    ref.getRow(rowNum + 2).getCell(1).font = { italic: true, color: { argb: 'FF64748B' } };
+    ref.mergeCells(rowNum + 2, 1, rowNum + 2, 2);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="KinGuard_InventoryTemplate.xlsx"');
