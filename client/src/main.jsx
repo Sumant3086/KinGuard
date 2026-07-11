@@ -10,8 +10,8 @@ import './styles/inventory.css';
 import './styles/pages.css';
 import './styles/toast.css';
 import './styles/utilities.css';
-import { AuthProvider } from './context/AuthContext';
-import { ToastProvider } from './context/ToastContext';
+import { ToastProvider } from './shared/context/ToastContext';
+import { AuthProvider } from './features/auth/AuthContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
