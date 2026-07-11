@@ -2,14 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import logoImg from '../../assets/img/logo 32px32px.png';
-import bgStore from '../../assets/img/home creen.jpg';
-
-const IcoCheck = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
-    strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
-  </svg>
-);
 
 export default function LoginPage() {
   const [employeeId, setEmployeeId] = useState('');
@@ -65,40 +57,6 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-shell">
-        {/* ── Left panel ── */}
-        <div
-          className="login-left"
-          style={{ backgroundImage: `url(${bgStore})`, backgroundSize: 'cover', backgroundPosition: 'center 40%' }}
-        >
-          <div className="ll-overlay" />
-          <div className="ll-content">
-            <div className="ll-brand">
-              <img src={logoImg} alt="KinMarché" className="ll-logo-img" />
-              <span className="ll-name">KinMarché</span>
-            </div>
-            <div className="ll-body">
-              <span className="ll-eyebrow">Loss &amp; Prevention Platform</span>
-              <h1 className="ll-headline">
-                Inventory Reconciliation.<br />
-                <em>Full Network Visibility.</em>
-              </h1>
-              <p className="ll-desc">
-                Upload a master file, assign inventory to stores, and monitor variances and discrepancies across the network.
-              </p>
-              <div className="ll-features">
-                <div className="ll-feat"><span className="ll-feat-ico"><IcoCheck /></span>Real-time shortage detection</div>
-                <div className="ll-feat"><span className="ll-feat-ico"><IcoCheck /></span>Per-store risk scorecard</div>
-                <div className="ll-feat"><span className="ll-feat-ico"><IcoCheck /></span>Audit trail &amp; Excel reports</div>
-              </div>
-            </div>
-            <div className="ll-foot">
-              <span>KinMarché &copy; {new Date().getFullYear()} &mdash; Kinshasa, DRC</span>
-              <span className="ll-dev">Developed by Sumant Yadav</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Right panel (form) ── */}
         <div className="login-right">
           <div className="lr-header">
             <div className="lr-logo-wrap">

@@ -54,7 +54,7 @@ export default function Home() {
       {/* ── Hero ── */}
       <section className="home-hero-bg">
         <div className="home-hero">
-          <div className="home-eyebrow" style={{ background: 'rgba(34, 197, 94, 0.20)', borderColor: 'rgba(34, 197, 94, 0.40)', color: '#22c55e' }}>
+          <div className="home-eyebrow home-eyebrow-green">
             Loss &amp; Prevention · Inventory Reconciliation
           </div>
           <h1>
@@ -75,7 +75,7 @@ export default function Home() {
       {/* ── Store Manager Workflow & Features ── */}
       <section className="home-dark-section home-features-section">
         <div className="home-section-header">
-          <div className="home-section-eyebrow" style={{ background: 'rgba(34, 197, 94, 0.10)', borderColor: 'rgba(34, 197, 94, 0.25)', color: '#22c55e' }}>
+          <div className="home-section-eyebrow home-section-eyebrow-green">
             For Store Managers
           </div>
           <h2 className="home-section-heading home-section-heading-skyblue">How It Works</h2>
@@ -87,22 +87,9 @@ export default function Home() {
           {MANAGER_FEATURES.map((f) => (
             <div key={f.title} className="home-feat">
               <div className="home-feat-icon">{f.icon}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                  color: '#fff',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  flexShrink: 0,
-                  boxShadow: '0 2px 8px rgba(220,38,38,0.35)'
-                }}>{f.n}</span>
-                <h3 style={{ margin: 0 }}>{f.title}</h3>
+              <div className="home-feat-title-row">
+                <span className="home-feat-step-num">{f.n}</span>
+                <h3>{f.title}</h3>
               </div>
               <p>{f.desc}</p>
             </div>

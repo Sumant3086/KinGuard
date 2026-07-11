@@ -1924,28 +1924,3 @@ input[type="checkbox"] {
 }
 .store-shell .btn-row-save:hover { background: rgba(68,32,8,0.94); }
 
-/* ─── Utility classes ─────────────────────────────────────────────── */
-.sr-only {
-  position:absolute; width:1px; height:1px; padding:0;
-  margin:-1px; overflow:hidden; clip:rect(0,0,0,0);
-  white-space:nowrap; border-width:0;
-}
-.live-region { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
-.hover-lift { transition:transform var(--mid) var(--ease), box-shadow var(--mid) var(--ease); }
-.hover-lift:hover { transform:translateY(-2px); box-shadow:var(--sh-md); }
-.smooth-transition { transition: opacity var(--mid) var(--ease), transform var(--mid) var(--ease); }
-.gpu-accelerated { transform:translateZ(0); will-change:transform; backface-visibility:hidden; }
-.gradient-text {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}

@@ -29,17 +29,12 @@
   --violet:        #7c3aed;
   --violet-light:  #8b5cf6;
   --violet-bg:     rgba(124,58,237,0.10);
-  --neutral-gray:  #64748b;
-  --info-blue:     #3b82f6;
-  --success-muted: rgba(22,163,74,0.04);
-  --error-muted:   rgba(220,38,38,0.04);
 
   /* Surfaces */
   --page:          #f8fafc;
   --surface:       #ffffff;
   --surface-2:     #f8fafc;
   --surface-3:     #f1f5f9;
-  --surface-hover: #f9fafb;
 
   /* Sidebar / nav */
   --sb-bg:       #ffffff;
@@ -227,4 +222,13 @@
   0%   { width:0;   margin-left:0; }
   50%  { width:40%; margin-left:30%; }
   100% { width:0;   margin-left:100%; }
+}
+@keyframes hero-enter {
+  from { opacity:0; transform:translateY(16px) scale(0.98); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes check-pop {
+  0%   { transform:scale(0.6); opacity:0; }
+  65%  { transform:scale(1.12); }
+  100% { transform:scale(1); opacity:1; }
 }
