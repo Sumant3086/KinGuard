@@ -40,28 +40,43 @@ model Store {
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
-  employeeId      String   @unique
-  name            String
-  passwordHash    String
-  role            UserRole
-  storeId         Int?
-  isActive        Boolean  @default(true)
-  pendingApproval Boolean  @default(false)
-  source          String   @default("MANUAL")
-  email           String?
-  phone           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  employeeId         String   @unique
+  name               String
+  passwordHash       String
+  role               UserRole
+  storeId            Int?
+  isActive           Boolean  @default(true)
+  pendingApproval    Boolean  @default(false)
+  mustChangePassword Boolean  @default(false)
+  source             String   @default("MANUAL")
+  email              String?  @unique
+  phone              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   store                Store?            @relation(fields: [storeId], references: [id])
   uploadBatches        UploadBatch[]
   submittedRecords     InventoryRecord[] @relation("SubmittedBy")
   auditLogs            AuditLog[]
   deadlineExtensions   BatchDeadlineExtension[] @relation("DeadlineExtensions")
+  refreshTokens        RefreshToken[]
 
   @@index([employeeId])
   @@index([storeId])
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model UploadBatch {

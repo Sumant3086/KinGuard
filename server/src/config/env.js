@@ -7,7 +7,6 @@ const requiredEnvVars = [
   'JWT_SECRET',
   'PORT',
   'NODE_ENV',
-  'CLIENT_URL',
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -35,6 +34,6 @@ export const env = {
     nodeEnv: process.env.NODE_ENV,
   },
   client: {
-    url: process.env.CLIENT_URL,
+    url: process.env.CLIENT_URL || 'http://localhost:5173',
   },
 };
