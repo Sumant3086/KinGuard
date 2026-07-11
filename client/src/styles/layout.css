@@ -258,42 +258,26 @@
   min-height: calc(100vh - 60px);
 }
 
-/* ─── Store layout - DARK VIBRANT THEME ────────────────────────────── */
+/* ─── Store layout ──────────────────────────────────────────────────── */
 .store-shell {
   min-height: 100vh;
   position: relative;
-  overflow: hidden;
-  background: #0f172a;
+  background: #1a1410 url('../assets/img/Store manager background.png') center center / cover no-repeat;
+  background-attachment: fixed;
 }
 
 .store-shell::before {
   content: '';
   position: fixed;
   inset: 0;
-  background:
-    linear-gradient(180deg,
-      rgba(15,23,42,0.75) 0%,
-      rgba(30,41,59,0.70) 40%,
-      rgba(15,23,42,0.72) 60%,
-      rgba(30,41,59,0.77) 100%
-    ),
-    url('../assets/img/img3.png') center center / cover no-repeat;
-  z-index: 0;
-  filter: brightness(0.70) saturate(1.35) contrast(1.15);
-}
-
-.store-shell::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse 85% 75% at 50% 40%, rgba(220,38,38,0.10) 0%, transparent 65%);
-  z-index: 0;
+  background: rgba(0, 0, 0, 0.52);
   pointer-events: none;
+  z-index: 0;
 }
 
 .store-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .store-header {
@@ -380,23 +364,6 @@
   box-shadow: 0 4px 12px rgba(220,38,38,0.40);
 }
 
-.store-shell {
-  min-height: 100vh;
-  background: #1a1410;
-  background-image: url('../assets/img/kinmarchae-store-interior.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  position: relative;
-}
-.store-shell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.25);
-  pointer-events: none;
-  z-index: 1;
-}
 .store-header,
 .store-content,
 .store-bottom-nav {
