@@ -314,7 +314,16 @@ export default function Upload() {
                         </p>
                       ))}
                       {n.emailsFailed > 0 && <p style={{ fontSize: 12, color: 'var(--red)', margin: '4px 0 0' }}>{n.emailsFailed} failed to deliver — check SMTP settings.</p>}
-                      {noEmail.length > 0 && <p style={{ fontSize: 12, color: 'var(--t3)', margin: '4px 0 0' }}>{noEmail.map(m => m.employeeId).join(', ')} skipped — no email address on file.</p>}
+                      {noEmail.length > 0 && (
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                          <p style={{ fontSize: 12, color: 'var(--t3)', margin: '0 0 4px', fontWeight: 600 }}>No email on file — skipped:</p>
+                          {noEmail.map(m => (
+                            <p key={m.employeeId} style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>
+                              {m.employeeId} ({m.storeName}) — <em>no email address</em>
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {typos.length > 0 && (

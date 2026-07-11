@@ -774,18 +774,27 @@ export async function uploadInventory(req, res, next) {
     let emailsFailed = 0;
     let smtpConfigured = false;
     const managersWithoutEmail = [];
+    let managersEmailed = [];
 
     try {
-      const allManagers = await prisma.user.findMany({
-        where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: affectedStoreIds } },
-        include: { store: true },
+      // Query ALL managers for the affected stores (including pending/inactive) so the
+      // no-email report is complete. Only active managers are actually emailed.
+      const [activeManagers, allStoreManagers] = await Promise.all([
+        prisma.user.findMany({
+          where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: affectedStoreIds } },
+          include: { store: true },
+        }),
+        prisma.user.findMany({
+          where: { role: 'STORE_MANAGER', storeId: { in: affectedStoreIds } },
+          select: { employeeId: true, email: true, storeId: true, isActive: true, pendingApproval: true, store: { select: { storeName: true } } },
+        }),
+      ]);
+
+      allStoreManagers.forEach(m => {
+        if (!m.email) managersWithoutEmail.push({ employeeId: m.employeeId, storeName: m.store?.storeName || String(m.storeId) });
       });
 
-      allManagers.forEach(m => {
-        if (!m.email) managersWithoutEmail.push({ employeeId: m.employeeId, storeName: m.store?.storeName || m.storeId });
-      });
-
-      const notifiable = allManagers.filter(m => m.email);
+      const notifiable = activeManagers.filter(m => m.email);
       if (notifiable.length > 0) {
         const { sendNewCycleEmail } = await import('../services/emailService.js');
         const emailResult = await sendNewCycleEmail({
@@ -796,12 +805,17 @@ export async function uploadInventory(req, res, next) {
         emailsSent     = emailResult.sent;
         emailsFailed   = emailResult.failed;
         smtpConfigured = emailResult.configured;
+      } else {
+        // Check SMTP config independently so the UI shows the correct message
+        // even when no notifiable managers exist for this batch.
+        const { SMTP_HOST, SMTP_USER } = process.env;
+        smtpConfigured = !!(SMTP_HOST && SMTP_USER);
       }
 
       // Build list of attempted emails for the response so the admin can
       // verify the addresses (e.g. spot a common typo like gmail.cc → gmail.com)
       const SUSPICIOUS_DOMAINS = { 'gmail.cc':'gmail.com','gmail.co':'gmail.com','gmai.com':'gmail.com','gmial.com':'gmail.com','yahoo.cc':'yahoo.com','hotmail.cc':'hotmail.com','outlook.cc':'outlook.com' };
-      const managersEmailed = notifiable.map(m => {
+      managersEmailed = notifiable.map(m => {
         const domain = m.email.split('@')[1]?.toLowerCase() || '';
         return {
           employeeId: m.employeeId,
@@ -826,7 +840,7 @@ export async function uploadInventory(req, res, next) {
         emailsFailed,
         smtpConfigured,
         managersWithoutEmail,
-        managersEmailed: managersEmailed || [],
+        managersEmailed,
       },
     });
   } catch (error) {
