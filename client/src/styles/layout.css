@@ -290,10 +290,10 @@
   left: 0;
   background: linear-gradient(
     180deg,
-    rgba(10, 6, 4, 0.62) 0%,
-    rgba(10, 6, 4, 0.34) 20%,
-    rgba(10, 6, 4, 0.28) 55%,
-    rgba(10, 6, 4, 0.45) 100%
+    rgba(10, 6, 4, 0.45) 0%,
+    rgba(10, 6, 4, 0.18) 20%,
+    rgba(10, 6, 4, 0.14) 55%,
+    rgba(10, 6, 4, 0.30) 100%
   );
   pointer-events: none;
   z-index: 0;
