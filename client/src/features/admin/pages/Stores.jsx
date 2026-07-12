@@ -3,7 +3,7 @@ import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
-import { LoadingCard } from '../../../shared/components/ui/LoadingCard';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
 
@@ -215,7 +215,7 @@ export default function Stores() {
       )}
 
       {loading ? (
-        <LoadingCard rows={4} />
+        <SkeletonTable rows={6} cols={5} />
       ) : loadError ? (
         <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', color: 'var(--red)' }}>

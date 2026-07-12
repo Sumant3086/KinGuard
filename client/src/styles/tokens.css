@@ -1,5 +1,7 @@
 /* ─── Design tokens ─────────────────────────────────────────────── */
 :root {
+  color-scheme: light; /* force light mode for all browser controls */
+
   /* Brand — KinGuard Red */
   --vi:       #dc2626;
   --vi-deep:  #b91c1c;
@@ -23,38 +25,39 @@
   --amber-light:   #f59e0b;
   --amber-bg:      rgba(217,119,6,0.10);
   --amber-bg-2:    rgba(217,119,6,0.14);
-  --cyan:          #06b6d4;
-  --blue:          #3b82f6;
-  --blue-bg:       rgba(59,130,246,0.10);
-  --violet:        #7c3aed;
-  --violet-light:  #8b5cf6;
-  --violet-bg:     rgba(124,58,237,0.10);
+  /* Darker accents so they read on warm-beige surfaces */
+  --cyan:          #0369a1;
+  --blue:          #1d4ed8;
+  --blue-bg:       rgba(29,78,216,0.10);
+  --violet:        #6d28d9;
+  --violet-light:  #7c3aed;
+  --violet-bg:     rgba(109,40,217,0.10);
 
-  /* Surfaces */
-  --page:          #f8fafc;
-  --surface:       #ffffff;
-  --surface-2:     #f8fafc;
-  --surface-3:     #f1f5f9;
+  /* Surfaces — warm clay-rose beige theme */
+  --page:          #ead4ce;
+  --surface:       #f4e4de;
+  --surface-2:     #ead4ce;
+  --surface-3:     #e0c8c2;
 
   /* Sidebar / nav */
-  --sb-bg:       #ffffff;
-  --sb-border:   rgba(220,38,38,0.10);
-  --sb-hover:    rgba(220,38,38,0.06);
-  --sb-active:   rgba(220,38,38,0.12);
-  --sb-text:     #334155;
-  --sb-text-dim: #64748b;
+  --sb-bg:       #f4e4de;
+  --sb-border:   rgba(185,28,28,0.12);
+  --sb-hover:    rgba(185,28,28,0.08);
+  --sb-active:   rgba(185,28,28,0.14);
+  --sb-text:     #3d1a18;
+  --sb-text-dim: #6b3e3c;
 
-  /* Borders */
-  --border:        rgba(15,23,42,0.09);
-  --border-subtle: rgba(15,23,42,0.05);
-  --border-red:    rgba(220,38,38,0.12);
+  /* Borders — warm red-tinted */
+  --border:        rgba(185,28,28,0.14);
+  --border-subtle: rgba(185,28,28,0.08);
+  --border-red:    rgba(185,28,28,0.18);
 
-  /* Text */
-  --t1: #0f172a;
-  --t2: #334155;
-  --t3: #64748b;
-  --t4: #94a3b8;
-  --text-muted: #94a3b8;
+  /* Text — dark warm, fully legible on all light surfaces */
+  --t1: #1c0a08;
+  --t2: #3d1a18;
+  --t3: #6b3e3c;
+  --t4: #9a6a68;
+  --text-muted: #9a6a68;
 
   /* Typography Scale */
   --text-2xs:  10px;
@@ -91,6 +94,11 @@
   --sh-sm: 0 2px 8px rgba(0,0,0,0.07), 0 1px 4px rgba(220,38,38,0.06);
   --sh-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(220,38,38,0.07);
   --sh-lg: 0 12px 32px rgba(0,0,0,0.10), 0 4px 12px rgba(220,38,38,0.08);
+
+  /* Background imagery — default blur for full-page background images
+     (admin shell, store shell). Home & login tune blur per-surface for
+     text readability: hero 3px, features 5px, login 4px. */
+  --bg-image-blur: 2.5px;
 
   /* Layout */
   --bar-h:     60px;
@@ -135,29 +143,36 @@
   --z-toast:    9999;
 }
 
-/* Dark mode */
+/* Force warm-light theme even in system dark mode — design is light-only */
 @media (prefers-color-scheme: dark) {
   :root {
-    --page:      #0f172a;
-    --surface:   #1e293b;
-    --surface-2: #334155;
-    --surface-3: #475569;
-    --t1: #f1f5f9;
-    --t2: #cbd5e1;
-    --t3: #94a3b8;
-    --t4: #64748b;
-    --border:        rgba(255,255,255,0.10);
-    --border-subtle: rgba(255,255,255,0.05);
-    --border-red:    rgba(220,38,38,0.18);
+    color-scheme: light;
+    --page:          #ead4ce;
+    --surface:       #f4e4de;
+    --surface-2:     #ead4ce;
+    --surface-3:     #e0c8c2;
+    --t1: #1c0a08;
+    --t2: #3d1a18;
+    --t3: #6b3e3c;
+    --t4: #9a6a68;
+    --text-muted:    #9a6a68;
+    --border:        rgba(185,28,28,0.14);
+    --border-subtle: rgba(185,28,28,0.08);
+    --border-red:    rgba(185,28,28,0.18);
+    --sb-bg:         #f4e4de;
+    --sb-text:       #3d1a18;
+    --sb-text-dim:   #6b3e3c;
+    --cyan:          #0369a1;
+    --blue:          #1d4ed8;
   }
 }
 
 /* High contrast */
 @media (prefers-contrast: high) {
   :root {
-    --border: rgba(0,0,0,0.28);
-    --border-subtle: rgba(0,0,0,0.14);
-    --t3: #475569;
+    --border:        rgba(185,28,28,0.30);
+    --border-subtle: rgba(185,28,28,0.16);
+    --t3: #4a2222;
   }
 }
 

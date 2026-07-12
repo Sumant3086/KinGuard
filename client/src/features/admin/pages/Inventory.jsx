@@ -4,7 +4,7 @@ import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
-import { LoadingCard } from '../../../shared/components/ui/LoadingCard';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
@@ -213,7 +213,7 @@ export default function Inventory() {
 
       {/* Results */}
       {loading && !initialized ? (
-        <LoadingCard rows={5} />
+        <SkeletonTable rows={8} cols={8} />
       ) : records.length === 0 ? (
         <EmptyState
           icon={EmptyIcon}

@@ -35,7 +35,14 @@ export function AuthProvider({ children }) {
   // Validate the session against the server on every page load.
   // The access token lives in an HttpOnly cookie sent automatically.
   // client.js transparently refreshes it on 401 before this resolves.
+  // Skip the round-trip entirely when localStorage has no stored user —
+  // a fresh visitor can't have a valid cookie, so there's nothing to validate.
   useEffect(() => {
+    if (!localStorage.getItem('kg_user')) {
+      setLoading(false);
+      return;
+    }
+
     let live = true;
     authApi.getCurrentUser()
       .then(userData => {

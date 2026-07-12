@@ -13,6 +13,30 @@ import { validatePassword } from '../controllers/authController.js';
 // Hard cap on rows returned by report/export endpoints.
 const EXPORT_ROW_LIMIT = 10_000;
 
+// Generate a secure random temp password that satisfies validatePassword() rules.
+// Uses only unambiguous characters (no I/l/0/O) so it's easy to communicate.
+function generateTempPassword() {
+  const upper   = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const lower   = 'abcdefghjkmnpqrstuvwxyz';
+  const digits  = '23456789';
+  const all     = upper + lower + digits;
+  const bytes   = randomBytes(16); // loop below reads up to bytes[10]; extra bytes feed the shuffle
+  // Guarantee at least one of each required class + a special char
+  let pw = [
+    upper[bytes[0]  % upper.length],
+    lower[bytes[1]  % lower.length],
+    digits[bytes[2] % digits.length],
+    '!',
+  ];
+  for (let i = 3; i < 8; i++) pw.push(all[bytes[3 + i] % all.length]);
+  // Fisher-Yates shuffle so requirements aren't always at the front
+  for (let i = pw.length - 1; i > 0; i--) {
+    const j = bytes[i] % (i + 1);
+    [pw[i], pw[j]] = [pw[j], pw[i]];
+  }
+  return pw.join('');
+}
+
 // Supabase / PgBouncer drops idle connections after ~5 min.
 // This wrapper retries the first DB call once after a forced reconnect,
 // covering cold-start failures on upload and batch-list endpoints.
@@ -552,6 +576,10 @@ export async function updateUser(req, res, next) {
     const { passwordHash: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.includes('email') ? 'Email address' : 'Employee ID';
+      return next(new AppError(`${field} is already in use by another account`, 409));
+    }
     next(error);
   }
 }
@@ -2435,8 +2463,7 @@ export async function approveUser(req, res, next) {
         if (user.isActive) throw new AppError('User is already active', 409);
         if (!user.pendingApproval) throw new AppError('This user is not in pending approval state', 409);
 
-        // Default password for all approved users
-        const tempPassword = 'Password123!';
+        const tempPassword = generateTempPassword();
         const passwordHash = await bcrypt.hash(tempPassword, 10);
 
         const updated = await tx.user.update({
@@ -2525,26 +2552,24 @@ export async function batchCreateUsersForPlants(req, res, next) {
     });
     const existingIds = new Set(existingUsers.map(u => u.employeeId));
 
-    // Generate all plant data with default password
-    const tempPassword = 'Password123!';
+    // Build plant data (exclude existing/missing stores)
     const plantData = validPlants.map(plant => {
       const store = storeMap.get(plant.parsedStoreId);
       if (!store) { errors.push({ storeId: plant.parsedStoreId, error: 'Plant not found' }); return null; }
       const employeeId = `MGR${store.storeCode}`;
       if (existingIds.has(employeeId)) { errors.push({ storeId: plant.parsedStoreId, storeCode: store.storeCode, error: `Username ${employeeId} already exists` }); return null; }
       const userName = plant.customName?.trim() || `Manager ${store.storeCode}`;
-      return { store, employeeId, userName, tempPassword };
+      return { store, employeeId, userName };
     }).filter(Boolean);
-
-    // Single bcrypt hash for all users (same password)
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     const createdUsers = [];
     for (let i = 0; i < plantData.length; i++) {
-      const { store, employeeId, userName, tempPassword } = plantData[i];
+      const { store, employeeId, userName } = plantData[i];
       try {
+        const tempPassword = generateTempPassword();
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
         const newUser = await prisma.user.create({
-          data: { employeeId, name: userName, passwordHash, role: 'STORE_MANAGER', storeId: store.id, isActive: true },
+          data: { employeeId, name: userName, passwordHash, role: 'STORE_MANAGER', storeId: store.id, isActive: true, mustChangePassword: true },
           include: { store: { select: { storeCode: true, storeName: true } } },
         }).catch(err => {
           if (err.code === 'P2002') throw new AppError(`Username ${employeeId} already exists`, 409);
@@ -2912,13 +2937,11 @@ export async function bulkReviewUsers(req, res, next) {
     const errors   = [];
 
     if (action === 'approve') {
-      // Default password for all approved users
-      const tempPassword = 'Password123!';
-      const passwordHash = await bcrypt.hash(tempPassword, 10);
-
       for (let i = 0; i < candidates.length; i++) {
         const user = candidates[i];
         try {
+          const tempPassword = generateTempPassword();
+          const passwordHash = await bcrypt.hash(tempPassword, 10);
           await prisma.user.update({
             where: { id: user.id, pendingApproval: true, isActive: false },
             data:  { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: true },

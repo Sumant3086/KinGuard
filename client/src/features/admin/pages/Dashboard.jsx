@@ -86,6 +86,75 @@ function ShortageBar({ rate }) {
   );
 }
 
+/* ── Donut ring — network submission overview ──────────────────── */
+function NetworkRing({ submitted, total, overdueCount }) {
+  if (!total) return null;
+  const pending  = Math.max(0, total - submitted - (overdueCount || 0));
+  const pct      = Math.round((submitted / total) * 100);
+  const sDeg     = (submitted    / total) * 360;
+  const pDeg     = (pending      / total) * 360;
+  const oDeg     = ((overdueCount||0) / total) * 360;
+  const gradient = `conic-gradient(from -90deg,
+    #22c55e 0deg ${sDeg}deg,
+    #f59e0b ${sDeg}deg ${sDeg + pDeg}deg,
+    #ef4444 ${sDeg + pDeg}deg ${sDeg + pDeg + oDeg}deg,
+    rgba(185,28,28,0.12) ${sDeg + pDeg + oDeg}deg 360deg)`;
+  return (
+    <div style={{ flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+      <div style={{ position:'relative', width:80, height:80 }}>
+        <div style={{ width:'100%', height:'100%', borderRadius:'50%', background:gradient }} />
+        <div style={{
+          position:'absolute', inset:14, borderRadius:'50%',
+          background:'var(--donut-hole,#ead4ce)',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          boxShadow:'0 0 0 2px rgba(185,28,28,0.10)',
+        }}>
+          <span style={{ fontSize:14, fontWeight:900, color:'#1c0a08', lineHeight:1 }}>{pct}%</span>
+          <span style={{ fontSize:7, fontWeight:700, color:'#6b3e3c', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:1 }}>done</span>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:8, fontSize:9, fontWeight:700, color:'#6b3e3c' }}>
+        <span style={{ display:'flex', alignItems:'center', gap:3 }}>
+          <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', display:'inline-block' }}/>
+          {submitted}
+        </span>
+        <span style={{ display:'flex', alignItems:'center', gap:3 }}>
+          <span style={{ width:7, height:7, borderRadius:'50%', background:'#f59e0b', display:'inline-block' }}/>
+          {pending}
+        </span>
+        {(overdueCount||0) > 0 && (
+          <span style={{ display:'flex', alignItems:'center', gap:3 }}>
+            <span style={{ width:7, height:7, borderRadius:'50%', background:'#ef4444', display:'inline-block' }}/>
+            {overdueCount}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Stacked network bar ──────────────────────────────────────── */
+function NetworkBar({ submitted, total, overdueCount }) {
+  if (!total) return null;
+  const pending  = Math.max(0, total - submitted - (overdueCount||0));
+  const sW = (submitted / total) * 100;
+  const pW = (pending   / total) * 100;
+  const oW = ((overdueCount||0) / total) * 100;
+  return (
+    <div style={{ marginTop:10 }}>
+      <div style={{ display:'flex', height:6, borderRadius:99, overflow:'hidden', gap:1, background:'rgba(185,28,28,0.10)' }}>
+        {sW > 0 && <div style={{ width:`${sW}%`, background:'#22c55e', borderRadius:'99px 0 0 99px' }} />}
+        {pW > 0 && <div style={{ width:`${pW}%`, background:'#f59e0b' }} />}
+        {oW > 0 && <div style={{ width:`${oW}%`, background:'#ef4444', borderRadius:'0 99px 99px 0' }} />}
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:5, fontSize:10, fontWeight:600, color:'#6b3e3c' }}>
+        <span><span style={{ color:'#15803d' }}>{submitted} submitted</span></span>
+        <span><span style={{ color:'#92400e' }}>{pending} pending</span> {(overdueCount||0) > 0 && <span style={{ color:'#b91c1c' }}>· {overdueCount} overdue</span>}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [data, setData]       = useState(() => cache.get(CACHE_KEY) ?? null);
   const [loading, setLoading] = useState(!cache.get(CACHE_KEY));
@@ -137,27 +206,29 @@ function DashboardContent({ data, navigate }) {
     <>
       {/* ── Command Header ── */}
       <div className="dash-command">
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="dash-cmd-title">Network Overview</div>
           <div className="dash-cmd-sub">
             {cb
               ? `Active cycle · ${fmtDate(cb.inventoryDate, 'long')}`
               : 'No active inventory cycle. Upload a master file to begin.'}
           </div>
-        </div>
-        {cb && (
-          <div className="dash-cmd-badges">
-            <span className={`dash-cmd-badge ${submittedPct === 100 ? 'good' : submittedPct >= 50 ? 'warning' : 'danger'}`}>
-              {submittedPct}% reported
-            </span>
-            <span className="dash-cmd-badge">{totalStores} store{totalStores !== 1 ? 's' : ''}</span>
-            {cb.submissionDeadline && (
-              <span className={`dash-cmd-badge ${now > new Date(cb.submissionDeadline) ? 'danger' : 'warning'}`}>
-                Deadline: {fmtDate(cb.submissionDeadline, 'monthDay')}
+          {cb && (
+            <div className="dash-cmd-badges" style={{ marginTop: 10 }}>
+              <span className={`dash-cmd-badge ${submittedPct === 100 ? 'good' : submittedPct >= 50 ? 'warning' : 'danger'}`}>
+                {submittedPct}% reported
               </span>
-            )}
-          </div>
-        )}
+              <span className="dash-cmd-badge">{totalStores} store{totalStores !== 1 ? 's' : ''}</span>
+              {cb.submissionDeadline && (
+                <span className={`dash-cmd-badge ${now > new Date(cb.submissionDeadline) ? 'danger' : 'warning'}`}>
+                  Deadline: {fmtDate(cb.submissionDeadline, 'monthDay')}
+                </span>
+              )}
+            </div>
+          )}
+          {cb && <NetworkBar submitted={cb.storesSubmitted ?? 0} total={totalStores} overdueCount={cb.overdueStores?.length ?? 0} />}
+        </div>
+        {cb && <NetworkRing submitted={cb.storesSubmitted ?? 0} total={totalStores} overdueCount={cb.overdueStores?.length ?? 0} />}
       </div>
 
       {/* ── Deadline / overdue banner ── */}
@@ -239,146 +310,152 @@ function DashboardContent({ data, navigate }) {
         </div>
       </div>
 
-      {/* ── Main content grid ── */}
-      <div className="dash-grid">
-
-        {/* Store Submission Status Scorecard */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">
-              <IcoBarChart />
-              Store Submission Status
+      {/* ── Store Submission Status Scorecard — full width ── */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">
+            <IcoBarChart />
+            Store Submission Status
+          </span>
+          {cb && (
+            <span className="card-header-meta">
+              {fmtDate(cb.inventoryDate)}
             </span>
-            {cb && (
-              <span className="card-header-meta">
-                {fmtDate(cb.inventoryDate)}
-              </span>
-            )}
-          </div>
+          )}
+        </div>
 
-          {storeScorecard.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-illustration">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="3" y="3" width="7" height="7"/>
-                  <rect x="14" y="3" width="7" height="7"/>
-                  <rect x="14" y="14" width="7" height="7"/>
-                  <rect x="3" y="14" width="7" height="7"/>
-                </svg>
-              </div>
-              <h4 className="empty-state-title">No Active Inventory Cycle</h4>
-              <p className="empty-state-description">
-                Upload a master file to create an inventory cycle for this network.
-              </p>
+        {storeScorecard.length === 0 ? (
+          <div className="empty-state" style={{ minHeight: 160 }}>
+            <div className="empty-state-illustration">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
             </div>
-          ) : (
-            <div className="table-wrap">
-              <table className="scorecard">
-                <thead>
-                  <tr>
-                    <th scope="col">Store</th>
-                    <th scope="col">Risk</th>
-                    <th scope="col">Shortage Rate</th>
-                    <th scope="col">Shortages</th>
-                    <th scope="col">Top Remark</th>
-                    <th scope="col">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {storeScorecard.map(store => (
-                    <tr
-                      key={store.storeId}
-                      className={store.riskLevel === 'RED' ? 'row-risk-high' : store.riskLevel === 'YELLOW' ? 'row-risk-mid' : ''}
-                    >
-                      <td>
-                        <div className="score-store-name">{store.storeName}</div>
-                        <div className="score-store-code">{store.storeCode || store.storeId}</div>
-                      </td>
-                      <td><RiskTag level={store.riskLevel} /></td>
-                      <td style={{ minWidth: 130 }}><ShortageBar rate={store.shortageRate} /></td>
-                      <td>
-                        <button
-                          onClick={() => store.shortageCount > 0 && navigate(`/admin/inventory?storeId=${store.storeId}&discrepancy=shortage`)}
-                          style={{
-                            background: 'none', border: 'none', padding: 0,
-                            fontWeight: 700, fontSize: 'inherit',
-                            color: store.shortageCount > 0 ? 'var(--red)' : 'var(--t2)',
-                            textDecoration: store.shortageCount > 0 ? 'underline' : 'none',
-                            cursor: store.shortageCount > 0 ? 'pointer' : 'default',
-                          }}
-                        >
-                          {store.shortageCount}
-                        </button>
-                      </td>
-                      <td>
-                        <span className="score-remark" title={store.topRemark || ''}>
-                          {store.topRemark || '—'}
+            <h4 className="empty-state-title">No Active Inventory Cycle</h4>
+            <p className="empty-state-description">Upload a master file to create an inventory cycle for this network.</p>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="scorecard">
+              <thead>
+                <tr>
+                  <th scope="col">Store</th>
+                  <th scope="col">Risk</th>
+                  <th scope="col">Shortage Rate</th>
+                  <th scope="col">Shortages</th>
+                  <th scope="col">Top Remark</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {storeScorecard.map(store => (
+                  <tr
+                    key={store.storeId}
+                    className={store.riskLevel === 'RED' ? 'row-risk-high' : store.riskLevel === 'YELLOW' ? 'row-risk-mid' : ''}
+                  >
+                    <td>
+                      <div className="score-store-name">{store.storeName}</div>
+                      <div className="score-store-code">{store.storeCode || store.storeId}</div>
+                    </td>
+                    <td><RiskTag level={store.riskLevel} /></td>
+                    <td style={{ minWidth: 130 }}><ShortageBar rate={store.shortageRate} /></td>
+                    <td>
+                      <button
+                        onClick={() => store.shortageCount > 0 && navigate(`/admin/inventory?storeId=${store.storeId}&discrepancy=shortage`)}
+                        style={{
+                          background: 'none', border: 'none', padding: 0,
+                          fontWeight: 700, fontSize: 'inherit',
+                          color: store.shortageCount > 0 ? 'var(--red)' : 'var(--t2)',
+                          textDecoration: store.shortageCount > 0 ? 'underline' : 'none',
+                          cursor: store.shortageCount > 0 ? 'pointer' : 'default',
+                        }}
+                      >
+                        {store.shortageCount}
+                      </button>
+                    </td>
+                    <td>
+                      <span className="score-remark" title={store.topRemark || ''}>
+                        {store.topRemark || '—'}
+                      </span>
+                    </td>
+                    <td>
+                      {store.status === 'SUBMITTED' && <span className="badge badge-submitted">Submitted</span>}
+                      {store.status === 'PENDING' && (
+                        <span className={`badge ${store.isOverdue ? 'badge-shortage' : 'badge-pending'}`}>
+                          {store.isOverdue ? 'Past Deadline' : 'Awaiting'}
                         </span>
-                      </td>
-                      <td>
-                        {store.status === 'SUBMITTED' && <span className="badge badge-submitted">Submitted</span>}
-                        {store.status === 'PENDING' && (
-                          <span className={`badge ${store.isOverdue ? 'badge-shortage' : 'badge-pending'}`}>
-                            {store.isOverdue ? 'Past Deadline' : 'Awaiting'}
-                          </span>
-                        )}
-                        {store.status === 'NO_DATA' && <span className="badge badge-no-data">No Data</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Recurring Loss Items */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">
-              <IcoHotspot />
-              Recurring Loss Items
-            </span>
+                      )}
+                      {store.status === 'NO_DATA' && <span className="badge badge-no-data">No Data</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <p className="card-sub">Items with shortages in 2 or more consecutive cycles</p>
+        )}
+      </div>
 
-          {hotspots.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-illustration success">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
-              <h4 className="empty-state-title">No Recurring Loss Items Identified</h4>
-              <p className="empty-state-description">
-                No items with repeat shortages detected across recent cycles.
-              </p>
-            </div>
-          ) : (
-            <div className="hotspot-list">
-              {hotspots.map((h, i) => (
-                <div key={i} className={`hotspot-item-premium${i === 0 ? ' hotspot-top' : ''}`}>
-                  <div className={`hotspot-rank-badge${i === 0 ? ' rank-1' : i === 1 ? ' rank-2' : ''}`}>
-                    {i + 1}
-                  </div>
-                  <div className="hotspot-body">
-                    <div className="hotspot-material-name">{h.materialCode}</div>
-                    <div className="hotspot-store-line">
-                      <span className="hotspot-store-tag">{h.storeName}</span>
-                      {h.dominantRemark && <span className="hotspot-remark-tag">· {h.dominantRemark}</span>}
-                    </div>
-                  </div>
-                  <div className="hotspot-stats">
-                    <span className="hotspot-cycles-badge">{h.batchCount} cycles</span>
-                    <span className="hotspot-units-lost">−{h.totalShortage}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* ── Recurring Loss Items — full-width compact grid below scorecard ── */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">
+            <IcoHotspot />
+            Recurring Loss Items
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 500 }}>
+            Items with shortages in 2+ consecutive cycles
+          </span>
         </div>
 
+        {hotspots.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 4px' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(22,163,74,0.10)', border: '1.5px solid rgba(22,163,74,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>No Recurring Loss Items Detected</div>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>No materials with repeat shortages found across recent cycles.</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+            {hotspots.map((h, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '12px 14px', borderRadius: 'var(--r)',
+                border: `1px solid ${i === 0 ? 'rgba(220,38,38,0.25)' : 'var(--red-border)'}`,
+                background: i === 0 ? 'rgba(220,38,38,0.04)' : 'rgba(255,248,245,0.70)',
+                borderLeft: i === 0 ? '3px solid #dc2626' : undefined,
+              }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 800,
+                  background: i === 0 ? 'rgba(220,38,38,0.14)' : i === 1 ? 'rgba(217,119,6,0.12)' : 'rgba(185,28,28,0.08)',
+                  color: i === 0 ? '#b91c1c' : i === 1 ? '#b45309' : 'var(--tx3)',
+                }}>
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--tx1)', wordBreak: 'break-word', lineHeight: 1.3 }}>{h.materialCode}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx2)', fontWeight: 600, marginTop: 2 }}>{h.storeName}</div>
+                  {h.dominantRemark && <div style={{ fontSize: 10.5, color: 'var(--tx3)', marginTop: 2 }}>{h.dominantRemark}</div>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                  <span style={{ padding: '2px 7px', borderRadius: 99, background: 'rgba(220,38,38,0.10)', color: '#b91c1c', fontSize: 10, fontWeight: 700, border: '1px solid rgba(220,38,38,0.18)' }}>
+                    {h.batchCount} cycles
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>−{h.totalShortage}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );

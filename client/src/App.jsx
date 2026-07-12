@@ -1,6 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './features/auth/AuthContext';
+import TopProgress from './shared/components/ui/TopProgress';
+import { progressStart, progressDone } from './shared/api/progress';
 
 // Eagerly loaded — needed on first paint for every user
 import Home           from './pages/Home';
@@ -21,12 +23,27 @@ const AdminReports   = lazy(() => import('./features/admin/pages/Reports'));
 const StoreDashboard = lazy(() => import('./features/store/pages/Dashboard'));
 const StoreInventory = lazy(() => import('./features/store/pages/Inventory'));
 
-const pageLoaderStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' };
-
+/**
+ * Shown while a route chunk downloads or the session is being validated.
+ * Renders a neutral page-shaped skeleton and drives the global top progress
+ * bar for the duration it is mounted.
+ */
 function PageLoader() {
+  useEffect(() => {
+    progressStart();
+    return () => progressDone();
+  }, []);
+
   return (
-    <div style={pageLoaderStyle}>
-      <div className="loading-spinner" />
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '84px 32px 48px' }} aria-busy="true" aria-label="Loading page">
+      <div className="skeleton skeleton-text" style={{ width: '28%', height: 30, marginBottom: 10 }} />
+      <div className="skeleton skeleton-text" style={{ width: '44%', height: 14, marginBottom: 28 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="skeleton skeleton-card" style={{ height: 92, marginBottom: 0 }} />
+        ))}
+      </div>
+      <div className="skeleton skeleton-card" style={{ height: 320, marginBottom: 0 }} />
     </div>
   );
 }
@@ -51,6 +68,8 @@ function PrivateRoute({ children, role }) {
 function App() {
   return (
     <>
+      <TopProgress />
+
       <a href="#main-content" className="skip-to-content">
         Skip to main content
       </a>

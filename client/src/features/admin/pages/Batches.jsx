@@ -3,11 +3,19 @@ import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
-import { LoadingCard } from '../../../shared/components/ui/LoadingCard';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate, fmtISO } from '../../../shared/utils/dateUtils';
+
+// Format a date for a datetime-local input in the USER'S timezone.
+// (toISOString() would inject UTC into a field the browser treats as local time.)
+function toLocalInputValue(dateStr) {
+  const d = new Date(dateStr);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
 
 const CycleIcon = (
   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -69,7 +77,6 @@ export default function Batches() {
           setTimeout(() => reject(new Error('Request timed out after 10 seconds')), 10000)
         ),
       ]);
-      // FORCE STATE UPDATE
       setBatches(b);
       setStores(s);
       setLoading(false);
@@ -90,7 +97,9 @@ export default function Batches() {
   async function handleSaveDeadline(batchId) {
     setSavingDeadline(true);
     try {
-      await adminApi.updateBatch(batchId, { submissionDeadline: deadlineInput || null });
+      // Convert the local datetime-local value to an absolute ISO timestamp so the
+      // server doesn't re-interpret it in ITS timezone.
+      await adminApi.updateBatch(batchId, { submissionDeadline: deadlineInput ? new Date(deadlineInput).toISOString() : null });
       await load();
       setEditingDeadline(null);
     } catch (e) {
@@ -102,7 +111,7 @@ export default function Batches() {
     if (!extStoreId || !extDeadline) { toast.warning('Store and deadline are required'); return; }
     setSavingExt(true);
     try {
-      await adminApi.grantStoreExtension({ batchId: extendModal.batchId, storeId: parseInt(extStoreId), newDeadline: extDeadline, note: extNote || undefined });
+      await adminApi.grantStoreExtension({ batchId: extendModal.batchId, storeId: parseInt(extStoreId), newDeadline: new Date(extDeadline).toISOString(), note: extNote || undefined });
       await load();
       setExtendModal(null);
       setExtStoreId(''); setExtDeadline(''); setExtNote('');
@@ -178,7 +187,7 @@ export default function Batches() {
       <PageHeader title="Inventory Cycles" subtitle={subtitle} />
 
       {loading ? (
-        <LoadingCard rows={3} />
+        <SkeletonTable rows={5} cols={7} />
       ) : loadError ? (
         <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', color: 'var(--red)' }}>
@@ -259,12 +268,12 @@ export default function Batches() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDeadline(b.id); setDeadlineInput(b.submissionDeadline ? new Date(b.submissionDeadline).toISOString().slice(0, 16) : ''); }}>Deadline</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDeadline(b.id); setDeadlineInput(b.submissionDeadline ? toLocalInputValue(b.submissionDeadline) : ''); }}>Deadline</button>
                           <button className="btn btn-ghost btn-sm" onClick={() => setExtendModal({ batchId: b.id })}>Extend Store</button>
                           <button className="btn btn-ghost btn-sm" onClick={() => setUnlockModal({ batchId: b.id })} title="Reset a store's submission so they can re-count">Unlock Store</button>
                           <button className="btn btn-success btn-sm" onClick={() => handleBatchExport(b.id, b.inventoryDate)}>Excel</button>
-                          <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(220,38,38,0.1)', color: '#f87171', border: '1px solid rgba(220,38,38,0.25)' }}>PDF</button>
-                          <button className="btn btn-sm" onClick={() => handleSendEmailReminders(b.id)} disabled={emailReminding === b.id} title="Send email reminder to all pending store managers" style={{ background: 'rgba(59,130,246,0.09)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.22)' }}>{emailReminding === b.id ? '…' : 'Email'}</button>
+                          <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>
+                          <button className="btn btn-sm" onClick={() => handleSendEmailReminders(b.id)} disabled={emailReminding === b.id} title="Send email reminder to all pending store managers" style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)' }}>{emailReminding === b.id ? '…' : 'Email'}</button>
                           <button className="btn btn-sm" onClick={() => { loadUsersIfNeeded(); setWhatsAppModal({ batchId: b.id, inventoryDate: b.inventoryDate, deadline: b.submissionDeadline }); }} style={{ background: 'rgba(37,211,102,0.09)', color: '#16a34a', border: '1px solid rgba(37,211,102,0.22)' }}>WhatsApp</button>
                           <button className="btn btn-sm" onClick={() => { setDeleteTarget(b); setDeleteConfirmText(''); }} style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }} title="Permanently delete this cycle and all its records">Delete</button>
                         </div>

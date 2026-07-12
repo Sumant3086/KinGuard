@@ -186,6 +186,12 @@ export default function Upload() {
             <button type="submit" className="btn btn-primary" disabled={previewing || !file}>
               {previewing ? 'Validating…' : 'Validate & Preview →'}
             </button>
+            {previewing && (
+              <div style={{ marginTop: 14 }}>
+                <div className="progress-loader"><div className="progress-loader-bar" /></div>
+                <p style={{ fontSize: 12, color: 'var(--t3)', marginTop: 6 }}>Uploading and validating your file…</p>
+              </div>
+            )}
           </form>
         </div>
       )}
@@ -246,6 +252,14 @@ export default function Upload() {
             </button>
             <button className="btn btn-secondary" onClick={resetForm} disabled={uploading}>Cancel</button>
           </div>
+          {uploading && (
+            <div style={{ marginTop: 14 }}>
+              <div className="progress-loader"><div className="progress-loader-bar" /></div>
+              <p style={{ fontSize: 12, color: 'var(--t3)', marginTop: 6 }}>
+                Publishing cycle — processing rows, creating stores, and notifying managers. This can take a moment…
+              </p>
+            </div>
+          )}
         </div>
       )}
 

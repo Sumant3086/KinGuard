@@ -155,8 +155,40 @@ export async function sendSubmissionEmail({ adminEmail, adminName, store, batchD
         </table>
       `),
     });
-    console.log('[email] Submission notification sent');
+    console.log('[email] Submission notification sent to admin');
   } catch (e) {
     console.error('[email] Submission notification failed:', e.message);
+  }
+}
+
+// ── Confirm to store manager that their submission was received ───────────────
+// Fire-and-forget; called after a successful store submit.
+export async function sendManagerSubmissionConfirmation({ managerEmail, managerName, store, batchDate, recordCount, shortages, matched, excess }) {
+  const { transporter, configured } = getTransporter();
+  if (!configured) return;
+  if (!managerEmail) return;
+  try {
+    const shortageColor = shortages > 0 ? '#dc2626' : '#059669';
+    await transporter.sendMail({
+      from: FROM,
+      to: managerEmail,
+      subject: `Submission confirmed — ${store.storeName} · ${batchDate}`,
+      html: html(`
+        <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Inventory Submission Confirmed</p>
+        <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${managerName}, your inventory count for <strong>${store.storeName}</strong> has been successfully submitted. Here is your summary:</p>
+        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+          ${row('Store', `${store.storeCode} — ${store.storeName}`)}
+          ${row('Cycle Date', batchDate)}
+          ${row('Total Records Submitted', String(recordCount))}
+          ${row('Matched Items', String(matched), '#059669')}
+          ${row('Shortage Items', String(shortages), shortageColor)}
+          ${row('Excess Items', String(excess))}
+        </table>
+        <p style="color:#64748b;font-size:13px;margin:20px 0 0">Your submission has been recorded and your administrator has been notified. No further action is required unless you receive an extension request.</p>
+      `),
+    });
+    console.log('[email] Manager submission confirmation sent:', managerEmail);
+  } catch (e) {
+    console.error('[email] Manager submission confirmation failed:', e.message);
   }
 }

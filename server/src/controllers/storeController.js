@@ -345,17 +345,34 @@ export async function submitInventory(req, res, next) {
     }).catch(() => {});
     detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(() => {});
 
-    // Email ALL active admins on submission
+    // Fire-and-forget email notifications after successful submission
     const shortageCount = records.filter(r => (r.difference ?? 0) < 0).length;
+    const matchedCount  = records.filter(r => (r.difference ?? 0) === 0).length;
+    const excessCount   = records.filter(r => (r.difference ?? 0) > 0).length;
+
     Promise.all([
       prisma.uploadBatch.findUnique({ where: { id: parsedBatchId }, select: { inventoryDate: true } }),
       prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } }, select: { email: true, name: true } }),
     ]).then(([b, admins]) => {
-      if (!b || admins.length === 0) return;
-      import('../services/emailService.js').then(({ sendSubmissionEmail }) => {
-        const batchDate = b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (!b) return;
+      const batchDate = b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      import('../services/emailService.js').then(({ sendSubmissionEmail, sendManagerSubmissionConfirmation }) => {
+        // 1. Notify all admins
         for (const admin of admins) {
           if (req.user.store) sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount });
+        }
+        // 2. Confirm to the submitting store manager
+        if (req.user.email && req.user.store) {
+          sendManagerSubmissionConfirmation({
+            managerEmail: req.user.email,
+            managerName:  req.user.name,
+            store:        req.user.store,
+            batchDate,
+            recordCount:  count,
+            shortages:    shortageCount,
+            matched:      matchedCount,
+            excess:       excessCount,
+          });
         }
       });
     }).catch(() => {});
