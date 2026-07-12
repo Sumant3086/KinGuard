@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useAuth } from '../../auth/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
@@ -49,10 +50,10 @@ function StatusBadge({ user }) {
 // ── Source badge ─────────────────────────────────────────────────
 function SourceBadge({ source }) {
   if (source === 'BATCH_IMPORT') return (
-    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.22)', fontWeight: 600 }}>Batch Upload</span>
+    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(29,78,216,0.10)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.24)', fontWeight: 600 }}>Batch Upload</span>
   );
   if (source === 'AUTO_STORE') return (
-    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.22)', fontWeight: 600 }}>Auto (Store Upload)</span>
+    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(109,40,217,0.10)', color: '#6d28d9', border: '1px solid rgba(109,40,217,0.24)', fontWeight: 600 }}>Auto (Store Upload)</span>
   );
   return null;
 }
@@ -201,7 +202,6 @@ export default function AdminUsers() {
           setTimeout(() => reject(new Error('Request timed out after 10 seconds')), 10000)
         ),
       ]);
-      // FORCE STATE UPDATE
       setUsers(u);
       setStores(s);
       setSelected(new Set());
@@ -577,11 +577,7 @@ export default function AdminUsers() {
 
       {/* ── Main table ── */}
       {loading ? (
-        <div className="card" style={{ padding: '40px 20px' }}>
-          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
-          <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
-          <div className="skeleton skeleton-text" style={{ width: '50%', margin: '0 auto' }} />
-        </div>
+        <SkeletonTable rows={7} cols={7} />
       ) : loadError ? (
         <div className="empty-state">
           <div className="empty-state-illustration error">
@@ -818,26 +814,87 @@ export default function AdminUsers() {
             {/* Step 1 — Upload */}
             {importStep === 'upload' && (
               <>
-                <div style={{ marginBottom: 16, padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--r)', fontSize: 12, color: 'var(--t3)' }}>
-                  <strong style={{ color: 'var(--t1)' }}>Required Excel columns:</strong>
-                  <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-                    <div><code>Name</code> — full name <span style={{ color: 'var(--red)' }}>*</span></div>
-                    <div><code>Store Code</code> — store code <span style={{ color: 'var(--red)' }}>*</span> (required for Store Managers)</div>
-                    <div><code>Employee ID</code> — login ID (auto-generated if blank)</div>
-                    <div><code>Email</code> — for notifications (optional)</div>
-                    <div><code>Role</code> — STORE_MANAGER (default) or ADMIN</div>
-                    <div><code>Store Name</code> — used if store is new (optional)</div>
+                {/* ── Step progress ── */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 22 }}>
+                  {[{ n: 1, label: 'Prepare File', active: true }, { n: 2, label: 'Review', active: false }, { n: 3, label: 'Done', active: false }].map((step, i) => (
+                    <div key={step.n} style={{ display: 'flex', alignItems: 'flex-start', flex: i < 2 ? 1 : 'none' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: step.active ? '#dc2626' : 'rgba(185,28,28,0.12)', color: step.active ? '#fff' : 'var(--t4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{step.n}</div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: step.active ? '#dc2626' : 'var(--t4)', whiteSpace: 'nowrap' }}>{step.label}</span>
+                      </div>
+                      {i < 2 && <div style={{ flex: 1, height: 2, background: 'rgba(185,28,28,0.15)', marginTop: 13, marginLeft: 4, marginRight: 4 }} />}
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Column guide — visual cards ── */}
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--t1)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    What to include in your Excel or CSV file:
                   </div>
-                  <div style={{ marginTop: 8, color: 'var(--t4)' }}>
-                    Uploaded users will be created as <strong>Pending Approval</strong> — they cannot log in until approved.
-                    New stores found in the file will be created automatically.
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    {[
+                      { col: 'Name', desc: 'Full name of the person', tag: 'Required', tagColor: '#dc2626', tagBg: 'rgba(220,38,38,0.10)', tagBorder: 'rgba(220,38,38,0.22)', color: '#dc2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.18)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                      { col: 'Store Code', desc: 'The store/plant they manage (e.g. CP01)', tag: 'Required for Managers', tagColor: '#d97706', tagBg: 'rgba(217,119,6,0.10)', tagBorder: 'rgba(217,119,6,0.22)', color: '#d97706', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.18)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+                      { col: 'Email', desc: 'Gets inventory cycle notifications', tag: 'Recommended', tagColor: '#2563eb', tagBg: 'rgba(37,99,235,0.09)', tagBorder: 'rgba(37,99,235,0.22)', color: '#2563eb', bg: 'rgba(37,99,235,0.05)', border: 'rgba(37,99,235,0.16)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
+                      { col: 'Employee ID', desc: 'Their login username — auto-generated if blank', tag: 'Optional', tagColor: '#64748b', tagBg: 'rgba(100,116,139,0.09)', tagBorder: 'rgba(100,116,139,0.20)', color: '#7c3aed', bg: 'rgba(124,58,237,0.05)', border: 'rgba(124,58,237,0.16)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" width="16" height="16"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
+                      { col: 'Role', desc: 'STORE_MANAGER (default) or ADMIN', tag: 'Optional', tagColor: '#64748b', tagBg: 'rgba(100,116,139,0.09)', tagBorder: 'rgba(100,116,139,0.20)', color: '#059669', bg: 'rgba(5,150,105,0.05)', border: 'rgba(5,150,105,0.16)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+                      { col: 'Store Name', desc: 'Only needed if the store code is brand new', tag: 'Optional', tagColor: '#64748b', tagBg: 'rgba(100,116,139,0.09)', tagBorder: 'rgba(100,116,139,0.20)', color: '#64748b', bg: 'rgba(100,116,139,0.05)', border: 'rgba(100,116,139,0.16)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" width="16" height="16"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> },
+                    ].map(({ col, desc, tag, tagColor, tagBg, tagBorder, color, bg, border, icon }) => (
+                      <div key={col} style={{ padding: '10px 12px', borderRadius: 'var(--r)', border: `1px solid ${border}`, background: bg, display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 7, background: `${bg}`, border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>{icon}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3, flexWrap: 'wrap' }}>
+                            <code style={{ fontSize: 11, fontWeight: 800, color: 'var(--t1)', background: 'rgba(0,0,0,0.07)', padding: '1px 5px', borderRadius: 4, letterSpacing: '0.2px' }}>{col}</code>
+                            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: '0.4px', background: tagBg, color: tagColor, border: `1px solid ${tagBorder}` }}>{tag}</span>
+                          </div>
+                          <div style={{ fontSize: 10.5, color: 'var(--t3)', lineHeight: 1.4 }}>{desc}</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
+
+                {/* ── Pending approval notice ── */}
+                <div style={{ display: 'flex', gap: 10, padding: '10px 13px', background: 'rgba(217,119,6,0.07)', border: '1px solid rgba(217,119,6,0.22)', borderLeft: '3px solid #d97706', borderRadius: 'var(--r)', marginBottom: 18, fontSize: 12 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" width="16" height="16" style={{ flexShrink: 0, marginTop: 1 }} strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <span style={{ color: 'var(--t2)', lineHeight: 1.5 }}>
+                    Uploaded users are created as <strong style={{ color: '#b45309' }}>Pending Approval</strong> — they cannot log in until you review and approve them. New stores in the file are created automatically.
+                  </span>
+                </div>
+
+                {/* ── File upload zone ── */}
                 <form onSubmit={handleImportPreview}>
-                  <div className="form-group">
-                    <label htmlFor="import-file">Excel or CSV File</label>
-                    <input id="import-file" ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
-                      onChange={e => { setImportFile(e.target.files[0]); }} required />
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--t2)', marginBottom: 8 }}>
+                      Choose your Excel or CSV file
+                    </label>
+                    <div
+                      style={{ border: `2px dashed ${importFile ? 'rgba(22,163,74,0.40)' : 'rgba(185,28,28,0.28)'}`, borderRadius: 'var(--r-md)', padding: '22px 16px', textAlign: 'center', background: importFile ? 'rgba(22,163,74,0.04)' : 'rgba(255,252,250,0.85)', transition: 'all 0.2s', cursor: 'pointer' }}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {importFile ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(22,163,74,0.12)', border: '1.5px solid rgba(22,163,74,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                          <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>{importFile.name}</div>
+                            <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>{(importFile.size / 1024).toFixed(1)} KB · <span style={{ color: '#dc2626', cursor: 'pointer' }}>Click to change</span></div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(185,28,28,0.08)', border: '1px solid rgba(185,28,28,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: '#dc2626' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', marginBottom: 3 }}>Click to choose a file</div>
+                          <div style={{ fontSize: 11, color: 'var(--t4)' }}>.xlsx, .xls, or .csv · Max 10 MB</div>
+                        </div>
+                      )}
+                    </div>
+                    <input id="import-file" ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => setImportFile(e.target.files[0])} required style={{ display: 'none' }} />
                   </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button type="button" className="btn btn-secondary" onClick={() => setShowImportModal(false)}>Cancel</button>
@@ -1011,7 +1068,7 @@ export default function AdminUsers() {
                         color: 'var(--t3)',
                         transition: 'color 0.15s'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.color = 'var(--orange)'}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--amber-light)'}
                       onMouseLeave={e => e.currentTarget.style.color = 'var(--t3)'}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >

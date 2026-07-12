@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
@@ -110,7 +111,7 @@ export default function AuditLogs() {
       />
 
       {loading ? (
-        <div className="loading"><div className="spinner" />Loading activity log…</div>
+        <SkeletonTable rows={8} cols={5} />
       ) : logs.length === 0 ? (
         <div className="card">
           <EmptyState icon={EmptyIcon} title="No Activity Found" description="No log entries found for the selected limit." />

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import StoreLayout from '../layout/StoreLayout';
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as storeApi from '../../../shared/api/storeApi';
@@ -518,11 +519,11 @@ export default function StoreInventory() {
       {isLocked && (
         <div className="lock-banner">
           <span className="lock-banner-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </span>
           <div>
-            <p>This count cycle is locked.</p>
-            <span>Contact your administrator to make changes or request an extension.</span>
+            <p>This count cycle is locked — deadline has passed.</p>
+            <span>Contact your administrator to request an extension or unlock this cycle.</span>
           </div>
         </div>
       )}
@@ -582,14 +583,7 @@ export default function StoreInventory() {
 
       {/* ── Table ── */}
       {loading ? (
-        <div className="card">
-          <div style={{ padding: '40px 20px' }}>
-            <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
-            <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
-            <div className="skeleton skeleton-card" style={{ marginBottom: 12 }} />
-            <div className="skeleton skeleton-text" style={{ width: '60%', margin: '0 auto' }} />
-          </div>
-        </div>
+        <SkeletonTable rows={8} cols={8} />
       ) : batches.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-illustration">
@@ -645,7 +639,9 @@ export default function StoreInventory() {
                   const isEditable = isPending && !isLocked;
                   const saveState  = getSaveState(record.id);
                   const isEditing  = !!editedRecords[record.id];
-                  const isBlank    = isPending && record.physicalQuantity === null && !editedRecords[record.id]?.physicalQuantity;
+                  // Treat undefined and '' as blank — but '0' is a valid count (same rule as jumpToNextBlank)
+                  const editedPhys = editedRecords[record.id]?.physicalQuantity;
+                  const isBlank    = isPending && record.physicalQuantity === null && (editedPhys === undefined || editedPhys === '');
                   const instantDiff = getInstantDiff(record);
                   const isSelected = selectedRowIndex >= 0 && records.filter(r => r.status === 'PENDING' && !isLocked)[selectedRowIndex]?.id === record.id;
 
@@ -825,9 +821,17 @@ export default function StoreInventory() {
 
                       {/* Status */}
                       <td>
-                        <span className={`badge badge-${record.status.toLowerCase()}`}>
-                          {record.status === 'PENDING' ? 'Pending' : 'Submitted'}
-                        </span>
+                        {record.status === 'PENDING' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: 'rgba(217,119,6,0.13)', color: '#92400e', border: '1.5px solid rgba(217,119,6,0.30)', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0, animation: 'pulse 2s ease-in-out infinite' }} />
+                            Pending
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: 'rgba(22,163,74,0.13)', color: '#15803d', border: '1.5px solid rgba(22,163,74,0.30)', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="10" height="10" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Submitted
+                          </span>
+                        )}
                       </td>
 
                       {/* Save controls */}

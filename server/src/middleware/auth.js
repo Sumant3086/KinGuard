@@ -77,6 +77,7 @@ export async function authenticate(req, res, next) {
         id:                user.id,
         employeeId:        user.employeeId,
         name:              user.name,
+        email:             user.email || null,
         role:              user.role,
         storeId:           user.storeId,
         store:             user.store,

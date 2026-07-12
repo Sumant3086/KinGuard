@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
-import { LoadingCard } from '../../../shared/components/ui/LoadingCard';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import * as cache from '../../../shared/api/cache';
@@ -143,7 +143,7 @@ export default function Reports() {
       </div>
 
       {loading ? (
-        <LoadingCard rows={3} />
+        <SkeletonTable rows={6} cols={8} />
       ) : records.length === 0 ? (
         <EmptyState
           icon={ReportIcon}

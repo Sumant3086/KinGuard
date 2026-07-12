@@ -1,9 +1,23 @@
 import axios from 'axios';
+import { progressStart, progressDone } from './progress';
 
 const client = axios.create({
   baseURL: '/api',
   withCredentials: true, // send HttpOnly cookies on every request
 });
+
+// ── Global top progress bar ────────────────────────────────────────────────
+// Every request ticks the shared progress counter; <TopProgress /> renders it.
+// Registered BEFORE the 401-refresh interceptor so done() always fires exactly
+// once per request — a 401 retry re-enters these interceptors and stays balanced.
+client.interceptors.request.use(
+  config => { progressStart(); return config; },
+  error  => { progressDone(); return Promise.reject(error); }
+);
+client.interceptors.response.use(
+  response => { progressDone(); return response; },
+  error    => { progressDone(); return Promise.reject(error); }
+);
 
 // ── Token refresh state ────────────────────────────────────────────────────
 let isRefreshing = false;
