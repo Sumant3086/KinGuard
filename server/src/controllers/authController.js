@@ -103,7 +103,30 @@ export async function login(req, res, next) {
       throw new AppError('Employee ID and password are required', 400);
     }
 
-    const user = await findUserForLogin(employeeId.trim());
+    // Ensure database connection is active (prevents "server starting" errors)
+    await prisma.$connect();
+
+    let user;
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    // Retry logic for database connection issues on server restart
+    while (retryCount <= maxRetries) {
+      try {
+        user = await findUserForLogin(employeeId.trim());
+        break; // Success, exit retry loop
+      } catch (dbErr) {
+        retryCount++;
+        if (retryCount > maxRetries) {
+          console.error('[login] DB query failed after all retries:', dbErr.message);
+          throw new AppError('Unable to reach the database. Please try again.', 503);
+        }
+        console.warn(`[login] DB query attempt ${retryCount} failed, retrying...`, dbErr.message);
+        await new Promise(r => setTimeout(r, 200 * retryCount));
+        await prisma.$disconnect();
+        await prisma.$connect();
+      }
+    }
 
     // Always run bcrypt (or dummy) before revealing any account state — prevents timing attacks
     const isPasswordValid = user
