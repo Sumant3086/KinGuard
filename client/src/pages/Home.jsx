@@ -79,7 +79,7 @@ export default function Home() {
             For Store Managers
           </div>
           <h2 className="home-section-heading home-section-heading-skyblue">How It Works</h2>
-          <p style={{ color: '#ffffff', fontSize: '15px', marginTop: '12px', maxWidth: '580px', margin: '12px auto 0', textShadow: '0 1px 3px rgba(0,0,0,0.80), 0 3px 14px rgba(0,0,0,0.55)', fontWeight: 500 }}>
+          <p style={{ color: '#ffffff', fontSize: '15px', marginTop: '12px', maxWidth: '580px', margin: '12px auto 0', textShadow: '0 2px 6px rgba(0,0,0,0.50), 0 4px 16px rgba(0,0,0,0.30)', fontWeight: 500 }}>
             A structured process from upload to reconciliation.
           </p>
         </div>
