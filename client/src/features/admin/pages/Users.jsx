@@ -482,15 +482,15 @@ export default function AdminUsers() {
             </svg>
           </span>
           <div style={{ flex: 1 }}>
-            <strong style={{ fontSize: 13 }}>
+            <strong style={{ fontSize: 13, color: '#92400e', fontWeight: 800 }}>
               {pendingUsers.length} account{pendingUsers.length !== 1 ? 's' : ''} awaiting approval
             </strong>
-            <p style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 12, color: '#92400e', margin: '2px 0 0', fontWeight: 600 }}>
               Review and approve or reject each pending user before they can log in.
             </p>
           </div>
           {tab !== 'pending' && (
-            <button className="btn btn-sm" style={{ background: 'rgba(217,119,6,0.14)', color: '#d97706', border: '1px solid rgba(217,119,6,0.28)', flexShrink: 0 }} onClick={() => setTab('pending')}>
+            <button className="btn btn-sm" style={{ background: 'rgba(217,119,6,0.14)', color: '#d97706', border: '1px solid rgba(217,119,6,0.28)', flexShrink: 0, fontWeight: 700 }} onClick={() => setTab('pending')}>
               Review Pending →
             </button>
           )}
