@@ -211,14 +211,26 @@ export default function Upload() {
 
           {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
-          <div style={{ display: 'flex', gap: 24, marginBottom: 16, padding: '12px 16px', background: 'var(--surface-2)', borderRadius: 'var(--r)', border: '1px solid var(--border)' }}>
-            <div style={{ color: 'var(--green)', fontWeight: 700 }}>✓ {preview.statistics.valid} valid</div>
-            <div style={{ color: 'var(--amber)', fontWeight: 700 }}>⚠ {preview.statistics.warnings} warnings</div>
-            <div style={{ color: 'var(--red)', fontWeight: 700 }}>✗ {preview.statistics.errors} errors</div>
-            {preview.showingPartial && <div style={{ color: 'var(--t3)', fontSize: 12 }}>(showing first {preview.previewRows} of {preview.totalRows} rows)</div>}
+          <div style={{ display: 'flex', gap: 24, marginBottom: 16, padding: '12px 16px', background: 'var(--surface-2)', borderRadius: 'var(--r)', border: '1px solid var(--border)', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 24 }}>
+              <div style={{ color: 'var(--green)', fontWeight: 700 }}>✓ {preview.statistics.valid} valid</div>
+              <div style={{ color: 'var(--amber)', fontWeight: 700 }}>⚠ {preview.statistics.warnings} warnings</div>
+              <div style={{ color: 'var(--red)', fontWeight: 700 }}>✗ {preview.statistics.errors} errors</div>
+            </div>
+            {preview.showingPartial && (
+              <div style={{ fontSize: 12, color: 'var(--t3)' }}>
+                Showing first {preview.previewRows} of {preview.totalRows} rows
+              </div>
+            )}
           </div>
 
           {allErrors && <div className="alert alert-error" style={{ marginBottom: 16 }}>All rows contain errors. Correct the file and start over.</div>}
+
+          {preview.showingPartial && !allErrors && (
+            <div className="alert alert-info" style={{ marginBottom: 16, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: '#1e40af' }}>
+              <strong>Preview showing first {preview.previewRows} rows only.</strong> All {preview.totalRows} rows will be validated and published when you confirm.
+            </div>
+          )}
 
           <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 16 }}>
             <table style={{ fontSize: 12 }}>
@@ -309,25 +321,55 @@ export default function Upload() {
             const n = result.notifications;
             if (!n) return null;
             const noEmail = n.managersWithoutEmail || [];
-            if (n.emailsSent > 0 || n.managersEmailed?.length > 0) {
+            const hasFailures = n.emailsFailed > 0;
+            const allFailed = n.emailsSent === 0 && n.emailsFailed > 0;
+            
+            if (n.emailsSent > 0 || n.managersEmailed?.length > 0 || hasFailures) {
               const emailed = n.managersEmailed || [];
               const typos   = emailed.filter(m => m.suspectedTypo);
+              
+              // Determine banner style based on results
+              const bannerStyle = allFailed || (hasFailures && n.emailsSent === 0)
+                ? { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' } // Red for all failed
+                : hasFailures
+                ? { background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' } // Orange for partial failures
+                : { background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.22)' }; // Green for all success
+              
+              const iconColor = allFailed || (hasFailures && n.emailsSent === 0)
+                ? 'var(--red)'
+                : hasFailures
+                ? '#f59e0b'
+                : 'var(--green)';
+              
+              const textColor = allFailed || (hasFailures && n.emailsSent === 0)
+                ? 'var(--red)'
+                : hasFailures
+                ? '#d97706'
+                : 'var(--green)';
+              
               return (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', gap: 12, padding: '11px 14px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.22)', borderRadius: 'var(--r)', marginBottom: typos.length ? 8 : 0 }}>
-                    <span style={{ color: 'var(--green)', marginTop: 1, flexShrink: 0 }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <div style={{ display: 'flex', gap: 12, padding: '11px 14px', ...bannerStyle, borderRadius: 'var(--r)', marginBottom: typos.length ? 8 : 0 }}>
+                    <span style={{ color: iconColor, marginTop: 1, flexShrink: 0 }}>
+                      {allFailed || (hasFailures && n.emailsSent === 0) ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="17" height="17"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                      )}
                     </span>
                     <div>
-                      <strong style={{ fontSize: 13, color: 'var(--green)' }}>
-                        Email sent to {n.emailsSent} store manager{n.emailsSent !== 1 ? 's' : ''}
+                      <strong style={{ fontSize: 13, color: textColor }}>
+                        {allFailed || (hasFailures && n.emailsSent === 0)
+                          ? `Email sent to 0 store managers`
+                          : `Email sent to ${n.emailsSent} store manager${n.emailsSent !== 1 ? 's' : ''}`
+                        }
                       </strong>
                       {emailed.map(m => (
                         <p key={m.employeeId} style={{ fontSize: 12, color: 'var(--t3)', margin: '2px 0 0' }}>
                           {m.employeeId} ({m.storeName}) — <code style={{ fontSize: 11 }}>{m.email}</code>
                         </p>
                       ))}
-                      {n.emailsFailed > 0 && <p style={{ fontSize: 12, color: 'var(--red)', margin: '4px 0 0' }}>{n.emailsFailed} failed to deliver — check SMTP settings.</p>}
+                      {n.emailsFailed > 0 && <p style={{ fontSize: 12, color: 'var(--red)', margin: '4px 0 0', fontWeight: 700 }}>{n.emailsFailed} failed to deliver — check SMTP settings.</p>}
                       {noEmail.length > 0 && (
                         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(0,0,0,0.07)' }}>
                           <p style={{ fontSize: 12, color: 'var(--t3)', margin: '0 0 4px', fontWeight: 600 }}>No email on file — skipped:</p>
