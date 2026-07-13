@@ -115,7 +115,9 @@ export default function AdminLayout({ children }) {
 
       <main className="hl-content">
         {children}
-        <div className="dev-credit">Developed by Sumant Yadav</div>
+        <div className="dev-credit">
+          <span>Developed by Sumant Yadav</span>
+        </div>
       </main>
     </div>
   );
