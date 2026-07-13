@@ -59,7 +59,9 @@ export default function StoreLayout({ children }) {
 
       <div className="store-content">
         {children}
-        <div className="dev-credit dev-credit-store">Developed by Sumant Yadav</div>
+        <div className="dev-credit-store">
+          <span>Developed by Sumant Yadav</span>
+        </div>
       </div>
 
       <nav className="store-bottom-nav">
