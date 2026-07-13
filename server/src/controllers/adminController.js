@@ -809,21 +809,42 @@ export async function uploadInventory(req, res, next) {
       // no-email report is complete. Only active managers are actually emailed.
       const [activeManagers, allStoreManagers] = await Promise.all([
         prisma.user.findMany({
-          where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: affectedStoreIds } },
+          where: { 
+            role: 'STORE_MANAGER', 
+            isActive: true, 
+            pendingApproval: false,  // Only send to approved managers
+            storeId: { in: affectedStoreIds } 
+          },
           include: { store: true },
         }),
         prisma.user.findMany({
           where: { role: 'STORE_MANAGER', storeId: { in: affectedStoreIds } },
-          select: { employeeId: true, email: true, storeId: true, isActive: true, pendingApproval: true, store: { select: { storeName: true } } },
+          select: { 
+            employeeId: true, 
+            email: true, 
+            storeId: true, 
+            isActive: true, 
+            pendingApproval: true, 
+            store: { select: { storeName: true } } 
+          },
         }),
       ]);
 
+      // Track which managers don't have email addresses
       allStoreManagers.forEach(m => {
-        if (!m.email) managersWithoutEmail.push({ employeeId: m.employeeId, storeName: m.store?.storeName || String(m.storeId) });
+        if (!m.email) {
+          managersWithoutEmail.push({ 
+            employeeId: m.employeeId, 
+            storeName: m.store?.storeName || String(m.storeId) 
+          });
+        }
       });
 
+      // Send emails only to active, approved managers with email addresses
       const notifiable = activeManagers.filter(m => m.email);
+      
       if (notifiable.length > 0) {
+        console.log(`[upload] Attempting to send emails to ${notifiable.length} manager(s)`);
         const { sendNewCycleEmail } = await import('../services/emailService.js');
         const emailResult = await sendNewCycleEmail({
           managers: notifiable,
@@ -833,7 +854,10 @@ export async function uploadInventory(req, res, next) {
         emailsSent     = emailResult.sent;
         emailsFailed   = emailResult.failed;
         smtpConfigured = emailResult.configured;
+        
+        console.log(`[upload] Email results: sent=${emailsSent}, failed=${emailsFailed}, configured=${smtpConfigured}`);
       } else {
+        console.log('[upload] No notifiable managers found for this batch');
         // Check SMTP config independently so the UI shows the correct message
         // even when no notifiable managers exist for this batch.
         const { SMTP_HOST, SMTP_USER } = process.env;
@@ -842,18 +866,29 @@ export async function uploadInventory(req, res, next) {
 
       // Build list of attempted emails for the response so the admin can
       // verify the addresses (e.g. spot a common typo like gmail.cc → gmail.com)
-      const SUSPICIOUS_DOMAINS = { 'gmail.cc':'gmail.com','gmail.co':'gmail.com','gmai.com':'gmail.com','gmial.com':'gmail.com','yahoo.cc':'yahoo.com','hotmail.cc':'hotmail.com','outlook.cc':'outlook.com' };
+      const SUSPICIOUS_DOMAINS = { 
+        'gmail.cc':'gmail.com',
+        'gmail.co':'gmail.com',
+        'gmai.com':'gmail.com',
+        'gmial.com':'gmail.com',
+        'yahoo.cc':'yahoo.com',
+        'hotmail.cc':'hotmail.com',
+        'outlook.cc':'outlook.com' 
+      };
       managersEmailed = notifiable.map(m => {
         const domain = m.email.split('@')[1]?.toLowerCase() || '';
         return {
           employeeId: m.employeeId,
           email:      m.email,
           storeName:  m.store?.storeName || '',
-          suspectedTypo: SUSPICIOUS_DOMAINS[domain] ? `Did you mean @${SUSPICIOUS_DOMAINS[domain].split('.').slice(-2).join('.')}?` : null,
+          suspectedTypo: SUSPICIOUS_DOMAINS[domain] 
+            ? `Did you mean @${SUSPICIOUS_DOMAINS[domain].split('.').slice(-2).join('.')}?` 
+            : null,
         };
       });
     } catch (emailErr) {
       console.error('[upload] Email notification error:', emailErr.message);
+      console.error(emailErr.stack);
     }
 
     res.status(201).json({
@@ -894,23 +929,34 @@ export async function previewUpload(req, res, next) {
       throw new AppError('No data rows found in file', 400);
     }
 
+    // Ensure database connection is active before querying
+    // This prevents the "first query fails" issue
+    await prisma.$connect();
 
-    // Fetch all plant codes for validation — retry with connection refresh on DB errors
+    // Fetch all plant codes for validation with proper error handling
     let stores;
-    try {
-      stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
-    } catch (firstErr) {
-      console.warn('[previewUpload] First DB query failed, retrying after reconnect:', firstErr.message);
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    while (retryCount <= maxRetries) {
       try {
-        // Wait 300ms and force reconnect
-        await new Promise(r => setTimeout(r, 300));
-        await prisma.$connect();
         stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
-      } catch (retryErr) {
-        console.error('[previewUpload] DB unavailable after retry:', retryErr.message);
-        throw new AppError('Unable to reach the database. Please try again in a moment.', 503);
+        break; // Success, exit the retry loop
+      } catch (dbErr) {
+        retryCount++;
+        if (retryCount > maxRetries) {
+          console.error('[previewUpload] DB query failed after all retries:', dbErr.message);
+          throw new AppError('Unable to reach the database. Please try again.', 503);
+        }
+        console.warn(`[previewUpload] DB query attempt ${retryCount} failed, retrying...`, dbErr.message);
+        // Wait before retry with exponential backoff
+        await new Promise(r => setTimeout(r, 200 * retryCount));
+        // Force reconnect
+        await prisma.$disconnect();
+        await prisma.$connect();
       }
     }
+
     const storeMap = new Map(stores.map(s => [s.storeCode, s.storeName]));
 
     const preview = [];
