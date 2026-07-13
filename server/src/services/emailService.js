@@ -8,18 +8,36 @@ let _configured  = false;
 function getTransporter() {
   if (_transporter) return { transporter: _transporter, configured: _configured };
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  
+  console.log('[email] Initializing transporter with:', {
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    user: SMTP_USER,
+    passLength: SMTP_PASS?.length,
+  });
+  
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    console.log('[email] Missing SMTP credentials');
     return { transporter: null, configured: false };
   }
   const smtpPort = parseInt(SMTP_PORT || '587');
-  _transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
-  _configured = true;
-  return { transporter: _transporter, configured: true };
+  
+  try {
+    _transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      logger: true, // Enable logging
+      debug: true,  // Enable debug output
+    });
+    _configured = true;
+    console.log('[email] Transporter created successfully');
+    return { transporter: _transporter, configured: true };
+  } catch (err) {
+    console.error('[email] Failed to create transporter:', err);
+    return { transporter: null, configured: false };
+  }
 }
 
 const FROM = process.env.SMTP_FROM || 'KinMarché <noreply@kinmarche.com>';
@@ -54,6 +72,14 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
     console.log('[email] SMTP not configured — skipping new-cycle notifications');
     return { configured: false, sent: 0, failed: 0 };
   }
+  
+  console.log('[email] SMTP Configuration:', {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    user: process.env.SMTP_USER,
+    from: FROM,
+  });
+  
   const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr   = deadline
     ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
@@ -61,8 +87,9 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
 
   let sent = 0; let failed = 0;
   for (const m of managers.filter(m => m.email)) {
+    console.log(`[email] Attempting to send to: ${m.email} (${m.name})`);
     try {
-      await transporter.sendMail({
+      const mailOptions = {
         from: FROM,
         to: m.email,
         subject: `New Inventory Cycle — ${dateStr}`,
@@ -76,11 +103,17 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
           </table>
           <p style="color:#64748b;font-size:13px;margin:20px 0 0">Complete and submit your count before the deadline above. Contact your administrator if you need an extension.</p>
         `),
-      });
+      };
+      
+      console.log('[email] Mail options:', JSON.stringify(mailOptions, null, 2));
+      
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[email] ✓ Email sent successfully to ${m.email}`, info.response);
       sent++;
     } catch (e) {
       failed++;
-      console.error('[email] New-cycle notification failed:', e.message);
+      console.error(`[email] ✗ Failed to send to ${m.email}:`, e.message);
+      console.error('[email] Full error:', e);
     }
   }
   console.log(`[email] New-cycle: sent=${sent}, failed=${failed}`);
