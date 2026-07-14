@@ -1,52 +1,23 @@
 # Administrator Guide
 
-> Complete operational guide for KinMarché administrators (L&P managers and operations leads).
-
----
-
-## Table of Contents
-
-- [Your Role](#your-role)
-- [Signing In](#signing-in)
-- [Dashboard Overview](#dashboard-overview)
-- [Running an Inventory Cycle](#running-an-inventory-cycle)
-  - [Step 1 — Prepare the File](#step-1--prepare-the-file)
-  - [Step 2 — Upload & Validate](#step-2--upload--validate)
-  - [Step 3 — Monitor Submissions](#step-3--monitor-submissions)
-  - [Step 4 — Export Results](#step-4--export-results)
-- [Managing Deadlines](#managing-deadlines)
-- [Granting Store Extensions](#granting-store-extensions)
-- [Unlocking a Store Submission](#unlocking-a-store-submission)
-- [Managing Stores](#managing-stores)
-- [Managing Users](#managing-users)
-- [Viewing Analytics](#viewing-analytics)
-- [Reports](#reports)
-- [Activity Log](#activity-log)
-- [Notifications](#notifications)
-- [Overriding a Record](#overriding-a-record)
-
----
+Complete guide for KinMarche administrators — L&P managers and operations leads.
 
 ## Your Role
 
-As an administrator you have full visibility across the entire store network. Your primary responsibilities are:
+As an administrator you have full visibility across the entire store network. Your main responsibilities are:
 
-1. **Upload** the master inventory file at the start of each counting cycle
-2. **Monitor** store submissions and deadline compliance
-3. **Investigate** shortages, recurring losses, and high-risk stores
-4. **Export** reconciliation reports for finance and L&P leadership
+1. Upload the master inventory file at the start of each counting cycle
+2. Monitor store submissions and deadline compliance
+3. Investigate shortages, recurring losses, and high-risk stores
+4. Export reconciliation reports for finance and L&P leadership
 
 You do not enter stock counts — that is the store manager's responsibility.
 
----
-
 ## Signing In
 
-Navigate to the KinMarché URL and click **Sign In**. Enter your Employee ID and password.
+Navigate to the KinMarche URL and click **Sign In**. Enter your Employee ID and password.
 
-Your dashboard distinguishes you from store managers with a **red navigation bar** across the top. Store managers see a white bar — this visual distinction ensures you know which interface you are in.
-
----
+Your dashboard has a **red navigation bar** across the top. Store managers see a white bar — this visual difference makes it easy to know which role you are logged in as.
 
 ## Dashboard Overview
 
@@ -59,276 +30,165 @@ Shows the active cycle date and key badges:
 - **Store count** — total active stores
 - **Deadline** — when submissions are due
 
-### KPI Cards (6 tiles)
+### KPI Cards
 
 | Card | What it shows |
-|------|--------------|
+|---|---|
 | Active Stores | Number of currently active store locations |
 | Fully Reported | Stores that have completed and submitted their count |
 | Awaiting Submission | Stores that have not yet submitted |
-| Shortage Items | Items across all stores where count < book stock |
-| Matched Items | Items where count = book stock exactly |
-| Excess Items | Items where count > book stock |
+| Shortage Items | Items where count is below book stock |
+| Matched Items | Items where count matches book stock exactly |
+| Excess Items | Items where count is above book stock |
 
 ### Store Submission Status
 
-A table ranking all stores by shortage rate (worst first). Columns:
+A table ranking all stores by shortage rate, worst first.
 
-- **Store** — name and code
-- **Risk** — High Risk (≥20% shortage rate) / Watch (5–19%) / On Track (<5%)
-- **Shortage Rate** — bar chart + percentage
-- **Shortages** — count of items in shortage; clicking the number filters the Inventory view
+- **Risk** — High Risk (20%+ shortage rate) / Watch (5-19%) / On Track (under 5%)
+- **Shortage Rate** — bar chart and percentage
 - **Top Remark** — the most common remark entered by that store's manager
 - **Status** — Submitted / Awaiting / No Data
 
-Row colours: red tint = High Risk, amber tint = Watch.
+Red rows = High Risk. Amber rows = Watch.
 
 ### Recurring Loss Items
 
-The right panel lists (store, item) pairs that appeared in shortage in 2 or more of the last 4 cycles. These are your priority investigation targets.
-
----
+Lists store and item pairs that appeared in shortage in 2 or more of the last 4 cycles. These are your priority investigation targets.
 
 ## Running an Inventory Cycle
 
 ### Step 1 — Prepare the File
 
-Export your inventory file from your ERP system (SAP, Sage, Oracle, etc.). The file must be Excel (`.xlsx`, `.xls`) or CSV and include these columns (any of the aliases in the table below are accepted):
+Export your inventory file from your ERP (SAP, Sage, Oracle, etc.). The file must be Excel (.xlsx, .xls) or CSV. Accepted column names:
 
 | What it is | Accepted column names |
-|-----------|----------------------|
-| Store identifier | `Plant`, `Plant Code`, `Store Code`, `StoreCode` |
-| Item code (SKU) | `Material`, `Material Code`, `SKU` |
-| Item description | `Material Description`, `Description`, `Material Name` |
-| Book stock quantity | `System Stock`, `System  Stock`, `SYS` |
+|---|---|
+| Store identifier | Plant, Plant Code, Store Code |
+| Item code | Material, Material Code, SKU |
+| Item description | Material Description, Description |
+| Book stock quantity | System Stock, SYS |
 
-Click **↓ Download Template** on the Upload page to get a correctly-formatted example.
+Click **Download Template** on the Upload page for a correctly formatted example.
 
-> **Store codes must match exactly** — including capitalisation. If your ERP uses `2001` but KinMarché has the store as `2001`, they will match. If one has a leading zero and the other does not, they will not.
+Store codes must match exactly — including capitalisation. If your ERP uses `2001` and KinMarche has `2001`, they match. A missing leading zero means they do not.
 
-### Step 2 — Upload & Validate
+### Step 2 — Upload and Validate
 
-1. Go to **Admin → Upload**
-2. Set the **Inventory Date** — the date this stock count is *for*
-3. Optionally set a **Submission Deadline** — the date/time by which all stores must submit
+1. Go to **Admin -> Upload**
+2. Set the **Inventory Date** — the date this stock count is for
+3. Optionally set a **Submission Deadline**
 4. Select your file and click **Validate & Preview**
-5. Review the preview:
-   - **Green rows** — valid, ready to publish
-   - **Amber rows** — warnings (e.g. new store code found — it will be auto-created)
-   - **Red rows** — errors that will be skipped (e.g. missing item code)
-6. If you are happy with the preview, click **Confirm & Publish**
+5. Review the preview — green = valid, amber = warning (new store will be auto-created), red = error (row will be skipped)
+6. Click **Confirm & Publish**
 
-Store managers will immediately see their items in their **Inventory Count** page.
+Store managers will immediately see their items in their Inventory Count page.
 
-**Duplicate date warning:** If a cycle already exists within ±3 days of the date you selected, a warning appears. Click **Upload anyway** to proceed with the force override.
+If a cycle already exists within 3 days of the selected date, a warning appears. Click **Upload anyway** to proceed.
 
-**New stores:** Any store code in the file that does not exist in KinMarché will be created automatically with a default name of `Store {code}`. Update the name afterwards in **Admin → Stores**.
+Any store code in the file that does not exist in KinMarche is created automatically. Update the store name afterwards in Admin -> Stores.
 
 ### Step 3 — Monitor Submissions
 
-Track store progress from:
-- **Admin → Dashboard** — network-level scorecard
-- **Admin → Cycles** — per-cycle submission counts
-- **Notification bell** — live alerts for submissions and deadline approaching
-
-When a store manager submits, you receive an email notification (if SMTP is configured) and the notification bell updates.
+- **Admin -> Dashboard** — network-level scorecard
+- **Admin -> Cycles** — per-cycle submission counts
+- **Notification bell** — live alerts for submissions and approaching deadlines
 
 ### Step 4 — Export Results
 
-Once all (or most) stores have submitted:
-
-- **Admin → Cycles → Export** — full cycle Excel or PDF report
-- **Admin → Reports** — filter by store, discrepancy type, status; export to Excel or PDF
-- **Admin → Inventory → ↓ Excel / ↓ PDF** — filtered inventory export
-
----
+- **Admin -> Cycles -> Export** — full cycle Excel or PDF
+- **Admin -> Reports** — filter by store, discrepancy type, status; export to Excel or PDF
+- **Admin -> Inventory -> Excel / PDF** — filtered inventory export
 
 ## Managing Deadlines
 
-### Setting a Cycle Deadline
+Set the deadline when uploading, or update it later:
 
-Set the deadline when you upload, or update it later:
-
-1. Go to **Admin → Cycles**
+1. Go to **Admin -> Cycles**
 2. Click the pencil icon next to a cycle's deadline
 3. Enter the new date and click **Save**
 
-After the deadline passes:
-- Store managers cannot edit or submit (records are locked)
-- The dashboard shows overdue stores with a red indicator
-- The notification bell shows an overdue alert
-
-To remove a deadline, clear the date field and save.
-
-### What Happens When the Deadline Passes
-
-- The `isLocked` flag is returned as `true` for that cycle
-- Store managers see a lock banner: *"Count Cycle Locked. The submission deadline has passed."*
-- Existing submitted records remain accessible (read-only)
-- You can extend the deadline globally or grant per-store extensions
-
----
+After the deadline passes, store managers cannot edit or submit. The dashboard shows overdue stores in red. To remove a deadline, clear the date field and save.
 
 ## Granting Store Extensions
 
-If one store needs more time without extending the deadline for all stores:
+To give one store more time without extending the deadline for everyone:
 
-1. Go to **Admin → Cycles**
+1. Go to **Admin -> Cycles**
 2. Find the cycle and click **Extend Store**
-3. Select the store
-4. Set a new deadline for that store only
-5. Optionally add a note (e.g., "Public holiday delayed counting")
-6. Click **Grant Extension**
+3. Select the store and set a new deadline for that store only
+4. Optionally add a note and click **Grant Extension**
 
-The store manager will see their personal deadline instead of the cycle's global deadline. The extension can be updated by granting again with a different date.
-
----
+The extension can be updated by granting again with a different date.
 
 ## Unlocking a Store Submission
 
-If a store manager submits incorrect counts and needs to recount:
+If a store manager submitted incorrect counts and needs to recount:
 
-1. Go to **Admin → Cycles**
+1. Go to **Admin -> Cycles**
 2. Find the cycle and click **Unlock Store**
-3. Select the store to unlock
-4. Click **Unlock & Reset**
+3. Select the store and click **Unlock & Reset**
 
-This resets all that store's `SUBMITTED` records back to `PENDING` and clears their physical count values. The store manager can then re-enter all counts and submit again.
-
-> ⚠️ This action is logged in the Activity Log. All previous count data for that store in this cycle is erased.
-
----
+This resets all that store's submitted records back to pending and clears their physical count values. The store manager can then recount and submit again. This action is logged in the Activity Log and all previous count data for that store in this cycle is erased.
 
 ## Managing Stores
 
-Go to **Admin → Stores**.
+Go to **Admin -> Stores**.
 
-### Create a Store
+**Create a store:** Click + Add Store. Enter the Store Code (must match your ERP exactly, case-sensitive) and Store Name.
 
-Click **+ Add Store**, enter:
-- **Store Code** — must match your ERP (case-sensitive)
-- **Store Name** — human-readable name
+**Edit a store:** Click the pencil icon to change the name or toggle active/inactive. Inactive stores do not appear on the dashboard scorecard but their historical data is preserved.
 
-### Edit a Store
-
-Click the pencil icon to change the store name or toggle active/inactive status.
-
-**Inactive stores** do not appear on the dashboard scorecard but their historical data is preserved.
-
-### Delete a Store
-
-Stores with inventory records **cannot be deleted** — deactivate them instead. Stores with no records can be deleted cleanly.
-
-For stores with records, use **Force Delete** — this permanently deletes the store and all its inventory history. This cannot be undone.
-
----
+**Delete a store:** Stores with inventory records cannot be deleted — deactivate them instead. Stores with no records can be deleted. Use Force Delete to permanently delete a store and all its history — this cannot be undone.
 
 ## Managing Users
 
-Go to **Admin → Users**.
+Go to **Admin -> Users**.
 
-### Create a Store Manager
+**Create a store manager:** Click + Add User. Fill in Employee ID, Full Name, Password, set Role to Store Manager, and select their Assigned Store.
 
-Click **+ Add User**:
-- **Employee ID** — used for login (must be unique)
-- **Full Name**
-- **Password** — share securely; the manager should change it on first login
-- **Role** — `Store Manager`
-- **Assigned Store** — select from the dropdown
+**Create an admin:** Same as above but set Role to Admin and leave the store unassigned.
 
-### Create an Admin
+**Edit a user:** Click the pencil icon to update name, email, phone, password, store assignment, or active status. Setting a user to Inactive immediately prevents them from logging in.
 
-Same as above but set Role to `Admin` and leave the store unassigned.
-
-### Edit a User
-
-Click the pencil icon to update name, email, phone, password, store assignment, or active status.
-
-> Setting a user to **Inactive** immediately invalidates their session — they cannot log in until reactivated.
-
-### Delete a User
-
-A user can only be deleted if:
-- It is not your own account
-- They are not the last remaining admin
-
-Deleting a user reassigns their uploaded batches and deadline extensions to you, then nullifies their audit log entries.
-
----
+**Delete a user:** You cannot delete your own account or the last admin. Deleting a user reassigns their uploaded batches and deadline extensions to you.
 
 ## Viewing Analytics
 
-Go to **Admin → Analytics**.
+Go to **Admin -> Analytics**.
 
-The trend chart shows shortage rate over the last 6 cycles per store (configurable). Use this to identify:
-
-- Stores with **worsening trends** (shortage rate increasing over time)
-- Stores that improved after intervention
-- Items that consistently appear in shortage across multiple stores
-
----
+The trend chart shows shortage rate over the last 6 cycles per store. Use it to find stores with worsening trends, stores that improved after intervention, and items that consistently appear in shortage.
 
 ## Reports
 
-Go to **Admin → Reports**.
+Go to **Admin -> Reports**.
 
-### Reconciliation Report
-
-Filters available:
-- **Store** — narrow to one store or view all
-- **Status** — Pending, Submitted, or All
-- **Variance** — Shortage, Surplus, Matched, or All
-- **Include Inactive Stores** — toggle to include closed/inactive stores
-
-Click **Load Report** to view the filtered data, then **Download Excel** or **Download PDF**.
-
----
+Filter by store, status (Pending / Submitted / All), variance type (Shortage / Surplus / Matched / All), and whether to include inactive stores. Click **Load Report**, then **Download Excel** or **Download PDF**.
 
 ## Activity Log
 
-Go to **Admin → Activity Log**.
+Go to **Admin -> Activity Log**.
 
-This is an immutable record of every significant action in the system:
-- Logins
-- Store and user creation/deletion
-- File uploads
-- Inventory submissions
-- Admin overrides
-- Deadline changes and extensions
-
-Filter by action type (e.g., show only `SUBMIT_INVENTORY` events) or use the default view to see the most recent 100 actions.
-
-Click **Export** to download the full log as Excel.
-
----
+Immutable record of every significant action: logins, store and user changes, file uploads, inventory submissions, admin overrides, deadline changes. Filter by action type or view the most recent 100. Click **Export** to download as Excel.
 
 ## Notifications
 
-The **bell icon** in the top navigation bar shows alerts without requiring you to refresh the dashboard. Alerts update every 60 seconds.
+The bell icon in the top navigation bar shows alerts. Updates every 60 seconds.
 
-| Alert type | What it means |
-|-----------|--------------|
-| 🟢 Stores submitted | N stores sent in their counts in the last 24 hours |
-| 🟡 Deadline approaching | N stores are still pending with less than 48 hours to go |
-| 🔴 Overdue | The deadline has passed and N stores have not submitted |
+| Alert | What it means |
+|---|---|
+| Green - Stores submitted | N stores sent their counts in the last 24 hours |
+| Yellow - Deadline approaching | N stores are still pending with under 48 hours to go |
+| Red - Overdue | The deadline passed and N stores have not submitted |
 
-Clicking an alert navigates you to the relevant page (Cycles or Inventory).
-
----
+Clicking an alert navigates to the relevant page.
 
 ## Overriding a Record
 
-Admins can correct any inventory record directly from **Admin → Inventory**:
+1. Go to **Admin -> Inventory**
+2. Find the record using the filters
+3. Click **Override** on that row
+4. Modify the physical stock quantity, category, issue detail, or status
+5. Click **Apply Override**
 
-1. Find the record using the filters
-2. Click the **Override** button on that row
-3. Modify:
-   - Physical stock quantity
-   - Variance category
-   - Issue detail (remarks)
-   - Status (set to SUBMITTED or reset to PENDING)
-4. Click **Apply Override**
-
-All overrides are logged in the Activity Log with before/after values.
-
-> Use overrides sparingly — they bypass the normal store manager workflow. If a store needs to recount, use **Unlock Store** instead.
+All overrides are logged in the Activity Log with before and after values. Use overrides sparingly — if a store needs to recount, use Unlock Store instead.

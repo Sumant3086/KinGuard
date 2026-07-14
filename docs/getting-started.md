@@ -1,23 +1,4 @@
-# Getting Started
-
-> Full guide for setting up KinMarché locally or on a server for the first time.
-
----
-
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Clone & Install](#clone--install)
-- [Environment Variables](#environment-variables)
-- [Database Setup](#database-setup)
-- [Running in Development](#running-in-development)
-- [First Login](#first-login)
-- [Creating Stores and Users](#creating-stores-and-users)
-- [Uploading Your First Inventory File](#uploading-your-first-inventory-file)
-- [Useful Development Commands](#useful-development-commands)
-- [Troubleshooting](#troubleshooting)
-
----
+﻿# Getting Started
 
 ## Prerequisites
 
@@ -27,8 +8,6 @@
 | npm | 8.0+ | Comes with Node.js |
 | PostgreSQL | 14.0+ | Or a managed service: Supabase, Neon, Railway |
 | Git | Any | For cloning the repo |
-
----
 
 ## Clone & Install
 
@@ -42,8 +21,6 @@ npm run install:all
 ```
 
 This installs dependencies for the monorepo root, the `client/` workspace, and the `server/` workspace.
-
----
 
 ## Environment Variables
 
@@ -59,8 +36,8 @@ Then open `server/.env` and fill in each value:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string. For Supabase, use the **pooled** connection URL. | `postgresql://user:pass@host:5432/kinmarche` |
-| `DIRECT_URL` | Non-pooled URL. Required only for Supabase (used by Prisma migrations). For local PostgreSQL, set the same as `DATABASE_URL`. | `postgresql://user:pass@host:5432/kinmarche` |
+| `DATABASE_URL` | PostgreSQL connection string. For Supabase, use the **pooled** connection URL. | `postgresql://user:pass@host:5432/KinMarche |
+| `DIRECT_URL` | Non-pooled URL. Required only for Supabase (used by Prisma migrations). For local PostgreSQL, set the same as `DATABASE_URL`. | `postgresql://user:pass@host:5432/KinMarche |
 | `JWT_SECRET` | Secret key for signing JWT tokens. Must be at least 32 characters. | (generate below) |
 | `PORT` | Port the Express server listens on. | `5000` |
 | `NODE_ENV` | Runtime environment. | `development` |
@@ -78,8 +55,6 @@ Leave these blank to disable email notifications entirely. The system works full
 | `SMTP_PASS` | SMTP password or App Password |
 | `SMTP_FROM` | From address used in outgoing emails |
 
-> **Gmail setup:** Enable 2-factor authentication on your Google account, then generate an [App Password](https://myaccount.google.com/apppasswords) — do not use your regular Gmail password.
-
 ### Generate a Secure JWT Secret
 
 ```bash
@@ -87,8 +62,6 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
 Copy the output into your `.env` file as the value of `JWT_SECRET`.
-
----
 
 ## Database Setup
 
@@ -118,8 +91,6 @@ To open Prisma Studio and inspect your database tables:
 cd server && npx prisma studio
 ```
 
----
-
 ## Running in Development
 
 Start both servers with a single command:
@@ -144,8 +115,6 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 The Vite dev server proxies all `/api/*` requests to `localhost:5000`, so there are no CORS issues in development. The backend uses Node.js `--watch` mode for automatic restarts.
 
----
-
 ## First Login
 
 1. Navigate to [http://localhost:5173](http://localhost:5173)
@@ -157,8 +126,6 @@ The Vite dev server proxies all `/api/*` requests to `localhost:5000`, so there 
 - Go to Admin → Users
 - Click **Edit** on the admin account
 - Set a strong password (8+ characters, uppercase, number, special character)
-
----
 
 ## Creating Stores and Users
 
@@ -186,8 +153,6 @@ Alternatively, stores are created automatically from the Store Code column when 
 
 The store manager can now log in at the same URL and will see only their assigned store's data.
 
----
-
 ## Uploading Your First Inventory File
 
 1. Go to **Admin → Upload**
@@ -204,8 +169,6 @@ The store manager can now log in at the same URL and will see only their assigne
 8. Click **Confirm & Publish**
 
 Store managers will immediately see their assigned items in their **Inventory Count** page.
-
----
 
 ## Useful Development Commands
 
@@ -228,8 +191,6 @@ npm run db:reset
 # Build the frontend for production
 npm run build:client
 ```
-
----
 
 ## Troubleshooting
 
@@ -266,3 +227,4 @@ CLIENT_URL=https://your-app.example.com
 ```
 
 No trailing slash.
+

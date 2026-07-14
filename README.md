@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # KinMarché — Loss & Prevention Platform
 
@@ -12,16 +12,12 @@
 
 </div>
 
----
-
 ## Overview
 
 KinMarché is an internal Loss & Prevention platform for multi-store retail operations. Administrators upload a master inventory file once per cycle; each store manager records physical counts through a guided, auto-saving interface. The system calculates variances automatically, surfaces recurring shortage patterns, and produces reconciliation reports for L&P review.
 
 **Built for:** Multi-store retail networks · Kinshasa, DRC  
 **Roles:** Administrator · Store Manager
-
----
 
 ## Features
 
@@ -47,8 +43,6 @@ KinMarché is an internal Loss & Prevention platform for multi-store retail oper
 | **Inventory Entry** | Row-by-row physical count with real-time diff display, autosave, jump-to-next-blank, and submit flow |
 | **Excel Export** | Download own store's full reconciliation report at any time |
 
----
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -61,8 +55,6 @@ KinMarché is an internal Loss & Prevention platform for multi-store retail oper
 | PDF Generation | pdfmake |
 | Email | Nodemailer (any SMTP — Gmail, Brevo, etc.) |
 | Security | Helmet, CORS, HTTP compression, 1 MB body cap |
-
----
 
 ## Quick Start
 
@@ -120,8 +112,6 @@ npm run dev
 
 Starts both the API server (`:5000`) and the React dev server (`:5173`) concurrently. Open [http://localhost:5173](http://localhost:5173).
 
----
-
 ## Project Structure
 
 ```
@@ -163,8 +153,6 @@ KinGuard/
 └── package.json                # Workspace root
 ```
 
----
-
 ## Scripts
 
 All commands run from the **project root**.
@@ -179,8 +167,6 @@ All commands run from the **project root**.
 | `npm run seed` | Create default admin account |
 | `npm run db:reset` | **Destructive** — drop all data, re-migrate, re-seed |
 | `npm run db:clear` | Delete all operational data while keeping the schema |
-
----
 
 ## Environment Variables
 
@@ -198,8 +184,6 @@ All commands run from the **project root**.
 | `SMTP_USER` | No | — | SMTP username / sending address |
 | `SMTP_PASS` | No | — | SMTP password or app-specific password |
 | `SMTP_FROM` | No | — | "From" display name and address |
-
----
 
 ## Data Model
 
@@ -222,8 +206,6 @@ The database field names differ from the labels shown in the UI and Excel export
 | `physicalQuantity` | Sold (physical count entered by store) |
 | `systemQuantity` | SYS (system stock from master file) |
 | `difference` | Diff (shortage = negative, excess = positive) |
-
----
 
 ## API Routes
 
@@ -262,8 +244,6 @@ All routes are prefixed with `/api`.
 | GET | `/store/inventory/export` | STORE_MANAGER | Download own store's Excel |
 | GET | `/api/health` | Public | Health check (`{ status: "ok" }`) |
 
----
-
 ## Email Notifications
 
 Email is **optional** — if no SMTP variables are set the server skips notifications silently.
@@ -275,8 +255,6 @@ Email is **optional** — if no SMTP variables are set the server skips notifica
 | Store manager submits their cycle | Admin (`ADMIN_EMAIL` env var, if set) |
 
 WhatsApp reminders use `wa.me` click-to-chat links — no API key required. Admins click "WhatsApp" on a batch row and the browser opens a pre-filled message.
-
----
 
 ## Security
 
@@ -290,8 +268,6 @@ WhatsApp reminders use `wa.me` click-to-chat links — no API key required. Admi
 - Account enumeration prevented — password is verified before account-state errors are surfaced
 - Batch and store cascade-deletes run inside **Prisma transactions** (atomic)
 
----
-
 ## Development Notes
 
 - **DB cold-start:** Supabase drops idle connections after ~5 minutes. The server pings the DB every 4 minutes to keep the pool alive.
@@ -300,10 +276,9 @@ WhatsApp reminders use `wa.me` click-to-chat links — no API key required. Admi
 - **Prisma client:** Regenerate manually if needed: `cd server && npx prisma generate`
 - **Lint:** Both workspaces enforce zero ESLint warnings — run `npm run lint --workspace=client` and `npm run lint --workspace=server` before committing.
 
----
-
 ## License
 
 ISC — Developed by **Sumant Yadav**
 
 *KinMarché · Loss & Prevention Platform · Kinshasa, DRC*
+

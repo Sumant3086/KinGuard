@@ -1,138 +1,90 @@
 # Architecture
 
-> System design, component map, data flow, and key engineering decisions.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Component Map](#component-map)
-- [Data Flow](#data-flow)
-- [Frontend Architecture](#frontend-architecture)
-- [Backend Architecture](#backend-architecture)
-- [Caching Strategy](#caching-strategy)
-- [Authentication & Authorisation](#authentication--authorisation)
-- [DoS Mitigation](#dos-mitigation)
-- [File Processing Pipeline](#file-processing-pipeline)
-- [Notification System](#notification-system)
-- [Key Design Decisions](#key-design-decisions)
-
----
-
 ## Overview
 
-KinMarché is a standard **three-tier web application**:
+KinMarche is a three-tier web application.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  Browser                                                      │
-│  React 18 SPA (Vite)                                          │
-│  Code-split by user role (admin-pages / store-pages / vendor) │
-└──────────────────────┬───────────────────────────────────────┘
-                       │  HTTP/JSON  (proxied in dev, direct in prod)
-                       ▼
-┌──────────────────────────────────────────────────────────────┐
-│  Express API Server  (Node.js 18+)                           │
-│  Helmet · CORS · Rate Limit · JWT · Multer · ExcelJS         │
-└──────────────────────┬───────────────────────────────────────┘
-                       │  Prisma ORM (parameterised queries)
-                       ▼
-┌──────────────────────────────────────────────────────────────┐
-│  PostgreSQL 15+                                              │
-│  Supabase / Neon / Railway / local                           │
-└──────────────────────────────────────────────────────────────┘
+Browser
+  React 18 SPA (Vite) — code-split by role
+       |
+       | HTTP/JSON  (Vite proxy in dev, direct in prod)
+       v
+Express API Server  (Node.js 22+)
+  Helmet  CORS  compression  JWT  Multer  ExcelJS
+       |
+       | Prisma ORM (parameterised queries)
+       v
+PostgreSQL 15+
+  Supabase (current) / Neon / local
 ```
-
----
 
 ## Component Map
 
 ```
-KinGuard/
-│
-├── client/src/
-│   ├── api/
-│   │   ├── client.js          Axios instance — base URL, Bearer token injection,
-│   │   │                      401 interceptor (clear token → redirect to /login)
-│   │   ├── auth.js            login(), getCurrentUser()
-│   │   ├── admin.js           All admin API calls + cache invalidation
-│   │   ├── store.js           All store manager API calls
-│   │   └── cache.js           In-memory TTL Map (client-side, clears on logout)
-│   │
-│   ├── context/
-│   │   ├── AuthContext.jsx    JWT stored in localStorage, background re-validation
-│   │   │                      on mount, login() → navigate to role dashboard
-│   │   └── ToastContext.jsx   Global toast notifications (success/error/warning/info)
-│   │
-│   ├── components/
-│   │   ├── AdminLayout.jsx    Red gradient top navbar, hamburger mobile menu,
-│   │   │                      notification bell for admins
-│   │   ├── StoreLayout.jsx    White navbar with red accent, bottom mobile nav,
-│   │   │                      notification bell for store managers
-│   │   └── NotificationBell.jsx  Polls /api/{role}/notifications every 60 s,
-│   │                             shows badge count + dropdown, navigates on click
-│   │
-│   ├── pages/
-│   │   ├── admin/
-│   │   │   ├── Dashboard.jsx  Network overview — KPI cards, risk scorecard, hotspots
-│   │   │   ├── Upload.jsx     3-step upload flow (pick → validate preview → confirm)
-│   │   │   ├── Batches.jsx    Cycle management — deadlines, extensions, unlocks
-│   │   │   ├── Inventory.jsx  Paginated cross-store view with admin overrides
-│   │   │   ├── Analytics.jsx  Multi-cycle shortage rate trend chart (SVG sparklines)
-│   │   │   ├── Reports.jsx    Reconciliation report with Excel/PDF export
-│   │   │   ├── Stores.jsx     Store CRUD + bulk delete
-│   │   │   ├── Users.jsx      User CRUD with password strength indicator
-│   │   │   └── AuditLogs.jsx  Immutable action log with export
-│   │   └── store/
-│   │       ├── Dashboard.jsx  Stock count progress, past-date batch alerts
-│   │       └── Inventory.jsx  Inline count entry with debounced auto-save (700 ms),
-│   │                          instant variance calculation, batch selector
-│   │
-│   └── styles/
-│       ├── tokens.css         CSS custom properties, @keyframe animations
-│       ├── reset.css          Browser reset, body background (retail texture)
-│       ├── layout.css         Admin navbar (hl-*), store navbar, responsive breakpoints
-│       ├── components.css     Cards, KPI cards, tables, badges, buttons, forms,
-│       │                      modals, alerts, notification bell
-│       ├── inventory.css      Inventory table, progress bar, qty inputs, save states
-│       ├── pages.css          Login, Home, 404 page styles
-│       └── toast.css          Toast notification system
-│
-└── server/src/
-    ├── app.js                 Express setup: Helmet, CORS, compression,
-    │                          JSON body limit (1 MB), route mounting, SPA static serving
-    ├── server.js              DB connect with retry, process.listen
-    │
-    ├── config/
-    │   ├── env.js             Validates all required env vars on startup (exits if missing)
-    │   └── prisma.js          PrismaClient singleton — prevents connection pool exhaustion
-    │
-    ├── middleware/
-    │   ├── auth.js            authenticate() — JWT verify + DB user lookup
-    │   │                      requireRole() — flexible role guard
-    │   │                      requireStoreManager() — enforces storeId assignment
-    │   └── errorHandler.js    Converts AppError to JSON; stack trace in dev only
-    │
-    ├── controllers/
-    │   ├── authController.js  login (DB retry on cold-start), getCurrentUser
-    │   ├── adminController.js ~2100 lines covering all admin operations
-    │   └── storeController.js Dashboard, batches, inventory CRUD, submit, download,
-    │                          notifications
-    │
-    ├── routes/
-    │   ├── authRoutes.js      POST /login, GET /me
-    │   ├── adminRoutes.js     All /admin/* with ADMIN role guard
-    │   └── storeRoutes.js     All /store/* with STORE_MANAGER role guard
-    │
-    └── services/
-        ├── auditService.js    createAuditLog() — fire-and-forget, never throws
-        ├── serverCache.js     sGet/sSet/sInvalidate — in-memory TTL Map (server-side)
-        ├── emailService.js    sendNewCycleEmail, sendSubmissionEmail via Nodemailer
-        └── pdfService.js      PDF exports using pdfmake
-```
+client/src/
+  shared/api/
+    client.js        Axios instance — baseURL, 401 interceptor, silent refresh, progress bus
+    authApi.js       login, getCurrentUser, changePassword
+    adminApi.js      All admin API calls + client-side TTL cache
+    storeApi.js      All store manager API calls
+    cache.js         In-memory TTL Map, cleared on logout
+    progress.js      Shared pub/sub bus for the top progress bar
 
----
+  shared/components/
+    ui/TopProgress.jsx       Fixed 3px progress bar driven by the progress bus
+    ui/LoadingCard.jsx       Skeleton cards and skeleton table components
+    NotificationBell.jsx     Polls /notifications every 60s, badge + dropdown
+
+  features/admin/
+    layout/AdminLayout.jsx   Red top navbar, hamburger mobile menu, notification bell
+    pages/Dashboard.jsx      Network KPIs, risk scorecard, hotspot items
+    pages/Upload.jsx         3-step flow: pick file -> validate preview -> confirm publish
+    pages/Batches.jsx        Cycle management: deadlines, extensions, unlocks, exports
+    pages/Inventory.jsx      Paginated cross-store view with admin overrides
+    pages/Analytics.jsx      Multi-cycle shortage rate trend chart (SVG sparklines)
+    pages/Reports.jsx        Reconciliation report with Excel and PDF export
+    pages/Stores.jsx         Store CRUD + bulk delete
+    pages/Users.jsx          User CRUD, approve/reject pending, batch import
+    pages/AuditLogs.jsx      Immutable action log with export
+
+  features/store/
+    layout/StoreLayout.jsx   White navbar, bottom mobile nav, notification bell
+    pages/Dashboard.jsx      Cycle progress, deadline countdown, past-batch alerts
+    pages/Inventory.jsx      Inline count entry, debounced auto-save (700ms),
+                             instant variance calculation, batch selector
+
+server/src/
+  app.js            Express setup: Helmet, CORS, compression, 1MB body cap,
+                    route mounting, SPA static serving in production
+  server.js         DB connect with retry, keep-alive ping, graceful shutdown
+
+  config/
+    env.js          Validates all required env vars on startup, exits if missing
+    prisma.js       PrismaClient singleton
+
+  middleware/
+    auth.js         authenticate() - JWT verify + 30s user cache + DB lookup
+                    requireRole() - role guard
+                    requireStoreManager() - enforces storeId assignment
+    errorHandler.js Converts AppError to JSON, masks 5xx detail in production
+
+  controllers/
+    authController.js   login (single retry on cold-start), getCurrentUser from req.user
+    adminController.js  All admin operations
+    storeController.js  Dashboard, batches, inventory CRUD, submit, download, notifications
+
+  routes/
+    authRoutes.js   POST /login, POST /refresh, POST /logout, GET /me
+    adminRoutes.js  All /admin/* with ADMIN role guard, Multer for file routes
+    storeRoutes.js  All /store/* with STORE_MANAGER role guard
+
+  services/
+    auditService.js    createAuditLog() - fire-and-forget, never throws
+    serverCache.js     sGet/sSet/sInvalidate - in-memory TTL Map
+    emailService.js    Parallel email sending via Nodemailer connection pool
+    pdfService.js      PDF exports using pdfmake
+```
 
 ## Data Flow
 
@@ -140,277 +92,189 @@ KinGuard/
 
 ```
 Admin selects file
-       │
-       ▼
+  |
+  v
 POST /admin/uploads/preview
-       │  parseFileToRows() — ExcelJS or csv-parse
-       │  Validate each row (store code, material code, qty)
-       │  Return preview array (valid / warning / error)
-       ▼
+  |  parseFileToRows() - ExcelJS or csv-parse
+  |  Validate each row (store code, material code, qty)
+  |  Return preview array (valid / warning / error) - no DB writes
+  v
 Admin reviews preview
-       │
-       ▼
-POST /admin/uploads  (or ?force=true for duplicate-date override)
-       │  1. Duplicate-date window check (±3 days)
-       │  2. Auto-create any new store codes found in the file
-       │  3. createMany() InventoryRecords with skipDuplicates
-       │  4. Update batch status to COMPLETED
-       │  5. Invalidate server cache for admin:dashboard
-       │  6. Fire-and-forget: email affected store managers
-       ▼
+  |
+  v
+POST /admin/uploads
+  |  1. Duplicate-date window check (+/- 3 days)
+  |  2. Auto-create any new store codes found in the file
+  |  3. createMany() InventoryRecords with skipDuplicates
+  |  4. Update batch status to COMPLETED
+  |  5. Respond immediately to the client
+  |  6. Fire-and-forget: send emails to store managers in parallel
+  v
 Store Managers see new items in their Stock Count page
 ```
 
-### Count & Submit Flow
+### Count and Submit Flow
 
 ```
 Store Manager opens Stock Count
-       │  GET /store/inventory?batchId=X
-       ▼
+  |  GET /store/inventory?batchId=X
+  |  Single query: records + batch deadline + per-store extension
+  v
 Manager types a count value
-       │  onChange → updateField() → debounceTimers[id] = setTimeout(saveRecord, 700ms)
-       │  Variance = Counted − Book Stock calculated instantly client-side
-       ▼
-700 ms of no typing → PATCH /store/inventory/:id
-       │  Server re-validates ownership (storeId match)
-       │  Re-calculates Variance server-side
-       │  Stores: physicalQuantity, difference, remarks, shrinkageCategory
-       ▼
+  |  onChange -> updateField() -> debounceTimers[id] = setTimeout(saveRecord, 700ms)
+  |  Variance calculated instantly client-side for display
+  v
+700ms of no typing -> PATCH /store/inventory/:id
+  |  Single query: verify ownership + current values + deadline + extension
+  |  Re-calculate variance server-side
+  |  Update physicalQuantity, difference, remarks, shrinkageCategory
+  v
 Manager clicks Submit Count
-       │  Client-side pre-validation (all counts filled, discrepant items have category+detail)
-       │  POST /store/inventory/submit
-       │     Prisma $transaction:
-       │       1. Re-validate all pending records
-       │       2. updateMany() → status = SUBMITTED
-       │     Fire-and-forget:
-       │       3. detectRepeatDiscrepancies()
-       │       4. Email all active admins
-       ▼
+  |  Client-side pre-validation (all counts filled, discrepant items have category+detail)
+  |  POST /store/inventory/submit
+  |    Single query: fetch batch deadline + extension together
+  |    Prisma $transaction (Serializable):
+  |      1. Validate all pending records
+  |      2. updateMany() -> status = SUBMITTED
+  |    Fire-and-forget:
+  |      3. detectRepeatDiscrepancies()
+  |      4. Email all active admins + manager confirmation
+  v
 Admin notification bell shows "N stores submitted in last 24h"
 ```
-
----
 
 ## Frontend Architecture
 
 ### Code Splitting
 
-Vite is configured with `manualChunks` to produce three JavaScript bundles:
+Vite produces three JS bundles:
 
 | Bundle | Contents | Loaded by |
-|--------|----------|-----------|
-| `vendor` | React, React Router, Axios | All pages |
-| `admin-pages` | All 9 admin page components | Admin users only |
-| `store-pages` | 2 store page components | Store managers only |
+|---|---|---|
+| vendor | React, React Router, Axios | All pages |
+| admin-pages | All 9 admin page components | Admin users only |
+| store-pages | 2 store page components | Store managers only |
 
-This means store managers never download admin code, and vice versa.
-
-### Client-Side Cache
-
-`api/cache.js` is a simple `Map`-based TTL cache that lives for the browser tab session:
-
-- Dashboard: 30 s TTL
-- Stores list: 60 s TTL
-- Batches: 30 s TTL
-- Users: 60 s TTL
-- Trends: 120 s TTL
-- Inventory, reports: **no cache** (always fresh)
-
-The cache is fully cleared on logout to prevent cross-user data leaks.
+Store managers never download admin code and vice versa.
 
 ### Auth Flow
 
 ```
 Page load
-  │  Read localStorage → kg_user (instant, no async wait)
-  │  Background: GET /auth/me (validates token is still valid on the server)
-  ▼
+  |  Read localStorage kg_user (instant)
+  |  Background: GET /auth/me - served from req.user (no DB hit)
+  v
 PrivateRoute checks user + role
-  │  Not logged in → redirect /login
-  │  Wrong role → redirect /
-  ▼
-401 response on any API call
-  │  Axios interceptor in client.js
-  │  Clears localStorage token + kg_user
-  │  Redirects to /login
+  |  Not logged in -> redirect /login
+  |  mustChangePassword -> redirect /change-password
+  |  Wrong role -> redirect to own dashboard
+  v
+401 on any API call
+  |  Axios interceptor in client.js
+  |  Silently calls POST /auth/refresh (rotates refresh token)
+  |  On success: retry original request
+  |  On failure: redirect to /login
 ```
-
----
-
-## Backend Architecture
-
-### Request Lifecycle
-
-```
-HTTP request
-  │
-  ├── Helmet (security headers)
-  ├── CORS (origin whitelist from CLIENT_URL)
-  ├── compression (gzip)
-  ├── express.json (1 MB body cap)
-  ├── Rate limiter (authLimiter or apiLimiter)
-  │
-  ├── Route match
-  │   ├── authenticate() — verify JWT, DB lookup, attach req.user
-  │   ├── requireRole('ADMIN') or requireStoreManager()
-  │   └── Controller function
-  │       └── AppError thrown → errorHandler middleware
-  │
-  └── Response
-```
-
-### Error Handling
-
-All controllers use `try/catch → next(error)`. The `errorHandler` middleware:
-
-1. If `error.statusCode` is set → use it (AppError)
-2. Prisma `P2025` (record not found) → 404
-3. Prisma `P2002` (unique constraint) → 409
-4. Anything else → 500
-
-Stack traces are only included in `development` mode.
-
----
 
 ## Caching Strategy
 
-Two independent caches prevent redundant heavy DB queries:
+### Server Cache (serverCache.js)
 
-### Server Cache (`serverCache.js`)
+In-memory Map in the Node.js process.
 
-In-memory `Map` keyed by string. Sits in the Node.js process.
+| Key | TTL | Invalidated by |
+|---|---|---|
+| admin:dashboard | 5 minutes | upload, store changes, record override, batch changes |
+| admin:batches | 1 minute | upload, batch delete, deadline update |
 
-| Cache Key | TTL | Invalidated by |
-|-----------|-----|----------------|
-| `admin:dashboard` | 30 s | upload, store changes, batch changes |
+### Client Cache (shared/api/cache.js)
 
-Used only for the admin dashboard aggregation query (the most expensive: 4 parallel raw SQL queries).
+In-memory Map in the browser tab. Cleared on logout.
 
-### Client Cache (`api/cache.js`)
+| Key | TTL |
+|---|---|
+| admin:dashboard | 5 minutes |
+| admin:stores | 3 minutes |
+| admin:users | 2 minutes |
+| admin:batches | 1 minute |
+| admin:uploads | 1 minute |
+| admin:audit-logs | 2 minutes |
+| admin:trends | 5 minutes |
+| store:dashboard | 30 seconds |
 
-In-memory `Map` keyed by string. Lives in the browser tab.
-
-| Cache Key | TTL |
-|-----------|-----|
-| `admin:dashboard` | 30 s |
-| `admin:stores` | 60 s |
-| `admin:users` | 60 s |
-| `admin:batches` | 30 s |
-| `admin:trends:{N}` | 120 s |
-| `store:dashboard` | 30 s |
-
-Cleared entirely on logout.
-
----
-
-## Authentication & Authorisation
-
-### JWT Structure
-
-```json
-{
-  "userId": 1,
-  "role": "ADMIN",
-  "storeId": null,
-  "iat": 1720000000,
-  "exp": 1720028800
-}
-```
-
-The token is verified on every request. If the token is valid but the user has been deactivated in the database, the request is rejected with 401.
-
-### Role Guard Model
+## Backend Request Lifecycle
 
 ```
-/api/auth/*      →  No auth required
-/api/admin/*     →  authenticate() + requireRole('ADMIN')
-/api/store/*     →  authenticate() + requireStoreManager()
-                    (checks role = STORE_MANAGER AND storeId IS NOT NULL)
+HTTP request
+  |
+  +-- Helmet (security headers)
+  +-- CORS (origin whitelist from CLIENT_URL)
+  +-- compression (gzip)
+  +-- express.json (1 MB body cap)
+  |
+  +-- Route match
+  |   +-- authenticate() - verify JWT, 30s user cache, attach req.user
+  |   +-- requireRole('ADMIN') or requireStoreManager()
+  |   +-- Controller function
+  |       +-- AppError thrown -> errorHandler middleware
+  |
+  +-- Response
 ```
 
-### Store Isolation
+## Notification System
 
-Every store controller query includes `storeId: req.user.storeId` in the Prisma `where` clause. There is no way for a store manager to access another store's data, even by manipulating request parameters — the server ignores any `storeId` sent by the client and uses the value from the validated JWT instead.
+Computed on demand from existing data — no extra table.
 
----
+**Store manager notifications** (`GET /store/notifications`) — queries all batches where this store has PENDING records. For each: overdue (past deadline), deadline approaching (under 48h), or pending.
+
+**Admin notifications** (`GET /admin/notifications`) — queries the most recent COMPLETED batch. Two inventory record queries run in parallel: stores that submitted in the last 24h, and stores still pending. Results are combined and categorised.
+
+**Polling** — `NotificationBell.jsx` calls these endpoints every 60 seconds with `setInterval` cleared on unmount.
 
 ## DoS Mitigation
 
-Application-layer rate limiting is not used. Protection is handled at the infrastructure level (reverse proxy / Cloudflare) and through these server-side controls:
-
 | Control | Enforced by |
-|---------|------------|
+|---|---|
 | JSON body capped at 1 MB | `express.json({ limit: '1mb' })` |
 | File upload capped at 10 MB | Multer `limits.fileSize` |
-| Export row limit: 10,000 rows | Controller guard before DB fetch |
-| Password length capped at 128 chars | `validatePassword()` before bcrypt |
-| Query params validated as integers | `parseId()` / `parsePageSize()` helpers |
-
----
+| Export row limit 10,000 | Controller guard before DB fetch, returns 413 |
+| Password capped at 128 chars | `validatePassword()` before bcrypt |
+| All IDs and page params validated | `parseId()` / `parsePageSize()` helpers |
 
 ## File Processing Pipeline
 
 ```
 Multer middleware
-  │  Stores file in memory (Buffer) — never touches disk
-  │  MIME type whitelist: .xlsx, .xls, .csv
-  │  10 MB cap enforced before any parsing
-  ▼
+  |  Memory storage - file never touches disk
+  |  MIME type + extension whitelist
+  |  10 MB cap enforced before parsing
+  v
 parseFileToRows(file)
-  │  CSV → csv-parse (columns:true, trim:true)
-  │  Excel → ExcelJS
-  │     Map column headers via COLUMN_MAP aliases (handles rich-text, merged cells)
-  │     cellText() flattens RichText, Hyperlink, Number, Boolean to plain string
-  ▼
+  |  CSV -> csv-parse (columns:true, trim:true)
+  |  Excel -> ExcelJS
+  |     Column headers mapped via COLUMN_MAP aliases
+  |     cellText() flattens RichText, Hyperlink, Number to plain string
+  v
 Row validation loop
-  │  findColumn() — tries all known column name aliases in order
-  │  Missing storeCode → error
-  │  Missing materialCode → error
-  │  Missing systemQty → warning (defaults to 0)
-  │  Unknown storeCode → warning (store auto-created on upload)
-  ▼
+  |  Missing storeCode -> error
+  |  Missing materialCode -> error
+  |  Missing systemQty -> defaults to 0
+  |  Unknown storeCode -> warning (auto-created on commit)
+  v
 Preview (dry run) or Commit
-  │  Preview: returns colour-coded row array, no DB writes
-  │  Commit: prisma.inventoryRecord.createMany({ skipDuplicates: true })
+  |  Preview: returns colour-coded row array, no DB writes
+  |  Commit: prisma.inventoryRecord.createMany({ skipDuplicates: true })
 ```
-
----
-
-## Notification System
-
-Notifications are computed on demand from existing data — no extra database table required.
-
-### Store Manager Notifications (`GET /store/notifications`)
-
-Queries all `UploadBatch` records where this store has `PENDING` inventory records. For each batch:
-
-- **Past deadline** → `type: overdue`, urgent
-- **Deadline within 48 h** → `type: deadline`, urgent if ≤12 h
-- **No deadline or far deadline** → `type: pending`
-
-### Admin Notifications (`GET /admin/notifications`)
-
-Queries the most recent `COMPLETED` batch and:
-
-- Stores that submitted in the last 24 h → `type: submitted`
-- Pending stores + deadline overdue → `type: overdue`, urgent
-- Pending stores + deadline approaching → `type: deadline`, urgent if ≤12 h
-
-### Client Polling
-
-`NotificationBell.jsx` polls these endpoints every **60 seconds** using a `setInterval` that is cleared on unmount. The bell shows a red badge with the count; urgent items trigger a CSS pulse animation.
-
----
 
 ## Key Design Decisions
 
 | Decision | Rationale |
-|----------|-----------|
-| **Server-side diff calculation** | Variance = Counted − Book Stock is always computed by the server, never trusted from the client. Prevents manipulation. |
-| **skipDuplicates on createMany** | A (batch, store, material) triple is unique. Re-uploading the same file is idempotent — no duplicate rows. |
-| **No WebSocket** | Notifications poll every 60 s. The data changes slowly (submissions happen once per cycle). Polling is simpler, cheaper, and sufficient. |
-| **`$queryRaw` for aggregations** | Dashboard and batch stats use raw SQL `COUNT(CASE WHEN ...)` for a single-query aggregation. Prisma's ORM aggregation would require N+1 queries. |
-| **No React state library** | Context API covers auth; everything else is local state. The app has two isolated user roles — global state would add complexity with no benefit. |
-| **CSS custom properties (no framework)** | Full control over the brand colour system (red + white). Tailwind or MUI would fight the design. 7 split CSS files keep concerns organised without a preprocessor. |
-| **Monorepo (npm workspaces)** | Single `npm run install:all` sets up everything. No extra tooling (Turborepo, Nx) needed for a two-package project. |
-| **Prisma client generated to root `node_modules`** | Workspace hoisting means both client and server share the same `node_modules`. Run `prisma generate` from `server/` — the output goes to the root. |
+|---|---|
+| Server-side diff calculation | Variance is always computed server-side. The client cannot send a difference value and have it accepted. |
+| skipDuplicates on createMany | (batch, store, material) is unique. Re-uploading the same file is idempotent. |
+| No WebSocket | Submissions happen once per cycle. Polling every 60s is simpler, cheaper, and sufficient. |
+| $queryRaw for aggregations | Dashboard stats use raw SQL COUNT(CASE WHEN ...) for single-query aggregation. ORM equivalent would require N+1 queries. |
+| No React state library | Context API covers auth. Two isolated user roles need no global state beyond that. |
+| CSS custom properties, no framework | Full control over the brand colour system. 7 split CSS files keep concerns organised without a preprocessor. |
+| Monorepo with npm workspaces | Single npm install sets up everything. No extra tooling needed for a two-package project. |
+| Fire-and-forget emails | Upload and submit respond immediately. Emails send in background via parallel SMTP connections. |

@@ -1,46 +1,18 @@
-﻿# Security
+# Security
 
-> Security model, threat controls, and operational checklist for KinMarchÃ©.
+## Access Control
 
----
+Two roles exist in the system. Access is enforced server-side on every request — the frontend cannot bypass it.
 
-## Table of Contents
-
-- [Security Model](#security-model)
-- [Authentication](#authentication)
-- [Authorisation & Role Separation](#authorisation--role-separation)
-- [Store Isolation](#store-isolation)
-- [Data Integrity](#data-integrity)
-- [Transport Security](#transport-security)
-- [HTTP Security Headers](#http-security-headers)
-- [DoS Mitigation](#dos-mitigation)
-- [File Upload Security](#file-upload-security)
-- [SQL Injection Prevention](#sql-injection-prevention)
-- [Audit Trail](#audit-trail)
-- [Secrets Management](#secrets-management)
-- [Operational Checklist](#operational-checklist)
-
----
-
-## Security Model
-
-KinMarchÃ© is an internal business application accessed by two trust levels:
-
-| Role | Trust level | What they can access |
-|------|------------|---------------------|
-| `ADMIN` | High | All stores, all cycles, all data, system configuration |
-| `STORE_MANAGER` | Medium | Their single assigned store only â€” enforced at the database query level |
-| Unauthenticated | None | Only the login endpoint |
-
-Every security control is applied server-side. The frontend is treated as untrusted â€” it can display data but never compute authoritative figures or bypass access rules.
-
----
+| Role | Access |
+|---|---|
+| ADMIN | All stores, all cycles, all data, system configuration |
+| STORE_MANAGER | Their single assigned store only, enforced at the database query level |
+| Unauthenticated | Login endpoint only |
 
 ## Authentication
 
-### JWT Tokens
-
-Tokens are signed with **HS256** using the `JWT_SECRET` environment variable (minimum 32 characters). Token payload:
+Tokens are signed with HS256 using `JWT_SECRET` (minimum 32 characters). Token payload:
 
 ```json
 {
@@ -52,228 +24,125 @@ Tokens are signed with **HS256** using the `JWT_SECRET` environment variable (mi
 }
 ```
 
-Tokens expire after **8 hours** by default (configurable via `JWT_EXPIRES_IN`).
+Tokens expire after 8 hours by default (`JWT_EXPIRES_IN`). A refresh token (7-day lifetime, stored in the database) is issued alongside the access token and rotated on each use.
 
-**On every request:**
-1. The `Authorization: Bearer <token>` header is verified with `jsonwebtoken.verify()`
-2. Any JWT error (invalid, expired, tampered) immediately returns `401` â€” no fallthrough
-3. The `userId` from the payload is looked up in the database â€” if the user is inactive or deleted, the request is rejected with `401`
+On every request:
+1. The JWT is verified with `jsonwebtoken.verify()`
+2. Any JWT error returns 401 immediately
+3. The `userId` is looked up in the database — if inactive or deleted, the request is rejected
 
-### Password Hashing
+Passwords are hashed with bcrypt at 10 rounds. The `passwordHash` field is never included in any API response.
 
-Passwords are hashed with **bcrypt** at 10 rounds before storage. The raw password never exists in the database. The `passwordHash` field is never included in any API response.
-
-### Cold-Start Retry
-
-On the first request after server restart, Prisma may not have re-established its connection pool. `authController.login()` catches the initial DB error, calls `prisma.$connect()`, and retries once. This prevents false 503 errors on cold starts without compromising security.
-
----
-
-## Authorisation & Role Separation
-
-### Route-Level Guards
-
-Applied via Express middleware chains in `adminRoutes.js` and `storeRoutes.js`:
+## Route Guards
 
 ```
-/api/auth/*      â†’  (no guard)
-/api/admin/*     â†’  authenticate() â†’ requireRole('ADMIN')
-/api/store/*     â†’  authenticate() â†’ requireStoreManager()
-                    (role = STORE_MANAGER AND storeId IS NOT NULL)
+/api/auth/*    ->  no auth required
+/api/admin/*   ->  authenticate() -> requireRole('ADMIN')
+/api/store/*   ->  authenticate() -> requireStoreManager()
+                   (role = STORE_MANAGER AND storeId IS NOT NULL)
 ```
 
-If the middleware chain fails at any point, the request is rejected before reaching the controller. Controllers do not re-check roles.
-
-### Frontend Role Separation
-
-React's `PrivateRoute` component redirects users who are authenticated but have the wrong role. However, this is a UI convenience â€” the backend enforces role restrictions independently and would reject cross-role API calls even if the frontend were bypassed.
-
----
+If the middleware chain fails at any point, the request is rejected before reaching the controller.
 
 ## Store Isolation
 
-This is the most critical security control in the system.
+Every store manager query filters by `storeId: req.user.storeId` from the validated JWT — never from the request body or URL. There is no path through the code where a store manager can specify a different `storeId` and have it honoured.
 
-**Every store manager query explicitly filters by the manager's own store ID:**
-
-```javascript
-// storeController.js â€” example
-const records = await prisma.inventoryRecord.findMany({
-  where: {
-    storeId: req.user.storeId,  // â† always from the JWT, never from req.query
-    batchId: parseInt(batchId),
-  }
-});
-```
-
-`req.user.storeId` comes from the validated JWT, not from the request body or URL. There is no path through the code where a store manager can specify a different `storeId` in a request and have it honoured.
-
-**The same pattern applies to:**
-- `getInventory` â€” filters by `storeId: req.user.storeId`
-- `updateInventoryRecord` â€” verifies ownership with `{ id: recordId, storeId }` before updating
-- `submitInventory` â€” only updates records where `storeId = req.user.storeId`
-- `downloadInventory` â€” only exports records for `req.user.storeId`
-- `getDashboard` â€” aggregates only `storeId = req.user.storeId`
-
----
+This applies to: `getInventory`, `updateInventoryRecord`, `submitInventory`, `downloadInventory`, `getDashboard`, `getNotifications`.
 
 ## Data Integrity
 
-### Server-Side Variance Calculation
+**Server-side variance calculation** — the `difference` field is always calculated server-side as `physicalQuantity - systemQuantity`. The client cannot send a `difference` value and have it accepted.
 
-The `difference` (Variance) field is **always calculated server-side** in `updateInventoryRecord`:
+**Transactional submission** — `submitInventory` runs inside a Prisma `$transaction`. Before marking any record as SUBMITTED, it validates that all pending records have a physical quantity, all discrepant records have a shrinkage category, and all discrepant records have non-empty remarks. If any check fails, the transaction rolls back.
 
-```javascript
-difference = parseFloat((effectivePhysQty - finalSysQty).toFixed(4));
-```
-
-The client cannot send a `difference` value and have it accepted. Even if a client sends a manipulated request, the server recalculates from the stored quantities.
-
-### Submission Validation (Transactional)
-
-`submitInventory` runs inside a Prisma `$transaction`. Before marking any record as SUBMITTED, it validates:
-
-1. All pending records have a `physicalQuantity` (no blanks)
-2. All discrepant records have a `shrinkageCategory`
-3. All discrepant records have non-empty `remarks`
-
-If any validation fails, the transaction rolls back and nothing is committed. These same checks run client-side for UX, but the server validation is authoritative.
-
-### Duplicate Protection
-
-`InventoryRecord` has a unique constraint on `(batchId, storeId, materialCode)`. Re-uploading the same file is idempotent â€” `createMany({ skipDuplicates: true })` prevents duplicate rows.
-
----
-
-## Transport Security
-
-In production, all traffic must run over **HTTPS**. Configure this via:
-
-- **Managed platforms** (Railway, Vercel, Netlify): TLS is automatic
-- **VPS**: Use [Let's Encrypt](https://letsencrypt.org/) with `certbot --nginx`
-
-The server does not redirect HTTP to HTTPS â€” this is the responsibility of the reverse proxy (Nginx) or platform.
-
----
+**Duplicate protection** — `InventoryRecord` has a unique constraint on `(batchId, storeId, materialCode)`. Re-uploading the same file is idempotent via `createMany({ skipDuplicates: true })`.
 
 ## HTTP Security Headers
 
-Applied by **Helmet** on every response:
+Applied by Helmet on every response:
 
-| Header | Value set by Helmet | Protection |
-|--------|-------------------|-----------|
-| `X-Content-Type-Options` | `nosniff` | Prevents MIME sniffing |
-| `X-Frame-Options` | `SAMEORIGIN` | Prevents clickjacking |
-| `X-XSS-Protection` | `0` | Disables legacy XSS filter (modern browsers handle this) |
-| `Referrer-Policy` | `no-referrer` | Prevents referrer leakage |
-| `Content-Security-Policy` | Helmet defaults | Restricts resource loading sources |
-| `Strict-Transport-Security` | `max-age=15552000` | Forces HTTPS for 180 days |
+| Header | Protection |
+|---|---|
+| `X-Content-Type-Options: nosniff` | Prevents MIME sniffing |
+| `X-Frame-Options: SAMEORIGIN` | Prevents clickjacking |
+| `Referrer-Policy: no-referrer` | Prevents referrer leakage |
+| `Strict-Transport-Security: max-age=15552000` | Forces HTTPS for 180 days |
 
----
+`contentSecurityPolicy` is disabled because the React frontend uses inline styles and scripts.
 
 ## DoS Mitigation
 
-Server-side limits in place without application-layer rate limiting:
+| Control | Enforced by |
+|---|---|
+| JSON body capped at 1 MB | `express.json({ limit: '1mb' })` |
+| File upload capped at 10 MB | Multer `limits.fileSize` |
+| Export row limit 10,000 rows | Controller guard before DB fetch, returns 413 |
+| Password length capped at 128 chars | `validatePassword()` before bcrypt |
+| All IDs and pagination params validated | `parseId()` / `parsePageSize()` helpers, returns 400 |
 
-- **JSON body cap** — `1 MB` enforced by `express.json({ limit: '1mb' })` before the request body reaches any controller. Oversized JSON returns `413`.
-- **File upload cap** — `10 MB` enforced by Multer before file content reaches the controller.
-- **Export row limit** — Reconciliation report, inventory export, and batch export endpoints cap at `10,000` rows; filters matching more rows return `413` with a message to narrow the filter.
-- **Password length cap** — bcrypt is capped at 128 characters to prevent CPU-spike DoS via oversized inputs.
-- **Query parameter validation** — all IDs, page numbers, and page sizes are parsed through strict helpers that reject non-integer or out-of-range values with `400`.
-
-For production deployments behind a reverse proxy (Nginx, Cloudflare, etc.), application-level rate limiting can be added there.
-
----
+Application-level rate limiting is not applied. Add it at the reverse proxy or Cloudflare level for production.
 
 ## File Upload Security
 
-File uploads are handled by **Multer** with:
-
-1. **Memory storage** â€” files are never written to disk; they live in a `Buffer` for the duration of the request
-2. **MIME type whitelist** â€” only `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, and `text/csv` are accepted; other types are rejected with `400` before any parsing occurs
-3. **10 MB size cap** â€” enforced by Multer before the file reaches the controller
-
-The JSON body parser is capped at `1 MB` to prevent DoS via oversized JSON payloads.
-
----
+- Files are stored in memory (Buffer) only — never written to disk
+- MIME type and file extension whitelist: `.xlsx`, `.xls`, `.csv`
+- `application/octet-stream` is accepted only when the file extension is already validated
+- 10 MB cap enforced by Multer before any parsing occurs
 
 ## SQL Injection Prevention
 
-All database queries use **Prisma's parameterised query interface**. User input is never interpolated into query strings.
+All queries use Prisma's parameterised interface. For the few endpoints using `prisma.$queryRaw`, Prisma uses tagged template literals which automatically parameterise values:
 
-For the few endpoints that use `prisma.$queryRaw` (dashboard aggregations), Prisma uses tagged template literals which automatically parameterise values:
-
-```javascript
-// Safe â€” value is parameterised, not interpolated
-const stats = await prisma.$queryRaw`
+```js
+// value is parameterised, not string-interpolated
+await prisma.$queryRaw`
   SELECT COUNT(*)::int FROM "InventoryRecord"
   WHERE "storeId" = ${storeId} AND "batchId" = ${batchId}
 `;
 ```
 
----
-
 ## Audit Trail
 
-Every significant action writes an `AuditLog` entry with:
-- `userId` â€” who performed the action
-- `action` â€” what was done (enum string)
-- `entityType` and `entityId` â€” what was affected
-- `metadata` â€” action-specific context (before/after values, counts)
-- `createdAt` â€” when it happened
+Every significant action writes an `AuditLog` entry: who, what, what entity, context metadata, and timestamp. Audit logs are never deleted by normal application operations.
 
-Audit logs are **never deleted** by normal application operations. They are only cleared by `npm run db:reset` (a destructive development utility that drops all tables).
-
-The audit log is accessible to admins via **Admin â†’ Activity Log** and can be exported to Excel.
-
----
-
-## Secrets Management
+## Secrets
 
 | Secret | Location | Notes |
-|--------|----------|-------|
-| `JWT_SECRET` | `server/.env` | Never hardcode. Minimum 32 characters. Rotate if compromised. |
-| `DATABASE_URL` | `server/.env` | Contains DB credentials. Never commit. |
-| `SMTP_PASS` | `server/.env` | Use an App Password for Gmail, not your account password. |
-| Admin password | Database (bcrypt hash) | Change from the seeded default immediately after first deploy. |
+|---|---|---|
+| `JWT_SECRET` | Environment variable | Min 32 chars. Rotate if compromised. |
+| `DATABASE_URL` | Environment variable | Contains DB credentials. Never commit. |
+| `SMTP_PASS` | Environment variable | Use a Gmail App Password, not your account password. |
+| Admin password | Database (bcrypt hash) | Change from the seeded default after first deploy. |
 
-`server/.env` is listed in `.gitignore`. Verify it is never tracked:
+`server/.env` is in `.gitignore`. Verify it was never committed:
 
 ```bash
-git status server/.env       # should show nothing
-git log -- server/.env       # should show no commits
+git status server/.env      # should show nothing
+git log -- server/.env      # should show no commits
 ```
-
-If secrets are accidentally committed, they must be rotated â€” rewriting git history removes the text but the secrets may already be captured by GitHub's secret scanning or cached by anyone who cloned the repo.
-
----
 
 ## Operational Checklist
 
-### Before production launch
-
-- [ ] `JWT_SECRET` is random and â‰¥32 characters
-- [ ] Default admin password changed from the seeded value
-- [ ] `server/.env` is NOT committed to version control
+Before going live:
+- [ ] `JWT_SECRET` is random and at least 32 characters
+- [ ] Default admin password changed
+- [ ] `server/.env` is not committed to version control
 - [ ] HTTPS is enabled on the production domain
-- [ ] `NODE_ENV=production` is set (masks internal error details, disables stack traces in responses)
+- [ ] `NODE_ENV=production` is set
 - [ ] Database is not publicly accessible without credentials
 - [ ] Database backups are configured
 
-### Ongoing
+Ongoing:
+- [ ] Review Admin -> Activity Log for unexpected actions
+- [ ] Rotate `JWT_SECRET` and force re-login if a token leak is suspected
+- [ ] Run `npm audit` monthly and update packages
+- [ ] Deactivate accounts for employees who have left
+- [ ] Ensure each store manager is assigned to exactly one store
 
-- [ ] Review Admin â†’ Activity Log for unexpected actions (failed logins, unusual exports)
-- [ ] Rotate `JWT_SECRET` and force re-login of all users if a token leak is suspected
-- [ ] Keep Node.js, npm packages, and PostgreSQL updated â€” run `npm audit` monthly
-- [ ] Revoke or deactivate accounts for employees who have left the organisation
-- [ ] Review store assignments â€” ensure each store manager is assigned to exactly one store
-
-### On suspected compromise
-
-1. Rotate `JWT_SECRET` immediately â€” this invalidates all active sessions
+If compromised:
+1. Rotate `JWT_SECRET` immediately — invalidates all active sessions
 2. Change all admin passwords
 3. Review the audit log for the time window of the suspected compromise
 4. Check for unauthorised store/user creation, file uploads, or data exports
-5. If database credentials are compromised, rotate them and update `DATABASE_URL` in `.env`
-
-
+5. If database credentials are exposed, rotate them and update `DATABASE_URL`
