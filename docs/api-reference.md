@@ -37,23 +37,6 @@ Tokens are obtained from `POST /auth/login`. They expire after `8h` by default (
 
 ---
 
-## Rate Limits
-
-| Scope | Limit | Window | Applies to |
-|-------|-------|--------|-----------|
-| Auth | 10 requests | 15 minutes | `POST /auth/login` |
-| API | 300 requests | 1 minute | All other endpoints |
-
-When a limit is exceeded the server returns `429 Too Many Requests` with the error body:
-
-```json
-{ "error": "Too many login attempts. Please wait 15 minutes and try again." }
-```
-
-Rate limiting is disabled when `NODE_ENV=development`.
-
----
-
 ## Error Format
 
 All error responses use a consistent JSON body:
@@ -77,7 +60,7 @@ In development mode, a `stack` field is also included.
 | `403` | Forbidden — valid token but insufficient role |
 | `404` | Resource not found |
 | `409` | Conflict — duplicate record (e.g., duplicate store code) |
-| `429` | Too many requests |
+| `413` | Payload too large — export filter matches too many records |
 | `500` | Internal server error |
 | `503` | Service temporarily unavailable (DB cold-start) |
 

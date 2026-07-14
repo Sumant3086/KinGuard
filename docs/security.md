@@ -13,7 +13,7 @@
 - [Data Integrity](#data-integrity)
 - [Transport Security](#transport-security)
 - [HTTP Security Headers](#http-security-headers)
-- [Rate Limiting](#rate-limiting)
+- [DoS Mitigation](#dos-mitigation)
 - [File Upload Security](#file-upload-security)
 - [SQL Injection Prevention](#sql-injection-prevention)
 - [Audit Trail](#audit-trail)
@@ -171,21 +171,17 @@ Applied by **Helmet** on every response:
 
 ---
 
-## Rate Limiting
+## DoS Mitigation
 
-Applied via `express-rate-limit` at route mount time in `app.js`:
+Server-side limits in place without application-layer rate limiting:
 
-| Limiter | Applied to | Limit | Window | Response on limit |
-|---------|-----------|-------|--------|-------------------|
-| `authLimiter` | `POST /auth/login` | 10 requests | 15 minutes | `429` â€” "Too many login attempts. Please wait 15 minutes." |
-| `apiLimiter` | `/api/admin/*`, `/api/store/*` | 300 requests | 1 minute | `429` â€” "Too many requests. Please slow down." |
+- **JSON body cap** — `1 MB` enforced by `express.json({ limit: '1mb' })` before the request body reaches any controller. Oversized JSON returns `413`.
+- **File upload cap** — `10 MB` enforced by Multer before file content reaches the controller.
+- **Export row limit** — Reconciliation report, inventory export, and batch export endpoints cap at `10,000` rows; filters matching more rows return `413` with a message to narrow the filter.
+- **Password length cap** — bcrypt is capped at 128 characters to prevent CPU-spike DoS via oversized inputs.
+- **Query parameter validation** — all IDs, page numbers, and page sizes are parsed through strict helpers that reject non-integer or out-of-range values with `400`.
 
-**Rate limiting is skipped when `NODE_ENV=development`** to avoid friction during local development.
-
-### Why these limits?
-
-- **10 / 15 min on auth:** A brute-force attack trying common passwords would take hundreds of attempts. At 10/15min, it would take days to try 1000 passwords for a single account, by which time alerting should have triggered.
-- **300 / min on API:** A legitimate user navigating the admin dashboard generates â‰ˆ10â€“20 requests/minute. 300/min gives 15x headroom for bursts while blocking automated scrapers.
+For production deployments behind a reverse proxy (Nginx, Cloudflare, etc.), application-level rate limiting can be added there.
 
 ---
 
@@ -279,3 +275,5 @@ If secrets are accidentally committed, they must be rotated â€” rewriting g
 3. Review the audit log for the time window of the suspected compromise
 4. Check for unauthorised store/user creation, file uploads, or data exports
 5. If database credentials are compromised, rotate them and update `DATABASE_URL` in `.env`
+
+
