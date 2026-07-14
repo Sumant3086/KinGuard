@@ -25,16 +25,6 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 
 **For senior management** — a live dashboard showing network-wide submission rates, shortage hotspots, and trend data across multiple inventory cycles.
 
-## Screenshots
-
-<div align="center">
-
-| Admin Dashboard | Store Count Entry |
-|:---:|:---:|
-| <img src="client/src/assets/img/AdminPage.png" width="480" alt="Admin Dashboard" /> | <img src="client/src/assets/img/StoreManagerPage.png" width="480" alt="Store Count Entry" /> |
-
-</div>
-
 ## Live Demo
 
 **[https://kinmarchae.onrender.com](https://kinmarchae.onrender.com)**
