@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "postinstall": "prisma generate",
     "lint": "eslint src --max-warnings 0",
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
