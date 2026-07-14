@@ -238,7 +238,39 @@ export default function Stores() {
         />
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-container">
+          {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+          <div className="stores-cards" style={{ padding: 12 }}>
+            {stores.map(store => (
+              <div key={store.id} className="store-card">
+                <div className="store-card-check">
+                  <input type="checkbox" checked={selected.has(store.id)} onChange={() => toggleSelect(store.id)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }} />
+                </div>
+                <div className="store-card-top">
+                  <span className="store-card-code">{store.storeCode}</span>
+                  <span className={`badge ${store.isActive ? 'badge-active' : 'badge-inactive'}`}>
+                    {store.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="store-card-name">{store.storeName}</div>
+                <div className="store-card-meta">{store._count.users} user{store._count.users !== 1 ? 's' : ''} · {store._count.inventoryRecords} record{store._count.inventoryRecords !== 1 ? 's' : ''}</div>
+                <div className="store-card-actions">
+                  <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
+                  {store._count.inventoryRecords === 0 ? (
+                    <button onClick={() => setDeleteTarget(store)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
+                      Delete
+                    </button>
+                  ) : (
+                    <button onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }} className="btn btn-sm" title={`Force delete — erases ${store._count.inventoryRecords} record(s)`} style={{ background: 'rgba(239,68,68,0.07)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }}>
+                      Force Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Desktop table (>768px) ────────────────────────────── */}
+          <div className="table-container stores-table-desktop">
             <table>
               <thead>
                 <tr>

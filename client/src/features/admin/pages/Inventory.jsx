@@ -239,7 +239,46 @@ export default function Inventory() {
       ) : (
         <>
           <div className="card" style={{ padding: 0 }}>
-            <div className="table-container">
+            {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+            <div className="inv-cards" style={{ padding: 12 }}>
+              {records.map(record => (
+                <div key={record.id} className="inv-card">
+                  <div className="inv-card-top">
+                    <span className="inv-card-store">{record.store.storeCode}</span>
+                    <div className="inv-card-badges">
+                      <span className={`badge badge-${record.status.toLowerCase()}`}>
+                        {record.status === 'PENDING' ? 'Pending' : 'Counted'}
+                      </span>
+                      {record.isRepeat && <span className="badge badge-repeat" title="Shortage in previous cycles">Repeat</span>}
+                    </div>
+                  </div>
+                  <div className="inv-card-material">{record.materialCode}</div>
+                  <div className="inv-card-desc">{record.materialName}</div>
+                  <div className="inv-card-qty-row">
+                    <span>Sys: <strong>{record.systemQuantity}</strong></span>
+                    <span>Phys: <strong>{record.physicalQuantity ?? '—'}</strong></span>
+                    {record.difference !== null ? (
+                      <span className={record.difference === 0 ? 'badge badge-matched' : record.difference < 0 ? 'badge badge-shortage' : 'badge badge-excess'}>
+                        {record.difference > 0 ? '+' : ''}{record.difference}
+                      </span>
+                    ) : null}
+                  </div>
+                  {record.remarks && (
+                    <div className="inv-card-remarks" title={record.remarks}>Remarks: {record.remarks}</div>
+                  )}
+                  <button
+                    onClick={() => openOverride(record)}
+                    className="btn btn-sm"
+                    style={{ background: 'rgba(139,92,246,0.1)', color: 'var(--violet)', border: '1px solid rgba(139,92,246,0.22)', fontSize: 11, width: '100%' }}
+                  >
+                    Override
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop table (>768px) ────────────────────────────── */}
+            <div className="table-container inv-table-desktop">
               <table className="table-sticky table-sortable table-hover">
                 <thead>
                   <tr>

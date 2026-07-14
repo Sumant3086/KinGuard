@@ -943,6 +943,99 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   }
 }
 
+/* ─── Admin Inventory submission cards (mobile) ──────────── */
+.inv-table-desktop { display:block; }
+.inv-cards { display:none; }
+
+/* ─── Users management cards (mobile) ────────────────────── */
+.users-table-desktop { display:block; }
+.users-cards { display:none; }
+
+/* ─── Stores management cards (mobile) ───────────────────── */
+.stores-table-desktop { display:block; }
+.stores-cards { display:none; }
+
+/* ─── Audit log cards (mobile) ───────────────────────────── */
+.audit-table-desktop { display:block; }
+.audit-cards { display:none; }
+
+/* ─── Store inventory cards (mobile) ─────────────────────── */
+.store-inv-table-desktop { display:block; }
+.store-inv-cards { display:none; }
+
+@media (max-width: 768px) {
+  /* Admin Inventory */
+  .inv-table-desktop { display:none; }
+  .inv-cards { display:flex; flex-direction:column; gap:10px; }
+  .inv-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px;
+  }
+  .inv-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .inv-card-store { font-family:monospace; font-weight:800; font-size:13px; color:var(--vi-light); }
+  .inv-card-badges { display:flex; gap:4px; flex-wrap:wrap; }
+  .inv-card-material { font-weight:700; font-size:13px; color:var(--t1); }
+  .inv-card-desc { font-size:12px; color:var(--t3); }
+  .inv-card-qty-row { display:flex; gap:12px; align-items:center; font-size:12px; color:var(--t2); }
+  .inv-card-qty-row strong { color:var(--t1); }
+  .inv-card-remarks { font-size:11.5px; color:var(--t3); font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Users */
+  .users-table-desktop { display:none; }
+  .users-cards { display:flex; flex-direction:column; gap:10px; }
+  .user-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:8px;
+  }
+  .user-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .user-card-name { font-weight:700; font-size:14px; color:var(--t1); }
+  .user-card-id { font-family:monospace; font-size:11px; color:var(--vi-light); font-weight:700; }
+  .user-card-meta { font-size:12px; color:var(--t3); display:flex; flex-direction:column; gap:3px; }
+  .user-card-actions { display:flex; gap:6px; flex-wrap:wrap; }
+
+  /* Stores */
+  .stores-table-desktop { display:none; }
+  .stores-cards { display:flex; flex-direction:column; gap:10px; }
+  .store-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:8px;
+    position:relative;
+  }
+  .store-card-check { position:absolute; top:13px; right:13px; }
+  .store-card-top { display:flex; align-items:center; gap:8px; }
+  .store-card-code { font-family:monospace; font-weight:800; font-size:14px; color:var(--vi-light); }
+  .store-card-name { font-weight:700; font-size:13px; color:var(--t1); }
+  .store-card-meta { font-size:12px; color:var(--t3); }
+  .store-card-actions { display:flex; gap:6px; }
+
+  /* Audit Log */
+  .audit-table-desktop { display:none; }
+  .audit-cards { display:flex; flex-direction:column; gap:8px; }
+  .audit-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px;
+  }
+  .audit-card-top { display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; }
+  .audit-card-desc { font-size:13px; font-weight:600; color:var(--t1); }
+  .audit-card-by { font-size:11.5px; color:var(--t3); }
+  .audit-card-meta { font-size:11px; color:var(--t4); background:var(--surface-2); border-radius:6px; padding:6px 8px; font-family:monospace; word-break:break-all; }
+
+  /* Store inventory */
+  .store-inv-table-desktop { display:none; }
+  .store-inv-cards { display:flex; flex-direction:column; gap:10px; }
+  .store-inv-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:10px;
+  }
+  .store-inv-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .store-inv-code { font-family:monospace; font-weight:800; font-size:12px; color:var(--vi-light); }
+  .store-inv-name { font-size:13px; color:var(--t2); }
+  .store-inv-sys { font-size:12px; color:var(--t3); }
+  .store-inv-card input,
+  .store-inv-card select { width:100%; font-size:13px; }
+  .store-inv-card-actions { display:flex; gap:8px; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    STORE MANAGER THEME - Professional & Readable
    ═══════════════════════════════════════════════════════════════════ */

@@ -118,7 +118,45 @@ export default function AuditLogs() {
         </div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
-          <div className="table-container">
+          {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+          <div className="audit-cards" style={{ padding: 12 }}>
+            {logs.map(log => {
+              const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
+              const isExpanded  = expanded.has(log.id);
+              return (
+                <div key={log.id} className="audit-card">
+                  <div className="audit-card-top">
+                    <span className={`badge ${badgeClass(log.action)}`}>{humanize(log.action)}</span>
+                    {hasMetadata && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => toggleExpand(log.id)}
+                        style={{ fontSize: 11, padding: '2px 8px', marginLeft: 'auto' }}
+                      >
+                        {isExpanded ? '▼ Hide' : '▶ Details'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="audit-card-by">
+                    {log.user
+                      ? <span><strong>{log.user.name}</strong> <span style={{ fontFamily: 'monospace', fontSize: 10 }}>({log.user.employeeId})</span></span>
+                      : <span style={{ color: 'var(--t4)' }}>System</span>
+                    }
+                    {' · '}
+                    <span style={{ fontSize: 11 }}>{fmtDateTime(log.createdAt)}</span>
+                  </div>
+                  {isExpanded && hasMetadata && (
+                    <pre className="audit-card-meta">
+                      {JSON.stringify(log.metadata, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table (>768px) ────────────────────────────── */}
+          <div className="table-container audit-table-desktop">
             <table>
               <thead>
                 <tr>
