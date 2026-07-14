@@ -970,7 +970,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   z-index: 1;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 40px 36px 90px;
+  padding: 32px 28px 90px;
   animation: fade-in-up 0.25s ease both;
 }
 
@@ -1706,4 +1706,209 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     0 8px 32px rgba(180,100,20,0.20),
     0 3px 10px rgba(0,0,0,0.08),
     inset 0 2px 0 rgba(255,255,255,0.58);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STORE — INV-TABLE THEAD FIX
+   layout.css sets .store-shell th { background: cream !important } which
+   overrides inventory.css's dark-red gradient (no !important). Fix by
+   targeting .inv-table th with higher specificity + !important after layout.
+   ═══════════════════════════════════════════════════════════════════ */
+.store-shell .inv-table th {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25) !important;
+}
+.store-shell .inv-table td {
+  color: #0f0503 !important;
+  font-weight: 600 !important;
+}
+.store-shell .inv-table tbody tr:hover td {
+  background: rgba(255,244,205,0.70) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STORE — BACKDROP-FILTER FALLBACK
+   Older Android WebView doesn't support backdrop-filter. Give panels
+   a solid-ish amber background so they still look warm and readable.
+   ═══════════════════════════════════════════════════════════════════ */
+@supports not (backdrop-filter: blur(1px)) {
+  .store-shell .card,
+  .store-shell .page-header,
+  .store-shell .page-header-root,
+  .store-shell .kpi-card,
+  .store-shell .metric-card,
+  .store-shell .stat-card,
+  .store-shell .table-wrap,
+  .store-shell .table-container,
+  .store-shell .filter-card,
+  .store-shell .banner {
+    background: rgba(255, 244, 210, 0.95) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STORE — TOUCH DEVICE: disable hover lift effects
+   hover: none targets pure touch screens so cards don't stay "lifted"
+   after a tap.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (hover: none) {
+  .store-shell .card:hover,
+  .store-shell .page-header:hover,
+  .store-shell .kpi-card:hover,
+  .store-shell .metric-card:hover,
+  .store-shell .stat-card:hover {
+    transform: none !important;
+    box-shadow:
+      0 4px 20px rgba(180,100,20,0.16),
+      0 1px 6px rgba(0,0,0,0.08),
+      inset 0 1px 0 rgba(255,255,255,0.60) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STORE — RESPONSIVE MOBILE (tablet → phone)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 768px) ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .store-content { padding: 14px 14px 80px !important; }
+
+  .store-shell .card,
+  .store-shell .page-header,
+  .store-shell .page-header-root {
+    border-radius: 14px !important;
+  }
+  .store-shell .kpi-card,
+  .store-shell .metric-card,
+  .store-shell .stat-card {
+    border-radius: 12px !important;
+  }
+
+  /* Reduce blur for GPU performance on mid-range devices */
+  .store-shell .card,
+  .store-shell .page-header,
+  .store-shell .page-header-root,
+  .store-shell .table-wrap,
+  .store-shell .table-container {
+    backdrop-filter: blur(20px) saturate(170%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(170%) !important;
+  }
+  .store-shell .kpi-card,
+  .store-shell .metric-card,
+  .store-shell .stat-card,
+  .store-shell .filter-card {
+    backdrop-filter: blur(18px) saturate(165%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(165%) !important;
+  }
+
+  .store-shell .page-header h2,
+  .store-shell .page-header-text h2 {
+    font-size: 20px !important;
+  }
+  .store-shell .stat-card .value { font-size: 30px !important; }
+  .store-shell .kpi-value,
+  .store-shell .metric-value    { font-size: 30px !important; }
+  .store-shell .card-title,
+  .store-shell .card h3         { font-size: 16px !important; }
+}
+
+/* ── Phone (≤ 520px) ───────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .store-content { padding: 10px 10px 76px !important; }
+
+  /* Cards tighter */
+  .store-shell .card           { border-radius: 12px !important; padding: 14px !important; }
+  .store-shell .page-header,
+  .store-shell .page-header-root {
+    border-radius: 12px !important;
+    padding: 14px !important;
+    /* Stack heading + actions vertically on small phones */
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .store-shell .page-header .actions { width: 100% !important; justify-content: flex-start !important; }
+  .store-shell .page-header h2,
+  .store-shell .page-header-text h2  { font-size: 17px !important; }
+  .store-shell .page-header p,
+  .store-shell .page-header-text p   { font-size: 13px !important; }
+
+  /* Smaller KPI numbers so 2-col grid fits */
+  .store-shell .stat-card .value { font-size: 26px !important; }
+  .store-shell .kpi-value,
+  .store-shell .metric-value    { font-size: 26px !important; }
+  .store-shell .stat-card h4    { font-size: 10px !important; letter-spacing: 0.8px !important; }
+  .store-shell .kpi-label,
+  .store-shell .metric-label    { font-size: 9px !important; }
+
+  /* Stat card left border thinner */
+  .store-shell .stat-card.info,
+  .store-shell .stat-card.warning,
+  .store-shell .stat-card.success,
+  .store-shell .stat-card.danger,
+  .store-shell .stat-card.accent,
+  .store-shell .stat-card:not(.info):not(.warning):not(.success):not(.danger):not(.accent) {
+    border-left-width: 4px !important;
+  }
+
+  /* Labels and form text */
+  .store-shell label            { font-size: 12px !important; }
+  .store-shell .info-label      { font-size: 11px !important; }
+
+  /* Reduce blur further for low-end phones */
+  .store-shell .card,
+  .store-shell .page-header,
+  .store-shell .page-header-root,
+  .store-shell .table-wrap,
+  .store-shell .table-container {
+    backdrop-filter: blur(14px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+  }
+  .store-shell .kpi-card,
+  .store-shell .metric-card,
+  .store-shell .stat-card,
+  .store-shell .filter-card {
+    backdrop-filter: blur(12px) saturate(145%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(145%) !important;
+  }
+
+  /* Inputs: larger tap targets */
+  .store-shell input:not([type="checkbox"]):not([type="radio"]),
+  .store-shell select,
+  .store-shell textarea {
+    min-height: 44px !important;
+    font-size: 15px !important;
+    padding: 10px 12px !important;
+  }
+
+  /* Buttons: minimum 44px tap target */
+  .store-shell .btn { min-height: 44px !important; font-size: 13px !important; padding: 10px 16px !important; }
+  .store-shell .btn-sm { min-height: 38px !important; font-size: 12px !important; padding: 8px 12px !important; }
+}
+
+/* ── Small phones (≤ 380px) ────────────────────────────────────── */
+@media (max-width: 380px) {
+  .store-content { padding: 8px 8px 72px !important; }
+  .store-shell .card           { padding: 12px !important; }
+  .store-shell .page-header,
+  .store-shell .page-header-root { padding: 12px !important; }
+  .store-shell .page-header h2,
+  .store-shell .page-header-text h2 { font-size: 15px !important; }
+  .store-shell .stat-card .value    { font-size: 22px !important; }
+  .store-shell .kpi-value,
+  .store-shell .metric-value        { font-size: 22px !important; }
+  /* Disable all blur on very low-end hardware */
+  .store-shell .card,
+  .store-shell .page-header,
+  .store-shell .kpi-card,
+  .store-shell .metric-card,
+  .store-shell .stat-card,
+  .store-shell .table-wrap,
+  .store-shell .filter-card,
+  .store-shell .banner {
+    backdrop-filter: blur(8px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(130%) !important;
+    background: rgba(255, 244, 210, 0.88) !important;
+  }
 }
