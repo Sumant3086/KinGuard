@@ -3,13 +3,13 @@ import { get as cacheGet, set as cacheSet, invalidate as cacheInvalidate } from 
 
 // ── Cache TTLs (centralised) ───────────────────────────────────────────────
 const TTL = {
-  DASHBOARD:  120_000, // 2 min — matches server-side 2-min cache
-  STORES:      60_000, // 1 min
-  USERS:       60_000, // 1 min
-  BATCHES:     30_000, // 30 s
-  UPLOADS:     30_000, // 30 s
-  AUDIT_LOGS:  60_000, // 1 min
-  TRENDS:     120_000, // 2 min
+  DASHBOARD:  300_000, // 5 min
+  STORES:     180_000, // 3 min
+  USERS:      120_000, // 2 min
+  BATCHES:     60_000, // 1 min
+  UPLOADS:     60_000, // 1 min
+  AUDIT_LOGS: 120_000, // 2 min
+  TRENDS:     300_000, // 5 min
 };
 
 /** Return cached value if fresh; otherwise fetch, cache, and return. */
