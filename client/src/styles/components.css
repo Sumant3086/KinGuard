@@ -1783,6 +1783,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
    after a tap.
    ═══════════════════════════════════════════════════════════════════ */
 @media (hover: none) {
+  /* Disable lift animations on pure touch — no cursor, no hover */
   .store-shell .card:hover,
   .store-shell .page-header:hover,
   .store-shell .kpi-card:hover,
@@ -1794,6 +1795,12 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
       0 1px 6px rgba(0,0,0,0.08),
       inset 0 1px 0 rgba(255,255,255,0.60) !important;
   }
+  /* Disable sticky hover row backgrounds on inv-table for touch */
+  .store-shell .inv-table tbody tr:hover td,
+  .inv-table tbody tr:hover td {
+    background: none !important;
+    box-shadow: none !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1802,7 +1809,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 /* ── Tablet (≤ 768px) ──────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .store-content { padding: 14px 14px 80px !important; }
+  .store-content { padding: 14px 14px calc(76px + env(safe-area-inset-bottom)) !important; }
 
   .store-shell .card,
   .store-shell .page-header,

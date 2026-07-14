@@ -51,7 +51,6 @@
   transition: background var(--fast), box-shadow var(--fast);
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(220,38,38,0.20);
-  touch-action: manipulation;
 }
 .btn-jump:hover { background:var(--vi-deep); box-shadow:0 4px 14px rgba(220,38,38,0.28); }
 
@@ -257,7 +256,6 @@
   white-space: nowrap;
   box-shadow: 0 1px 4px rgba(220,38,38,0.20);
   animation: fade-up 0.12s ease;
-  touch-action: manipulation;
 }
 .btn-row-save:hover  { background:var(--vi-deep); transform:translateY(-1px); box-shadow:0 3px 10px rgba(220,38,38,0.28); }
 .btn-row-save:active { transform:translateY(1px); }
