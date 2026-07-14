@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -96,14 +97,18 @@ app.all('/api/*', (_req, res) => {
   res.status(404).json({ error: 'API route not found' });
 });
 
-// ── Production: serve React SPA from client/dist ───────────────────────────
+// ── Production: serve React SPA from client/dist (only when built together) ──
+// When frontend is deployed as a separate Render Static Site, client/dist
+// won't exist here — skip static serving so the API still works cleanly.
 if (IS_PROD) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const distPath = path.join(__dirname, '..', '..', 'client', 'dist');
-  app.use(express.static(distPath, { maxAge: '1y', etag: true }));
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath, { maxAge: '1y', etag: true }));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
 }
 
 // ── Error handler ──────────────────────────────────────────────────────────
