@@ -187,7 +187,7 @@ export default function AdminDashboard() {
           variant="error"
           icon={<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
           title="Failed to Load Dashboard"
-          description="We couldn&apos;t retrieve dashboard data. Please check your connection and try again."
+          description="We couldn't retrieve dashboard data. Please check your connection and try again."
           action={<button onClick={() => window.location.reload()} className="btn btn-primary">Retry</button>}
         />
       ) : (
@@ -338,50 +338,17 @@ function DashboardContent({ data, navigate }) {
             <p className="empty-state-description">Upload a master file to create an inventory cycle for this network.</p>
           </div>
         ) : (
-          <div className="table-wrap">
-            <table className="scorecard">
-              <thead>
-                <tr>
-                  <th scope="col">Store</th>
-                  <th scope="col">Risk</th>
-                  <th scope="col">Shortage Rate</th>
-                  <th scope="col">Shortages</th>
-                  <th scope="col">Top Remark</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {storeScorecard.map(store => (
-                  <tr
-                    key={store.storeId}
-                    className={store.riskLevel === 'RED' ? 'row-risk-high' : store.riskLevel === 'YELLOW' ? 'row-risk-mid' : ''}
-                  >
-                    <td>
-                      <div className="score-store-name">{store.storeName}</div>
-                      <div className="score-store-code">{store.storeCode || store.storeId}</div>
-                    </td>
-                    <td><RiskTag level={store.riskLevel} /></td>
-                    <td style={{ minWidth: 130 }}><ShortageBar rate={store.shortageRate} /></td>
-                    <td>
-                      <button
-                        onClick={() => store.shortageCount > 0 && navigate(`/admin/inventory?storeId=${store.storeId}&discrepancy=shortage`)}
-                        style={{
-                          background: 'none', border: 'none', padding: 0,
-                          fontWeight: 700, fontSize: 'inherit',
-                          color: store.shortageCount > 0 ? 'var(--red)' : 'var(--t2)',
-                          textDecoration: store.shortageCount > 0 ? 'underline' : 'none',
-                          cursor: store.shortageCount > 0 ? 'pointer' : 'default',
-                        }}
-                      >
-                        {store.shortageCount}
-                      </button>
-                    </td>
-                    <td>
-                      <span className="score-remark" title={store.topRemark || ''}>
-                        {store.topRemark || '—'}
-                      </span>
-                    </td>
-                    <td>
+          <>
+            {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+            <div className="scorecard-cards">
+              {storeScorecard.map(store => (
+                <div key={store.storeId} className="scorecard-card">
+                  <div className="scorecard-card-top">
+                    <div>
+                      <div className="scorecard-card-name">{store.storeName}</div>
+                      <div className="scorecard-card-code">{store.storeCode || store.storeId}</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                       {store.status === 'SUBMITTED' && <span className="badge badge-submitted">Submitted</span>}
                       {store.status === 'PENDING' && (
                         <span className={`badge ${store.isOverdue ? 'badge-shortage' : 'badge-pending'}`}>
@@ -389,12 +356,86 @@ function DashboardContent({ data, navigate }) {
                         </span>
                       )}
                       {store.status === 'NO_DATA' && <span className="badge badge-no-data">No Data</span>}
-                    </td>
+                      <RiskTag level={store.riskLevel} />
+                    </div>
+                  </div>
+                  <ShortageBar rate={store.shortageRate} />
+                  {store.topRemark && (
+                    <div style={{ fontSize: 11.5, color: 'var(--t3)', fontStyle: 'italic' }} title={store.topRemark}>
+                      {store.topRemark}
+                    </div>
+                  )}
+                  {store.shortageCount > 0 && (
+                    <button
+                      onClick={() => navigate(`/admin/inventory?storeId=${store.storeId}&discrepancy=shortage`)}
+                      style={{ background: 'none', border: 'none', padding: 0, fontWeight: 700, fontSize: 12, color: 'var(--red)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      {store.shortageCount} shortage item{store.shortageCount !== 1 ? 's' : ''} →
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop table (>768px) ────────────────────────────── */}
+            <div className="table-wrap scorecard-table-desktop">
+              <table className="scorecard">
+                <thead>
+                  <tr>
+                    <th scope="col">Store</th>
+                    <th scope="col">Risk</th>
+                    <th scope="col">Shortage Rate</th>
+                    <th scope="col">Shortages</th>
+                    <th scope="col">Top Remark</th>
+                    <th scope="col">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {storeScorecard.map(store => (
+                    <tr
+                      key={store.storeId}
+                      className={store.riskLevel === 'RED' ? 'row-risk-high' : store.riskLevel === 'YELLOW' ? 'row-risk-mid' : ''}
+                    >
+                      <td>
+                        <div className="score-store-name">{store.storeName}</div>
+                        <div className="score-store-code">{store.storeCode || store.storeId}</div>
+                      </td>
+                      <td><RiskTag level={store.riskLevel} /></td>
+                      <td style={{ minWidth: 130 }}><ShortageBar rate={store.shortageRate} /></td>
+                      <td>
+                        <button
+                          onClick={() => store.shortageCount > 0 && navigate(`/admin/inventory?storeId=${store.storeId}&discrepancy=shortage`)}
+                          style={{
+                            background: 'none', border: 'none', padding: 0,
+                            fontWeight: 700, fontSize: 'inherit',
+                            color: store.shortageCount > 0 ? 'var(--red)' : 'var(--t2)',
+                            textDecoration: store.shortageCount > 0 ? 'underline' : 'none',
+                            cursor: store.shortageCount > 0 ? 'pointer' : 'default',
+                          }}
+                        >
+                          {store.shortageCount}
+                        </button>
+                      </td>
+                      <td>
+                        <span className="score-remark" title={store.topRemark || ''}>
+                          {store.topRemark || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        {store.status === 'SUBMITTED' && <span className="badge badge-submitted">Submitted</span>}
+                        {store.status === 'PENDING' && (
+                          <span className={`badge ${store.isOverdue ? 'badge-shortage' : 'badge-pending'}`}>
+                            {store.isOverdue ? 'Past Deadline' : 'Awaiting'}
+                          </span>
+                        )}
+                        {store.status === 'NO_DATA' && <span className="badge badge-no-data">No Data</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

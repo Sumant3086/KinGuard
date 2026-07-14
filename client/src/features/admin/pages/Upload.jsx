@@ -256,7 +256,7 @@ export default function Upload() {
             </div>
           )}
 
-          <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 16 }}>
+          <div style={{ maxHeight: 360, overflowY: 'auto', overflowX: 'auto', marginBottom: 16 }}>
             <table style={{ fontSize: 12 }}>
               <thead>
                 <tr>
@@ -306,7 +306,7 @@ export default function Upload() {
             <strong>Inventory cycle published.</strong> Stores can now begin submitting their physical counts.
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div className="upload-result-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
             <div style={{ padding: '12px 16px', background: 'var(--surface-2)', borderRadius: 'var(--r)', textAlign: 'center' }}>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--t1)' }}>{result.totalRows}</div>
               <div style={{ fontSize: 12, color: 'var(--t3)' }}>Total rows</div>

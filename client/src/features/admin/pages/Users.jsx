@@ -662,7 +662,7 @@ export default function AdminUsers() {
           {bulkResult.approved && bulkResult.approved.length > 0 && (
             <div style={{ marginTop: 8 }}>
               <strong style={{ fontSize: 12, color: 'var(--green)' }}>Approved — save these credentials:</strong>
-              <div style={{ maxHeight: 200, overflowY: 'auto', marginTop: 6, border: '1px solid var(--border)', borderRadius: 4 }}>
+              <div style={{ maxHeight: 200, overflowY: 'auto', overflowX: 'auto', marginTop: 6, border: '1px solid var(--border)', borderRadius: 4 }}>
                 <table style={{ fontSize: 11 }}>
                   <thead><tr style={{ background: 'var(--surface-2)' }}><th scope="col">Username</th><th scope="col">Name</th><th scope="col">Temp Password</th><th scope="col">Store</th></tr></thead>
                   <tbody>
@@ -957,7 +957,7 @@ export default function AdminUsers() {
                     <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     What to include in your Excel or CSV file:
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))', gap: 8 }}>
                     {[
                       { col: 'Name', desc: 'Full name of the person', tag: 'Required', tagColor: '#dc2626', tagBg: 'rgba(220,38,38,0.10)', tagBorder: 'rgba(220,38,38,0.22)', color: '#dc2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.18)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
                       { col: 'Store Code', desc: 'The store/plant they manage (e.g. CP01)', tag: 'Required for Managers', tagColor: '#d97706', tagBg: 'rgba(217,119,6,0.10)', tagBorder: 'rgba(217,119,6,0.22)', color: '#d97706', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.18)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
@@ -1052,7 +1052,7 @@ export default function AdminUsers() {
                   <div className="alert alert-error" style={{ marginBottom: 12 }}>All rows have errors — correct the file and re-upload.</div>
                 )}
 
-                <div style={{ maxHeight: 340, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 14 }}>
+                <div style={{ maxHeight: 340, overflowY: 'auto', overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 14 }}>
                   <table style={{ fontSize: 11 }}>
                     <thead>
                       <tr style={{ background: 'var(--surface-2)', position: 'sticky', top: 0, zIndex: 1 }}>
@@ -1324,7 +1324,7 @@ export default function AdminUsers() {
                 {batchResult.created?.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Save these credentials:</h4>
-                    <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
+                    <div style={{ maxHeight: 280, overflowY: 'auto', overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
                       <table style={{ fontSize: 12 }}>
                         <thead><tr style={{ background: 'var(--surface-2)' }}>
                           <th scope="col">Plant</th><th scope="col">Username</th><th scope="col">Name</th><th scope="col">Password</th>

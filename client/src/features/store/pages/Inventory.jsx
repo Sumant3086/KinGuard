@@ -485,7 +485,7 @@ export default function StoreInventory() {
 
       {/* ── Page header ── */}
       <div className="page-header" style={{ marginTop: 24 }}>
-        <div>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           <h2>Inventory Count</h2>
           {selectedBatch && batches.length > 0 && (() => {
             const b = batches.find(b => b.id.toString() === selectedBatch);
@@ -494,7 +494,7 @@ export default function StoreInventory() {
             ) : null;
           })()}
         </div>
-        <div className="actions" style={{ margin: 0 }}>
+        <div className="page-actions" style={{ margin: 0 }}>
           {totalPending > 0 && !isLocked && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
               <button

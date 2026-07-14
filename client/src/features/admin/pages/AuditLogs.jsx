@@ -107,7 +107,7 @@ export default function AuditLogs() {
       <PageHeader
         title="Activity Log"
         subtitle="A complete, immutable audit trail of all system actions."
-        actions={<>{limitSelect}<button onClick={handleExport} disabled={downloading} className="btn btn-success">↓ Export Excel</button></>}
+        actions={<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>{limitSelect}<button onClick={handleExport} disabled={downloading} className="btn btn-success">↓ Export Excel</button></div>}
       />
 
       {loading ? (

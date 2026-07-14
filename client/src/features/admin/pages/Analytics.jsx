@@ -149,9 +149,9 @@ export default function Analytics() {
               <TrendArrow values={networkRates} />
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 8 }}>
-            <Sparkline values={networkRates} width={200} height={48} />
-            <div style={{ display: 'flex', gap: 32 }}>
+          <div className="analytics-network-row" style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 8 }}>
+            <Sparkline values={networkRates} width={160} height={40} />
+            <div className="analytics-cycle-badges" style={{ display: 'flex', gap: 20 }}>
               {networkTotals.map((n, i) => (
                 <div key={n.batchId} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, ...rateColor(n.rate), padding: '2px 8px', borderRadius: 4 }}>

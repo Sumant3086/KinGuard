@@ -170,7 +170,7 @@ export default function Inventory() {
       {/* Filters */}
       <div className="filter-card">
         <div className="filters" style={{ flexWrap: 'wrap', gap: '10px' }}>
-          <select value={filters.batchId} onChange={e => handleFilterChange('batchId', e.target.value)} style={{ minWidth: 180 }}>
+          <select value={filters.batchId} onChange={e => handleFilterChange('batchId', e.target.value)}>
             <option value="">All Cycles</option>
             {batches.map(b => (
               <option key={b.id} value={b.id}>
@@ -203,7 +203,6 @@ export default function Inventory() {
             value={filters.search}
             onChange={e => handleFilterChange('search', e.target.value)}
             onKeyDown={e => e.key === 'Enter' && applyFilters()}
-            style={{ minWidth: 200 }}
           />
 
           <button onClick={applyFilters} className="btn btn-primary" disabled={loading}>
@@ -335,11 +334,11 @@ export default function Inventory() {
           {loading && <div style={{ textAlign: 'center', padding: '10px 0', fontSize: 13, color: 'var(--t3)' }}>Loading…</div>}
 
           <div className="pagination">
-            <button onClick={() => changePage(pagination.page - 1)} disabled={pagination.page === 1 || loading} className="btn btn-secondary">Previous</button>
-            <span style={{ margin: '0 15px', fontSize: 13, color: 'var(--t3)' }}>
-              Page {pagination.page} of {pagination.totalPages} ({pagination.totalRecords.toLocaleString()} records)
+            <button onClick={() => changePage(pagination.page - 1)} disabled={pagination.page === 1 || loading} className="btn btn-secondary btn-sm">← Prev</button>
+            <span className="pagination-info">
+              {pagination.page} / {pagination.totalPages} &nbsp;·&nbsp; {pagination.totalRecords.toLocaleString()} records
             </span>
-            <button onClick={() => changePage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages || loading} className="btn btn-secondary">Next</button>
+            <button onClick={() => changePage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages || loading} className="btn btn-secondary btn-sm">Next →</button>
           </div>
         </>
       )}

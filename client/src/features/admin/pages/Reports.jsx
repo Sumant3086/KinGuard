@@ -157,7 +157,33 @@ export default function Reports() {
             {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''} found
           </div>
           <div className="card" style={{ padding: 0 }}>
-            <div className="table-container">
+            {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+            <div className="reports-cards" style={{ padding: 12 }}>
+              {records.map(record => (
+                <div key={record.id} className="report-card">
+                  <div className="report-card-top">
+                    <span className="report-card-store">{record.store.storeCode}</span>
+                    <span className="report-card-date">{fmtDate(record.batch.inventoryDate)}</span>
+                  </div>
+                  <div className="report-card-material">{record.materialCode}</div>
+                  <div className="report-card-desc">{record.materialName}</div>
+                  <div className="report-card-qty-row">
+                    <span>Sys: <strong>{record.systemQuantity}</strong></span>
+                    <span>Phys: <strong>{record.physicalQuantity ?? '—'}</strong></span>
+                    {record.difference !== null && (
+                      <span className={`badge ${record.difference === 0 ? 'badge-matched' : record.difference < 0 ? 'badge-shortage' : 'badge-excess'}`}>
+                        {record.difference > 0 ? '+' : ''}{record.difference}
+                      </span>
+                    )}
+                  </div>
+                  {record.remarks && <div className="report-card-remarks" title={record.remarks}>{record.remarks}</div>}
+                  <div className="report-card-submitter">By: {record.submitter?.name || '—'}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop table (>768px) ────────────────────────────── */}
+            <div className="table-container reports-table-desktop">
               <table>
                 <thead>
                   <tr>
