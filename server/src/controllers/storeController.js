@@ -363,29 +363,40 @@ export async function submitInventory(req, res, next) {
     Promise.all([
       prisma.uploadBatch.findUnique({ where: { id: parsedBatchId }, select: { inventoryDate: true } }),
       prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } }, select: { email: true, name: true } }),
-    ]).then(([b, admins]) => {
+    ]).then(async ([b, admins]) => {
       if (!b) return;
       const batchDate = b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-      import('../services/emailService.js').then(({ sendSubmissionEmail, sendManagerSubmissionConfirmation }) => {
-        // 1. Notify all admins
-        for (const admin of admins) {
-          if (req.user.store) sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount });
-        }
-        // 2. Confirm to the submitting store manager
-        if (req.user.email && req.user.store) {
-          sendManagerSubmissionConfirmation({
-            managerEmail: req.user.email,
-            managerName:  req.user.name,
-            store:        req.user.store,
-            batchDate,
-            recordCount:  count,
-            shortages:    shortageCount,
-            matched:      matchedCount,
-            excess:       excessCount,
-          });
-        }
-      });
-    }).catch(() => {});
+      const { sendSubmissionEmail, sendManagerSubmissionConfirmation } = await import('../services/emailService.js');
+
+      // 1. Notify all admins
+      console.log(`[submit] Notifying ${admins.length} admin(s) of submission from ${req.user.store?.storeName}`);
+      const adminResults = await Promise.allSettled(
+        admins.filter(a => req.user.store).map(admin =>
+          sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount })
+        )
+      );
+      const adminFailed = adminResults.filter(r => r.status === 'rejected');
+      if (adminFailed.length) console.error('[submit] Admin notification error:', adminFailed[0].reason?.message);
+      else console.log(`[submit] Admin notification sent to ${admins.length} admin(s)`);
+
+      // 2. Confirm to the submitting store manager
+      if (req.user.email && req.user.store) {
+        console.log(`[submit] Sending confirmation to manager: ${req.user.email}`);
+        sendManagerSubmissionConfirmation({
+          managerEmail: req.user.email,
+          managerName:  req.user.name,
+          store:        req.user.store,
+          batchDate,
+          recordCount:  count,
+          shortages:    shortageCount,
+          matched:      matchedCount,
+          excess:       excessCount,
+        }).then(() => console.log('[submit] Manager confirmation sent'))
+          .catch(e => console.error('[submit] Manager confirmation error:', e.message));
+      } else {
+        console.log('[submit] Manager has no email — skipping confirmation');
+      }
+    }).catch(e => console.error('[submit] Email query failed:', e.message));
 
     res.json({
       message: 'Inventory submitted successfully',
