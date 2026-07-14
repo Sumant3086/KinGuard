@@ -247,7 +247,7 @@ export async function updateInventoryRecord(req, res, next) {
       entityType: 'INVENTORY_RECORD',
       entityId: recordId,
       metadata: { systemQuantity: finalSysQty, physicalQuantity: effectivePhysQty, remarks },
-    }).catch(() => {});
+    }).catch(err => console.error('[audit] UPDATE_INVENTORY log failed:', err.message));
 
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] UPDATE_INVENTORY record ${recordId}: ${duration}ms`);
@@ -352,8 +352,8 @@ export async function submitInventory(req, res, next) {
       entityType: 'INVENTORY_RECORD',
       entityId: parsedBatchId,
       metadata: { recordCount: count },
-    }).catch(() => {});
-    detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(() => {});
+    }).catch(err => console.error('[audit] SUBMIT_INVENTORY log failed:', err.message));
+    detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(err => console.error('[detect-repeat] Failed:', err.message));
 
     // Fire-and-forget email notifications after successful submission
     const shortageCount = records.filter(r => (r.difference ?? 0) < 0).length;
@@ -374,15 +374,20 @@ export async function submitInventory(req, res, next) {
         adminList = [{ email: process.env.ADMIN_EMAIL, name: 'Administrator' }];
         console.log('[submit] No DB admins with email — falling back to ADMIN_EMAIL env var');
       }
-      console.log(`[submit] Notifying ${adminList.length} admin(s) of submission from ${req.user.store?.storeName}`);
-      const adminResults = await Promise.allSettled(
-        adminList.filter(() => req.user.store).map(admin =>
-          sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount })
-        )
-      );
-      const adminFailed = adminResults.filter(r => r.status === 'rejected');
-      if (adminFailed.length) console.error('[submit] Admin notification error:', adminFailed[0].reason?.message);
-      else console.log(`[submit] Admin notification sent to ${adminList.length} admin(s)`);
+      if (!req.user.store) {
+        console.log('[submit] User has no store attached — skipping admin notification');
+      } else {
+        console.log(`[submit] Notifying ${adminList.length} admin(s) of submission from ${req.user.store.storeName}`);
+        const adminResults = await Promise.allSettled(
+          adminList.map(admin =>
+            sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount })
+          )
+        );
+        const adminSent   = adminResults.filter(r => r.status === 'fulfilled').length;
+        const adminFailed = adminResults.filter(r => r.status === 'rejected');
+        if (adminFailed.length) console.error('[submit] Admin notification error:', adminFailed[0].reason?.message);
+        console.log(`[submit] Admin notification: sent=${adminSent}, failed=${adminFailed.length}`);
+      }
 
       // 2. Confirm to the submitting store manager
       if (req.user.email && req.user.store) {

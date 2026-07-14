@@ -2245,7 +2245,7 @@ export async function sendBatchReminders(req, res, next) {
       userId: req.user.id, action: 'SEND_BATCH_REMINDERS',
       entityType: 'UPLOAD_BATCH', entityId: batchId,
       metadata: { managerCount: managers.length, pendingStores: storeIds.length, emailsSent: emailResult.sent, smtpConfigured: emailResult.configured },
-    }).catch(() => {});
+    }).catch(err => console.error('[audit] SEND_BATCH_REMINDERS log failed:', err.message));
 
     const managersWithEmail = managers.length;
     let message;
