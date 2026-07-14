@@ -3025,15 +3025,17 @@ export async function bulkDeleteUsers(req, res, next) {
     const [toDelete, totalAdmins] = await Promise.all([
       prisma.user.findMany({
         where: { id: { in: parsedIds } },
-        select: { id: true, role: true, employeeId: true, name: true },
+        select: { id: true, role: true, isActive: true, employeeId: true, name: true },
       }),
       prisma.user.count({ where: { role: 'ADMIN', isActive: true } }),
     ]);
 
     if (toDelete.length === 0) throw new AppError('No matching users found', 404);
 
-    const deletingAdmins = toDelete.filter(u => u.role === 'ADMIN').length;
-    if (deletingAdmins > 0 && totalAdmins - deletingAdmins < 1) {
+    // Only count active admins in the safety check — deleting an inactive admin
+    // should not trigger the "last admin" guard.
+    const deletingActiveAdmins = toDelete.filter(u => u.role === 'ADMIN' && u.isActive).length;
+    if (deletingActiveAdmins > 0 && totalAdmins - deletingActiveAdmins < 1) {
       throw new AppError('Cannot delete all administrator accounts — at least one must remain', 400);
     }
 

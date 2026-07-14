@@ -190,25 +190,21 @@ export async function logout(req, res, next) {
   }
 }
 
-export async function getCurrentUser(req, res, next) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      include: { store: true },
-    });
-    if (!user) throw new AppError('User not found', 404);
-    res.json(buildUserPayload(user));
-  } catch (error) {
-    next(error);
-  }
+export function getCurrentUser(req, res) {
+  // req.user is populated by the auth middleware (from DB or 30s cache).
+  // We return it directly to avoid a redundant DB round-trip on every page load.
+  res.json(buildUserPayload(req.user));
 }
 
 export async function changePassword(req, res, next) {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const currentPassword = typeof req.body.currentPassword === 'string' ? req.body.currentPassword : '';
+    const newPassword     = typeof req.body.newPassword     === 'string' ? req.body.newPassword     : '';
     if (!currentPassword || !newPassword) {
       throw new AppError('currentPassword and newPassword are required', 400);
     }
+    // Cap before bcrypt to prevent DoS via oversized input (bcrypt truncates at 72 bytes)
+    if (currentPassword.length > 128) throw new AppError('Current password is incorrect', 401);
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user) throw new AppError('User not found', 404);

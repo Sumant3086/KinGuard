@@ -25,9 +25,10 @@ export default function ChangePasswordPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (newPw !== confirmPw) { setError('New passwords do not match'); return; }
-    if (newPw === currentPw) { setError('New password must differ from the current password'); return; }
+    if (newPw !== confirmPw)           { setError('New passwords do not match'); return; }
+    if (newPw === currentPw)           { setError('New password must differ from the current password'); return; }
     if (newPw.length < 8)             { setError('Password must be at least 8 characters'); return; }
+    if (newPw.length > 128)           { setError('Password must be 128 characters or fewer'); return; }
     if (!/[A-Z]/.test(newPw))        { setError('Password must include at least one uppercase letter'); return; }
     if (!/[a-z]/.test(newPw))        { setError('Password must include at least one lowercase letter'); return; }
     if (!/[0-9]/.test(newPw))        { setError('Password must include at least one number'); return; }
