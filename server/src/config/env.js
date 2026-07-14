@@ -4,9 +4,11 @@ dotenv.config();
 
 const requiredEnvVars = [
   'DATABASE_URL',
+  'DIRECT_URL',
   'JWT_SECRET',
   'PORT',
   'NODE_ENV',
+  'CLIENT_URL',
 ];
 
 for (const envVar of requiredEnvVars) {
