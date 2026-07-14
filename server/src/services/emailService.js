@@ -23,8 +23,9 @@ function getTransporter() {
       port: smtpPort,
       secure: smtpPort === 465,
       auth: { user: SMTP_USER, pass: SMTP_PASS },
-      pool: true,         // reuse connections across parallel sends
-      maxConnections: 5,  // up to 5 simultaneous SMTP connections
+      // No connection pool — pooled connections go stale when service sleeps
+      // (Render free tier sleeps after 15 min). Fresh connection per send is
+      // slightly slower but always works after a cold start.
       logger: IS_DEV,
       debug:  IS_DEV,
     });
