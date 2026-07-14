@@ -3,8 +3,8 @@ services:
     name: kinguard
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build:client && npm run migrate
-    startCommand: npm run start:server
+    buildCommand: npm install && npm run build --workspace=client && npm run migrate --workspace=server
+    startCommand: node server/src/server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
