@@ -740,16 +740,16 @@
 }
 .home-hero h1 em {
   font-style: normal;
-  /* Bright luminous gold — starts near white-yellow for maximum pop on dark warm bg */
-  background: linear-gradient(135deg, #fffde0 0%, #ffe566 40%, #fbbf24 100%);
+  /* Electric cyan — complementary to red, maximum contrast on warm dark bg */
+  background: linear-gradient(135deg, #e0ffff 0%, #00e5ff 45%, #29b6f6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.60)) drop-shadow(0 0 40px rgba(255,220,50,0.80));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.65)) drop-shadow(0 0 45px rgba(0,229,255,0.75));
 }
 .home-hero p {
   font-size: 18px;
-  color: #ffe8b0;
+  color: #e0f7ff;
   line-height: 1.75;
   max-width: 640px;
   margin: 0 auto 48px;
@@ -887,26 +887,30 @@
   box-shadow: 0 2px 10px rgba(220,38,38,0.45);
 }
 .home-section-heading {
-  font-size: 36px;
+  font-size: 38px;
   font-weight: 900;
-  color: #ffffff;
+  /* Bright warm orange gradient — vivid against the dark blurred supermarket bg */
+  background: linear-gradient(135deg, #ffffff 0%, #ffab40 45%, #ff6d00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   letter-spacing: -1.2px;
   line-height: 1.12;
-  /* Golden glow ties heading to the warm supermarket ambient lighting */
-  text-shadow: 0 0 40px rgba(255,210,50,0.55), 0 2px 12px rgba(0,0,0,0.70), 0 4px 28px rgba(0,0,0,0.40);
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.70)) drop-shadow(0 0 35px rgba(255,140,0,0.65));
 }
 
 /* Override for the subtitle paragraph inside the section header */
 .home-section-header > p {
-  color: #ffe8b0 !important;
+  color: #e0f7ff !important;
   font-weight: 700 !important;
   font-size: 16px !important;
   text-shadow: 0 2px 10px rgba(0,0,0,0.70), 0 4px 20px rgba(0,0,0,0.45) !important;
 }
 
 .home-section-heading-skyblue {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+  /* allow the orange gradient on home-section-heading to show */
+  color: unset !important;
+  -webkit-text-fill-color: unset !important;
 }
 
 /* ── Features section ────────────── */
@@ -971,20 +975,20 @@
   justify-content: center;
   margin-bottom: 16px;
   width: 52px; height: 52px;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 1.5px solid rgba(217,119,6,0.28);
+  background: linear-gradient(135deg, #fff0e6 0%, #ffd5b8 100%);
+  border: 1.5px solid rgba(255,100,30,0.30);
   border-radius: 14px;
-  color: #b45309;
+  color: #e64a00;
   transition: all 0.3s ease;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(217,119,6,0.20);
+  box-shadow: 0 2px 12px rgba(230,74,0,0.22);
 }
 .home-feat:hover .home-feat-icon {
-  background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%);
-  border-color: rgba(217,119,6,0.45);
-  box-shadow: 0 4px 16px rgba(217,119,6,0.32);
-  transform: scale(1.06) rotate(3deg);
-  color: #92400e;
+  background: linear-gradient(135deg, #ffd5b8 0%, #ffab76 100%);
+  border-color: rgba(255,100,30,0.50);
+  box-shadow: 0 4px 18px rgba(230,74,0,0.38);
+  transform: scale(1.08) rotate(4deg);
+  color: #bf360c;
 }
 
 .home-feat h3 {
