@@ -243,9 +243,9 @@ cd server && npx prisma generate
 
 Prisma generates its client into the root `node_modules` due to workspace hoisting. Always run from the `server/` directory.
 
-### 503 error on first login after server restart
+### Slow first login after inactivity (Render free tier)
 
-This is a known cold-start behaviour with Prisma and connection pooling. The `authController.js` retries the database connection once automatically. Wait a moment and try again — the second login attempt always succeeds.
+Render's free tier spins the server down after 15 minutes of inactivity. The first request after that can take 30–60 seconds while the server wakes up. The login page automatically retries once — you do not need to do anything. To prevent this entirely, set up [UptimeRobot](https://uptimerobot.com) to ping `/api/health` every 5 minutes.
 
 ### Port 5000 already in use
 

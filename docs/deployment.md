@@ -54,17 +54,35 @@ Run everything on a single Ubuntu 22.04 LTS server with:
 
 ## Backend Deployment (Node.js / Express)
 
-### Option A â€” Railway / Render / Fly.io
+### Option A — Render (recommended, currently live)
 
-1. Connect your GitHub repository to the platform
-2. Set the root directory to `/` (monorepo root) or `/server`
-3. Set the build command: *(none â€” no build step for Node.js)*
-4. Set the start command:
-   ```bash
-   npm run migrate && npm start --workspace=server
-   ```
-5. Add all required environment variables (see [Environment Variables](#environment-variables-production))
-6. Deploy
+| Field | Value |
+|---|---|
+| **Runtime** | Node |
+| **Root Directory** | *(empty — repo root)* |
+| **Build Command** | `npm install --include=dev && npm run build --workspace=client && cd server && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js` |
+| **Start Command** | `npm start` |
+
+**Required environment variables:**
+
+| Key | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | Supabase pooled connection URL |
+| `DIRECT_URL` | Supabase direct connection URL |
+| `JWT_SECRET` | 32+ character random string |
+| `CLIENT_URL` | Your Render service URL (e.g. `https://kinmarchae.onrender.com`) |
+| `SMTP_HOST` | `smtp.gmail.com` *(optional)* |
+| `SMTP_PORT` | `587` *(optional)* |
+| `SMTP_USER` | Gmail address *(optional)* |
+| `SMTP_PASS` | Gmail App Password *(optional)* |
+| `SMTP_FROM` | Display name and address *(optional)* |
+
+> **Keep-alive:** Render free tier sleeps after 15 minutes of inactivity. Set up UptimeRobot (free) to ping `/api/health` every 5 minutes to prevent cold starts.
+
+> **Region:** Frankfurt (EU Central) for DRC/African users, Singapore for South/Southeast Asian users.
+
+---
 
 ### Option B â€” VPS with PM2
 
@@ -360,3 +378,4 @@ Use this with your load balancer, uptime monitor (Better Uptime, UptimeRobot), o
 - [ ] Review audit logs periodically via Admin â†’ Activity Log
 - [ ] Back up the PostgreSQL database regularly (daily recommended)
 - [ ] Run `npm run migrate` after each deployment that includes schema changes
+
