@@ -288,7 +288,7 @@ export async function getDashboard(req, res, next) {
         excessItems: Number(net.excessItems || 0),
       },
     };
-    sSet('admin:dashboard', result, 120_000); // 2-minute cache (was 30s)
+    sSet('admin:dashboard', result, 300_000); // 5-minute cache
     
     res.json(result);
   } catch (error) {
@@ -794,103 +794,7 @@ export async function uploadInventory(req, res, next) {
 
     sInvalidate('admin:dashboard');
 
-    // Email notification — run synchronously so we can report results to the caller.
-    // Distinguish managers WITH an email (can be notified) from those WITHOUT (need
-    // the admin to add an email address in User Management first).
-    const affectedStoreIds = [...new Set(successfulRecords.map(r => r.storeId))];
-    let emailsSent = 0;
-    let emailsFailed = 0;
-    let smtpConfigured = false;
-    const managersWithoutEmail = [];
-    let managersEmailed = [];
-
-    try {
-      // Query ALL managers for the affected stores (including pending/inactive) so the
-      // no-email report is complete. Only active managers are actually emailed.
-      const [activeManagers, allStoreManagers] = await Promise.all([
-        prisma.user.findMany({
-          where: { 
-            role: 'STORE_MANAGER', 
-            isActive: true, 
-            pendingApproval: false,  // Only send to approved managers
-            storeId: { in: affectedStoreIds } 
-          },
-          include: { store: true },
-        }),
-        prisma.user.findMany({
-          where: { role: 'STORE_MANAGER', storeId: { in: affectedStoreIds } },
-          select: { 
-            employeeId: true, 
-            email: true, 
-            storeId: true, 
-            isActive: true, 
-            pendingApproval: true, 
-            store: { select: { storeName: true } } 
-          },
-        }),
-      ]);
-
-      // Track which managers don't have email addresses
-      allStoreManagers.forEach(m => {
-        if (!m.email) {
-          managersWithoutEmail.push({ 
-            employeeId: m.employeeId, 
-            storeName: m.store?.storeName || String(m.storeId) 
-          });
-        }
-      });
-
-      // Send emails only to active, approved managers with email addresses
-      const notifiable = activeManagers.filter(m => m.email);
-      
-      if (notifiable.length > 0) {
-        console.log(`[upload] Attempting to send emails to ${notifiable.length} manager(s)`);
-        const { sendNewCycleEmail } = await import('../services/emailService.js');
-        const emailResult = await sendNewCycleEmail({
-          managers: notifiable,
-          inventoryDate,
-          deadline: submissionDeadline || null,
-        });
-        emailsSent     = emailResult.sent;
-        emailsFailed   = emailResult.failed;
-        smtpConfigured = emailResult.configured;
-        
-        console.log(`[upload] Email results: sent=${emailsSent}, failed=${emailsFailed}, configured=${smtpConfigured}`);
-      } else {
-        console.log('[upload] No notifiable managers found for this batch');
-        // Check SMTP config independently so the UI shows the correct message
-        // even when no notifiable managers exist for this batch.
-        const { SMTP_HOST, SMTP_USER } = process.env;
-        smtpConfigured = !!(SMTP_HOST && SMTP_USER);
-      }
-
-      // Build list of attempted emails for the response so the admin can
-      // verify the addresses (e.g. spot a common typo like gmail.cc → gmail.com)
-      const SUSPICIOUS_DOMAINS = { 
-        'gmail.cc':'gmail.com',
-        'gmail.co':'gmail.com',
-        'gmai.com':'gmail.com',
-        'gmial.com':'gmail.com',
-        'yahoo.cc':'yahoo.com',
-        'hotmail.cc':'hotmail.com',
-        'outlook.cc':'outlook.com' 
-      };
-      managersEmailed = notifiable.map(m => {
-        const domain = m.email.split('@')[1]?.toLowerCase() || '';
-        return {
-          employeeId: m.employeeId,
-          email:      m.email,
-          storeName:  m.store?.storeName || '',
-          suspectedTypo: SUSPICIOUS_DOMAINS[domain] 
-            ? `Did you mean @${SUSPICIOUS_DOMAINS[domain].split('.').slice(-2).join('.')}?` 
-            : null,
-        };
-      });
-    } catch (emailErr) {
-      console.error('[upload] Email notification error:', emailErr.message);
-      console.error(emailErr.stack);
-    }
-
+    // Respond immediately — don't block the upload on email delivery
     res.status(201).json({
       batchId: batch.id,
       totalRows: rows.length,
@@ -898,14 +802,21 @@ export async function uploadInventory(req, res, next) {
       rejectedRows: errors.length,
       errors: errors.slice(0, 50),
       autoCreatedUsers: autoCreatedUsers.length > 0 ? autoCreatedUsers : undefined,
-      notifications: {
-        emailsSent,
-        emailsFailed,
-        smtpConfigured,
-        managersWithoutEmail,
-        managersEmailed,
-      },
     });
+
+    // Send emails in background after response is already sent
+    const affectedStoreIds = [...new Set(successfulRecords.map(r => r.storeId))];
+    Promise.all([
+      prisma.user.findMany({
+        where: { role: 'STORE_MANAGER', isActive: true, pendingApproval: false, storeId: { in: affectedStoreIds } },
+        include: { store: true },
+      }),
+    ]).then(async ([notifiable]) => {
+      const withEmail = notifiable.filter(m => m.email);
+      if (!withEmail.length) return;
+      const { sendNewCycleEmail } = await import('../services/emailService.js');
+      sendNewCycleEmail({ managers: withEmail, inventoryDate, deadline: submissionDeadline || null }).catch(() => {});
+    }).catch(() => {});
   } catch (error) {
     next(error);
   }

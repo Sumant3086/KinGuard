@@ -53,7 +53,7 @@ if (IS_PROD) {
   console.debug = () => {};
 }
 
-// ── Health check ───────────────────────────────────────────────────────────
+// ── Health check — also used as keep-alive ping by UptimeRobot / cron ─────
 app.get('/api/health', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

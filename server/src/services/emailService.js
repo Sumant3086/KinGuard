@@ -23,7 +23,8 @@ function getTransporter() {
       port: smtpPort,
       secure: smtpPort === 465,
       auth: { user: SMTP_USER, pass: SMTP_PASS },
-      // Only enable verbose SMTP tracing in development
+      pool: true,         // reuse connections across parallel sends
+      maxConnections: 5,  // up to 5 simultaneous SMTP connections
       logger: IS_DEV,
       debug:  IS_DEV,
     });
@@ -61,99 +62,86 @@ function row(label, value, valueColor) {
 }
 
 // ── Notify all store managers when a new cycle is uploaded ────────────────────
-// Returns { configured, sent, failed } for caller observability.
+// Sends all emails in parallel — much faster than sequential for many managers.
 export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
   const { transporter, configured } = getTransporter();
-  if (!configured) {
-    console.log('[email] SMTP not configured — skipping new-cycle notifications');
-    return { configured: false, sent: 0, failed: 0 };
-  }
+  if (!configured) return { configured: false, sent: 0, failed: 0 };
 
   const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr   = deadline
     ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : 'No deadline set';
 
-  let sent = 0; let failed = 0;
-  for (const m of managers.filter(m => m.email)) {
-    try {
-      await transporter.sendMail({
-        from: FROM,
-        to: m.email,
-        subject: `New Inventory Cycle — ${dateStr}`,
-        html: html(`
-          <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Ready</p>
-          <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new cycle has been published. Log in to begin your physical count.</p>
-          <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
-            ${row('Inventory Date', dateStr)}
-            ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
-            ${row('Your Store', m.store?.storeName || 'Your store')}
-          </table>
-          <p style="color:#64748b;font-size:13px;margin:20px 0 0">Complete and submit your count before the deadline above. Contact your administrator if you need an extension.</p>
-        `),
-      });
-      sent++;
-    } catch (e) {
-      failed++;
-      console.error(`[email] Failed to send new-cycle notification:`, e.message);
-    }
-  }
+  const notifiable = managers.filter(m => m.email);
+  if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
+
+  const results = await Promise.allSettled(
+    notifiable.map(m => transporter.sendMail({
+      from: FROM,
+      to: m.email,
+      subject: `New Inventory Cycle — ${dateStr}`,
+      html: html(`
+        <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Ready</p>
+        <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new cycle has been published. Log in to begin your physical count.</p>
+        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+          ${row('Inventory Date', dateStr)}
+          ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
+          ${row('Your Store', m.store?.storeName || 'Your store')}
+        </table>
+        <p style="color:#64748b;font-size:13px;margin:20px 0 0">Complete and submit your count before the deadline above. Contact your administrator if you need an extension.</p>
+      `),
+    }))
+  );
+
+  const sent   = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
+  results.filter(r => r.status === 'rejected').forEach(r =>
+    console.error('[email] New-cycle send failed:', r.reason?.message)
+  );
   console.log(`[email] New-cycle: sent=${sent}, failed=${failed}`);
   return { configured: true, sent, failed };
 }
 
 // ── Remind pending stores before deadline ─────────────────────────────────────
-// Returns { configured, sent, failed }.
 export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadline }) {
   const { transporter, configured } = getTransporter();
-  if (!configured) {
-    console.log('[email] SMTP not configured — skipping reminder notifications');
-    return { configured: false, sent: 0, failed: 0 };
-  }
-  if (!deadline) {
-    console.error('[email] sendDeadlineReminderEmail called without deadline — skipping');
-    return { configured: true, sent: 0, failed: 0 };
-  }
-  const dateStr  = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  const dlStr    = new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  if (!configured) return { configured: false, sent: 0, failed: 0 };
+  if (!deadline) return { configured: true, sent: 0, failed: 0 };
+
+  const dateStr   = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dlStr     = new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
   const hoursLeft = Math.max(0, Math.round((new Date(deadline) - Date.now()) / 3_600_000));
 
-  let sent = 0; let failed = 0;
-  for (const m of managers.filter(m => m.email)) {
-    try {
-      await transporter.sendMail({
-        from: FROM,
-        to: m.email,
-        subject: `Reminder — Submit inventory by ${dlStr}`,
-        html: html(`
-          <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">Submission Deadline Approaching</p>
-          <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
-          <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
-            ${row('Deadline', dlStr, '#dc2626')}
-            ${row('Store', m.store?.storeName || '')}
-          </table>
-          <p style="color:#64748b;font-size:13px;margin:20px 0 0">Please log in and complete your count before the deadline. If you cannot meet it, contact your administrator for an extension.</p>
-        `),
-      });
-      sent++;
-    } catch (e) {
-      failed++;
-      console.error('[email] Reminder failed:', e.message);
-    }
-  }
+  const notifiable = managers.filter(m => m.email);
+  if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
+
+  const results = await Promise.allSettled(
+    notifiable.map(m => transporter.sendMail({
+      from: FROM,
+      to: m.email,
+      subject: `Reminder — Submit inventory by ${dlStr}`,
+      html: html(`
+        <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">Submission Deadline Approaching</p>
+        <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+          ${row('Deadline', dlStr, '#dc2626')}
+          ${row('Store', m.store?.storeName || '')}
+        </table>
+        <p style="color:#64748b;font-size:13px;margin:20px 0 0">Please log in and complete your count before the deadline. If you cannot meet it, contact your administrator for an extension.</p>
+      `),
+    }))
+  );
+
+  const sent   = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
   console.log(`[email] Reminder: sent=${sent}, failed=${failed}`);
   return { configured: true, sent, failed };
 }
 
 // ── Notify admin when a store submits ─────────────────────────────────────────
-// Fire-and-forget; does not throw; logs result for observability.
 export async function sendSubmissionEmail({ adminEmail, adminName, store, batchDate, recordCount, shortages }) {
   const { transporter, configured } = getTransporter();
-  if (!configured) {
-    console.log('[email] SMTP not configured — skipping submission notification');
-    return;
-  }
-  if (!adminEmail) return;
+  if (!configured || !adminEmail) return;
   try {
     await transporter.sendMail({
       from: FROM,
@@ -170,18 +158,15 @@ export async function sendSubmissionEmail({ adminEmail, adminName, store, batchD
         </table>
       `),
     });
-    console.log('[email] Submission notification sent to admin');
   } catch (e) {
     console.error('[email] Submission notification failed:', e.message);
   }
 }
 
 // ── Confirm to store manager that their submission was received ───────────────
-// Fire-and-forget; called after a successful store submit.
 export async function sendManagerSubmissionConfirmation({ managerEmail, managerName, store, batchDate, recordCount, shortages, matched, excess }) {
   const { transporter, configured } = getTransporter();
-  if (!configured) return;
-  if (!managerEmail) return;
+  if (!configured || !managerEmail) return;
   try {
     const shortageColor = shortages > 0 ? '#dc2626' : '#059669';
     await transporter.sendMail({
@@ -202,8 +187,7 @@ export async function sendManagerSubmissionConfirmation({ managerEmail, managerN
         <p style="color:#64748b;font-size:13px;margin:20px 0 0">Your submission has been recorded and your administrator has been notified. No further action is required unless you receive an extension request.</p>
       `),
     });
-    console.log('[email] Manager submission confirmation sent:', managerEmail);
   } catch (e) {
-    console.error('[email] Manager submission confirmation failed:', e.message);
+    console.error('[email] Manager confirmation failed:', e.message);
   }
 }
