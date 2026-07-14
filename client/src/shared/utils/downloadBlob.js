@@ -1,24 +1,35 @@
 /**
  * Trigger a browser file download from a Blob.
- * Appends a temporary <a> to the document before clicking — required by
- * Firefox, which ignores clicks on detached elements.
- * Revokes the object URL after a short delay so the browser has time to
- * start reading the blob before we release it.
  *
- * @param {Blob} blob     - The blob to download.
- * @param {string} filename - The suggested filename.
+ * iOS Safari does not support programmatic clicks on blob: URLs — the browser
+ * silently ignores them. We detect touch-only devices and fall back to
+ * window.open() which opens the file in a new tab where the user can tap
+ * "Share → Save to Files" or long-press to save.
+ *
+ * Every other browser uses the standard hidden-anchor approach.
  */
 export function downloadBlob(blob, filename) {
-  const url = window.URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
+
+  const isTouchOnly = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+  if (isTouchOnly) {
+    // Mobile: open in new tab — user can save from the browser UI
+    window.open(url, '_blank', 'noopener');
+    // Give the browser a moment to start reading the blob before revoking
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return;
+  }
+
+  // Desktop: hidden anchor click
   const a = document.createElement('a');
   a.style.display = 'none';
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  // Defer cleanup so the browser can start reading the object URL before revoke
   setTimeout(() => {
     document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
   }, 100);
 }

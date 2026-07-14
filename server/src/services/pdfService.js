@@ -1,6 +1,10 @@
-import PdfPrinter from 'pdfmake';
+// pdfmake 0.3.x: main export is a singleton instance, not PdfPrinter.
+// Use instance.createPdf(docDef).getBuffer() — handles urlResolver internally.
+import { createRequire } from 'module';
+const _require = createRequire(import.meta.url);
+const pdfmake = _require('pdfmake');
 
-const fonts = {
+pdfmake.fonts = {
   Helvetica: {
     normal: 'Helvetica',
     bold: 'Helvetica-Bold',
@@ -8,18 +12,12 @@ const fonts = {
     bolditalics: 'Helvetica-BoldOblique',
   },
 };
-
-const printer = new PdfPrinter(fonts);
+// Block external URLs — we never embed remote images in PDFs
+pdfmake.setUrlAccessPolicy(() => false);
+// Do NOT restrict local access — pdfmake needs it to read standard PDFKit fonts (Helvetica etc.)
 
 export function buildPDF(docDefinition) {
-  return new Promise((resolve, reject) => {
-    const doc = printer.createPdfKitDocument(docDefinition);
-    const chunks = [];
-    doc.on('data', chunk => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
-    doc.end();
-  });
+  return pdfmake.createPdf(docDefinition).getBuffer();
 }
 
 const RED = '#dc2626';
