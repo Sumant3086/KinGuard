@@ -58,6 +58,71 @@ function SourceBadge({ source }) {
   return null;
 }
 
+// ── Single user mobile card ───────────────────────────────────────
+function UserCard({ user, self, adminCount, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
+  const isSelf      = user.id === self?.id;
+  const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1;
+  const canDelete   = !isSelf && !isLastAdmin;
+  const isPending   = user.pendingApproval;
+
+  return (
+    <div className="user-card">
+      <div className="user-card-top">
+        <div>
+          <div className="user-card-name">
+            {user.name}
+            {' '}
+            <SourceBadge source={user.source} />
+          </div>
+          <div className="user-card-id">{user.employeeId}</div>
+        </div>
+        <StatusBadge user={user} />
+      </div>
+      <div className="user-card-meta">
+        <span>
+          <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`} style={{ fontSize: 10 }}>
+            {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
+          </span>
+          {user.store && <span style={{ marginLeft: 6 }}>· {user.store.storeCode} — {user.store.storeName}</span>}
+        </span>
+        {user.email && <span style={{ color: 'var(--t3)' }}>{user.email}</span>}
+        <span>Created: {new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+      </div>
+      <div className="user-card-actions">
+        {isPending && (
+          <>
+            <button onClick={() => onApprove(user)} disabled={approving || rejecting}
+              className="btn btn-sm"
+              style={{ background: 'rgba(22,163,74,0.12)', color: 'var(--green)', border: '1px solid rgba(22,163,74,0.25)', fontWeight: 700 }}>
+              {approving ? '…' : 'Approve'}
+            </button>
+            <button onClick={() => onReject(user)} disabled={approving || rejecting}
+              className="btn btn-sm"
+              style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
+              {rejecting ? '…' : 'Reject'}
+            </button>
+          </>
+        )}
+        {!isPending && (
+          <button onClick={() => onEdit(user)} className="btn btn-secondary btn-sm">Edit</button>
+        )}
+        {canDelete ? (
+          <button
+            onClick={() => onDelete(user)}
+            disabled={!!deleting}
+            className="btn btn-sm"
+            style={{ background: deleting ? 'rgba(0,0,0,0.06)' : 'rgba(239,68,68,0.08)', color: deleting ? 'var(--t4)' : 'var(--red)', border: `1px solid ${deleting ? 'transparent' : 'rgba(239,68,68,0.22)'}` }}
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        ) : (
+          !isPending && <span style={{ fontSize: 11, color: 'var(--t4)', alignSelf: 'center' }}>{isSelf ? 'You' : 'Last admin'}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Single user table row ─────────────────────────────────────────
 function UserRow({ user, self, adminCount, selected, onSelect, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
   const isSelf      = user.id === self?.id;
@@ -648,7 +713,22 @@ export default function AdminUsers() {
         </div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
-          <div className="table-container">
+          {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+          <div className="users-cards" style={{ padding: 12 }}>
+            {visibleUsers.map(u => (
+              <UserCard
+                key={u.id} user={u} self={self} adminCount={adminCount}
+                onEdit={openEdit} onDelete={handleDelete}
+                onApprove={handleApprove} onReject={openReject}
+                approving={approvingId === u.id}
+                rejecting={rejectingId === u.id}
+                deleting={deletingId === u.id}
+              />
+            ))}
+          </div>
+
+          {/* ── Desktop table (>768px) ────────────────────────────── */}
+          <div className="table-container users-table-desktop">
             <table>
               <thead>
                 <tr>

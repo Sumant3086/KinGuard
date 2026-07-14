@@ -620,7 +620,151 @@ export default function StoreInventory() {
         </div>
       ) : (
         <div className="inv-table-card">
-          <div className="table-container">
+          {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+          <div className="store-inv-cards">
+            {records.map(record => {
+              const isPending  = record.status === 'PENDING';
+              const isEditable = isPending && !isLocked;
+              const saveState  = getSaveState(record.id);
+              const instantDiff = getInstantDiff(record);
+              const cat = getFieldValue(record, 'shrinkageCategory');
+              const hasDiscrepancy = instantDiff !== null && instantDiff !== 0;
+
+              return (
+                <div key={record.id} className="store-inv-card">
+                  <div className="store-inv-card-top">
+                    <div>
+                      <span className="store-inv-code">{record.materialCode}</span>
+                      {' '}
+                      <span className="store-inv-name">{record.materialName}</span>
+                    </div>
+                    {record.status === 'PENDING' ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, background: 'rgba(217,119,6,0.13)', color: '#92400e', border: '1.5px solid rgba(217,119,6,0.30)', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>Pending</span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, background: 'rgba(22,163,74,0.13)', color: '#15803d', border: '1.5px solid rgba(22,163,74,0.30)', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>Submitted</span>
+                    )}
+                  </div>
+                  <div className="store-inv-sys">Book Stock: {record.systemQuantity}</div>
+
+                  {isEditable ? (
+                    <input
+                      ref={el => { blankRowRefs.current[record.id] = el; }}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={getFieldValue(record, 'physicalQuantity')}
+                      onChange={e => updateField(record.id, 'physicalQuantity', e.target.value)}
+                      placeholder="Enter count…"
+                      className="qty-input"
+                    />
+                  ) : (
+                    <div style={{ fontSize: 13, color: 'var(--t2)' }}>Your Count: <strong>{record.physicalQuantity ?? '—'}</strong>
+                      {instantDiff !== null && (
+                        <span style={{ marginLeft: 8 }} className={`badge diff-badge ${instantDiff === 0 ? 'badge-matched' : instantDiff < 0 ? 'badge-shortage' : 'badge-excess'}`}>
+                          {instantDiff > 0 ? '+' : ''}{instantDiff}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {isEditable && instantDiff !== null && (
+                    <span className={`badge diff-badge ${instantDiff === 0 ? 'badge-matched' : instantDiff < 0 ? 'badge-shortage' : 'badge-excess'}`} style={{ alignSelf: 'flex-start' }}>
+                      {instantDiff > 0 ? '+' : ''}{instantDiff}
+                    </span>
+                  )}
+
+                  {isEditable && (
+                    <select
+                      value={getFieldValue(record, 'shrinkageCategory')}
+                      onChange={e => {
+                        updateField(record.id, 'shrinkageCategory', e.target.value);
+                        updateField(record.id, 'remarks', '');
+                      }}
+                      className="remark-select"
+                    >
+                      <option value="">Select category…</option>
+                      {CATEGORIES.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {isEditable && cat && (() => {
+                    const remarks = getFieldValue(record, 'remarks');
+                    const presets = ISSUE_REASONS[cat] || [];
+                    const isPreset = presets.includes(remarks);
+                    const isCustom = otherCustomIds.has(record.id) || (cat === 'Other' && remarks !== '' && !isPreset);
+
+                    if (cat === 'Other') {
+                      return (
+                        <>
+                          <select
+                            value={isCustom ? '__CUSTOM__' : remarks}
+                            onChange={e => {
+                              if (e.target.value === '__CUSTOM__') {
+                                setOtherCustomIds(prev => new Set(prev).add(record.id));
+                                if (isPreset) updateField(record.id, 'remarks', '');
+                              } else {
+                                setOtherCustomIds(prev => { const s = new Set(prev); s.delete(record.id); return s; });
+                                updateField(record.id, 'remarks', e.target.value);
+                              }
+                            }}
+                            className="remark-select"
+                          >
+                            <option value="">Select issue detail…</option>
+                            {presets.map(reason => <option key={reason} value={reason}>{reason}</option>)}
+                            <option disabled>──────────────</option>
+                            <option value="__CUSTOM__">Type a custom reason…</option>
+                          </select>
+                          {isCustom && (
+                            <input
+                              type="text"
+                              value={!isPreset ? remarks : ''}
+                              onChange={e => updateField(record.id, 'remarks', e.target.value)}
+                              placeholder="Type custom reason…"
+                              className="inline-input remark-input"
+                            />
+                          )}
+                        </>
+                      );
+                    }
+                    return (
+                      <select
+                        value={remarks}
+                        onChange={e => updateField(record.id, 'remarks', e.target.value)}
+                        className="remark-select"
+                      >
+                        <option value="">Select issue detail…</option>
+                        {presets.map(reason => <option key={reason} value={reason}>{reason}</option>)}
+                      </select>
+                    );
+                  })()}
+
+                  {isEditable && hasDiscrepancy && !cat && (
+                    <div style={{ fontSize: 11, color: 'var(--t3)', fontStyle: 'italic' }}>Select a category above to add issue detail.</div>
+                  )}
+
+                  <div className="store-inv-card-actions">
+                    {saveState === 'saving' && <span className="save-spinner" title="Saving…" />}
+                    {saveState === 'saved' && <span className="save-check" title="Saved"><IconCheck /></span>}
+                    {saveState === 'unsaved' && isEditable && (
+                      <button className="btn-row-save" onClick={() => saveNow(record.id)} title="Save now">
+                        <IconSave /> Save
+                      </button>
+                    )}
+                    {saveState === 'error' && (
+                      <button className="btn-row-save btn-row-retry" onClick={() => saveNow(record.id)} title={errorRecords.get(record.id)}>
+                        <IconRetry /> Retry
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table (>768px) ────────────────────────────── */}
+          <div className="table-container store-inv-table-desktop">
             <table className="inv-table table-sticky table-hover">
               <thead>
                 <tr>
