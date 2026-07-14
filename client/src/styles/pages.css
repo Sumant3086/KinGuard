@@ -687,6 +687,9 @@
     url('../assets/img/HomePage.png') center center / cover no-repeat;
   z-index: 0;
   filter: brightness(1.05) saturate(1.10) contrast(1.03) blur(3px);
+  /* Subtle Ken Burns — GPU transform on pseudo, no layout reflow */
+  animation: home-bg-zoom 30s ease-in-out infinite alternate;
+  will-change: transform;
 }
 /* Subtle dark gradient for text contrast - much lighter than before */
 .home-hero-bg::after {
@@ -729,7 +732,8 @@
   letter-spacing: 2.2px;
   text-transform: uppercase;
   margin-bottom: 28px;
-  animation: fade-in-up 0.4s var(--ease-out) 0.1s both;
+  /* Entrance first, then gentle breathe — comma-separated, no property conflict */
+  animation: fade-in-up 0.4s var(--ease-out) 0.1s both, home-breathe 5s ease-in-out 1s infinite;
   box-shadow: 0 6px 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.30);
   backdrop-filter: blur(16px);
   text-shadow: 0 1px 6px rgba(0,0,0,0.70);
@@ -747,13 +751,15 @@
 }
 .home-hero h1 em {
   font-style: normal;
-  /* Bright lime green — fresh, vibrant, zero conflict with the red/warm background */
-  background: linear-gradient(135deg, #f0fff4 0%, #b2ff59 45%, #76ff03 100%) !important;
+  /* Bright lime green — animated shimmer flows across the text */
+  background: linear-gradient(135deg, #f0fff4 0%, #b2ff59 35%, #76ff03 55%, #b2ff59 75%, #f0fff4 100%) !important;
+  background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   color: transparent !important;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.60)) drop-shadow(0 0 40px rgba(100,255,50,0.80));
+  animation: home-text-shimmer 4s linear infinite;
 }
 .home-hero p {
   font-size: 18px;
@@ -791,18 +797,23 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    transparent,
-    rgba(255,255,255,0.2),
-    transparent
-  );
+  background: linear-gradient(135deg, transparent, rgba(255,255,255,0.22), transparent);
   transform: translateX(-100%);
   transition: transform 0.6s ease;
 }
+.home-cta-btn:hover::before { transform: translateX(100%); }
 
-.home-cta-btn:hover::before {
-  transform: translateX(100%);
+/* Glow ring — opacity-only pulse, no paint triggered */
+.home-cta-btn::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+  background: transparent;
+  border: 2px solid rgba(239,68,68,0.55);
+  opacity: 0;
+  animation: home-glow-ring 3s ease-in-out 1.5s infinite;
+  pointer-events: none;
 }
 
 .home-cta-btn:hover {
@@ -909,7 +920,8 @@
 .home-section-heading {
   font-size: 38px;
   font-weight: 900;
-  background: linear-gradient(135deg, #ffffff 0%, #ffab40 45%, #ff6d00 100%) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #ffab40 30%, #ff6d00 55%, #ffab40 75%, #ffffff 100%) !important;
+  background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
@@ -917,6 +929,7 @@
   letter-spacing: -1.2px;
   line-height: 1.12;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.70)) drop-shadow(0 0 35px rgba(255,140,0,0.65));
+  animation: home-text-shimmer 5s linear infinite;
 }
 
 /* Override for the subtitle paragraph inside the section header glass panel */
@@ -929,12 +942,13 @@
 }
 
 .home-section-heading-skyblue {
-  /* Must echo the gradient — any white override here would kill the clip */
-  background: linear-gradient(135deg, #ffffff 0%, #ffab40 45%, #ff6d00 100%) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #ffab40 30%, #ff6d00 55%, #ffab40 75%, #ffffff 100%) !important;
+  background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   color: transparent !important;
+  animation: home-text-shimmer 5s linear infinite;
 }
 
 /* ── Features section ────────────── */
@@ -1014,6 +1028,22 @@
   transform: scale(1.08) rotate(4deg);
   color: #bf360c;
 }
+
+/* Feature cards — staggered entrance, opacity+transform only (GPU) */
+.home-feat:nth-child(1) { animation: fade-in-up 0.5s var(--ease-out) 0.10s both; }
+.home-feat:nth-child(2) { animation: fade-in-up 0.5s var(--ease-out) 0.22s both; }
+.home-feat:nth-child(3) { animation: fade-in-up 0.5s var(--ease-out) 0.34s both; }
+.home-feat:nth-child(4) { animation: fade-in-up 0.5s var(--ease-out) 0.46s both; }
+.home-feat:nth-child(5) { animation: fade-in-up 0.5s var(--ease-out) 0.58s both; }
+.home-feat:nth-child(6) { animation: fade-in-up 0.5s var(--ease-out) 0.70s both; }
+
+/* Icon bounce-in inside each card (reuses existing scale-in keyframe) */
+.home-feat:nth-child(1) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.22s both; }
+.home-feat:nth-child(2) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.34s both; }
+.home-feat:nth-child(3) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.46s both; }
+.home-feat:nth-child(4) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.58s both; }
+.home-feat:nth-child(5) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.70s both; }
+.home-feat:nth-child(6) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.82s both; }
 
 .home-feat h3 {
   font-size: 15px;
@@ -1153,6 +1183,38 @@
 @keyframes dev-shine {
   0%   { background-position: 200% center; }
   100% { background-position:   0% center; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOME PAGE ANIMATIONS
+   Rules: only transform + opacity for continuous animations (GPU compositor).
+   background-position shimmer is acceptable on tiny text nodes (no layout).
+   All animations respect prefers-reduced-motion in utilities.css.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Background Ken Burns — very slow scale on pseudo-element, zero layout impact */
+@keyframes home-bg-zoom {
+  from { transform: scale(1); }
+  to   { transform: scale(1.07); }
+}
+
+/* Text shimmer — slides gradient position across lime/orange text nodes */
+@keyframes home-text-shimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 250% center; }
+}
+
+/* Eyebrow breathe — transform only, imperceptibly subtle */
+@keyframes home-breathe {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.025); }
+}
+
+/* CTA glow ring — opacity pulse on ::after pseudo, no paint */
+@keyframes home-glow-ring {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  40%       { opacity: 1; transform: scale(1.04); }
+  80%       { opacity: 0; transform: scale(1.08); }
 }
 
 /* ─── Responsive ──────────────────────────────────────────────────── */
