@@ -702,12 +702,19 @@
 .home-hero {
   position: relative;
   z-index: 1;
-  max-width: 900px;
-  padding: 160px 48px 120px;
+  max-width: 760px;
+  padding: 56px 64px 64px;
   margin: 0 auto;
   text-align: center;
   width: 100%;
   animation: hero-enter 0.55s var(--ease-out) both;
+  /* Glass dark panel — makes all text perfectly readable on any background */
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(10px) saturate(80%);
+  -webkit-backdrop-filter: blur(10px) saturate(80%);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 12px 60px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .home-eyebrow {
   display: inline-flex;
@@ -740,23 +747,24 @@
 }
 .home-hero h1 em {
   font-style: normal;
-  /* Electric cyan — complementary to red, maximum contrast on warm dark bg */
-  background: linear-gradient(135deg, #e0ffff 0%, #00e5ff 45%, #29b6f6 100%) !important;
+  /* Bright lime green — fresh, vibrant, zero conflict with the red/warm background */
+  background: linear-gradient(135deg, #f0fff4 0%, #b2ff59 45%, #76ff03 100%) !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   color: transparent !important;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.65)) drop-shadow(0 0 45px rgba(0,229,255,0.75));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.60)) drop-shadow(0 0 40px rgba(100,255,50,0.80));
 }
 .home-hero p {
   font-size: 18px;
-  color: #e0f7ff;
+  color: #ffffff;
   line-height: 1.75;
-  max-width: 640px;
-  margin: 0 auto 48px;
+  max-width: 600px;
+  margin: 0 auto 40px;
   animation: fade-in-up 0.5s var(--ease-out) 0.28s both;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.70), 0 4px 24px rgba(0,0,0,0.45);
-  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.40);
+  font-weight: 500;
+  opacity: 0.92;
 }
 .home-cta-btn {
   display: inline-flex;
@@ -832,6 +840,17 @@
   margin-bottom: 40px;
   position: relative;
   z-index: 2;
+  /* Glass panel behind the section heading — same treatment as hero */
+  background: rgba(0, 0, 0, 0.40);
+  backdrop-filter: blur(10px) saturate(80%);
+  -webkit-backdrop-filter: blur(10px) saturate(80%);
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.08);
+  padding: 36px 48px 32px;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .home-section-eyebrow {
   display: inline-flex;
@@ -900,12 +919,13 @@
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.70)) drop-shadow(0 0 35px rgba(255,140,0,0.65));
 }
 
-/* Override for the subtitle paragraph inside the section header */
+/* Override for the subtitle paragraph inside the section header glass panel */
 .home-section-header > p {
-  color: #e0f7ff !important;
-  font-weight: 700 !important;
-  font-size: 16px !important;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.70), 0 4px 20px rgba(0,0,0,0.45) !important;
+  color: rgba(255,255,255,0.88) !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  text-shadow: none !important;
+  margin-top: 10px !important;
 }
 
 .home-section-heading-skyblue {
@@ -1142,7 +1162,8 @@
 @media (max-width: 768px) {
   .home-bar             { padding: 0 20px; height: 58px; position: fixed; }
   .home-logo-sub        { display: none; }
-  .home-hero            { padding: 72px 24px 56px; }
+  .home-hero            { padding: 40px 28px 44px; border-radius: 20px; max-width: calc(100% - 32px); }
+  .home-section-header  { padding: 28px 24px 24px; max-width: calc(100% - 32px); }
   .home-hero h1         { font-size: 34px; letter-spacing: -1.2px; }
   .home-hero p          { font-size: 15px; max-width: 100%; }
   .home-eyebrow         { font-size: 10.5px; padding: 7px 16px; }
@@ -1162,7 +1183,8 @@
   .home-logo-name        { font-size: 14px; }
   .home-logo-img         { width: 28px; height: 28px; }
   .home-signin-btn       { padding: 7px 14px; font-size: 12px; }
-  .home-hero             { padding: 50px 16px 42px; }
+  .home-hero             { padding: 32px 18px 36px; border-radius: 16px; }
+  .home-section-header   { padding: 24px 18px 20px; border-radius: 16px; }
   .home-hero h1          { font-size: 26px; letter-spacing: -0.8px; }
   .home-hero p           { font-size: 13.5px; }
   .home-eyebrow          { font-size: 9.5px; padding: 6px 14px; letter-spacing: 1.6px; }
