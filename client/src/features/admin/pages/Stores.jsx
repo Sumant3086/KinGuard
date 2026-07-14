@@ -123,13 +123,15 @@ export default function Stores() {
     setSubmitting(true);
     try {
       if (editingId) {
-        await adminApi.updateStore(editingId, { storeName: formData.storeName, isActive: formData.isActive });
+        const updated = await adminApi.updateStore(editingId, { storeName: formData.storeName, isActive: formData.isActive });
+        setStores(prev => prev.map(s => s.id === editingId ? { ...s, ...updated } : s));
       } else {
-        await adminApi.createStore({ ...formData, storeCode: formData.storeCode.trim() });
+        const created = await adminApi.createStore({ ...formData, storeCode: formData.storeCode.trim() });
+        setStores(prev => [...prev, { ...created, _count: { users: 0, inventoryRecords: 0 } }]);
       }
       setShowModal(false);
       setEditingId(null);
-      await loadStores();
+      loadStores(); // background sync
     } catch (err) {
       setFormError(err.response?.data?.error || 'Operation failed. Please try again.');
     } finally {

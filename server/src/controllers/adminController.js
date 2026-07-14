@@ -2502,28 +2502,37 @@ export async function batchCreateUsersForPlants(req, res, next) {
       return { store, employeeId, userName };
     }).filter(Boolean);
 
-    const createdUsers = [];
-    for (let i = 0; i < plantData.length; i++) {
-      const { store, employeeId, userName } = plantData[i];
-      try {
+    // Hash all passwords in parallel — sequential bcrypt at cost 10 is ~500ms each
+    const withPasswords = await Promise.all(
+      plantData.map(async ({ store, employeeId, userName }) => {
         const tempPassword = generateTempPassword();
         const passwordHash = await bcrypt.hash(tempPassword, 10);
-        const newUser = await prisma.user.create({
-          data: { employeeId, name: userName, passwordHash, role: 'STORE_MANAGER', storeId: store.id, isActive: true, mustChangePassword: true },
-          include: { store: { select: { storeCode: true, storeName: true } } },
-        }).catch(err => {
-          if (err.code === 'P2002') throw new AppError(`Username ${employeeId} already exists`, 409);
-          throw err;
-        });
-        createAuditLog({
-          userId: req.user.id, action: 'CREATE_USER', entityType: 'USER', entityId: newUser.id,
-          metadata: { employeeId: newUser.employeeId, name: newUser.name, role: newUser.role, storeId: newUser.storeId, batchCreation: true },
-        }).catch(() => {});
-        createdUsers.push({ id: newUser.id, employeeId: newUser.employeeId, name: newUser.name, storeCode: store.storeCode, storeName: store.storeName, password: tempPassword });
-      } catch (err) {
-        errors.push({ storeId: store.id, error: err.message || 'Failed to create user' });
-      }
-    }
+        return { store, employeeId, userName, tempPassword, passwordHash };
+      })
+    );
+
+    // Create all users in parallel
+    const createdUsers = [];
+    await Promise.all(
+      withPasswords.map(async ({ store, employeeId, userName, tempPassword, passwordHash }) => {
+        try {
+          const newUser = await prisma.user.create({
+            data: { employeeId, name: userName, passwordHash, role: 'STORE_MANAGER', storeId: store.id, isActive: true, mustChangePassword: true },
+            include: { store: { select: { storeCode: true, storeName: true } } },
+          }).catch(err => {
+            if (err.code === 'P2002') throw new AppError(`Username ${employeeId} already exists`, 409);
+            throw err;
+          });
+          createAuditLog({
+            userId: req.user.id, action: 'CREATE_USER', entityType: 'USER', entityId: newUser.id,
+            metadata: { employeeId: newUser.employeeId, name: newUser.name, role: newUser.role, storeId: newUser.storeId, batchCreation: true },
+          }).catch(() => {});
+          createdUsers.push({ id: newUser.id, employeeId: newUser.employeeId, name: newUser.name, storeCode: store.storeCode, storeName: store.storeName, password: tempPassword });
+        } catch (err) {
+          errors.push({ storeId: store.id, error: err.message || 'Failed to create user' });
+        }
+      })
+    );
 
     sInvalidate('admin:dashboard');
 

@@ -280,14 +280,18 @@ export default function AdminUsers() {
 
   async function confirmReject() {
     if (!rejectTarget) return;
-    setRejectingId(rejectTarget.id);
+    const target = rejectTarget;
+    setRejectTarget(null);
+    setRejectingId(target.id);
+    // Optimistic remove
+    setUsers(prev => prev.filter(u => u.id !== target.id));
     try {
-      await adminApi.rejectUser(rejectTarget.id, rejectReason);
-      toast.success(`"${rejectTarget.name}" rejected and removed`);
-      setRejectTarget(null);
-      await load();
+      await adminApi.rejectUser(target.id, rejectReason);
+      toast.success(`"${target.name}" rejected and removed`);
+      load(); // background sync
     } catch (err) {
       toast.error(err.response?.data?.error || 'Rejection failed');
+      load(); // restore on failure
     } finally {
       setRejectingId(null);
     }
@@ -381,11 +385,16 @@ export default function AdminUsers() {
       const payload = { ...formData };
       if (payload.role === 'ADMIN') payload.storeId = null;
       if (!payload.password) delete payload.password;
-      if (editingId) { await adminApi.updateUser(editingId, payload); }
-      else           { await adminApi.createUser(payload); }
+      if (editingId) {
+        const updated = await adminApi.updateUser(editingId, payload);
+        setUsers(prev => prev.map(u => u.id === editingId ? { ...u, ...updated } : u));
+      } else {
+        const created = await adminApi.createUser(payload);
+        setUsers(prev => [...prev, created]);
+      }
       setShowModal(false);
       setEditingId(null);
-      await load();
+      load(); // background sync
     } catch (err) {
       setFormError(err.response?.data?.error || 'Operation failed.');
     } finally {

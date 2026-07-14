@@ -97,11 +97,12 @@ export default function Batches() {
   async function handleSaveDeadline(batchId) {
     setSavingDeadline(true);
     try {
-      // Convert the local datetime-local value to an absolute ISO timestamp so the
-      // server doesn't re-interpret it in ITS timezone.
-      await adminApi.updateBatch(batchId, { submissionDeadline: deadlineInput ? new Date(deadlineInput).toISOString() : null });
-      await load();
+      const newDeadline = deadlineInput ? new Date(deadlineInput).toISOString() : null;
+      await adminApi.updateBatch(batchId, { submissionDeadline: newDeadline });
+      // Optimistic update
+      setBatches(prev => prev.map(b => b.id === batchId ? { ...b, submissionDeadline: newDeadline } : b));
       setEditingDeadline(null);
+      load(); // background sync
     } catch (e) {
       toast.error(e.response?.data?.error || 'Failed to update deadline');
     } finally { setSavingDeadline(false); }
@@ -110,11 +111,19 @@ export default function Batches() {
   async function handleGrantExtension() {
     if (!extStoreId || !extDeadline) { toast.warning('Store and deadline are required'); return; }
     setSavingExt(true);
+    const storeId = parseInt(extStoreId);
+    const newDeadline = new Date(extDeadline).toISOString();
     try {
-      await adminApi.grantStoreExtension({ batchId: extendModal.batchId, storeId: parseInt(extStoreId), newDeadline: new Date(extDeadline).toISOString(), note: extNote || undefined });
-      await load();
+      await adminApi.grantStoreExtension({ batchId: extendModal.batchId, storeId, newDeadline, note: extNote || undefined });
+      // Optimistic update — add/replace the extension in local state
+      setBatches(prev => prev.map(b => {
+        if (b.id !== extendModal.batchId) return b;
+        const exts = (b.deadlineExtensions || []).filter(e => e.storeId !== storeId);
+        return { ...b, deadlineExtensions: [...exts, { storeId, newDeadline }] };
+      }));
       setExtendModal(null);
       setExtStoreId(''); setExtDeadline(''); setExtNote('');
+      load(); // background sync
     } catch (e) {
       toast.error(e.response?.data?.error || 'Failed to grant extension');
     } finally { setSavingExt(false); }
@@ -126,9 +135,9 @@ export default function Batches() {
     try {
       const res = await adminApi.unlockStoreForBatch(unlockModal.batchId, parseInt(unlockStoreId));
       toast.success(`${res.count} record(s) reset to Pending. The store manager can now re-count and re-submit.`);
-      await load();
       setUnlockModal(null);
       setUnlockStoreId('');
+      load(); // background sync
     } catch (e) {
       toast.error(e.response?.data?.error || 'Unlock failed');
     } finally { setUnlocking(false); }
@@ -136,14 +145,17 @@ export default function Batches() {
 
   async function confirmDeleteBatch() {
     if (!deleteTarget) return;
+    const target = deleteTarget;
     setDeletingBatch(true);
+    // Optimistic remove
+    setBatches(prev => prev.filter(b => b.id !== target.id));
+    setDeleteTarget(null);
     try {
-      await adminApi.deleteBatch(deleteTarget.id);
-      setDeleteTarget(null);
+      await adminApi.deleteBatch(target.id);
       toast.success('Cycle deleted');
-      await load();
     } catch (e) {
       toast.error(e.response?.data?.error || 'Failed to delete cycle');
+      load(); // restore on failure
     } finally { setDeletingBatch(false); }
   }
 
