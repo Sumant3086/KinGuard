@@ -1744,6 +1744,10 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
    overrides inventory.css's dark-red gradient (no !important). Fix by
    targeting .inv-table th with higher specificity + !important after layout.
    ═══════════════════════════════════════════════════════════════════ */
+/* Store manager keeps red thead — admin gets blue from inventory.css base rule */
+.store-shell .inv-table thead tr {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
+}
 .store-shell .inv-table th {
   background: transparent !important;
   color: rgba(255, 255, 255, 0.92) !important;

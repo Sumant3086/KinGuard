@@ -69,28 +69,38 @@
 ::selection      { background: #dc2626 !important; color: #ffffff !important; }
 ::-moz-selection { background: #dc2626 !important; color: #ffffff !important; }
 
-/* ─── Page heading colours — vibrant red (loads last — guaranteed win) */
+/* ─── Admin panel headings — deep vibrant blue (loads last — guaranteed win) */
 .hl-shell .page-header h2,
-.hl-shell .page-header-text h2,
-.page-header h2,
-.page-header-text h2 {
-  color: #dc2626 !important;
-  text-shadow: 0 1px 3px rgba(255,255,255,0.9) !important;
+.hl-shell .page-header-text h2 {
+  color: #1d4ed8 !important;
+  text-shadow: none !important;
+  font-weight: 900 !important;
 }
 
 .hl-shell .page-header p,
-.hl-shell .page-header-text p,
-.page-header p,
-.page-header-text p {
-  color: #7f1d1d !important;
-  text-shadow: 0 1px 1px rgba(255,255,255,0.7) !important;
+.hl-shell .page-header-text p {
+  color: #334155 !important;
+  text-shadow: none !important;
+  font-weight: 600 !important;
 }
 
-/* Store shell headings — also vibrant */
+/* Store shell headings — vibrant red */
 .store-shell .page-header h2,
 .store-shell .page-header-text h2 {
   color: #dc2626 !important;
   text-shadow: 0 1px 3px rgba(255,255,255,0.9) !important;
+}
+
+/* Fallback for any page-header outside both shells */
+.page-header h2:not(.hl-shell .page-header h2):not(.store-shell .page-header h2),
+.page-header-text h2 {
+  color: #1d4ed8 !important;
+  text-shadow: none !important;
+}
+.page-header p:not(.hl-shell .page-header p):not(.store-shell .page-header p),
+.page-header-text p {
+  color: #334155 !important;
+  text-shadow: none !important;
 }
 
 /* ─── Admin banners — solid background so image doesn't bleed through */

@@ -129,14 +129,15 @@
 }
 .inv-table { width:100%; border-collapse:collapse; font-size:13px; }
 .inv-table thead tr {
-  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
 }
+/* Store shell keeps its own dark-red override via .store-shell .inv-table th */
 .inv-table th {
   padding: 11px 13px;
   text-align: left;
   font-size: 9.5px;
   font-weight: 800;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255,255,255,0.92);
   text-transform: uppercase;
   letter-spacing: 1px;
   border-bottom: none;
@@ -148,7 +149,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
 }
 .table-sticky thead th::after {
   content: '';
