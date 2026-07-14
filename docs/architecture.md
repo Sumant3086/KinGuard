@@ -13,7 +13,7 @@
 - [Backend Architecture](#backend-architecture)
 - [Caching Strategy](#caching-strategy)
 - [Authentication & Authorisation](#authentication--authorisation)
-- [Rate Limiting](#rate-limiting)
+- [DoS Mitigation](#dos-mitigation)
 - [File Processing Pipeline](#file-processing-pipeline)
 - [Notification System](#notification-system)
 - [Key Design Decisions](#key-design-decisions)
@@ -101,7 +101,7 @@ KinGuard/
 │
 └── server/src/
     ├── app.js                 Express setup: Helmet, CORS, compression,
-    │                          JSON body limit (1 MB), rate limiters, route mounting
+    │                          JSON body limit (1 MB), route mounting, SPA static serving
     ├── server.js              DB connect with retry, process.listen
     │
     ├── config/
@@ -122,8 +122,8 @@ KinGuard/
     │
     ├── routes/
     │   ├── authRoutes.js      POST /login, GET /me
-    │   ├── adminRoutes.js     All /admin/* with ADMIN role guard + rate limiter
-    │   └── storeRoutes.js     All /store/* with STORE_MANAGER role guard + rate limiter
+    │   ├── adminRoutes.js     All /admin/* with ADMIN role guard
+    │   └── storeRoutes.js     All /store/* with STORE_MANAGER role guard
     │
     └── services/
         ├── auditService.js    createAuditLog() — fire-and-forget, never throws
@@ -334,16 +334,17 @@ Every store controller query includes `storeId: req.user.storeId` in the Prisma 
 
 ---
 
-## Rate Limiting
+## DoS Mitigation
 
-Applied via `express-rate-limit` at the route-mount level in `app.js`:
+Application-layer rate limiting is not used. Protection is handled at the infrastructure level (reverse proxy / Cloudflare) and through these server-side controls:
 
-| Limiter | Routes | Limit | Window |
-|---------|--------|-------|--------|
-| `authLimiter` | `/api/auth/*` | 10 requests | 15 minutes |
-| `apiLimiter` | `/api/admin/*`, `/api/store/*` | 300 requests | 1 minute |
-
-Rate limiting is **disabled in development** (`NODE_ENV=development`) to avoid friction during local iteration. Enable it in staging and production by setting `NODE_ENV=production`.
+| Control | Enforced by |
+|---------|------------|
+| JSON body capped at 1 MB | `express.json({ limit: '1mb' })` |
+| File upload capped at 10 MB | Multer `limits.fileSize` |
+| Export row limit: 10,000 rows | Controller guard before DB fetch |
+| Password length capped at 128 chars | `validatePassword()` before bcrypt |
+| Query params validated as integers | `parseId()` / `parsePageSize()` helpers |
 
 ---
 

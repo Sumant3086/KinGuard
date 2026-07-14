@@ -14,7 +14,7 @@
 | How many users can log in? | **No fixed limit** — depends on your internet plan |
 | How long does a login session last? | **8 hours**, then you must sign in again |
 | How many stores can I manage? | **No fixed limit** |
-| How many wrong passwords before lockout? | **10 attempts** per 15 minutes |
+| How many wrong passwords before lockout? | No automatic lockout — use a strong password |
 
 ---
 
@@ -82,14 +82,6 @@ Once you sign in, your session lasts **8 hours**. After that, you will be automa
 > **Example:** If you sign in at 8:00 AM, your session expires at 4:00 PM.
 
 This is a security feature to protect the system if you leave your computer unattended.
-
----
-
-### Wrong password lockout — 10 attempts
-
-If the wrong password is entered **10 times** within 15 minutes from the same computer, that computer is temporarily blocked from trying again for **15 minutes**. This prevents unauthorised people from guessing passwords.
-
-> After 15 minutes, the block lifts automatically — no action needed from the admin.
 
 ---
 
@@ -239,8 +231,6 @@ There is **no limit** on how many email notifications the system can send.
 
 ### How many people can use the system at the same time?
 
-The system allows up to **300 API requests per minute** in total across all users. In practical terms:
-
 | Scenario | What to expect |
 |---|---|
 | 5–10 users active simultaneously | Instant responses, no issues |
@@ -256,12 +246,12 @@ No. Most pages use a short-term cache to avoid unnecessary server calls:
 
 | Page / Data | How often it refreshes |
 |---|---|
-| Dashboard | Every 30 seconds |
+| Dashboard | Every 5 minutes |
 | Inventory list | Every time you apply filters (no auto-refresh) |
-| Users list | Every 60 seconds (or immediately after changes) |
-| Stores list | Every 60 seconds (or immediately after changes) |
-| Batches / Cycles | Every 30 seconds |
-| Activity Log | Every 60 seconds |
+| Users list | Every 2 minutes (or immediately after changes) |
+| Stores list | Every 3 minutes (or immediately after changes) |
+| Batches / Cycles | Every 1 minute (or immediately after changes) |
+| Activity Log | Every 2 minutes |
 
 If you need the very latest data, use your browser's refresh button or navigate away and back.
 
@@ -300,8 +290,8 @@ If you need the very latest data, use your browser's refresh button or navigate 
 | Upload timeout | 2 minutes | Split large files if needed |
 | Duplicate date warning | ±3 days | Can override with confirmation |
 | Login session | 8 hours | Then must re-login |
-| Wrong password lockout | 10 tries / 15 min | Auto-lifts after 15 min |
 | Min password length | 8 characters | — |
+| Max password length | 128 characters | — |
 | Number of users | Unlimited | Database plan may apply |
 | Number of stores | Unlimited | Database plan may apply |
 | Admin accounts minimum | 1 | Cannot delete last admin |
@@ -313,7 +303,6 @@ If you need the very latest data, use your browser's refresh button or navigate 
 | Trends history | Up to 24 cycles | Needs ≥2 cycles |
 | Activity log on screen | 500 entries | — |
 | Activity log export | 5,000 entries | Excel download |
-| API requests | 300 per minute | All users combined |
 
 ---
 
