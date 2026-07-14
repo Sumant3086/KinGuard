@@ -2223,3 +2223,187 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 @media (max-width: 520px) {
   .store-action-card-inner .btn { width: 100%; justify-content: center; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE SELECT-ALL BAR (Stores + Users mobile cards)
+   ═══════════════════════════════════════════════════════════════════ */
+.mobile-select-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  margin-bottom: 10px;
+  background: rgba(220,38,38,0.05);
+  border: 1px solid rgba(185,28,28,0.16);
+  border-radius: 10px;
+}
+.mobile-select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.mobile-select-all-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   IMPROVED STORE CARDS (mobile)
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Override position:absolute on store-card-check — now handled inline */
+  .store-card { position: static; }
+  .store-card-check { display: none; } /* hidden — checkbox is now inline in row1 */
+
+  .store-card-row1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .store-card-code { font-size: 15px; font-weight: 800; color: var(--vi-light); font-family: monospace; }
+  .store-card-name { font-size: 13.5px; font-weight: 700; color: var(--t1); }
+  .store-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--t3);
+    font-weight: 500;
+  }
+  .store-card-dot { color: var(--t4); }
+  .store-card-actions { display: flex; gap: 8px; }
+
+  /* Selected state highlight */
+  .store-card-selected {
+    border-color: rgba(220,38,38,0.40) !important;
+    background: rgba(220,38,38,0.04) !important;
+  }
+
+  /* User card selected state */
+  .user-card-selected {
+    border-color: rgba(220,38,38,0.40) !important;
+    background: rgba(220,38,38,0.04) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ANALYTICS MOBILE CARDS
+   ═══════════════════════════════════════════════════════════════════ */
+.analytics-trend-desktop { display: block; }
+.analytics-trend-cards   { display: none; }
+.analytics-comp-desktop  { display: block; }
+.analytics-comp-cards    { display: none; }
+
+@media (max-width: 768px) {
+  .analytics-trend-desktop { display: none; }
+  .analytics-trend-cards   { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .analytics-comp-desktop  { display: none; }
+  .analytics-comp-cards    { display: flex; flex-direction: column; gap: 10px; }
+
+  .analytics-trend-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .analytics-trend-card-total {
+    border-color: rgba(185,28,28,0.28);
+    background: rgba(185,28,28,0.04);
+    border-left: 3px solid var(--vi);
+  }
+  .analytics-trend-card-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .analytics-trend-store {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--t1);
+    flex: 1;
+    min-width: 0;
+  }
+  .analytics-trend-cycles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .analytics-comp-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .analytics-comp-store {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--t1);
+  }
+  .analytics-comp-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .analytics-comp-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+  .analytics-comp-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--t4);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ADMIN SHELL — MOBILE CARD THEMING
+   Cards inside hl-shell (admin) need a solid readable background
+   ═══════════════════════════════════════════════════════════════════ */
+.hl-shell .store-card,
+.hl-shell .user-card,
+.hl-shell .batch-card,
+.hl-shell .inv-card,
+.hl-shell .audit-card,
+.hl-shell .report-card,
+.hl-shell .scorecard-card,
+.hl-shell .analytics-trend-card,
+.hl-shell .analytics-comp-card {
+  background: rgba(255, 252, 250, 0.97) !important;
+  border: 1px solid rgba(185, 28, 28, 0.18) !important;
+  box-shadow: 0 3px 16px rgba(100,20,10,0.10), inset 0 1px 0 rgba(255,255,255,0.80) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+.hl-shell .store-card-selected,
+.hl-shell .user-card-selected {
+  background: rgba(220,38,38,0.05) !important;
+  border-color: rgba(220,38,38,0.35) !important;
+}
+.hl-shell .analytics-trend-card-total {
+  background: rgba(220,38,38,0.05) !important;
+  border-color: rgba(220,38,38,0.30) !important;
+}
+.hl-shell .mobile-select-bar {
+  background: rgba(255, 252, 250, 0.92) !important;
+  border-color: rgba(185,28,28,0.20) !important;
+}

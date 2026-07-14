@@ -180,73 +180,138 @@ export default function Analytics() {
             description="Complete at least 2 inventory cycles to see shortage rate trends."
           />
         ) : (
-          <div className="table-wrap">
-            <table className="scorecard">
-              <thead>
-                <tr>
-                  <th scope="col">Store</th>
-                  <th scope="col" style={{ minWidth: 90 }}>Trend</th>
-                  {trendBatches.map(b => (
-                    <th scope="col" key={b.id} style={{ textAlign: 'center', minWidth: 80, fontSize: 11 }}>
-                      {fmtDate(b.inventoryDate, 'monthDay')}
-                    </th>
-                  ))}
-                  <th scope="col" style={{ textAlign: 'right', minWidth: 90 }}>Units Lost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {series.map(s => {
-                  const rates        = trendBatches.map(b => { const d = s.data.find(x => x.batchId === b.id); return d ? d.shortageRate : null; });
-                  const filledRates  = rates.filter(r => r !== null);
-                  const totalUnitsLost = s.data.reduce((sum, d) => sum + (d.totalUnitsLost || 0), 0);
-                  return (
-                    <tr key={s.storeId}>
-                      <td style={{ fontWeight: 600, minWidth: 130 }}>{s.storeName}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Sparkline values={filledRates} width={72} height={24} />
-                          <TrendArrow values={filledRates} />
-                        </div>
-                      </td>
-                      {trendBatches.map(b => {
+          <>
+            {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+            <div className="analytics-trend-cards">
+              {series.map(s => {
+                const rates = trendBatches.map(b => { const d = s.data.find(x => x.batchId === b.id); return d ? d.shortageRate : null; });
+                const filledRates = rates.filter(r => r !== null);
+                const totalUnitsLost = s.data.reduce((sum, d) => sum + (d.totalUnitsLost || 0), 0);
+                const latestRate = filledRates.length > 0 ? filledRates[filledRates.length - 1] : null;
+                return (
+                  <div key={s.storeId} className="analytics-trend-card">
+                    <div className="analytics-trend-card-row1">
+                      <span className="analytics-trend-store">{s.storeName}</span>
+                      {totalUnitsLost > 0 && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>
+                          −{Math.round(totalUnitsLost * 10) / 10} units
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Sparkline values={filledRates} width={80} height={24} />
+                      <TrendArrow values={filledRates} />
+                      {latestRate !== null && (
+                        <span style={{ fontSize: 14, fontWeight: 800, padding: '2px 9px', borderRadius: 5, ...rateColor(latestRate) }}>
+                          {latestRate}% latest
+                        </span>
+                      )}
+                    </div>
+                    <div className="analytics-trend-cycles">
+                      {trendBatches.map((b, i) => {
                         const d = s.data.find(x => x.batchId === b.id);
-                        return (
-                          <td key={b.id} style={{ textAlign: 'center', padding: '6px 8px' }}>
-                            {d ? (
-                              <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, ...rateColor(d.shortageRate) }}>
-                                {d.shortageRate}%
-                              </span>
-                            ) : (
-                              <span style={{ color: 'var(--t3)', fontSize: 11 }}>—</span>
-                            )}
-                          </td>
+                        return d ? (
+                          <span key={b.id} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 4, ...rateColor(d.shortageRate), fontWeight: 600 }}>
+                            {fmtDate(b.inventoryDate, 'monthDay')}: {d.shortageRate}%
+                          </span>
+                        ) : (
+                          <span key={b.id} style={{ fontSize: 10.5, color: 'var(--t4)', padding: '2px 5px' }}>
+                            {fmtDate(b.inventoryDate, 'monthDay')}: —
+                          </span>
                         );
                       })}
-                      <td style={{ textAlign: 'right', fontSize: 12, color: totalUnitsLost > 0 ? 'var(--red)' : 'var(--t3)', fontWeight: totalUnitsLost > 0 ? 600 : 400, paddingRight: 16 }}>
-                        {totalUnitsLost > 0 ? `−${Math.round(totalUnitsLost * 10) / 10}` : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr style={{ borderTop: '2px solid var(--border)' }}>
-                  <td style={{ fontWeight: 700 }}>Network Total</td>
-                  <td><Sparkline values={networkRates} width={72} height={24} /></td>
-                  {networkTotals.map(n => (
-                    <td key={n.batchId} style={{ textAlign: 'center', padding: '6px 8px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(n.rate) }}>
-                        {n.rate}%
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Network total card */}
+              {series.length > 0 && (
+                <div className="analytics-trend-card analytics-trend-card-total">
+                  <div className="analytics-trend-card-row1">
+                    <span className="analytics-trend-store" style={{ fontWeight: 800 }}>Network Total</span>
+                    {networkRates.length > 0 && (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: rateColor(networkRates[networkRates.length - 1]).color }}>
+                        {networkRates[networkRates.length - 1]}% latest
                       </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Sparkline values={networkRates} width={80} height={24} />
+                    <TrendArrow values={networkRates} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Desktop table (>768px) ────────────────────────────── */}
+            <div className="table-wrap analytics-trend-desktop">
+              <table className="scorecard">
+                <thead>
+                  <tr>
+                    <th scope="col">Store</th>
+                    <th scope="col" style={{ minWidth: 90 }}>Trend</th>
+                    {trendBatches.map(b => (
+                      <th scope="col" key={b.id} style={{ textAlign: 'center', minWidth: 80, fontSize: 11 }}>
+                        {fmtDate(b.inventoryDate, 'monthDay')}
+                      </th>
+                    ))}
+                    <th scope="col" style={{ textAlign: 'right', minWidth: 90 }}>Units Lost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {series.map(s => {
+                    const rates        = trendBatches.map(b => { const d = s.data.find(x => x.batchId === b.id); return d ? d.shortageRate : null; });
+                    const filledRates  = rates.filter(r => r !== null);
+                    const totalUnitsLost = s.data.reduce((sum, d) => sum + (d.totalUnitsLost || 0), 0);
+                    return (
+                      <tr key={s.storeId}>
+                        <td style={{ fontWeight: 600, minWidth: 130 }}>{s.storeName}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Sparkline values={filledRates} width={72} height={24} />
+                            <TrendArrow values={filledRates} />
+                          </div>
+                        </td>
+                        {trendBatches.map(b => {
+                          const d = s.data.find(x => x.batchId === b.id);
+                          return (
+                            <td key={b.id} style={{ textAlign: 'center', padding: '6px 8px' }}>
+                              {d ? (
+                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, ...rateColor(d.shortageRate) }}>
+                                  {d.shortageRate}%
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--t3)', fontSize: 11 }}>—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td style={{ textAlign: 'right', fontSize: 12, color: totalUnitsLost > 0 ? 'var(--red)' : 'var(--t3)', fontWeight: totalUnitsLost > 0 ? 600 : 400, paddingRight: 16 }}>
+                          {totalUnitsLost > 0 ? `−${Math.round(totalUnitsLost * 10) / 10}` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ borderTop: '2px solid var(--border)' }}>
+                    <td style={{ fontWeight: 700 }}>Network Total</td>
+                    <td><Sparkline values={networkRates} width={72} height={24} /></td>
+                    {networkTotals.map(n => (
+                      <td key={n.batchId} style={{ textAlign: 'center', padding: '6px 8px' }}>
+                        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(n.rate) }}>
+                          {n.rate}%
+                        </span>
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--t2)', fontWeight: 600, paddingRight: 16 }}>
+                      {(() => { const v = Math.round(networkTotals.reduce((s, n) => s + n.totalUnitsLost, 0) * 10) / 10; return v > 0 ? `−${v}` : '0'; })()}
                     </td>
-                  ))}
-                  <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--t2)', fontWeight: 600, paddingRight: 16 }}>
-                    {(() => { const v = Math.round(networkTotals.reduce((s, n) => s + n.totalUnitsLost, 0) * 10) / 10; return v > 0 ? `−${v}` : '0'; })()}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
-        <div style={{ display: 'flex', gap: 20, marginTop: 14, fontSize: 12, color: 'var(--t3)' }}>
+        <div style={{ display: 'flex', gap: 20, marginTop: 14, fontSize: 12, color: 'var(--t3)', flexWrap: 'wrap' }}>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'rgba(239,68,68,0.3)',  marginRight: 4 }} />≥20% High Risk</span>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'rgba(245,158,11,0.3)', marginRight: 4 }} />≥5% Watch</span>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'rgba(16,185,129,0.25)',marginRight: 4 }} />&lt;5% On Track</span>
@@ -259,16 +324,16 @@ export default function Analytics() {
           <span className="card-title">Cycle-over-Cycle Comparison</span>
         </div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div className="filter-group">
+          <div className="filter-group" style={{ flex: '1 1 140px' }}>
             <span className="filter-label">Cycle A (baseline)</span>
-            <select value={batchA} onChange={e => setBatchA(e.target.value)} style={{ minWidth: 160 }}>
+            <select value={batchA} onChange={e => setBatchA(e.target.value)} style={{ width: '100%' }}>
               <option value="">Select cycle…</option>
               {batches.map(b => <option key={b.id} value={b.id.toString()}>{fmtDate(b.inventoryDate)}</option>)}
             </select>
           </div>
-          <div className="filter-group">
+          <div className="filter-group" style={{ flex: '1 1 140px' }}>
             <span className="filter-label">Cycle B (compare)</span>
-            <select value={batchB} onChange={e => setBatchB(e.target.value)} style={{ minWidth: 160 }}>
+            <select value={batchB} onChange={e => setBatchB(e.target.value)} style={{ width: '100%' }}>
               <option value="">Select cycle…</option>
               {batches.map(b => <option key={b.id} value={b.id.toString()}>{fmtDate(b.inventoryDate)}</option>)}
             </select>
@@ -276,45 +341,84 @@ export default function Analytics() {
         </div>
 
         {batchA && batchB && batchA !== batchB && comparisonRows.length > 0 ? (
-          <div className="table-wrap">
-            <table className="scorecard">
-              <thead>
-                <tr>
-                  <th scope="col">Store</th>
-                  <th scope="col" style={{ textAlign: 'center' }}>A — {batchADate ? fmtDate(batchADate.inventoryDate, 'monthDay') : '?'}</th>
-                  <th scope="col" style={{ textAlign: 'center' }}>B — {batchBDate ? fmtDate(batchBDate.inventoryDate, 'monthDay') : '?'}</th>
-                  <th scope="col" style={{ textAlign: 'center' }}>Δ Change</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonRows.map(r => {
-                  const rateA    = r.dA ? r.dA.shortageRate : null;
-                  const rateB    = r.dB ? r.dB.shortageRate : null;
-                  const delta    = rateA !== null && rateB !== null ? Math.round((rateB - rateA) * 10) / 10 : null;
-                  const improved = delta !== null && delta < 0;
-                  const worsened = delta !== null && delta > 0;
-                  return (
-                    <tr key={r.storeId}>
-                      <td style={{ fontWeight: 600 }}>{r.storeName}</td>
-                      <td style={{ textAlign: 'center' }}>
+          <>
+            {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+            <div className="analytics-comp-cards">
+              {comparisonRows.map(r => {
+                const rateA    = r.dA ? r.dA.shortageRate : null;
+                const rateB    = r.dB ? r.dB.shortageRate : null;
+                const delta    = rateA !== null && rateB !== null ? Math.round((rateB - rateA) * 10) / 10 : null;
+                const improved = delta !== null && delta < 0;
+                const worsened = delta !== null && delta > 0;
+                return (
+                  <div key={r.storeId} className="analytics-comp-card">
+                    <div className="analytics-comp-store">{r.storeName}</div>
+                    <div className="analytics-comp-row">
+                      <div className="analytics-comp-cell">
+                        <span className="analytics-comp-label">A — {batchADate ? fmtDate(batchADate.inventoryDate, 'monthDay') : '?'}</span>
                         {rateA !== null
-                          ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, ...rateColor(rateA) }}>{rateA}%</span>
-                          : <span style={{ color: 'var(--t3)' }}>—</span>}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
+                          ? <span style={{ padding: '3px 9px', borderRadius: 5, fontSize: 13, fontWeight: 700, ...rateColor(rateA) }}>{rateA}%</span>
+                          : <span style={{ color: 'var(--t3)', fontSize: 13 }}>—</span>}
+                      </div>
+                      <div className="analytics-comp-cell">
+                        <span className="analytics-comp-label">B — {batchBDate ? fmtDate(batchBDate.inventoryDate, 'monthDay') : '?'}</span>
                         {rateB !== null
-                          ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, ...rateColor(rateB) }}>{rateB}%</span>
-                          : <span style={{ color: 'var(--t3)' }}>—</span>}
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: improved ? 'var(--green)' : worsened ? 'var(--red)' : 'var(--t3)' }}>
-                        {delta !== null ? (delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${delta}pp`) : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          ? <span style={{ padding: '3px 9px', borderRadius: 5, fontSize: 13, fontWeight: 700, ...rateColor(rateB) }}>{rateB}%</span>
+                          : <span style={{ color: 'var(--t3)', fontSize: 13 }}>—</span>}
+                      </div>
+                      <div className="analytics-comp-cell">
+                        <span className="analytics-comp-label">Change</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: improved ? 'var(--green)' : worsened ? 'var(--red)' : 'var(--t3)' }}>
+                          {delta !== null ? (delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${delta}pp`) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Desktop table (>768px) ────────────────────────────── */}
+            <div className="table-wrap analytics-comp-desktop">
+              <table className="scorecard">
+                <thead>
+                  <tr>
+                    <th scope="col">Store</th>
+                    <th scope="col" style={{ textAlign: 'center' }}>A — {batchADate ? fmtDate(batchADate.inventoryDate, 'monthDay') : '?'}</th>
+                    <th scope="col" style={{ textAlign: 'center' }}>B — {batchBDate ? fmtDate(batchBDate.inventoryDate, 'monthDay') : '?'}</th>
+                    <th scope="col" style={{ textAlign: 'center' }}>Δ Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonRows.map(r => {
+                    const rateA    = r.dA ? r.dA.shortageRate : null;
+                    const rateB    = r.dB ? r.dB.shortageRate : null;
+                    const delta    = rateA !== null && rateB !== null ? Math.round((rateB - rateA) * 10) / 10 : null;
+                    const improved = delta !== null && delta < 0;
+                    const worsened = delta !== null && delta > 0;
+                    return (
+                      <tr key={r.storeId}>
+                        <td style={{ fontWeight: 600 }}>{r.storeName}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {rateA !== null
+                            ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, ...rateColor(rateA) }}>{rateA}%</span>
+                            : <span style={{ color: 'var(--t3)' }}>—</span>}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {rateB !== null
+                            ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 12, ...rateColor(rateB) }}>{rateB}%</span>
+                            : <span style={{ color: 'var(--t3)' }}>—</span>}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: improved ? 'var(--green)' : worsened ? 'var(--red)' : 'var(--t3)' }}>
+                          {delta !== null ? (delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${delta}pp`) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <p style={{ fontSize: 13, color: 'var(--t3)', padding: '20px 0' }}>
             Select two different cycles above to compare store performance.

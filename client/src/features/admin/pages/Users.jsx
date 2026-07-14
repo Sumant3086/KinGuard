@@ -59,25 +59,39 @@ function SourceBadge({ source }) {
 }
 
 // ── Single user mobile card ───────────────────────────────────────
-function UserCard({ user, self, adminCount, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
+function UserCard({ user, self, adminCount, selected, onSelect, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
   const isSelf      = user.id === self?.id;
   const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1;
   const canDelete   = !isSelf && !isLastAdmin;
   const isPending   = user.pendingApproval;
 
   return (
-    <div className="user-card">
+    <div className={`user-card${selected ? ' user-card-selected' : ''}`}>
+      {/* Row 1: checkbox + name + status */}
       <div className="user-card-top">
-        <div>
-          <div className="user-card-name">
-            {user.name}
-            {' '}
-            <SourceBadge source={user.source} />
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0 }}>
+          {!isSelf ? (
+            <input
+              type="checkbox"
+              checked={!!selected}
+              onChange={e => onSelect(user.id, e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0, marginTop: 2 }}
+            />
+          ) : (
+            <span style={{ width: 16, flexShrink: 0 }} />
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div className="user-card-name">
+              {user.name}
+              {' '}
+              <SourceBadge source={user.source} />
+            </div>
+            <div className="user-card-id">{user.employeeId}</div>
           </div>
-          <div className="user-card-id">{user.employeeId}</div>
         </div>
         <StatusBadge user={user} />
       </div>
+      {/* Row 2: meta */}
       <div className="user-card-meta">
         <span>
           <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`} style={{ fontSize: 10 }}>
@@ -88,30 +102,31 @@ function UserCard({ user, self, adminCount, onEdit, onDelete, onApprove, onRejec
         {user.email && <span style={{ color: 'var(--t3)' }}>{user.email}</span>}
         <span>Created: {new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
       </div>
+      {/* Row 3: actions */}
       <div className="user-card-actions">
         {isPending && (
           <>
             <button onClick={() => onApprove(user)} disabled={approving || rejecting}
               className="btn btn-sm"
-              style={{ background: 'rgba(22,163,74,0.12)', color: 'var(--green)', border: '1px solid rgba(22,163,74,0.25)', fontWeight: 700 }}>
+              style={{ flex: 1, background: 'rgba(22,163,74,0.12)', color: 'var(--green)', border: '1px solid rgba(22,163,74,0.25)', fontWeight: 700 }}>
               {approving ? '…' : 'Approve'}
             </button>
             <button onClick={() => onReject(user)} disabled={approving || rejecting}
               className="btn btn-sm"
-              style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
+              style={{ flex: 1, background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
               {rejecting ? '…' : 'Reject'}
             </button>
           </>
         )}
         {!isPending && (
-          <button onClick={() => onEdit(user)} className="btn btn-secondary btn-sm">Edit</button>
+          <button onClick={() => onEdit(user)} className="btn btn-secondary btn-sm" style={{ flex: 1 }}>Edit</button>
         )}
         {canDelete ? (
           <button
             onClick={() => onDelete(user)}
             disabled={!!deleting}
             className="btn btn-sm"
-            style={{ background: deleting ? 'rgba(0,0,0,0.06)' : 'rgba(239,68,68,0.08)', color: deleting ? 'var(--t4)' : 'var(--red)', border: `1px solid ${deleting ? 'transparent' : 'rgba(239,68,68,0.22)'}` }}
+            style={{ flex: 1, background: deleting ? 'rgba(0,0,0,0.06)' : 'rgba(239,68,68,0.10)', color: deleting ? 'var(--t4)' : 'var(--red)', border: `1px solid ${deleting ? 'transparent' : 'rgba(239,68,68,0.26)'}`, fontWeight: 700 }}
           >
             {deleting ? 'Deleting…' : 'Delete'}
           </button>
@@ -715,9 +730,42 @@ export default function AdminUsers() {
         <div className="card" style={{ padding: 0 }}>
           {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
           <div className="users-cards" style={{ padding: 12 }}>
+            {/* Select All row */}
+            <div className="mobile-select-bar">
+              <label className="mobile-select-all-label">
+                <input
+                  type="checkbox"
+                  checked={(() => {
+                    const selectable = visibleUsers.filter(u => u.id !== self?.id);
+                    return selectable.length > 0 && selectable.every(u => selected.has(u.id));
+                  })()}
+                  ref={el => {
+                    if (el) {
+                      const selectable = visibleUsers.filter(u => u.id !== self?.id);
+                      el.indeterminate = selectedAllIds.length > 0 && !selectable.every(u => selected.has(u.id));
+                    }
+                  }}
+                  onChange={selectAllVisible}
+                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0 }}
+                />
+                <span className="mobile-select-all-text">
+                  {selectedAllIds.length > 0
+                    ? `${selectedAllIds.length} of ${visibleUsers.length} selected`
+                    : `Select all ${visibleUsers.length} users`}
+                </span>
+              </label>
+              {selectedAllIds.length > 0 && (
+                <button className="btn btn-ghost btn-sm" onClick={() => setSelected(new Set())} style={{ flexShrink: 0 }}>
+                  Clear
+                </button>
+              )}
+            </div>
+
             {visibleUsers.map(u => (
               <UserCard
                 key={u.id} user={u} self={self} adminCount={adminCount}
+                selected={selected.has(u.id)}
+                onSelect={toggleSelect}
                 onEdit={openEdit} onDelete={handleDelete}
                 onApprove={handleApprove} onReject={openReject}
                 approving={approvingId === u.id}
