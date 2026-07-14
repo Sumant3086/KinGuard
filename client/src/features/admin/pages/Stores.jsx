@@ -240,27 +240,71 @@ export default function Stores() {
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
           <div className="stores-cards" style={{ padding: 12 }}>
+            {/* Select All row */}
+            <div className="mobile-select-bar">
+              <label className="mobile-select-all-label">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={el => { if (el) el.indeterminate = someSelected; }}
+                  onChange={toggleSelectAll}
+                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0 }}
+                />
+                <span className="mobile-select-all-text">
+                  {selected.size > 0 ? `${selected.size} of ${stores.length} selected` : `Select all ${stores.length} stores`}
+                </span>
+              </label>
+              {selected.size > 0 && (
+                <button className="btn btn-ghost btn-sm" onClick={() => setSelected(new Set())} style={{ flexShrink: 0 }}>
+                  Clear
+                </button>
+              )}
+            </div>
+
             {stores.map(store => (
-              <div key={store.id} className="store-card">
-                <div className="store-card-check">
-                  <input type="checkbox" checked={selected.has(store.id)} onChange={() => toggleSelect(store.id)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }} />
-                </div>
-                <div className="store-card-top">
+              <div
+                key={store.id}
+                className={`store-card${selected.has(store.id) ? ' store-card-selected' : ''}`}
+              >
+                {/* Row 1: checkbox + code + status */}
+                <div className="store-card-row1">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(store.id)}
+                    onChange={() => toggleSelect(store.id)}
+                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0 }}
+                  />
                   <span className="store-card-code">{store.storeCode}</span>
-                  <span className={`badge ${store.isActive ? 'badge-active' : 'badge-inactive'}`}>
+                  <span className={`badge ${store.isActive ? 'badge-active' : 'badge-inactive'}`} style={{ marginLeft: 'auto' }}>
                     {store.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
+                {/* Row 2: store name */}
                 <div className="store-card-name">{store.storeName}</div>
-                <div className="store-card-meta">{store._count.users} user{store._count.users !== 1 ? 's' : ''} · {store._count.inventoryRecords} record{store._count.inventoryRecords !== 1 ? 's' : ''}</div>
+                {/* Row 3: meta counts */}
+                <div className="store-card-meta">
+                  <span>{store._count.users} manager{store._count.users !== 1 ? 's' : ''}</span>
+                  <span className="store-card-dot">·</span>
+                  <span>{store._count.inventoryRecords} record{store._count.inventoryRecords !== 1 ? 's' : ''}</span>
+                </div>
+                {/* Row 4: action buttons */}
                 <div className="store-card-actions">
-                  <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
+                  <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm" style={{ flex: 1 }}>Edit</button>
                   {store._count.inventoryRecords === 0 ? (
-                    <button onClick={() => setDeleteTarget(store)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
+                    <button
+                      onClick={() => setDeleteTarget(store)}
+                      className="btn btn-sm"
+                      style={{ flex: 1, background: 'rgba(239,68,68,0.12)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.28)', fontWeight: 700 }}
+                    >
                       Delete
                     </button>
                   ) : (
-                    <button onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }} className="btn btn-sm" title={`Force delete — erases ${store._count.inventoryRecords} record(s)`} style={{ background: 'rgba(239,68,68,0.07)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }}>
+                    <button
+                      onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }}
+                      className="btn btn-sm"
+                      title={`Erases ${store._count.inventoryRecords} record(s)`}
+                      style={{ flex: 1, background: 'rgba(239,68,68,0.07)', color: '#f87171', border: '1px solid rgba(239,68,68,0.20)', fontWeight: 600 }}
+                    >
                       Force Delete
                     </button>
                   )}
