@@ -258,9 +258,18 @@ export default function AdminUsers() {
     try {
       const result = await adminApi.approveUser(user.id);
       setApprovedCredentials({ employeeId: result.employeeId, name: result.name, tempPassword: result.tempPassword, store: result.store });
-      await load();
+      // Optimistic update — mark user active immediately
+      setUsers(prev => prev.map(u =>
+        u.id === user.id ? { ...u, isActive: true, pendingApproval: false } : u
+      ));
+      load(); // background sync
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Approval failed');
+      const msg = err.response?.data?.error || 'Approval failed';
+      toast.error(
+        msg.toLowerCase().includes('already active')
+          ? 'This user is already approved. Refresh the page to see the latest state.'
+          : msg
+      );
     } finally {
       setApprovingId(null);
     }
@@ -288,15 +297,41 @@ export default function AdminUsers() {
   function openBulkConfirm(action) { setBulkAction(action); setBulkRejectReason(''); setShowBulkConfirm(true); }
 
   async function confirmBulkAction() {
+    const actionIds = Array.from(selected);
     setBulkWorking(true);
     setShowBulkConfirm(false);
     try {
-      const result = await adminApi.bulkReviewUsers(bulkAction, Array.from(selected), bulkRejectReason);
+      const result = await adminApi.bulkReviewUsers(bulkAction, actionIds, bulkRejectReason);
       setBulkResult(result);
       setSelected(new Set());
-      await load();
+
+      // Optimistic update — apply changes immediately so the list reflects the
+      // result without waiting for a full reload from the server.
+      const processedIds = new Set([
+        ...(result.approved || []).map(u => u.id),
+        ...(result.rejected || []).map(u => u.id),
+      ]);
+      if (bulkAction === 'approve') {
+        setUsers(prev => prev.map(u =>
+          processedIds.has(u.id)
+            ? { ...u, isActive: true, pendingApproval: false }
+            : u
+        ));
+      } else {
+        setUsers(prev => prev.filter(u => !processedIds.has(u.id)));
+      }
+
+      // Sync in background to catch any server-side partial failures
+      load();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Bulk action failed');
+      const msg = err.response?.data?.error || 'Bulk action failed';
+      // "already active" means the user clicked Approve twice — show a clear message
+      toast.error(
+        msg.toLowerCase().includes('already active')
+          ? 'These users are already approved. Refresh the page to see the latest state.'
+          : msg
+      );
+      load();
     } finally {
       setBulkWorking(false);
     }
