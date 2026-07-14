@@ -368,16 +368,21 @@ export async function submitInventory(req, res, next) {
       const batchDate = b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
       const { sendSubmissionEmail, sendManagerSubmissionConfirmation } = await import('../services/emailService.js');
 
-      // 1. Notify all admins
-      console.log(`[submit] Notifying ${admins.length} admin(s) of submission from ${req.user.store?.storeName}`);
+      // 1. Notify all admins — fall back to ADMIN_EMAIL env var if no admin has email in DB
+      let adminList = admins;
+      if (adminList.length === 0 && process.env.ADMIN_EMAIL) {
+        adminList = [{ email: process.env.ADMIN_EMAIL, name: 'Administrator' }];
+        console.log('[submit] No DB admins with email — falling back to ADMIN_EMAIL env var');
+      }
+      console.log(`[submit] Notifying ${adminList.length} admin(s) of submission from ${req.user.store?.storeName}`);
       const adminResults = await Promise.allSettled(
-        admins.filter(a => req.user.store).map(admin =>
+        adminList.filter(() => req.user.store).map(admin =>
           sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount })
         )
       );
       const adminFailed = adminResults.filter(r => r.status === 'rejected');
       if (adminFailed.length) console.error('[submit] Admin notification error:', adminFailed[0].reason?.message);
-      else console.log(`[submit] Admin notification sent to ${admins.length} admin(s)`);
+      else console.log(`[submit] Admin notification sent to ${adminList.length} admin(s)`);
 
       // 2. Confirm to the submitting store manager
       if (req.user.email && req.user.store) {

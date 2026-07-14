@@ -2231,21 +2231,30 @@ export async function sendBatchReminders(req, res, next) {
         message: 'No deadline set for this batch. Set a submission deadline before sending reminders.',
       });
     }
-    const { sendDeadlineReminderEmail } = await import('../services/emailService.js');
-    const emailResult = await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline: batch.submissionDeadline });
 
-    await createAuditLog({
+    let emailResult = { configured: false, sent: 0, failed: 0 };
+    try {
+      const { sendDeadlineReminderEmail } = await import('../services/emailService.js');
+      emailResult = await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline: batch.submissionDeadline });
+    } catch (emailErr) {
+      console.error('[batches] Email service error:', emailErr.message);
+      emailResult = { configured: true, sent: 0, failed: managers.length };
+    }
+
+    createAuditLog({
       userId: req.user.id, action: 'SEND_BATCH_REMINDERS',
       entityType: 'UPLOAD_BATCH', entityId: batchId,
       metadata: { managerCount: managers.length, pendingStores: storeIds.length, emailsSent: emailResult.sent, smtpConfigured: emailResult.configured },
-    });
+    }).catch(() => {});
 
     const managersWithEmail = managers.length;
     let message;
     if (!emailResult.configured) {
       message = `${storeIds.length} store(s) pending, but SMTP is not configured — no emails sent. Set SMTP_HOST, SMTP_USER, and SMTP_PASS to enable email.`;
     } else if (managersWithEmail === 0) {
-      message = `${storeIds.length} store(s) still pending but no email addresses on file. Add emails in User Management.`;
+      message = `${storeIds.length} store(s) still pending but no manager email addresses on file. Go to Users → Edit each store manager → add their email.`;
+    } else if (emailResult.sent === 0 && emailResult.failed > 0) {
+      message = `SMTP delivery failed for all ${emailResult.failed} manager(s). Check Render logs for the SMTP error detail.`;
     } else {
       const failedPart = emailResult.failed > 0 ? ` (${emailResult.failed} failed to deliver)` : '';
       message = `Email reminder sent to ${emailResult.sent} store manager(s)${failedPart} (${storeIds.length} store(s) pending).`;
