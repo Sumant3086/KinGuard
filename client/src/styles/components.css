@@ -905,18 +905,22 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 /* Store text - very dark body, vibrant crimson labels */
 .store-shell h2,
 .store-shell h3 {
-  color: #0f0503 !important;
+  color: #7f1d1d !important;
+  -webkit-text-fill-color: #7f1d1d !important;
+  background: none !important;
   text-shadow: none;
   letter-spacing: -0.4px;
   font-weight: 800;
 }
 .store-shell .page-header h2 {
-  color: #0f0503 !important;
+  color: #7f1d1d !important;
+  -webkit-text-fill-color: #7f1d1d !important;
+  background: none !important;
   text-shadow: none;
   font-weight: 900;
 }
 .store-shell .page-header p {
-  color: #b91c1c !important;
+  color: #dc2626 !important;
   text-shadow: none;
   font-weight: 700;
 }
@@ -929,17 +933,8 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 600;
 }
 
-/* Store tables - warm amber visibility */
-.store-shell table thead {
-  background: linear-gradient(135deg, rgba(255,240,190,0.94) 0%, rgba(255,236,175,0.92) 100%) !important;
-  border-bottom: 2px solid rgba(220,38,38,0.32) !important;
-}
-.store-shell table thead th {
-  color: #b91c1c !important;
-  font-weight: 900 !important;
-  text-shadow: none;
-  letter-spacing: 1.1px;
-}
+/* Store tables — let inv-table keep its own dark-red thead + white text;
+   only style tbody rows here. */
 .store-shell table tbody tr {
   border-bottom: 1px solid rgba(180,100,20,0.16) !important;
 }
@@ -1075,15 +1070,16 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     inset 0 1px 0 rgba(255, 255, 255, 1) !important;
 }
 
-/* ─── Store Headings - Bold & Colorful ────────────────────────────── */
+/* ─── Store Headings - Deep Wine + Vibrant Crimson ─────────────────── */
 .store-shell .page-header h2,
 .store-shell .page-header-text h2 {
   font-size: 28px !important;
   font-weight: 900 !important;
-  background: linear-gradient(135deg, #b91c1c 0%, #ef4444 50%, #b91c1c 100%);
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
+  color: #7f1d1d !important;
+  -webkit-text-fill-color: #7f1d1d !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
   letter-spacing: -0.6px;
   text-shadow: none !important;
   margin-bottom: 8px;
@@ -1091,7 +1087,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell .page-header p,
 .store-shell .page-header-text p {
-  color: #b91c1c !important;
+  color: #dc2626 !important;
   font-size: 14px !important;
   font-weight: 700 !important;
   text-shadow: none !important;
@@ -1102,10 +1098,11 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .card h3 {
   font-size: 19px !important;
   font-weight: 800 !important;
-  background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
+  color: #991b1b !important;
+  -webkit-text-fill-color: #991b1b !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
   letter-spacing: -0.4px;
   margin-bottom: 12px;
 }
@@ -1117,20 +1114,21 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 900 !important;
   letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: #ef4444 !important;
+  color: #dc2626 !important;
+  -webkit-text-fill-color: #dc2626 !important;
+  background: none !important;
   text-shadow: none !important;
   margin-bottom: 8px;
 }
 
 .store-shell .kpi-value,
 .store-shell .metric-value {
-  font-size: 38px !important;
+  font-size: 42px !important;
   font-weight: 900 !important;
   letter-spacing: -2px;
-  background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
+  color: #7f1d1d !important;
+  -webkit-text-fill-color: #7f1d1d !important;
+  background: none !important;
   text-shadow: none !important;
   margin-bottom: 6px;
 }
@@ -1188,22 +1186,14 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   overflow: hidden;
 }
 
-.store-shell table thead {
-  background: linear-gradient(135deg,
-    rgba(255, 240, 190, 0.94) 0%,
-    rgba(255, 236, 175, 0.92) 100%) !important;
-  border-bottom: 3px solid rgba(220, 38, 38, 0.32) !important;
-}
-
+/* inv-table handles its own thead background + white text — don't override */
 .store-shell table thead th {
-  color: #b91c1c !important;
   font-weight: 900 !important;
   font-size: 11px !important;
   letter-spacing: 1.3px;
   text-transform: uppercase;
   padding: 14px 18px !important;
   text-shadow: none !important;
-  border-right: 1px solid rgba(220, 38, 38, 0.12) !important;
 }
 
 .store-shell table thead th:last-child {
@@ -1462,21 +1452,47 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   color: #be123c !important;
 }
 
-/* Store stat card variants */
-.store-shell .stat-card.info h4    { color: #1d4ed8 !important; }
-.store-shell .stat-card.warning h4  { color: #d97706 !important; }
-.store-shell .stat-card.success h4  { color: #15803d !important; }
-.store-shell .stat-card.danger h4   { color: #ef4444 !important; }
-.store-shell .stat-card.accent h4   { color: #7c3aed !important; }
+/* Store stat card variants — vibrant colored borders + matching values */
+.store-shell .stat-card.info    { border-left: 5px solid #1d4ed8 !important; }
+.store-shell .stat-card.warning { border-left: 5px solid #d97706 !important; }
+.store-shell .stat-card.success { border-left: 5px solid #15803d !important; }
+.store-shell .stat-card.danger  { border-left: 5px solid #ef4444 !important; }
+.store-shell .stat-card.accent  { border-left: 5px solid #7c3aed !important; }
+
+.store-shell .stat-card.info h4    { color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8 !important; }
+.store-shell .stat-card.warning h4 { color: #d97706 !important; -webkit-text-fill-color: #d97706 !important; }
+.store-shell .stat-card.success h4 { color: #15803d !important; -webkit-text-fill-color: #15803d !important; }
+.store-shell .stat-card.danger h4  { color: #ef4444 !important; -webkit-text-fill-color: #ef4444 !important; }
+.store-shell .stat-card.accent h4  { color: #7c3aed !important; -webkit-text-fill-color: #7c3aed !important; }
+
+/* Matched card (no variant) — teal-green */
+.store-shell .stat-card:not(.info):not(.warning):not(.success):not(.danger):not(.accent) {
+  border-left: 5px solid #059669 !important;
+}
+.store-shell .stat-card:not(.info):not(.warning):not(.success):not(.danger):not(.accent) h4 {
+  color: #059669 !important;
+  -webkit-text-fill-color: #059669 !important;
+}
+
+/* Values: match card's variant color */
+.store-shell .stat-card.info    .value { color: #1d4ed8 !important; }
+.store-shell .stat-card.warning .value { color: #d97706 !important; }
+.store-shell .stat-card.success .value { color: #15803d !important; }
+.store-shell .stat-card.danger  .value { color: #ef4444 !important; }
+.store-shell .stat-card.accent  .value { color: #7c3aed !important; }
+.store-shell .stat-card:not(.info):not(.warning):not(.success):not(.danger):not(.accent) .value {
+  color: #059669 !important;
+}
 
 .store-shell .stat-card .value {
-  color: #0f0503 !important;
+  font-size: 42px !important;
   font-weight: 900 !important;
+  line-height: 1 !important;
 }
 
 .store-shell .stat-card p {
-  color: #991b1b !important;
-  font-weight: 700 !important;
+  color: #3d1a18 !important;
+  font-weight: 600 !important;
 }
 
 /* Ensure skeleton loaders work properly */
@@ -1635,7 +1651,9 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .kpi-label,
 .store-shell .metric-label,
 .store-shell .stat-card h4 {
-  color: #b91c1c;
+  color: #991b1b;
+  -webkit-text-fill-color: #991b1b;
+  background: none;
   font-weight: 800;
   letter-spacing: 1.2px;
 }
@@ -1643,7 +1661,9 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .kpi-value,
 .store-shell .metric-value,
 .store-shell .stat-card .value {
-  color: #0f0503;
+  color: #7f1d1d;
+  -webkit-text-fill-color: #7f1d1d;
+  background: none;
   font-weight: 900;
   text-shadow: none;
 }
@@ -1651,8 +1671,8 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .kpi-sub,
 .store-shell .metric-sub,
 .store-shell .stat-card p {
-  color: #991b1b;
-  font-weight: 700;
+  color: #3d1a18;
+  font-weight: 600;
 }
 
 /* Store labels and general text - vibrant */
