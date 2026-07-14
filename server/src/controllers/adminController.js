@@ -2877,39 +2877,53 @@ export async function bulkReviewUsers(req, res, next) {
     const errors   = [];
 
     if (action === 'approve') {
-      for (let i = 0; i < candidates.length; i++) {
-        const user = candidates[i];
-        try {
+      // Generate all passwords and hash them in parallel — sequential bcrypt at
+      // cost 10 on a slow CPU (free tier) takes ~500ms each, so 40 users = 20s.
+      // Parallel: all 40 hash in ~500ms total.
+      const withPasswords = await Promise.all(
+        candidates.map(async user => {
           const tempPassword = generateTempPassword();
           const passwordHash = await bcrypt.hash(tempPassword, 10);
-          await prisma.user.update({
-            where: { id: user.id, pendingApproval: true, isActive: false },
-            data:  { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: true },
-          });
-          createAuditLog({
-            userId: req.user.id, action: 'APPROVE_USER',
-            entityType: 'USER', entityId: user.id,
-            metadata: { employeeId: user.employeeId, name: user.name, bulk: true },
-          }).catch(() => {});
-          approved.push({ id: user.id, employeeId: user.employeeId, name: user.name, tempPassword, store: user.store });
-        } catch (e) {
-          errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
-        }
-      }
+          return { user, tempPassword, passwordHash };
+        })
+      );
+
+      // Update all users in parallel
+      await Promise.all(
+        withPasswords.map(async ({ user, tempPassword, passwordHash }) => {
+          try {
+            await prisma.user.update({
+              where: { id: user.id, pendingApproval: true, isActive: false },
+              data:  { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: true },
+            });
+            createAuditLog({
+              userId: req.user.id, action: 'APPROVE_USER',
+              entityType: 'USER', entityId: user.id,
+              metadata: { employeeId: user.employeeId, name: user.name, bulk: true },
+            }).catch(() => {});
+            approved.push({ id: user.id, employeeId: user.employeeId, name: user.name, tempPassword, store: user.store });
+          } catch (e) {
+            errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
+          }
+        })
+      );
     } else {
-      for (const user of candidates) {
-        try {
-          await prisma.user.delete({ where: { id: user.id, pendingApproval: true, isActive: false } });
-          await createAuditLog({
-            userId: req.user.id, action: 'REJECT_USER',
-            entityType: 'USER', entityId: user.id,
-            metadata: { employeeId: user.employeeId, name: user.name, bulk: true, reason: reason || null },
-          });
-          rejected.push({ id: user.id, employeeId: user.employeeId, name: user.name });
-        } catch (e) {
-          errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
-        }
-      }
+      // Reject: delete all in parallel
+      await Promise.all(
+        candidates.map(async user => {
+          try {
+            await prisma.user.delete({ where: { id: user.id, pendingApproval: true, isActive: false } });
+            createAuditLog({
+              userId: req.user.id, action: 'REJECT_USER',
+              entityType: 'USER', entityId: user.id,
+              metadata: { employeeId: user.employeeId, name: user.name, bulk: true, reason: reason || null },
+            }).catch(() => {});
+            rejected.push({ id: user.id, employeeId: user.employeeId, name: user.name });
+          } catch (e) {
+            errors.push({ id: user.id, employeeId: user.employeeId, error: e.message });
+          }
+        })
+      );
     }
 
     sInvalidate('admin:dashboard');
