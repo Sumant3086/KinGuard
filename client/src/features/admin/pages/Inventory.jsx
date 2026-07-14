@@ -122,14 +122,15 @@ export default function Inventory() {
     setOverrideError('');
     setOverriding(true);
     try {
-      await adminApi.overrideRecord(overrideRecord.id, {
+      const updated = await adminApi.overrideRecord(overrideRecord.id, {
         physicalQuantity:  overrideForm.physicalQuantity !== '' ? parseFloat(overrideForm.physicalQuantity) : null,
         remarks:           overrideForm.remarks || null,
         shrinkageCategory: overrideForm.shrinkageCategory || null,
         status:            overrideForm.status,
       });
+      // Update just this record in local state — no full page refetch needed
+      setRecords(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r));
       setOverrideRecord(null);
-      await fetchInventory(activeFilters, pagination.page);
     } catch (err) {
       setOverrideError(err.response?.data?.error || 'Override failed');
     } finally {
