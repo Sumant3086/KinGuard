@@ -64,3 +64,67 @@
     animation-delay: 0s !important;
   }
 }
+
+/* ─── Text selection (loads last — guaranteed to win) ─────────────── */
+::selection      { background: #dc2626 !important; color: #ffffff !important; }
+::-moz-selection { background: #dc2626 !important; color: #ffffff !important; }
+
+/* ─── Page heading colours — vibrant red (loads last — guaranteed win) */
+.hl-shell .page-header h2,
+.hl-shell .page-header-text h2,
+.page-header h2,
+.page-header-text h2 {
+  color: #dc2626 !important;
+  text-shadow: 0 1px 3px rgba(255,255,255,0.9) !important;
+}
+
+.hl-shell .page-header p,
+.hl-shell .page-header-text p,
+.page-header p,
+.page-header-text p {
+  color: #7f1d1d !important;
+  text-shadow: 0 1px 1px rgba(255,255,255,0.7) !important;
+}
+
+/* Store shell headings — also vibrant */
+.store-shell .page-header h2,
+.store-shell .page-header-text h2 {
+  color: #dc2626 !important;
+  text-shadow: 0 1px 3px rgba(255,255,255,0.9) !important;
+}
+
+/* ─── Admin banners — solid background so image doesn't bleed through */
+.hl-shell .banner,
+.hl-shell .banner-warn {
+  background: rgba(254,243,199,0.97) !important;
+  border-color: rgba(217,119,6,0.40) !important;
+  border-left-color: #d97706 !important;
+  color: #78350f !important;
+}
+
+.hl-shell .banner-over {
+  background: rgba(254,226,226,0.97) !important;
+  border-color: rgba(220,38,38,0.35) !important;
+  border-left-color: #dc2626 !important;
+  color: #991b1b !important;
+}
+
+.hl-shell .banner strong,
+.hl-shell .banner-warn strong {
+  color: #92400e !important;
+  font-weight: 800 !important;
+}
+
+/* Empty state headings — always clearly readable */
+.empty-state-title,
+.empty-state h3,
+.empty-state h4 {
+  color: #1c0a08 !important;
+  font-weight: 800 !important;
+}
+
+.empty-state-description,
+.empty-state p {
+  color: #3d1a18 !important;
+  font-weight: 600 !important;
+}
