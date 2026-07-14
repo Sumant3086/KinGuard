@@ -172,7 +172,6 @@
   color: rgba(255,255,255,0.85);
   cursor: pointer; flex-shrink: 0;
   transition: background var(--fast);
-  touch-action: manipulation;
 }
 .hl-hamburger:hover { background:rgba(255,255,255,0.24); color:#fff; }
 
@@ -197,7 +196,7 @@
   color: rgba(255,255,255,0.80);
   font-size: 13.5px; font-weight: 500;
   text-decoration: none; transition: background var(--fast);
-  min-height: 44px; touch-action: manipulation;
+  min-height: 44px;
 }
 .hl-mob-link:hover  { background:rgba(255,255,255,0.15); color:#fff; }
 .hl-mob-link.active { background:rgba(255,255,255,0.22); color:#fff; font-weight:700; }
@@ -209,7 +208,7 @@
   background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.18);
   color: rgba(255,255,255,0.85); font-size: 13px; font-weight: 600;
   cursor: pointer; font-family: inherit; transition: background var(--fast);
-  min-height: 44px; touch-action: manipulation;
+  min-height: 44px;
 }
 .hl-mob-logout:hover { background:rgba(0,0,0,0.25); color:#fff; }
 
