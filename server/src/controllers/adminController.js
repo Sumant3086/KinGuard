@@ -815,10 +815,16 @@ export async function uploadInventory(req, res, next) {
       }),
     ]).then(async ([notifiable]) => {
       const withEmail = notifiable.filter(m => m.email);
-      if (!withEmail.length) return;
+      if (!withEmail.length) {
+        console.log('[upload] No managers with email addresses — skipping notifications');
+        return;
+      }
+      console.log(`[upload] Sending new-cycle emails to ${withEmail.length} manager(s)`);
       const { sendNewCycleEmail } = await import('../services/emailService.js');
-      sendNewCycleEmail({ managers: withEmail, inventoryDate, deadline: submissionDeadline || null }).catch(() => {});
-    }).catch(() => {});
+      sendNewCycleEmail({ managers: withEmail, inventoryDate, deadline: submissionDeadline || null })
+        .then(r => console.log(`[upload] Email result: sent=${r.sent}, failed=${r.failed}`))
+        .catch(e => console.error('[upload] Email send error:', e.message));
+    }).catch(e => console.error('[upload] Manager query failed:', e.message));
   } catch (error) {
     next(error);
   }

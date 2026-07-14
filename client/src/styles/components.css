@@ -873,7 +873,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 /* ═══════════════════════════════════════════════════════════════════
    STORE MANAGER SPECIFIC STYLES
-   Strong visibility with teal accents - Professional & Clear
+   Strong visibility with warm brand-red accents - Professional & Clear
    ═══════════════════════════════════════════════════════════════════ */
 
 /* Store cards - very opaque for perfect readability */
@@ -881,23 +881,23 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   background: rgba(254,254,254,0.97) !important;
   backdrop-filter: blur(20px) saturate(130%);
   -webkit-backdrop-filter: blur(20px) saturate(130%);
-  border: 1.5px solid rgba(45,140,130,0.28);
+  border: 1.5px solid rgba(220,38,38,0.18);
   border-radius: 16px;
-  box-shadow: 
-    0 4px 20px rgba(30,100,90,0.14),
+  box-shadow:
+    0 4px 20px rgba(185,28,28,0.10),
     0 1px 6px rgba(0,0,0,0.08),
     inset 0 1px 0 rgba(255,255,255,0.90);
 }
 .store-shell .card::before {
-  background: linear-gradient(90deg, transparent 0%, rgba(45,140,130,0.30) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(220,38,38,0.18) 50%, transparent 100%);
   height: 2px;
 }
 .store-shell .card:hover {
   background: rgba(255,255,255,0.99) !important;
-  border-color: rgba(45,140,130,0.40);
+  border-color: rgba(220,38,38,0.30);
   transform: translateY(-3px) scale(1.005);
-  box-shadow: 
-    0 8px 32px rgba(30,100,90,0.18),
+  box-shadow:
+    0 8px 32px rgba(185,28,28,0.14),
     0 3px 10px rgba(0,0,0,0.10),
     inset 0 1px 0 rgba(255,255,255,1);
 }
@@ -905,53 +905,53 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 /* Store text - very strong contrast */
 .store-shell h2,
 .store-shell h3 {
-  color: #0a3d3a !important;
+  color: #1c0a08 !important;
   text-shadow: none;
   letter-spacing: -0.4px;
   font-weight: 800;
 }
 .store-shell .page-header h2 {
-  color: #082d2b !important;
+  color: #1a0806 !important;
   text-shadow: none;
   font-weight: 900;
 }
 .store-shell .page-header p {
-  color: #1a4d48 !important;
+  color: #7f1d1d !important;
   text-shadow: none;
   font-weight: 600;
 }
 .store-shell .card p {
-  color: #1a4540 !important;
+  color: #3d1a18 !important;
   font-weight: 500;
 }
 .store-shell .card span:not(.badge):not(.autosave-dot) {
-  color: #1a4540 !important;
+  color: #3d1a18 !important;
   font-weight: 500;
 }
 
 /* Store tables - very clear visibility */
 .store-shell table thead {
   background: rgba(254,254,254,0.97) !important;
-  border-bottom: 2px solid rgba(45,140,130,0.35) !important;
+  border-bottom: 2px solid rgba(220,38,38,0.22) !important;
 }
 .store-shell table thead th {
-  color: #0a3d3a !important;
+  color: #1c0a08 !important;
   font-weight: 900 !important;
   text-shadow: none;
   letter-spacing: 1.1px;
 }
 .store-shell table tbody tr {
-  border-bottom: 1px solid rgba(45,140,130,0.12) !important;
+  border-bottom: 1px solid rgba(220,38,38,0.08) !important;
 }
 .store-shell table tbody tr:hover {
-  background: rgba(247,252,251,0.60) !important;
+  background: rgba(255,248,248,0.60) !important;
 }
 .store-shell table tbody td {
-  color: #0a3d3a !important;
+  color: #1c0a08 !important;
   font-weight: 500;
 }
 
-/* Store buttons - keep the red theme but add teal variant */
+/* Store buttons - brand red theme */
 .store-shell .btn-primary:not(.btn-danger) {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   color: #fff;
@@ -979,21 +979,21 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   animation: fade-in-up 0.25s ease both;
 }
 
-/* ─── Store Cards - Colorful with Glass Morphism ──────────────────── */
+/* ─── Store Cards - Premium Glass Morphism ─────────────────────────── */
 .store-shell .card,
 .store-shell .page-header,
 .store-shell .page-header-root {
-  background: linear-gradient(135deg, 
-    rgba(255, 255, 255, 0.95) 0%, 
-    rgba(250, 252, 255, 0.93) 100%) !important;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 252, 252, 0.93) 100%) !important;
   backdrop-filter: blur(24px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
-  border: 2px solid rgba(255, 255, 255, 0.60) !important;
+  border: 2px solid rgba(220, 38, 38, 0.18) !important;
   border-radius: 20px !important;
-  box-shadow: 
-    0 8px 32px rgba(59, 130, 246, 0.12),
-    0 4px 16px rgba(16, 185, 129, 0.08),
-    0 1px 4px rgba(0, 0, 0, 0.08),
+  box-shadow:
+    0 8px 32px rgba(185, 28, 28, 0.10),
+    0 4px 16px rgba(0, 0, 0, 0.07),
+    0 1px 4px rgba(0, 0, 0, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
   position: relative;
   overflow: hidden;
@@ -1012,9 +1012,9 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(16, 185, 129, 0.70) 20%,
-    rgba(59, 130, 246, 0.70) 50%,
-    rgba(16, 185, 129, 0.70) 80%,
+    rgba(220, 38, 38, 0.60) 30%,
+    rgba(185, 28, 28, 0.80) 50%,
+    rgba(220, 38, 38, 0.60) 70%,
     transparent 100%
   );
   border-radius: 20px 20px 0 0;
@@ -1022,27 +1022,27 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell .card:hover {
   transform: translateY(-4px) scale(1.005);
-  border-color: rgba(16, 185, 129, 0.50) !important;
-  box-shadow: 
-    0 12px 48px rgba(16, 185, 129, 0.18),
-    0 6px 24px rgba(59, 130, 246, 0.12),
-    0 2px 8px rgba(0, 0, 0, 0.10),
+  border-color: rgba(220, 38, 38, 0.30) !important;
+  box-shadow:
+    0 12px 48px rgba(185, 28, 28, 0.14),
+    0 6px 24px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 1) !important;
 }
 
-/* ─── KPI Cards - Vibrant Market Colors ───────────────────────────── */
+/* ─── KPI Cards - Premium Warm Theme ──────────────────────────────── */
 .store-shell .kpi-card,
 .store-shell .metric-card,
 .store-shell .stat-card {
   background: linear-gradient(135deg,
     rgba(255, 255, 255, 0.96) 0%,
-    rgba(248, 250, 252, 0.94) 100%) !important;
+    rgba(255, 252, 252, 0.94) 100%) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 2px solid rgba(255, 255, 255, 0.55) !important;
+  border: 2px solid rgba(220, 38, 38, 0.18) !important;
   border-radius: 18px !important;
-  box-shadow: 
-    0 6px 24px rgba(16, 185, 129, 0.10),
+  box-shadow:
+    0 6px 24px rgba(185, 28, 28, 0.08),
     0 2px 8px rgba(0, 0, 0, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1058,16 +1058,16 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   top: 0;
   bottom: 0;
   width: 5px;
-  background: linear-gradient(180deg, #10b981 0%, #0891b2 100%);
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
   border-radius: 18px 0 0 18px;
 }
 
 .store-shell .kpi-card:hover,
 .store-shell .metric-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(16, 185, 129, 0.45) !important;
-  box-shadow: 
-    0 10px 40px rgba(16, 185, 129, 0.16),
+  border-color: rgba(220, 38, 38, 0.36) !important;
+  box-shadow:
+    0 10px 40px rgba(185, 28, 28, 0.14),
     0 4px 12px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 1) !important;
 }
@@ -1077,7 +1077,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .page-header-text h2 {
   font-size: 28px !important;
   font-weight: 900 !important;
-  background: linear-gradient(135deg, #0f766e 0%, #0891b2 50%, #0f766e 100%);
+  background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #991b1b 100%);
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
@@ -1099,7 +1099,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .card h3 {
   font-size: 19px !important;
   font-weight: 800 !important;
-  background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+  background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
@@ -1114,7 +1114,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 900 !important;
   letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: #0891b2 !important;
+  color: #dc2626 !important;
   text-shadow: none !important;
   margin-bottom: 8px;
 }
@@ -1124,7 +1124,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-size: 38px !important;
   font-weight: 900 !important;
   letter-spacing: -2px;
-  background: linear-gradient(135deg, #065f46 0%, #0891b2 100%);
+  background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
@@ -1145,8 +1145,8 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   width: 52px !important;
   height: 52px !important;
   border-radius: 14px !important;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(8, 145, 178, 0.12) 100%) !important;
-  border: 2px solid rgba(16, 185, 129, 0.25) !important;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.10) 0%, rgba(185, 28, 28, 0.10) 100%) !important;
+  border: 2px solid rgba(220, 38, 38, 0.22) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1157,15 +1157,15 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .kpi-icon svg {
   width: 26px !important;
   height: 26px !important;
-  color: #0d9488 !important;
-  filter: drop-shadow(0 2px 4px rgba(13, 148, 136, 0.20));
+  color: #dc2626 !important;
+  filter: drop-shadow(0 2px 4px rgba(220, 38, 38, 0.22));
 }
 
 .store-shell .kpi-card:hover .kpi-icon {
   transform: scale(1.10) rotate(5deg);
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.20) 0%, rgba(8, 145, 178, 0.20) 100%) !important;
-  border-color: rgba(16, 185, 129, 0.40) !important;
-  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.25);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.18) 0%, rgba(185, 28, 28, 0.18) 100%) !important;
+  border-color: rgba(220, 38, 38, 0.38) !important;
+  box-shadow: 0 6px 20px rgba(185, 28, 28, 0.22);
 }
 
 /* ─── Tables - Fresh & Clean ──────────────────────────────────────── */
@@ -1178,8 +1178,8 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
   border: 2px solid rgba(255, 255, 255, 0.60) !important;
   border-radius: 20px !important;
-  box-shadow: 
-    0 8px 32px rgba(16, 185, 129, 0.12),
+  box-shadow:
+    0 8px 32px rgba(185, 28, 28, 0.10),
     0 4px 16px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
   overflow: hidden;
@@ -1187,20 +1187,20 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell table thead {
   background: linear-gradient(135deg,
-    rgba(240, 253, 250, 0.98) 0%,
-    rgba(236, 254, 255, 0.96) 100%) !important;
-  border-bottom: 3px solid rgba(16, 185, 129, 0.30) !important;
+    rgba(255, 252, 252, 0.98) 0%,
+    rgba(254, 248, 248, 0.96) 100%) !important;
+  border-bottom: 3px solid rgba(220, 38, 38, 0.22) !important;
 }
 
 .store-shell table thead th {
-  color: #065f46 !important;
+  color: #7f1d1d !important;
   font-weight: 900 !important;
   font-size: 11px !important;
   letter-spacing: 1.3px;
   text-transform: uppercase;
   padding: 14px 18px !important;
   text-shadow: none !important;
-  border-right: 1px solid rgba(16, 185, 129, 0.10) !important;
+  border-right: 1px solid rgba(220, 38, 38, 0.08) !important;
 }
 
 .store-shell table thead th:last-child {
@@ -1214,13 +1214,13 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell table tbody tr:hover {
   background: linear-gradient(135deg,
-    rgba(240, 253, 250, 0.70) 0%,
-    rgba(236, 254, 255, 0.65) 100%) !important;
+    rgba(255, 248, 248, 0.70) 0%,
+    rgba(254, 244, 244, 0.65) 100%) !important;
   transform: scale(1.002);
 }
 
 .store-shell table tbody tr:hover td:first-child {
-  box-shadow: inset 4px 0 0 #10b981 !important;
+  box-shadow: inset 4px 0 0 #dc2626 !important;
   padding-left: 14px !important;
 }
 
@@ -1271,10 +1271,10 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .btn-ghost:hover:not(:disabled) {
   background: linear-gradient(135deg,
     rgba(255, 255, 255, 0.98) 0%,
-    rgba(240, 253, 250, 0.95) 100%) !important;
-  border-color: rgba(16, 185, 129, 0.40) !important;
-  color: #0f766e !important;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15) !important;
+    rgba(255, 248, 248, 0.95) 100%) !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  color: #991b1b !important;
+  box-shadow: 0 4px 16px rgba(185, 28, 28, 0.12) !important;
   transform: translateY(-2px);
 }
 
@@ -1344,21 +1344,21 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
 }
 
-/* Store empty state styling - Vibrant & Eye-catching */
+/* Store empty state — warm brand-red to match supermarket background */
 .store-shell .empty-state {
   padding: 64px 36px;
   text-align: center;
   background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.97) 0%,
-    rgba(236, 254, 255, 0.95) 50%,
-    rgba(240, 253, 250, 0.96) 100%) !important;
+    rgba(255, 252, 250, 0.98) 0%,
+    rgba(255, 244, 240, 0.96) 50%,
+    rgba(255, 248, 245, 0.97) 100%) !important;
   backdrop-filter: blur(24px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
-  border: 3px solid rgba(16, 185, 129, 0.35) !important;
+  border: 3px solid rgba(185, 28, 28, 0.28) !important;
   border-radius: 24px !important;
-  box-shadow: 
-    0 12px 48px rgba(16, 185, 129, 0.18),
-    0 6px 24px rgba(59, 130, 246, 0.10),
+  box-shadow:
+    0 12px 48px rgba(185, 28, 28, 0.16),
+    0 6px 24px rgba(185, 28, 28, 0.08),
     0 2px 8px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 1) !important;
   margin: 32px auto;
@@ -1377,9 +1377,9 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(16, 185, 129, 0.70) 20%,
-    rgba(59, 130, 246, 0.70) 50%,
-    rgba(16, 185, 129, 0.70) 80%,
+    rgba(220, 38, 38, 0.70) 20%,
+    rgba(185, 28, 28, 0.90) 50%,
+    rgba(220, 38, 38, 0.70) 80%,
     transparent 100%
   );
   border-radius: 24px 24px 0 0;
@@ -1391,20 +1391,20 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   height: 80px !important;
   margin: 0 auto 24px !important;
   opacity: 1 !important;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(8, 145, 178, 0.12) 100%);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.12) 0%, rgba(185, 28, 28, 0.08) 100%);
   border-radius: 20px;
   display: flex !important;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(16, 185, 129, 0.25);
+  border: 2px solid rgba(185, 28, 28, 0.22);
 }
 
 .store-shell .empty-state-icon svg,
 .store-shell .empty-state-illustration svg {
   width: 40px !important;
   height: 40px !important;
-  color: #0d9488 !important;
-  filter: drop-shadow(0 2px 8px rgba(13, 148, 136, 0.30));
+  color: #dc2626 !important;
+  filter: drop-shadow(0 2px 8px rgba(185, 28, 28, 0.30));
 }
 
 .store-shell .empty-state-title,
@@ -1414,7 +1414,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 900 !important;
   margin-bottom: 14px !important;
   letter-spacing: -0.6px;
-  background: linear-gradient(135deg, #065f46 0%, #0891b2 50%, #065f46 100%);
+  background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #b91c1c 100%);
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
@@ -1423,7 +1423,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell .empty-state-description,
 .store-shell .empty-state p {
-  color: #475569 !important;
+  color: #3d1a18 !important;
   font-size: 16px !important;
   font-weight: 600 !important;
   max-width: 520px;
@@ -1434,13 +1434,13 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 /* Store info-grid items */
 .store-shell .info-item span:not(.info-label) {
-  color: #0f4c4c !important;
+  color: #3d1a18 !important;
   font-weight: 700;
 }
 
 .store-shell .info-item .info-label,
 .store-shell .info-label {
-  color: #2d7570 !important;
+  color: #7f1d1d !important;
   font-weight: 800;
 }
 
@@ -1460,23 +1460,23 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 }
 
 /* Store stat card variants */
-.store-shell .stat-card.info h4 { color: #0891b2 !important; }
-.store-shell .stat-card.warning h4 { color: #d97706 !important; }
-.store-shell .stat-card.success h4 { color: #047857 !important; }
-.store-shell .stat-card.danger h4 { color: #be123c !important; }
-.store-shell .stat-card.accent h4 { color: #7c3aed !important; }
+.store-shell .stat-card.info h4    { color: #1d4ed8 !important; }
+.store-shell .stat-card.warning h4  { color: #d97706 !important; }
+.store-shell .stat-card.success h4  { color: #15803d !important; }
+.store-shell .stat-card.danger h4   { color: #dc2626 !important; }
+.store-shell .stat-card.accent h4   { color: #7c3aed !important; }
 
 .store-shell .stat-card .value {
-  color: #0a3d3d !important;
+  color: #1c0a08 !important;
 }
 
 .store-shell .stat-card p {
-  color: #2d6560 !important;
+  color: #3d1a18 !important;
 }
 
 /* Ensure skeleton loaders work properly */
 .store-shell .skeleton {
-  background: linear-gradient(90deg, rgba(45,140,130,0.08) 0%, rgba(45,140,130,0.15) 50%, rgba(45,140,130,0.08) 100%);
+  background: linear-gradient(90deg, rgba(220,38,38,0.05) 0%, rgba(220,38,38,0.10) 50%, rgba(220,38,38,0.05) 100%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
@@ -1486,33 +1486,33 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   100% { background-position: -200% 0; }
 }
 
-/* Store inputs - fresh cyan background with vibrant teal accent */
+/* Store inputs - warm neutral with brand-red accent */
 .store-shell input:not([type="checkbox"]):not([type="radio"]),
 .store-shell select,
 .store-shell textarea {
   background: rgba(255,255,255,0.96);
-  border: 2px solid rgba(45,140,130,0.32);
+  border: 2px solid rgba(220,38,38,0.20);
   border-radius: 11px;
-  color: #0a3d3a;
+  color: #1c0a08;
   font-weight: 500;
 }
 .store-shell input:hover,
 .store-shell select:hover,
 .store-shell textarea:hover {
-  border-color: rgba(45,140,130,0.50);
+  border-color: rgba(220,38,38,0.36);
   background: rgba(255,255,255,0.99);
-  box-shadow: 0 2px 8px rgba(45,140,130,0.12);
+  box-shadow: 0 2px 8px rgba(185,28,28,0.08);
 }
 .store-shell input:focus,
 .store-shell select:focus,
 .store-shell textarea:focus {
-  border-color: #2d8c82;
-  box-shadow: 0 0 0 4px rgba(45,140,130,0.18), 0 4px 12px rgba(45,140,130,0.14);
+  border-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220,38,38,0.14), 0 4px 12px rgba(185,28,28,0.10);
   background: #ffffff;
 }
 .store-shell input::placeholder,
 .store-shell textarea::placeholder {
-  color: #88bdb5;
+  color: #c4a0a0;
   font-weight: 400;
 }
 
@@ -1534,13 +1534,13 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   box-shadow: 0 6px 20px rgba(220,38,38,0.50);
 }
 
-/* Store banners - vibrant info style with cyan energy */
+/* Store banners - warm brand-red info style */
 .store-shell .banner {
   background: rgba(255,255,255,0.96);
-  border: 2px solid rgba(45,140,130,0.35);
-  border-left: 4px solid #2d8c82;
-  color: #0a3d3a;
-  box-shadow: 0 2px 12px rgba(30,100,90,0.12);
+  border: 2px solid rgba(220,38,38,0.22);
+  border-left: 4px solid #dc2626;
+  color: #1c0a08;
+  box-shadow: 0 2px 12px rgba(185,28,28,0.08);
 }
 .store-shell .lock-banner {
   background: rgba(254,242,242,0.97);
@@ -1558,7 +1558,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 600;
 }
 
-/* Store badges - vibrant teal theme with energetic colors */
+/* Store badges - semantic colors (green = good, red = shortage) */
 .store-shell .badge-matched,
 .store-shell .badge-valid,
 .store-shell .badge-completed {
@@ -1584,32 +1584,32 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   box-shadow: 0 1px 3px rgba(139,92,246,0.12);
 }
 
-/* Store page headers - vibrant teal-cyan gradient with modern appeal */
+/* Store page headers - warm brand-red professional */
 .store-shell .page-header,
 .store-shell .page-header-root {
   background: rgba(255,255,255,0.97);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border: 2px solid rgba(45,140,130,0.35);
+  border: 2px solid rgba(220,38,38,0.22);
   border-radius: 18px;
-  box-shadow: 
-    0 4px 20px rgba(30,100,90,0.14), 
-    0 1px 6px rgba(0,0,0,0.08), 
+  box-shadow:
+    0 4px 20px rgba(185,28,28,0.10),
+    0 1px 6px rgba(0,0,0,0.08),
     inset 0 1px 0 rgba(255,255,255,1);
 }
 
-/* Store KPI and metric cards - fresh cyan with vibrant energy */
+/* Store KPI and metric cards - warm brand-red energy */
 .store-shell .kpi-card,
 .store-shell .metric-card,
 .store-shell .stat-card {
   background: rgba(255,255,255,0.97);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
-  border: 2px solid rgba(45,140,130,0.35);
+  border: 2px solid rgba(220,38,38,0.20);
   border-radius: 15px;
-  box-shadow: 
-    0 4px 20px rgba(30,100,90,0.14), 
-    0 1px 6px rgba(0,0,0,0.08), 
+  box-shadow:
+    0 4px 20px rgba(185,28,28,0.10),
+    0 1px 6px rgba(0,0,0,0.08),
     inset 0 1px 0 rgba(255,255,255,0.95);
 }
 
@@ -1617,17 +1617,17 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .metric-card:hover,
 .store-shell .stat-card:hover {
   transform: translateY(-4px) scale(1.01);
-  border-color: rgba(45,140,130,0.50);
-  box-shadow: 
-    0 8px 32px rgba(30,100,90,0.20), 
-    0 3px 10px rgba(0,0,0,0.10), 
+  border-color: rgba(220,38,38,0.36);
+  box-shadow:
+    0 8px 32px rgba(185,28,28,0.16),
+    0 3px 10px rgba(0,0,0,0.10),
     inset 0 1px 0 rgba(255,255,255,1);
 }
 
 .store-shell .kpi-label,
 .store-shell .metric-label,
 .store-shell .stat-card h4 {
-  color: #1a4d48;
+  color: #7f1d1d;
   font-weight: 800;
   letter-spacing: 1.2px;
 }
@@ -1635,7 +1635,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .kpi-value,
 .store-shell .metric-value,
 .store-shell .stat-card .value {
-  color: #0a3d3a;
+  color: #1c0a08;
   font-weight: 900;
   text-shadow: none;
 }
@@ -1643,39 +1643,39 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell .kpi-sub,
 .store-shell .metric-sub,
 .store-shell .stat-card p {
-  color: #1a4d48;
+  color: #7f1d1d;
   font-weight: 600;
 }
 
 /* Store labels and general text - strong visibility */
 .store-shell label {
-  color: #1a4d48 !important;
+  color: #7f1d1d !important;
   font-weight: 700;
 }
 
 .store-shell .form-group label {
-  color: #2d6e68 !important;
+  color: #991b1b !important;
   font-weight: 700;
 }
 
-/* Store filter cards - fresh cyan background */
+/* Store filter cards - warm neutral background */
 .store-shell .filter-card {
-  background: linear-gradient(135deg, rgba(250,253,252,0.94) 0%, rgba(244,250,249,0.92) 100%);
-  border: 2px solid rgba(45,140,130,0.30);
+  background: linear-gradient(135deg, rgba(255,252,252,0.94) 0%, rgba(254,248,248,0.92) 100%);
+  border: 2px solid rgba(220,38,38,0.18);
   border-radius: 13px;
-  box-shadow: 0 4px 18px rgba(13,148,136,0.14);
+  box-shadow: 0 4px 18px rgba(185,28,28,0.08);
 }
 
-/* Store table container - modern teal styling */
+/* Store table container - warm premium styling */
 .store-shell .table-wrap,
 .store-shell .table-container {
-  background: linear-gradient(135deg, rgba(244,254,254,0.97) 0%, rgba(250,253,252,0.96) 100%);
+  background: linear-gradient(135deg, rgba(255,252,252,0.97) 0%, rgba(254,250,250,0.96) 100%);
   backdrop-filter: blur(24px) saturate(170%);
   -webkit-backdrop-filter: blur(24px) saturate(170%);
-  border: 2px solid rgba(45,140,130,0.32);
+  border: 2px solid rgba(220,38,38,0.18);
   border-radius: 15px;
-  box-shadow: 
-    0 8px 32px rgba(13,148,136,0.18), 
+  box-shadow:
+    0 8px 32px rgba(185,28,28,0.12),
     0 3px 10px rgba(0,0,0,0.08),
     inset 0 2px 0 rgba(255,255,255,1);
 }

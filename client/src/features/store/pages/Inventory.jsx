@@ -508,9 +508,11 @@ export default function StoreInventory() {
               <span style={{ fontSize: 11, color: 'var(--t3)' }}>Once submitted, your administrator will be notified.</span>
             </div>
           )}
-          <button onClick={handleDownload} className="btn btn-ghost btn-sm">
-            Download Report
-          </button>
+          {batches.length > 0 && (
+            <button onClick={handleDownload} className="btn btn-ghost btn-sm">
+              Download Report
+            </button>
+          )}
         </div>
       </div>
 
