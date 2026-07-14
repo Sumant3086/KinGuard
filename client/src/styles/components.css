@@ -2052,7 +2052,8 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     align-items: flex-start !important;
     gap: 12px !important;
   }
-  .store-shell .page-header .actions { width: 100% !important; justify-content: flex-start !important; }
+  .store-shell .page-header .actions,
+  .store-shell .page-header .page-actions { width: 100% !important; justify-content: flex-start !important; }
   .store-shell .page-header h2,
   .store-shell .page-header-text h2  { font-size: 17px !important; }
   .store-shell .page-header p,
@@ -2147,7 +2148,6 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding-bottom: 2px;
   }
   .tab-bar::-webkit-scrollbar { display: none; }
   .tab-btn { flex-shrink: 0; }
@@ -2175,7 +2175,6 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 /* ── Admin content: kpi-grid min on tiny phones ───────────────────── */
 @media (max-width: 380px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
-  .hl-content { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 }
 
 /* ── Store shell: mobile card theming ─────────────────────────────── */
@@ -2212,10 +2211,10 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   .page-header-root {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
   }
+  /* 18px beats the earlier 17px rule via cascade (same query, later position) */
   .page-header h2,
-  .page-header-text h2 { font-size: 18px !important; }
+  .page-header-text h2 { font-size: 18px; }
 }
 
 /* ── Store dashboard action card: wrap on mobile ─────────────────── */
