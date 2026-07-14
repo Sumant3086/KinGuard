@@ -1,6 +1,6 @@
-# Security
+﻿# Security
 
-> Security model, threat controls, and operational checklist for KinMarché.
+> Security model, threat controls, and operational checklist for KinMarchÃ©.
 
 ---
 
@@ -24,15 +24,15 @@
 
 ## Security Model
 
-KinMarché is an internal business application accessed by two trust levels:
+KinMarchÃ© is an internal business application accessed by two trust levels:
 
 | Role | Trust level | What they can access |
 |------|------------|---------------------|
 | `ADMIN` | High | All stores, all cycles, all data, system configuration |
-| `STORE_MANAGER` | Medium | Their single assigned store only — enforced at the database query level |
+| `STORE_MANAGER` | Medium | Their single assigned store only â€” enforced at the database query level |
 | Unauthenticated | None | Only the login endpoint |
 
-Every security control is applied server-side. The frontend is treated as untrusted — it can display data but never compute authoritative figures or bypass access rules.
+Every security control is applied server-side. The frontend is treated as untrusted â€” it can display data but never compute authoritative figures or bypass access rules.
 
 ---
 
@@ -56,8 +56,8 @@ Tokens expire after **8 hours** by default (configurable via `JWT_EXPIRES_IN`).
 
 **On every request:**
 1. The `Authorization: Bearer <token>` header is verified with `jsonwebtoken.verify()`
-2. Any JWT error (invalid, expired, tampered) immediately returns `401` — no fallthrough
-3. The `userId` from the payload is looked up in the database — if the user is inactive or deleted, the request is rejected with `401`
+2. Any JWT error (invalid, expired, tampered) immediately returns `401` â€” no fallthrough
+3. The `userId` from the payload is looked up in the database â€” if the user is inactive or deleted, the request is rejected with `401`
 
 ### Password Hashing
 
@@ -76,9 +76,9 @@ On the first request after server restart, Prisma may not have re-established it
 Applied via Express middleware chains in `adminRoutes.js` and `storeRoutes.js`:
 
 ```
-/api/auth/*      →  (no guard)
-/api/admin/*     →  authenticate() → requireRole('ADMIN')
-/api/store/*     →  authenticate() → requireStoreManager()
+/api/auth/*      â†’  (no guard)
+/api/admin/*     â†’  authenticate() â†’ requireRole('ADMIN')
+/api/store/*     â†’  authenticate() â†’ requireStoreManager()
                     (role = STORE_MANAGER AND storeId IS NOT NULL)
 ```
 
@@ -86,7 +86,7 @@ If the middleware chain fails at any point, the request is rejected before reach
 
 ### Frontend Role Separation
 
-React's `PrivateRoute` component redirects users who are authenticated but have the wrong role. However, this is a UI convenience — the backend enforces role restrictions independently and would reject cross-role API calls even if the frontend were bypassed.
+React's `PrivateRoute` component redirects users who are authenticated but have the wrong role. However, this is a UI convenience â€” the backend enforces role restrictions independently and would reject cross-role API calls even if the frontend were bypassed.
 
 ---
 
@@ -97,10 +97,10 @@ This is the most critical security control in the system.
 **Every store manager query explicitly filters by the manager's own store ID:**
 
 ```javascript
-// storeController.js — example
+// storeController.js â€” example
 const records = await prisma.inventoryRecord.findMany({
   where: {
-    storeId: req.user.storeId,  // ← always from the JWT, never from req.query
+    storeId: req.user.storeId,  // â† always from the JWT, never from req.query
     batchId: parseInt(batchId),
   }
 });
@@ -109,11 +109,11 @@ const records = await prisma.inventoryRecord.findMany({
 `req.user.storeId` comes from the validated JWT, not from the request body or URL. There is no path through the code where a store manager can specify a different `storeId` in a request and have it honoured.
 
 **The same pattern applies to:**
-- `getInventory` — filters by `storeId: req.user.storeId`
-- `updateInventoryRecord` — verifies ownership with `{ id: recordId, storeId }` before updating
-- `submitInventory` — only updates records where `storeId = req.user.storeId`
-- `downloadInventory` — only exports records for `req.user.storeId`
-- `getDashboard` — aggregates only `storeId = req.user.storeId`
+- `getInventory` â€” filters by `storeId: req.user.storeId`
+- `updateInventoryRecord` â€” verifies ownership with `{ id: recordId, storeId }` before updating
+- `submitInventory` â€” only updates records where `storeId = req.user.storeId`
+- `downloadInventory` â€” only exports records for `req.user.storeId`
+- `getDashboard` â€” aggregates only `storeId = req.user.storeId`
 
 ---
 
@@ -141,7 +141,7 @@ If any validation fails, the transaction rolls back and nothing is committed. Th
 
 ### Duplicate Protection
 
-`InventoryRecord` has a unique constraint on `(batchId, storeId, materialCode)`. Re-uploading the same file is idempotent — `createMany({ skipDuplicates: true })` prevents duplicate rows.
+`InventoryRecord` has a unique constraint on `(batchId, storeId, materialCode)`. Re-uploading the same file is idempotent â€” `createMany({ skipDuplicates: true })` prevents duplicate rows.
 
 ---
 
@@ -152,7 +152,7 @@ In production, all traffic must run over **HTTPS**. Configure this via:
 - **Managed platforms** (Railway, Vercel, Netlify): TLS is automatic
 - **VPS**: Use [Let's Encrypt](https://letsencrypt.org/) with `certbot --nginx`
 
-The server does not redirect HTTP to HTTPS — this is the responsibility of the reverse proxy (Nginx) or platform.
+The server does not redirect HTTP to HTTPS â€” this is the responsibility of the reverse proxy (Nginx) or platform.
 
 ---
 
@@ -177,15 +177,15 @@ Applied via `express-rate-limit` at route mount time in `app.js`:
 
 | Limiter | Applied to | Limit | Window | Response on limit |
 |---------|-----------|-------|--------|-------------------|
-| `authLimiter` | `POST /auth/login` | 10 requests | 15 minutes | `429` — "Too many login attempts. Please wait 15 minutes." |
-| `apiLimiter` | `/api/admin/*`, `/api/store/*` | 300 requests | 1 minute | `429` — "Too many requests. Please slow down." |
+| `authLimiter` | `POST /auth/login` | 10 requests | 15 minutes | `429` â€” "Too many login attempts. Please wait 15 minutes." |
+| `apiLimiter` | `/api/admin/*`, `/api/store/*` | 300 requests | 1 minute | `429` â€” "Too many requests. Please slow down." |
 
 **Rate limiting is skipped when `NODE_ENV=development`** to avoid friction during local development.
 
 ### Why these limits?
 
 - **10 / 15 min on auth:** A brute-force attack trying common passwords would take hundreds of attempts. At 10/15min, it would take days to try 1000 passwords for a single account, by which time alerting should have triggered.
-- **300 / min on API:** A legitimate user navigating the admin dashboard generates ≈10–20 requests/minute. 300/min gives 15x headroom for bursts while blocking automated scrapers.
+- **300 / min on API:** A legitimate user navigating the admin dashboard generates â‰ˆ10â€“20 requests/minute. 300/min gives 15x headroom for bursts while blocking automated scrapers.
 
 ---
 
@@ -193,9 +193,9 @@ Applied via `express-rate-limit` at route mount time in `app.js`:
 
 File uploads are handled by **Multer** with:
 
-1. **Memory storage** — files are never written to disk; they live in a `Buffer` for the duration of the request
-2. **MIME type whitelist** — only `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, and `text/csv` are accepted; other types are rejected with `400` before any parsing occurs
-3. **10 MB size cap** — enforced by Multer before the file reaches the controller
+1. **Memory storage** â€” files are never written to disk; they live in a `Buffer` for the duration of the request
+2. **MIME type whitelist** â€” only `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, and `text/csv` are accepted; other types are rejected with `400` before any parsing occurs
+3. **10 MB size cap** â€” enforced by Multer before the file reaches the controller
 
 The JSON body parser is capped at `1 MB` to prevent DoS via oversized JSON payloads.
 
@@ -208,7 +208,7 @@ All database queries use **Prisma's parameterised query interface**. User input 
 For the few endpoints that use `prisma.$queryRaw` (dashboard aggregations), Prisma uses tagged template literals which automatically parameterise values:
 
 ```javascript
-// Safe — value is parameterised, not interpolated
+// Safe â€” value is parameterised, not interpolated
 const stats = await prisma.$queryRaw`
   SELECT COUNT(*)::int FROM "InventoryRecord"
   WHERE "storeId" = ${storeId} AND "batchId" = ${batchId}
@@ -220,15 +220,15 @@ const stats = await prisma.$queryRaw`
 ## Audit Trail
 
 Every significant action writes an `AuditLog` entry with:
-- `userId` — who performed the action
-- `action` — what was done (enum string)
-- `entityType` and `entityId` — what was affected
-- `metadata` — action-specific context (before/after values, counts)
-- `createdAt` — when it happened
+- `userId` â€” who performed the action
+- `action` â€” what was done (enum string)
+- `entityType` and `entityId` â€” what was affected
+- `metadata` â€” action-specific context (before/after values, counts)
+- `createdAt` â€” when it happened
 
 Audit logs are **never deleted** by normal application operations. They are only cleared by `npm run db:reset` (a destructive development utility that drops all tables).
 
-The audit log is accessible to admins via **Admin → Activity Log** and can be exported to Excel.
+The audit log is accessible to admins via **Admin â†’ Activity Log** and can be exported to Excel.
 
 ---
 
@@ -239,7 +239,7 @@ The audit log is accessible to admins via **Admin → Activity Log** and can be 
 | `JWT_SECRET` | `server/.env` | Never hardcode. Minimum 32 characters. Rotate if compromised. |
 | `DATABASE_URL` | `server/.env` | Contains DB credentials. Never commit. |
 | `SMTP_PASS` | `server/.env` | Use an App Password for Gmail, not your account password. |
-| Admin password | Database (bcrypt hash) | Change from `Admin@123` immediately after first deploy. |
+| Admin password | Database (bcrypt hash) | Change from the seeded default immediately after first deploy. |
 
 `server/.env` is listed in `.gitignore`. Verify it is never tracked:
 
@@ -248,7 +248,7 @@ git status server/.env       # should show nothing
 git log -- server/.env       # should show no commits
 ```
 
-If secrets are accidentally committed, they must be rotated — rewriting git history removes the text but the secrets may already be captured by GitHub's secret scanning or cached by anyone who cloned the repo.
+If secrets are accidentally committed, they must be rotated â€” rewriting git history removes the text but the secrets may already be captured by GitHub's secret scanning or cached by anyone who cloned the repo.
 
 ---
 
@@ -256,25 +256,25 @@ If secrets are accidentally committed, they must be rotated — rewriting git hi
 
 ### Before production launch
 
-- [ ] `JWT_SECRET` is random and ≥32 characters
-- [ ] Default admin password (`Admin@123`) changed
+- [ ] `JWT_SECRET` is random and â‰¥32 characters
+- [ ] Default admin password changed from the seeded value
 - [ ] `server/.env` is NOT committed to version control
 - [ ] HTTPS is enabled on the production domain
-- [ ] `NODE_ENV=production` is set (enables rate limiting, disables stack traces)
+- [ ] `NODE_ENV=production` is set (masks internal error details, disables stack traces in responses)
 - [ ] Database is not publicly accessible without credentials
 - [ ] Database backups are configured
 
 ### Ongoing
 
-- [ ] Review Admin → Activity Log for unexpected actions (failed logins, unusual exports)
+- [ ] Review Admin â†’ Activity Log for unexpected actions (failed logins, unusual exports)
 - [ ] Rotate `JWT_SECRET` and force re-login of all users if a token leak is suspected
-- [ ] Keep Node.js, npm packages, and PostgreSQL updated — run `npm audit` monthly
+- [ ] Keep Node.js, npm packages, and PostgreSQL updated â€” run `npm audit` monthly
 - [ ] Revoke or deactivate accounts for employees who have left the organisation
-- [ ] Review store assignments — ensure each store manager is assigned to exactly one store
+- [ ] Review store assignments â€” ensure each store manager is assigned to exactly one store
 
 ### On suspected compromise
 
-1. Rotate `JWT_SECRET` immediately — this invalidates all active sessions
+1. Rotate `JWT_SECRET` immediately â€” this invalidates all active sessions
 2. Change all admin passwords
 3. Review the audit log for the time window of the suspected compromise
 4. Check for unauthorised store/user creation, file uploads, or data exports

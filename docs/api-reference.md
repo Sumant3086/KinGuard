@@ -94,8 +94,8 @@ Authenticate a user and receive a JWT token.
 **Request body:**
 ```json
 {
-  "employeeId": "ADMIN001",
-  "password": "Admin@123"
+  "employeeId": "EMP001",
+  "password": "YourPassword"
 }
 ```
 
@@ -105,7 +105,7 @@ Authenticate a user and receive a JWT token.
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
     "id": 1,
-    "employeeId": "ADMIN001",
+    "employeeId": "EMP001",
     "name": "System Administrator",
     "role": "ADMIN",
     "storeId": null,
@@ -137,7 +137,7 @@ Returns the profile of the currently authenticated user.
 ```json
 {
   "id": 1,
-  "employeeId": "ADMIN001",
+  "employeeId": "EMP001",
   "name": "System Administrator",
   "role": "ADMIN",
   "storeId": null,
@@ -743,7 +743,7 @@ All inventory cycles with per-store submission statistics.
     "inventoryDate": "2026-07-08T00:00:00.000Z",
     "submissionDeadline": "2026-07-10T23:59:00.000Z",
     "status": "COMPLETED",
-    "uploader": { "name": "System Administrator", "employeeId": "ADMIN001" },
+    "uploader": { "name": "System Administrator", "employeeId": "EMP001" },
     "_count": { "inventoryRecords": 246 },
     "deadlineExtensions": [],
     "stats": {

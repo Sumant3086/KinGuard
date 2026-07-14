@@ -71,29 +71,6 @@ async function issueRefreshToken(userId, res) {
   return token;
 }
 
-// ── Cold-start DB retry (Supabase pooler drops idle connections) ───────────
-async function findUserForLogin(employeeId) {
-  try {
-    return await prisma.user.findUnique({
-      where: { employeeId },
-      include: { store: true },
-    });
-  } catch (firstErr) {
-    console.warn('[auth] First login query failed, retrying after reconnect:', firstErr.message);
-    try {
-      await new Promise(r => setTimeout(r, 500));
-      await prisma.$connect();
-      return await prisma.user.findUnique({
-        where: { employeeId },
-        include: { store: true },
-      });
-    } catch (retryErr) {
-      console.error('[auth] DB unavailable during login retry:', retryErr.message);
-      throw new AppError('Unable to reach the database. Please try again in a moment.', 503);
-    }
-  }
-}
-
 // ── Route handlers ─────────────────────────────────────────────────────────
 
 export async function login(req, res, next) {
@@ -105,28 +82,24 @@ export async function login(req, res, next) {
     }
     if (password.length > 128) throw new AppError('Invalid credentials', 401);
 
-    // Ensure database connection is active (prevents "server starting" errors)
-    await prisma.$connect();
-
+    // Look up user — single retry on connection failure (Supabase pooler cold-start)
     let user;
-    let retryCount = 0;
-    const maxRetries = 2;
-
-    // Retry logic for database connection issues on server restart
-    while (retryCount <= maxRetries) {
+    try {
+      user = await prisma.user.findUnique({
+        where: { employeeId: employeeId.trim() },
+        include: { store: true },
+      });
+    } catch (firstErr) {
+      console.warn('[auth] Login DB query failed, retrying:', firstErr.message);
       try {
-        user = await findUserForLogin(employeeId.trim());
-        break; // Success, exit retry loop
-      } catch (dbErr) {
-        retryCount++;
-        if (retryCount > maxRetries) {
-          console.error('[login] DB query failed after all retries:', dbErr.message);
-          throw new AppError('Unable to reach the database. Please try again.', 503);
-        }
-        console.warn(`[login] DB query attempt ${retryCount} failed, retrying...`, dbErr.message);
-        await new Promise(r => setTimeout(r, 200 * retryCount));
-        await prisma.$disconnect();
-        await prisma.$connect();
+        await new Promise(r => setTimeout(r, 600));
+        user = await prisma.user.findUnique({
+          where: { employeeId: employeeId.trim() },
+          include: { store: true },
+        });
+      } catch (retryErr) {
+        console.error('[auth] DB unavailable after retry:', retryErr.message);
+        throw new AppError('The service is temporarily unavailable. Please try again in a moment.', 503);
       }
     }
 

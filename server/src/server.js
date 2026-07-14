@@ -61,14 +61,14 @@ async function startServer() {
       .then(r => { if (r.count > 0) console.log(`[startup] Purged ${r.count} expired refresh token(s)`); })
       .catch(e => console.error('[startup] Failed to purge expired tokens:', e.message));
 
-    // Keep-alive: ping the DB every 4 minutes so Supabase's pooler doesn't
+    // Keep-alive: ping the DB every 3 minutes so Supabase's pooler doesn't
     // drop idle connections (it times out after ~5 min of inactivity).
     // Without this, the first request after a quiet period pays a cold-start
     // reconnect penalty of 500–2000 ms.
     setInterval(async () => {
       try { await prisma.$queryRaw`SELECT 1`; }
       catch { /* ignore — next real request will reconnect */ }
-    }, 240_000).unref();
+    }, 180_000).unref();
 
     // Only kill the port in development — never do this in production
     if (env.server.nodeEnv === 'development') await freePort(env.server.port);

@@ -20,7 +20,7 @@ export default function Stores() {
   useEffect(() => () => { mountedRef.current = false; }, []);
 
   const [stores, setStores]     = useState([]);
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading]   = useState(true);
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState(new Set());
 
