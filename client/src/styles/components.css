@@ -876,30 +876,30 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
    Strong visibility with warm brand-red accents - Professional & Clear
    ═══════════════════════════════════════════════════════════════════ */
 
-/* Store cards - very opaque for perfect readability */
+/* Store cards - warm amber glass */
 .store-shell .card {
-  background: rgba(254,254,254,0.97) !important;
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
-  border: 1.5px solid rgba(220,38,38,0.18);
+  background: linear-gradient(135deg, rgba(255,248,225,0.80) 0%, rgba(255,244,210,0.78) 100%) !important;
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1.5px solid rgba(220,38,38,0.22);
   border-radius: 16px;
   box-shadow:
-    0 4px 20px rgba(185,28,28,0.10),
+    0 4px 20px rgba(180,100,20,0.14),
     0 1px 6px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.90);
+    inset 0 1px 0 rgba(255,255,255,0.60);
 }
 .store-shell .card::before {
-  background: linear-gradient(90deg, transparent 0%, rgba(220,38,38,0.18) 50%, transparent 100%);
-  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(220,38,38,0.55) 50%, transparent 100%);
+  height: 3px;
 }
 .store-shell .card:hover {
-  background: rgba(255,255,255,0.99) !important;
-  border-color: rgba(220,38,38,0.30);
+  background: linear-gradient(135deg, rgba(255,250,232,0.86) 0%, rgba(255,246,218,0.84) 100%) !important;
+  border-color: rgba(220,38,38,0.35);
   transform: translateY(-3px) scale(1.005);
   box-shadow:
-    0 8px 32px rgba(185,28,28,0.14),
+    0 8px 32px rgba(180,100,20,0.20),
     0 3px 10px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,1);
+    inset 0 1px 0 rgba(255,255,255,0.70);
 }
 
 /* Store text - very strong contrast */
@@ -929,13 +929,13 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 500;
 }
 
-/* Store tables - very clear visibility */
+/* Store tables - warm amber visibility */
 .store-shell table thead {
-  background: rgba(254,254,254,0.97) !important;
-  border-bottom: 2px solid rgba(220,38,38,0.22) !important;
+  background: linear-gradient(135deg, rgba(255,244,208,0.92) 0%, rgba(255,240,195,0.90) 100%) !important;
+  border-bottom: 2px solid rgba(220,38,38,0.28) !important;
 }
 .store-shell table thead th {
-  color: #1c0a08 !important;
+  color: #7f1d1d !important;
   font-weight: 900 !important;
   text-shadow: none;
   letter-spacing: 1.1px;
@@ -979,22 +979,22 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   animation: fade-in-up 0.25s ease both;
 }
 
-/* ─── Store Cards - Premium Glass Morphism ─────────────────────────── */
+/* ─── Store Cards - Warm Amber Glass Morphism ──────────────────────── */
 .store-shell .card,
 .store-shell .page-header,
 .store-shell .page-header-root {
   background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(255, 252, 252, 0.93) 100%) !important;
-  backdrop-filter: blur(24px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
-  border: 2px solid rgba(220, 38, 38, 0.18) !important;
+    rgba(255, 248, 225, 0.80) 0%,
+    rgba(255, 244, 210, 0.78) 100%) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border: 2px solid rgba(220, 38, 38, 0.25) !important;
   border-radius: 20px !important;
   box-shadow:
-    0 8px 32px rgba(185, 28, 28, 0.10),
-    0 4px 16px rgba(0, 0, 0, 0.07),
+    0 8px 32px rgba(180, 100, 20, 0.18),
+    0 4px 16px rgba(0, 0, 0, 0.10),
     0 1px 4px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
   position: relative;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1012,9 +1012,9 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(220, 38, 38, 0.60) 30%,
-    rgba(185, 28, 28, 0.80) 50%,
-    rgba(220, 38, 38, 0.60) 70%,
+    rgba(220, 38, 38, 0.70) 25%,
+    rgba(234, 179, 8, 0.60) 50%,
+    rgba(220, 38, 38, 0.70) 75%,
     transparent 100%
   );
   border-radius: 20px 20px 0 0;
@@ -1022,29 +1022,32 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell .card:hover {
   transform: translateY(-4px) scale(1.005);
-  border-color: rgba(220, 38, 38, 0.30) !important;
+  background: linear-gradient(135deg,
+    rgba(255, 252, 232, 0.86) 0%,
+    rgba(255, 248, 218, 0.84) 100%) !important;
+  border-color: rgba(220, 38, 38, 0.38) !important;
   box-shadow:
-    0 12px 48px rgba(185, 28, 28, 0.14),
-    0 6px 24px rgba(0, 0, 0, 0.08),
+    0 12px 48px rgba(180, 100, 20, 0.24),
+    0 6px 24px rgba(0, 0, 0, 0.10),
     0 2px 8px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
 }
 
-/* ─── KPI Cards - Premium Warm Theme ──────────────────────────────── */
+/* ─── KPI Cards - Warm Amber Glass ────────────────────────────────── */
 .store-shell .kpi-card,
 .store-shell .metric-card,
 .store-shell .stat-card {
   background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.96) 0%,
-    rgba(255, 252, 252, 0.94) 100%) !important;
-  backdrop-filter: blur(20px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 2px solid rgba(220, 38, 38, 0.18) !important;
+    rgba(255, 246, 218, 0.78) 0%,
+    rgba(255, 242, 205, 0.76) 100%) !important;
+  backdrop-filter: blur(28px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(170%) !important;
+  border: 2px solid rgba(220, 38, 38, 0.22) !important;
   border-radius: 18px !important;
   box-shadow:
-    0 6px 24px rgba(185, 28, 28, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
+    0 6px 24px rgba(180, 100, 20, 0.16),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -1168,28 +1171,28 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   box-shadow: 0 6px 20px rgba(185, 28, 28, 0.22);
 }
 
-/* ─── Tables - Fresh & Clean ──────────────────────────────────────── */
+/* ─── Tables - Warm Amber Glass ────────────────────────────────────── */
 .store-shell .table-wrap,
 .store-shell .table-container {
   background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.96) 0%,
-    rgba(248, 250, 252, 0.94) 100%) !important;
-  backdrop-filter: blur(24px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
-  border: 2px solid rgba(255, 255, 255, 0.60) !important;
+    rgba(255, 248, 225, 0.82) 0%,
+    rgba(255, 244, 210, 0.80) 100%) !important;
+  backdrop-filter: blur(30px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(170%) !important;
+  border: 2px solid rgba(220, 38, 38, 0.22) !important;
   border-radius: 20px !important;
   box-shadow:
-    0 8px 32px rgba(185, 28, 28, 0.10),
+    0 8px 32px rgba(180, 100, 20, 0.18),
     0 4px 16px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.60) !important;
   overflow: hidden;
 }
 
 .store-shell table thead {
   background: linear-gradient(135deg,
-    rgba(255, 252, 252, 0.98) 0%,
-    rgba(254, 248, 248, 0.96) 100%) !important;
-  border-bottom: 3px solid rgba(220, 38, 38, 0.22) !important;
+    rgba(255, 244, 208, 0.92) 0%,
+    rgba(255, 240, 195, 0.90) 100%) !important;
+  border-bottom: 3px solid rgba(220, 38, 38, 0.28) !important;
 }
 
 .store-shell table thead th {
@@ -1200,7 +1203,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   text-transform: uppercase;
   padding: 14px 18px !important;
   text-shadow: none !important;
-  border-right: 1px solid rgba(220, 38, 38, 0.08) !important;
+  border-right: 1px solid rgba(220, 38, 38, 0.10) !important;
 }
 
 .store-shell table thead th:last-child {
@@ -1209,13 +1212,13 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell table tbody tr {
   transition: all 0.2s;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.70) !important;
+  border-bottom: 1px solid rgba(180, 100, 20, 0.14) !important;
 }
 
 .store-shell table tbody tr:hover {
   background: linear-gradient(135deg,
-    rgba(255, 248, 248, 0.70) 0%,
-    rgba(254, 244, 244, 0.65) 100%) !important;
+    rgba(255, 248, 218, 0.80) 0%,
+    rgba(255, 244, 205, 0.78) 100%) !important;
   transform: scale(1.002);
 }
 
@@ -1486,12 +1489,12 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   100% { background-position: -200% 0; }
 }
 
-/* Store inputs - warm neutral with brand-red accent */
+/* Store inputs - warm amber glass */
 .store-shell input:not([type="checkbox"]):not([type="radio"]),
 .store-shell select,
 .store-shell textarea {
-  background: rgba(255,255,255,0.96);
-  border: 2px solid rgba(220,38,38,0.20);
+  background: rgba(255, 250, 232, 0.90);
+  border: 2px solid rgba(220,38,38,0.22);
   border-radius: 11px;
   color: #1c0a08;
   font-weight: 500;
@@ -1499,16 +1502,16 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-shell input:hover,
 .store-shell select:hover,
 .store-shell textarea:hover {
-  border-color: rgba(220,38,38,0.36);
-  background: rgba(255,255,255,0.99);
-  box-shadow: 0 2px 8px rgba(185,28,28,0.08);
+  border-color: rgba(220,38,38,0.38);
+  background: rgba(255, 252, 238, 0.94);
+  box-shadow: 0 2px 8px rgba(180,100,20,0.12);
 }
 .store-shell input:focus,
 .store-shell select:focus,
 .store-shell textarea:focus {
   border-color: #dc2626;
-  box-shadow: 0 0 0 4px rgba(220,38,38,0.14), 0 4px 12px rgba(185,28,28,0.10);
-  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(220,38,38,0.14), 0 4px 12px rgba(180,100,20,0.12);
+  background: rgba(255, 254, 245, 0.98);
 }
 .store-shell input::placeholder,
 .store-shell textarea::placeholder {
@@ -1534,13 +1537,15 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   box-shadow: 0 6px 20px rgba(220,38,38,0.50);
 }
 
-/* Store banners - warm brand-red info style */
+/* Store banners - warm amber glass */
 .store-shell .banner {
-  background: rgba(255,255,255,0.96);
-  border: 2px solid rgba(220,38,38,0.22);
+  background: linear-gradient(135deg, rgba(255,248,225,0.86) 0%, rgba(255,244,208,0.84) 100%);
+  border: 2px solid rgba(220,38,38,0.25);
   border-left: 4px solid #dc2626;
   color: #1c0a08;
-  box-shadow: 0 2px 12px rgba(185,28,28,0.08);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 2px 12px rgba(180,100,20,0.14);
 }
 .store-shell .lock-banner {
   background: rgba(254,242,242,0.97);
@@ -1584,44 +1589,45 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   box-shadow: 0 1px 3px rgba(139,92,246,0.12);
 }
 
-/* Store page headers - warm brand-red professional */
+/* Store page headers - warm amber glass */
 .store-shell .page-header,
 .store-shell .page-header-root {
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  background: linear-gradient(135deg, rgba(255,248,225,0.82) 0%, rgba(255,244,210,0.80) 100%);
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
   border: 2px solid rgba(220,38,38,0.22);
   border-radius: 18px;
   box-shadow:
-    0 4px 20px rgba(185,28,28,0.10),
+    0 4px 20px rgba(180,100,20,0.16),
     0 1px 6px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,1);
+    inset 0 1px 0 rgba(255,255,255,0.60);
 }
 
-/* Store KPI and metric cards - warm brand-red energy */
+/* Store KPI and metric cards - warm amber glass */
 .store-shell .kpi-card,
 .store-shell .metric-card,
 .store-shell .stat-card {
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  background: linear-gradient(135deg, rgba(255,246,218,0.78) 0%, rgba(255,242,205,0.76) 100%);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 2px solid rgba(220,38,38,0.20);
   border-radius: 15px;
   box-shadow:
-    0 4px 20px rgba(185,28,28,0.10),
+    0 4px 20px rgba(180,100,20,0.14),
     0 1px 6px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.95);
+    inset 0 1px 0 rgba(255,255,255,0.55);
 }
 
 .store-shell .kpi-card:hover,
 .store-shell .metric-card:hover,
 .store-shell .stat-card:hover {
   transform: translateY(-4px) scale(1.01);
+  background: linear-gradient(135deg, rgba(255,250,228,0.84) 0%, rgba(255,246,215,0.82) 100%);
   border-color: rgba(220,38,38,0.36);
   box-shadow:
-    0 8px 32px rgba(185,28,28,0.16),
+    0 8px 32px rgba(180,100,20,0.22),
     0 3px 10px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,1);
+    inset 0 1px 0 rgba(255,255,255,0.65);
 }
 
 .store-shell .kpi-label,
@@ -1658,24 +1664,24 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 700;
 }
 
-/* Store filter cards - warm neutral background */
+/* Store filter cards - warm amber glass */
 .store-shell .filter-card {
-  background: linear-gradient(135deg, rgba(255,252,252,0.94) 0%, rgba(254,248,248,0.92) 100%);
-  border: 2px solid rgba(220,38,38,0.18);
+  background: linear-gradient(135deg, rgba(255,246,218,0.76) 0%, rgba(255,242,205,0.74) 100%);
+  border: 2px solid rgba(220,38,38,0.20);
   border-radius: 13px;
-  box-shadow: 0 4px 18px rgba(185,28,28,0.08);
+  box-shadow: 0 4px 18px rgba(180,100,20,0.14);
 }
 
-/* Store table container - warm premium styling */
+/* Store table container - warm amber glass (fallback, wins handled above) */
 .store-shell .table-wrap,
 .store-shell .table-container {
-  background: linear-gradient(135deg, rgba(255,252,252,0.97) 0%, rgba(254,250,250,0.96) 100%);
-  backdrop-filter: blur(24px) saturate(170%);
-  -webkit-backdrop-filter: blur(24px) saturate(170%);
-  border: 2px solid rgba(220,38,38,0.18);
+  background: linear-gradient(135deg, rgba(255,248,225,0.82) 0%, rgba(255,244,210,0.80) 100%);
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  border: 2px solid rgba(220,38,38,0.20);
   border-radius: 15px;
   box-shadow:
-    0 8px 32px rgba(185,28,28,0.12),
+    0 8px 32px rgba(180,100,20,0.18),
     0 3px 10px rgba(0,0,0,0.08),
-    inset 0 2px 0 rgba(255,255,255,1);
+    inset 0 2px 0 rgba(255,255,255,0.60);
 }
