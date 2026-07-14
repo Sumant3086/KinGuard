@@ -114,14 +114,14 @@ export async function bulkDeleteUsers(userIds) {
 export async function previewUserBatchImport(file) {
   const form = new FormData();
   form.append('file', file);
-  const { data } = await client.post('/admin/users/batch-import/preview', form);
+  const { data } = await client.post('/admin/users/batch-import/preview', form, { timeout: FILE_TIMEOUT });
   return data;
 }
 
 export async function commitUserBatchImport(file) {
   const form = new FormData();
   form.append('file', file);
-  const { data } = await client.post('/admin/users/batch-import/commit', form);
+  const { data } = await client.post('/admin/users/batch-import/commit', form, { timeout: FILE_TIMEOUT });
   cacheInvalidate('admin:users', 'admin:stores', 'admin:dashboard');
   return data;
 }
@@ -143,12 +143,15 @@ export function getUploads() {
     async () => { const { data } = await client.get('/admin/uploads'); return data; });
 }
 
+// File-processing requests can take up to 2 minutes — match server fileTimeout
+const FILE_TIMEOUT = 120_000;
+
 export async function uploadInventory(file, inventoryDate, submissionDeadline) {
   const form = new FormData();
   form.append('file', file);
   form.append('inventoryDate', inventoryDate);
   if (submissionDeadline) form.append('submissionDeadline', submissionDeadline);
-  const { data } = await client.post('/admin/uploads', form);
+  const { data } = await client.post('/admin/uploads', form, { timeout: FILE_TIMEOUT });
   cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches', 'admin:stores', 'admin:trends:8');
   return data;
 }
@@ -158,7 +161,7 @@ export async function uploadInventoryForce(file, inventoryDate, submissionDeadli
   form.append('file', file);
   form.append('inventoryDate', inventoryDate);
   if (submissionDeadline) form.append('submissionDeadline', submissionDeadline);
-  const { data } = await client.post('/admin/uploads?force=true', form);
+  const { data } = await client.post('/admin/uploads?force=true', form, { timeout: FILE_TIMEOUT });
   cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches', 'admin:stores', 'admin:trends:8');
   return data;
 }
@@ -167,7 +170,7 @@ export async function previewUpload(file, inventoryDate) {
   const form = new FormData();
   form.append('file', file);
   form.append('inventoryDate', inventoryDate);
-  const { data } = await client.post('/admin/uploads/preview', form);
+  const { data } = await client.post('/admin/uploads/preview', form, { timeout: FILE_TIMEOUT });
   return data;
 }
 
@@ -255,11 +258,13 @@ export async function getNotifications() {
 }
 
 // ── Downloads (blob responses) ─────────────────────────────────────────────
-export const downloadSampleTemplate       = ()        => client.get('/admin/uploads/template',                    { responseType: 'blob' }).then(r => r.data);
-export const downloadInventoryExport      = (filters) => client.get('/admin/inventory/export',                    { params: filters, responseType: 'blob' }).then(r => r.data);
-export const downloadInventoryExportPDF   = (filters) => client.get('/admin/inventory/export-pdf',                { params: filters, responseType: 'blob' }).then(r => r.data);
-export const downloadReconciliationReport    = (filters) => client.get('/admin/reports/reconciliation/download',     { params: filters, responseType: 'blob' }).then(r => r.data);
-export const downloadReconciliationReportPDF = (filters) => client.get('/admin/reports/reconciliation/download-pdf', { params: filters, responseType: 'blob' }).then(r => r.data);
-export const getBatchExport               = (id)      => client.get(`/admin/batches/${id}/export`,                { responseType: 'blob' }).then(r => r.data);
-export const getBatchExportPDF            = (id)      => client.get(`/admin/batches/${id}/export-pdf`,            { responseType: 'blob' }).then(r => r.data);
-export const exportAuditLogs              = (filters) => client.get('/admin/audit-logs/export',                   { params: filters, responseType: 'blob' }).then(r => r.data);
+// Large exports can take time — use 120s to match the server fileTimeout.
+const DL = { responseType: 'blob', timeout: FILE_TIMEOUT };
+export const downloadSampleTemplate          = ()        => client.get('/admin/uploads/template',                    { ...DL }).then(r => r.data);
+export const downloadInventoryExport         = (filters) => client.get('/admin/inventory/export',                    { ...DL, params: filters }).then(r => r.data);
+export const downloadInventoryExportPDF      = (filters) => client.get('/admin/inventory/export-pdf',                { ...DL, params: filters }).then(r => r.data);
+export const downloadReconciliationReport    = (filters) => client.get('/admin/reports/reconciliation/download',     { ...DL, params: filters }).then(r => r.data);
+export const downloadReconciliationReportPDF = (filters) => client.get('/admin/reports/reconciliation/download-pdf', { ...DL, params: filters }).then(r => r.data);
+export const getBatchExport                  = (id)      => client.get(`/admin/batches/${id}/export`,                { ...DL }).then(r => r.data);
+export const getBatchExportPDF               = (id)      => client.get(`/admin/batches/${id}/export-pdf`,            { ...DL }).then(r => r.data);
+export const exportAuditLogs                 = (filters) => client.get('/admin/audit-logs/export',                   { ...DL, params: filters }).then(r => r.data);

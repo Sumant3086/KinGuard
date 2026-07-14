@@ -13,10 +13,12 @@
     "dev:client": "npm run dev --workspace=client",
     "dev:server": "npm run dev --workspace=server",
     "build:client": "npm run build --workspace=client",
+    "start:server": "npm run start --workspace=server",
     "migrate": "npm run migrate --workspace=server",
     "seed": "npm run seed --workspace=server",
     "db:reset": "npm run db:reset --workspace=server",
-    "db:clear": "npm run db:clear --workspace=server"
+    "db:clear": "npm run db:clear --workspace=server",
+    "postinstall": "npm run postinstall --workspace=server"
   },
   "devDependencies": {
     "concurrently": "^9.2.4"

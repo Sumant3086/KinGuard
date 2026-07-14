@@ -98,10 +98,12 @@ async function findUserForLogin(employeeId) {
 
 export async function login(req, res, next) {
   try {
-    const { employeeId, password } = req.body;
+    const employeeId = typeof req.body.employeeId === 'string' ? req.body.employeeId : '';
+    const password   = typeof req.body.password   === 'string' ? req.body.password   : '';
     if (!employeeId || !password) {
       throw new AppError('Employee ID and password are required', 400);
     }
+    if (password.length > 128) throw new AppError('Invalid credentials', 401);
 
     // Ensure database connection is active (prevents "server starting" errors)
     await prisma.$connect();
@@ -263,8 +265,15 @@ export async function changePassword(req, res, next) {
 
 // ── Shared password validator (also imported by adminController) ───────────
 export function validatePassword(password) {
-  if (!password || password.length < 8) {
+  if (!password || typeof password !== 'string') {
     throw new AppError('Password must be at least 8 characters', 400);
+  }
+  if (password.length < 8) {
+    throw new AppError('Password must be at least 8 characters', 400);
+  }
+  // bcrypt silently truncates at 72 bytes — cap early to prevent DoS
+  if (password.length > 128) {
+    throw new AppError('Password must be 128 characters or fewer', 400);
   }
   if (!/[A-Z]/.test(password)) {
     throw new AppError('Password must contain at least one uppercase letter', 400);

@@ -1,9 +1,13 @@
 import axios from 'axios';
 import { progressStart, progressDone } from './progress';
 
+// Use environment variable or default to /api (proxy in dev, same-origin in prod)
+const baseURL = import.meta.env.VITE_API_URL || '/api';
+
 const client = axios.create({
-  baseURL: '/api',
+  baseURL,
   withCredentials: true, // send HttpOnly cookies on every request
+  timeout: 30000,        // 30 s default; file endpoints override per-request
 });
 
 // ── Global top progress bar ────────────────────────────────────────────────
@@ -36,10 +40,10 @@ client.interceptors.response.use(
     const url     = error.config?.url ?? '';
     const originalRequest = error.config;
 
-    // Prevent refresh loops: if the failing request is already the refresh endpoint, bail out
+    // Prevent refresh loops: bail if the failing request is the refresh endpoint
     if (status === 401 && !url.includes('/auth/refresh') && !originalRequest._retried) {
       if (isRefreshing) {
-        // Another refresh is already in flight — queue this request to retry after
+        // Another refresh is in flight — queue this request to retry after
         return new Promise((resolve, reject) => {
           refreshQueue.push({ resolve, reject });
         }).then(() => client(originalRequest));
@@ -49,16 +53,13 @@ client.interceptors.response.use(
       originalRequest._retried = true;
 
       try {
-        // POST to refresh endpoint — sends the refreshToken HttpOnly cookie automatically
-        await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        // Use the configured baseURL so this works in both dev and production
+        await client.post('/auth/refresh', {}, { withCredentials: true });
         drainQueue(null);
-        return client(originalRequest); // retry original request with new access token cookie
+        return client(originalRequest);
       } catch {
         drainQueue(new Error('Session expired'));
-        // Only hard-redirect to login from protected routes.
-        // On public pages (/, /login, etc.) the AuthContext .catch() handler
-        // already clears the user state — no redirect needed and doing one
-        // would break refreshing on the home page.
+        // Only hard-redirect from protected routes — public pages handle it themselves
         const path = window.location.pathname;
         const isProtected = path.startsWith('/admin') ||
                             path.startsWith('/store') ||
