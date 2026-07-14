@@ -45,6 +45,10 @@ input, select, textarea { font-family:inherit; }
   outline-offset: 2px;
 }
 
+/* ─── Text selection ────────────────────────────────────────────── */
+::selection        { background: #dc2626; color: #ffffff; }
+::-moz-selection   { background: #dc2626; color: #ffffff; }
+
 /* ─── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width:6px; height:6px; }
 ::-webkit-scrollbar-track { background:transparent; }
