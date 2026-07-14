@@ -220,7 +220,80 @@ export default function Batches() {
         />
       ) : (
         <div className="card">
-          <div className="table-wrap">
+
+          {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
+          <div className="batch-cards">
+            {batches.map(b => {
+              const stats  = b.stats || {};
+              const total  = stats.totalRecords   || 0;
+              const sub    = stats.submittedCount || 0;
+              const pend   = stats.pendingCount   || 0;
+              const pct    = total > 0 ? Math.round((sub / total) * 100) : 0;
+              const passed = b.submissionDeadline && new Date() > new Date(b.submissionDeadline);
+
+              return (
+                <div key={b.id} className="batch-card">
+                  {/* Header row */}
+                  <div className="batch-card-top">
+                    <span className="batch-card-date">{fmtDate(b.inventoryDate)}</span>
+                    <span className="badge badge-pending">{total} records</span>
+                  </div>
+
+                  {/* File + uploader */}
+                  <div className="batch-card-file" title={b.originalFileName}>
+                    {b.originalFileName}
+                  </div>
+                  <div className="batch-card-meta">Uploaded by {b.uploader?.name || '—'}</div>
+
+                  {/* Progress */}
+                  <div className="batch-card-progress-row">
+                    <div className="batch-card-bar">
+                      <div className="batch-card-bar-fill" style={{ width: `${pct}%`, background: pct === 100 ? 'var(--green)' : 'var(--vi)' }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--t3)', whiteSpace: 'nowrap' }}>{sub}/{total}</span>
+                  </div>
+                  {pend > 0 && <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: -4 }}>{pend} pending</div>}
+
+                  {/* Deadline */}
+                  <div className="batch-card-deadline">
+                    <span style={{ color: 'var(--t3)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px' }}>Deadline</span>
+                    {editingDeadline === b.id ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+                        <input
+                          type="datetime-local"
+                          value={deadlineInput}
+                          onChange={e => setDeadlineInput(e.target.value)}
+                          style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t1)', flex: 1, minWidth: 0 }}
+                        />
+                        <button className="btn btn-primary btn-sm" onClick={() => handleSaveDeadline(b.id)} disabled={savingDeadline}>{savingDeadline ? '…' : 'Save'}</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setEditingDeadline(null)}>✕</button>
+                      </div>
+                    ) : (
+                      <span style={{ color: passed ? 'var(--red)' : b.submissionDeadline ? 'var(--t2)' : 'var(--t3)', fontSize: 13 }}>
+                        {b.submissionDeadline ? fmtDate(b.submissionDeadline, 'time') : 'No deadline set'}
+                        {passed && <span className="badge badge-shortage" style={{ marginLeft: 6, fontSize: 10 }}>Past Due</span>}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Action buttons — 3-column grid */}
+                  <div className="batch-card-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDeadline(b.id); setDeadlineInput(b.submissionDeadline ? toLocalInputValue(b.submissionDeadline) : ''); }}>Set Deadline</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setExtendModal({ batchId: b.id })}>Extend</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setUnlockModal({ batchId: b.id })}>Unlock</button>
+                    <button className="btn btn-success btn-sm" onClick={() => handleBatchExport(b.id, b.inventoryDate)}>Excel</button>
+                    <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>
+                    <button className="btn btn-sm" onClick={() => handleSendEmailReminders(b.id)} disabled={emailReminding === b.id} style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)' }}>{emailReminding === b.id ? '…' : 'Email'}</button>
+                    <button className="btn btn-sm" onClick={() => { loadUsersIfNeeded(); setWhatsAppModal({ batchId: b.id, inventoryDate: b.inventoryDate, deadline: b.submissionDeadline }); }} style={{ background: 'rgba(37,211,102,0.09)', color: '#16a34a', border: '1px solid rgba(37,211,102,0.22)' }}>WhatsApp</button>
+                    <button className="btn btn-sm btn-wide" onClick={() => { setDeleteTarget(b); setDeleteConfirmText(''); }} style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }}>Delete Cycle</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table (>768px) ────────────────────────────── */}
+          <div className="table-wrap batch-table-desktop">
             <table className="scorecard">
               <thead>
                 <tr>
