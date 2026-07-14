@@ -963,6 +963,14 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .store-inv-table-desktop { display:block; }
 .store-inv-cards { display:none; }
 
+/* ─── Admin Dashboard scorecard cards (mobile) ───────────── */
+.scorecard-table-desktop { display:block; }
+.scorecard-cards { display:none; }
+
+/* ─── Reports page cards (mobile) ────────────────────────── */
+.reports-table-desktop { display:block; }
+.reports-cards { display:none; }
+
 @media (max-width: 768px) {
   /* Admin Inventory */
   .inv-table-desktop { display:none; }
@@ -1034,6 +1042,42 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   .store-inv-card input,
   .store-inv-card select { width:100%; font-size:13px; }
   .store-inv-card-actions { display:flex; gap:8px; }
+
+  /* Admin Dashboard scorecard */
+  .scorecard-table-desktop { display:none; }
+  .scorecard-cards { display:flex; flex-direction:column; gap:10px; }
+  .scorecard-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:9px;
+  }
+  .scorecard-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .scorecard-card-name { font-weight:700; font-size:14px; color:var(--t1); }
+  .scorecard-card-code { font-family:monospace; font-size:11px; color:var(--t4); margin-top:2px; }
+  .scorecard-card-row { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--t2); flex-wrap:wrap; }
+  .scorecard-card-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.7px; color:var(--t4); }
+
+  /* Reports */
+  .reports-table-desktop { display:none; }
+  .reports-cards { display:flex; flex-direction:column; gap:10px; }
+  .report-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:7px;
+  }
+  .report-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .report-card-store { font-family:monospace; font-weight:800; font-size:13px; color:var(--vi-light); }
+  .report-card-date { font-size:11px; color:var(--t3); white-space:nowrap; }
+  .report-card-material { font-weight:700; font-size:13px; color:var(--t1); }
+  .report-card-desc { font-size:12px; color:var(--t3); }
+  .report-card-qty-row { display:flex; gap:14px; align-items:center; font-size:12px; color:var(--t2); flex-wrap:wrap; }
+  .report-card-remarks { font-size:11.5px; color:var(--t3); font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .report-card-submitter { font-size:11px; color:var(--t4); }
+
+  /* Pagination: wrap on mobile */
+  .pagination { flex-wrap:wrap; gap:8px; }
+
+  /* Analytics network row: stack on mobile */
+  .analytics-network-row { flex-direction:column !important; gap:12px !important; }
+  .analytics-cycle-badges { flex-wrap:wrap !important; gap:10px 18px !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2091,4 +2135,92 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     -webkit-backdrop-filter: blur(8px) saturate(130%) !important;
     background: rgba(255, 244, 210, 0.88) !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ADDITIONAL MOBILE RESPONSIVE FIXES
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Tab bar: horizontal scroll on small phones ──────────────────── */
+@media (max-width: 520px) {
+  .tab-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn { flex-shrink: 0; }
+}
+
+/* ── Admin page-header actions: wrap on small phones ─────────────── */
+@media (max-width: 520px) {
+  .page-header { gap: 12px; }
+  .page-actions,
+  .page-header-actions { width: 100%; flex-wrap: wrap; }
+  /* Ensure filter selects and inputs go full-width in filter-card */
+  .filter-card .filters { flex-direction: column; }
+  .filter-card .filters select,
+  .filter-card .filters input { width: 100%; min-width: 0 !important; box-sizing: border-box; }
+}
+
+/* ── Upload result grid: collapse on small phones ─────────────────── */
+@media (max-width: 480px) {
+  .upload-result-grid { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 360px) {
+  .upload-result-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Admin content: kpi-grid min on tiny phones ───────────────────── */
+@media (max-width: 380px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .hl-content { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+
+/* ── Store shell: mobile card theming ─────────────────────────────── */
+.store-shell .batch-card,
+.store-shell .store-inv-card,
+.store-shell .user-card,
+.store-shell .store-card,
+.store-shell .audit-card,
+.store-shell .inv-card,
+.store-shell .report-card,
+.store-shell .scorecard-card {
+  background: rgba(255, 244, 210, 0.90) !important;
+  border: 1.5px solid rgba(220, 38, 38, 0.22) !important;
+  box-shadow: 0 3px 14px rgba(180, 100, 20, 0.14), inset 0 1px 0 rgba(255,255,255,0.55) !important;
+}
+
+/* ── Store inventory mobile card inputs ───────────────────────────── */
+@media (max-width: 768px) {
+  .store-inv-card .qty-input { width: 100% !important; min-height: 44px; font-size: 15px; }
+  .store-inv-card .remark-select { font-size: 13px; min-height: 40px; }
+  .store-inv-card .inline-input { font-size: 13px; min-height: 40px; }
+}
+
+/* ── Admin filter bars: correct gap on mobile ─────────────────────── */
+@media (max-width: 768px) {
+  .filters { gap: 8px; }
+  .filters select,
+  .filters input { min-width: 0 !important; }
+}
+
+/* ── Page header responsive stacking ─────────────────────────────── */
+@media (max-width: 520px) {
+  .page-header,
+  .page-header-root {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .page-header h2,
+  .page-header-text h2 { font-size: 18px !important; }
+}
+
+/* ── Store dashboard action card: wrap on mobile ─────────────────── */
+.store-action-card-inner { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.store-action-card-inner > div { flex: 1 1 180px; min-width: 0; }
+@media (max-width: 520px) {
+  .store-action-card-inner .btn { width: 100%; justify-content: center; }
 }

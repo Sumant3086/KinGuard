@@ -33,7 +33,7 @@ export default function StoreDashboard() {
         <div className="card" style={{ padding: '40px 20px' }}>
           <div className="skeleton skeleton-text" style={{ width: '40%', height: 32, marginBottom: 24 }} />
           <div className="skeleton skeleton-card" style={{ height: 140, marginBottom: 16 }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12 }}>
             <div className="skeleton skeleton-card" style={{ height: 100 }} />
             <div className="skeleton skeleton-card" style={{ height: 100 }} />
             <div className="skeleton skeleton-card" style={{ height: 100 }} />
@@ -235,7 +235,7 @@ export default function StoreDashboard() {
       {/* Action card */}
       <div className="card">
         {stats.pendingItems > 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="store-action-card-inner">
             <div>
               <p style={{ fontWeight: 700, marginBottom: 4 }}>
                 {stats.pendingItems} item{stats.pendingItems !== 1 ? 's' : ''} require a physical count.
@@ -244,19 +244,19 @@ export default function StoreDashboard() {
                 Open the count sheet to enter physical quantities for assigned items.
               </p>
             </div>
-            <Link to="/store/inventory" className="btn btn-primary" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+            <Link to="/store/inventory" className="btn btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
               Open Count Sheet →
             </Link>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="store-action-card-inner">
             <div>
               <p style={{ fontWeight: 700, marginBottom: 4 }}>All items submitted for this cycle.</p>
               <p style={{ fontSize: 13, color: 'var(--t3)' }}>
                 Submission complete. Download your reconciliation report below.
               </p>
             </div>
-            <Link to="/store/inventory" className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+            <Link to="/store/inventory" className="btn btn-ghost btn-sm" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
               View Submitted Records
             </Link>
           </div>
