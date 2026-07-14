@@ -179,7 +179,7 @@ export async function updateInventoryRecord(req, res, next) {
       if (isNaN(qty) || qty < 0) throw new AppError('System stock must be a non-negative number', 400);
     }
 
-    // Single query: verify ownership + get current values + check batch deadline
+    // Single query: ownership + current values + deadline + extension — no second round-trip
     const record = await prisma.inventoryRecord.findFirst({
       where: { id: recordId, storeId },
       select: {
@@ -188,19 +188,24 @@ export async function updateInventoryRecord(req, res, next) {
         physicalQuantity: true,
         status: true,
         batchId: true,
-        batch: { select: { submissionDeadline: true } },
+        batch: {
+          select: {
+            submissionDeadline: true,
+            deadlineExtensions: {
+              where: { storeId },
+              select: { newDeadline: true },
+              take: 1,
+            },
+          },
+        },
       },
     });
 
     if (!record) throw new AppError('Record not found', 404);
     if (record.status === 'SUBMITTED') throw new AppError('Cannot edit submitted records', 403);
 
-    // C2: Check for per-store deadline extension override
     if (record.batch?.submissionDeadline) {
-      const extension = await prisma.batchDeadlineExtension.findUnique({
-        where: { batchId_storeId: { batchId: record.batchId, storeId } },
-        select: { newDeadline: true },
-      });
+      const extension = record.batch.deadlineExtensions?.[0] ?? null;
       const effectiveDeadline = extension ? extension.newDeadline : record.batch.submissionDeadline;
       if (new Date() > new Date(effectiveDeadline)) {
         throw new AppError('This batch is locked. The submission deadline has passed. Contact your administrator.', 403);
@@ -263,16 +268,21 @@ export async function submitInventory(req, res, next) {
     // Enforce deadline — same logic as updateInventoryRecord.
     // Without this check, a store manager could bypass the lock by POSTing
     // directly to /store/inventory/submit after the deadline passed.
+    // Fetch deadline + any per-store extension in one query
     const batchForDeadline = await prisma.uploadBatch.findUnique({
       where: { id: parsedBatchId },
-      select: { submissionDeadline: true },
+      select: {
+        submissionDeadline: true,
+        deadlineExtensions: {
+          where: { storeId },
+          select: { newDeadline: true },
+          take: 1,
+        },
+      },
     });
     if (!batchForDeadline) throw new AppError('Batch not found', 404);
     if (batchForDeadline.submissionDeadline) {
-      const extension = await prisma.batchDeadlineExtension.findUnique({
-        where: { batchId_storeId: { batchId: parsedBatchId, storeId } },
-        select: { newDeadline: true },
-      });
+      const extension = batchForDeadline.deadlineExtensions?.[0] ?? null;
       const effectiveDeadline = extension ? extension.newDeadline : batchForDeadline.submissionDeadline;
       if (new Date() > new Date(effectiveDeadline)) {
         throw new AppError('This batch is locked. The submission deadline has passed. Contact your administrator.', 403);

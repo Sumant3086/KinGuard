@@ -779,6 +779,8 @@ export async function uploadInventory(req, res, next) {
       },
     });
 
+    sInvalidate('admin:batches');
+
     await createAuditLog({
       userId: req.user.id,
       action: 'UPLOAD_INVENTORY',
@@ -1360,6 +1362,9 @@ export async function getAuditLogs(req, res, next) {
 
 export async function getBatches(req, res, next) {
   try {
+    const cached = sGet('admin:batches');
+    if (cached) return res.json(cached);
+
     const batches = await withDbRetry(() => prisma.uploadBatch.findMany({
       orderBy: { inventoryDate: 'desc' },
       include: {
@@ -1383,6 +1388,7 @@ export async function getBatches(req, res, next) {
 
     const statsMap = new Map(statsRows.map(r => [Number(r.batchId), r]));
     const result = batches.map(b => ({ ...b, stats: statsMap.get(b.id) || null }));
+    sSet('admin:batches', result, 60_000); // 1-minute cache
     res.json(result);
   } catch (error) { next(error); }
 }
@@ -1401,6 +1407,7 @@ export async function updateBatch(req, res, next) {
       entityType: 'UPLOAD_BATCH', entityId: batch.id,
       metadata: { submissionDeadline },
     });
+    sInvalidate('admin:batches');
     res.json(batch);
   } catch (error) { next(error); }
 }
@@ -1896,7 +1903,7 @@ export async function deleteBatch(req, res, next) {
       metadata: { inventoryDate: batch.inventoryDate, fileName: batch.originalFileName },
     });
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:batches');
     res.json({ message: 'Cycle deleted' });
   } catch (error) { next(error); }
 }
@@ -2309,12 +2316,11 @@ export async function downloadBatchExportPDF(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// ── Admin notification feed — computed from existing data, no extra table ──────
+// ── Admin notification feed — parallel queries for minimum latency ─────────────
 export async function getNotifications(req, res, next) {
   try {
-    const now = new Date();
+    const now     = new Date();
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const items = [];
 
     const latestBatch = await prisma.uploadBatch.findFirst({
       where: { status: 'COMPLETED' },
@@ -2324,14 +2330,23 @@ export async function getNotifications(req, res, next) {
 
     if (!latestBatch) return res.json({ items: [], count: 0 });
 
+    // Run both record queries in parallel instead of sequentially
+    const [recentSubmits, pendingStores] = await Promise.all([
+      prisma.inventoryRecord.findMany({
+        where: { batchId: latestBatch.id, status: 'SUBMITTED', submittedAt: { gte: since24h } },
+        select: { storeId: true },
+        distinct: ['storeId'],
+      }),
+      prisma.inventoryRecord.findMany({
+        where: { batchId: latestBatch.id, status: 'PENDING' },
+        select: { storeId: true },
+        distinct: ['storeId'],
+      }),
+    ]);
+
+    const items = [];
     const dateLabel = new Date(latestBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-    // Stores that submitted in the last 24 hours
-    const recentSubmits = await prisma.inventoryRecord.findMany({
-      where: { batchId: latestBatch.id, status: 'SUBMITTED', submittedAt: { gte: since24h } },
-      select: { storeId: true },
-      distinct: ['storeId'],
-    });
     if (recentSubmits.length > 0) {
       items.push({
         type: 'submitted',
@@ -2341,34 +2356,25 @@ export async function getNotifications(req, res, next) {
       });
     }
 
-    // Overdue or deadline-approaching stores
-    if (latestBatch.submissionDeadline) {
+    if (latestBatch.submissionDeadline && pendingStores.length > 0) {
       const deadlineDate = new Date(latestBatch.submissionDeadline);
-      const pendingStores = await prisma.inventoryRecord.findMany({
-        where: { batchId: latestBatch.id, status: 'PENDING' },
-        select: { storeId: true },
-        distinct: ['storeId'],
-      });
       const pendingCount = pendingStores.length;
-
-      if (pendingCount > 0) {
-        if (now > deadlineDate) {
+      if (now > deadlineDate) {
+        items.push({
+          type: 'overdue',
+          message: `${pendingCount} store${pendingCount > 1 ? 's have' : ' has'} not submitted — ${dateLabel} deadline passed`,
+          batchId: latestBatch.id,
+          urgent: true,
+        });
+      } else {
+        const hoursLeft = Math.round((deadlineDate - now) / 3600000);
+        if (hoursLeft <= 48) {
           items.push({
-            type: 'overdue',
-            message: `${pendingCount} store${pendingCount > 1 ? 's have' : ' has'} not submitted — ${dateLabel} deadline passed`,
+            type: 'deadline',
+            message: `${pendingCount} store${pendingCount > 1 ? 's' : ''} still pending — ${dateLabel} deadline in ${hoursLeft < 1 ? '<1' : hoursLeft}h`,
             batchId: latestBatch.id,
-            urgent: true,
+            urgent: hoursLeft <= 12,
           });
-        } else {
-          const hoursLeft = Math.round((deadlineDate - now) / 3600000);
-          if (hoursLeft <= 48) {
-            items.push({
-              type: 'deadline',
-              message: `${pendingCount} store${pendingCount > 1 ? 's' : ''} still pending — ${dateLabel} deadline in ${hoursLeft < 1 ? '<1' : hoursLeft}h`,
-              batchId: latestBatch.id,
-              urgent: hoursLeft <= 12,
-            });
-          }
         }
       }
     }
