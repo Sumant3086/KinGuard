@@ -1,69 +1,17 @@
-﻿# Deployment
+# Deployment
 
-> Production deployment guide for KinMarchÃ© â€” backend, frontend, and database.
+## Render (current setup)
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Infrastructure Choices](#infrastructure-choices)
-- [Backend Deployment (Node.js / Express)](#backend-deployment-nodejs--express)
-- [Frontend Deployment (React / Vite)](#frontend-deployment-react--vite)
-- [Database (PostgreSQL)](#database-postgresql)
-- [Environment Variables (Production)](#environment-variables-production)
-- [Nginx Reverse Proxy](#nginx-reverse-proxy)
-- [Process Manager (PM2)](#process-manager-pm2)
-- [Health Check](#health-check)
-- [Deployment Checklist](#deployment-checklist)
-
----
-
-## Overview
-
-KinMarchÃ© has two deployable units:
-
-| Unit | Tech | Recommended host |
-|------|------|-----------------|
-| **API server** | Node.js 18 + Express | Railway Â· Render Â· VPS (Ubuntu) Â· AWS EC2 |
-| **Frontend** | Static HTML/JS/CSS (Vite build) | Vercel Â· Netlify Â· Cloudflare Pages Â· Nginx |
-| **Database** | PostgreSQL 15 | Supabase Â· Neon Â· Railway Postgres Â· AWS RDS |
-
-The frontend calls the API via HTTP/JSON. In production they are often on different domains â€” configure `CLIENT_URL` in the server and CORS headers accordingly.
-
----
-
-## Infrastructure Choices
-
-### Recommended for small-medium deployments
-
-| Component | Provider | Notes |
-|-----------|----------|-------|
-| API | **Railway** or **Render** | Zero-config Node.js deployment, free tier available |
-| Frontend | **Vercel** or **Netlify** | Automatic deploys from GitHub, global CDN |
-| Database | **Supabase** | Managed Postgres, built-in connection pooling, generous free tier |
-
-### On-premises / VPS
-
-Run everything on a single Ubuntu 22.04 LTS server with:
-- Nginx as reverse proxy + static file server
-- PM2 as Node.js process manager
-- PostgreSQL installed locally
-
----
-
-## Backend Deployment (Node.js / Express)
-
-### Option A — Render (recommended, currently live)
+Single web service - backend serves both the API and the built React frontend.
 
 | Field | Value |
 |---|---|
-| **Runtime** | Node |
-| **Root Directory** | *(empty — repo root)* |
-| **Build Command** | `npm install --include=dev && npm run build --workspace=client && cd server && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js` |
-| **Start Command** | `npm start` |
+| Runtime | Node |
+| Root Directory | *(empty)* |
+| Build Command | `npm install --include=dev && npm run build --workspace=client && cd server && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js` |
+| Start Command | `npm start` |
 
-**Required environment variables:**
+Environment variables:
 
 | Key | Value |
 |---|---|
@@ -71,195 +19,70 @@ Run everything on a single Ubuntu 22.04 LTS server with:
 | `DATABASE_URL` | Supabase pooled connection URL |
 | `DIRECT_URL` | Supabase direct connection URL |
 | `JWT_SECRET` | 32+ character random string |
-| `CLIENT_URL` | Your Render service URL (e.g. `https://kinmarchae.onrender.com`) |
-| `SMTP_HOST` | `smtp.gmail.com` *(optional)* |
-| `SMTP_PORT` | `587` *(optional)* |
-| `SMTP_USER` | Gmail address *(optional)* |
-| `SMTP_PASS` | Gmail App Password *(optional)* |
-| `SMTP_FROM` | Display name and address *(optional)* |
+| `CLIENT_URL` | Your Render URL e.g. `https://kinmarchae.onrender.com` |
+| `SMTP_HOST` | `smtp.gmail.com` (optional) |
+| `SMTP_PORT` | `587` (optional) |
+| `SMTP_USER` | Gmail address (optional) |
+| `SMTP_PASS` | Gmail App Password (optional) |
+| `SMTP_FROM` | Display name and address (optional) |
 
-> **Keep-alive:** Render free tier sleeps after 15 minutes of inactivity. Set up UptimeRobot (free) to ping `/api/health` every 5 minutes to prevent cold starts.
+`PORT` is set automatically by Render - do not add it manually.
 
-> **Region:** Frankfurt (EU Central) for DRC/African users, Singapore for South/Southeast Asian users.
+Keep-alive: Render free tier sleeps after 15 minutes of inactivity. Use UptimeRobot (free) to ping `/api/health` every 5 minutes.
 
----
+Region: Frankfurt (EU Central) for DRC/African users.
 
-### Option B â€” VPS with PM2
+## Database
 
-```bash
-# On the server â€” clone the repo
-git clone https://github.com/Sumant3086/KinGuard.git /opt/kinmarche
-cd /opt/kinmarche
+### Supabase
 
-# Install all dependencies
-npm run install:all
+1. Create a project at supabase.com
+2. Go to Settings -> Database
+3. Copy the Connection Pooling URL as `DATABASE_URL` (add `?pgbouncer=true` at the end)
+4. Copy the Direct Connection URL as `DIRECT_URL`
 
-# Run database migrations
-cd server && npx prisma generate && cd ..
-npm run migrate
-
-# Ensure admin account
-npm run seed
-
-# Install PM2 globally
-npm install -g pm2
-
-# Start the server with PM2
-pm2 start server/src/server.js --name kinmarche-api --interpreter node
-pm2 save
-pm2 startup  # Follow the printed command to enable auto-start on reboot
-```
-
----
-
-## Frontend Deployment (React / Vite)
-
-### Build
+### Local PostgreSQL
 
 ```bash
-npm run build:client
-```
-
-Output goes to `client/dist/`. This directory contains static files that can be served by any web server or CDN.
-
-### Option A â€” Vercel / Netlify / Cloudflare Pages
-
-1. Connect your GitHub repository
-2. Set the root directory to `client/`
-3. Build command: `npm run build`
-4. Output directory: `dist`
-5. Deploy
-
-> **SPA routing:** Add a rewrite rule so all paths serve `index.html` (Vercel and Netlify do this automatically with a `_redirects` file or `vercel.json`).
-
-**`client/public/_redirects`** (for Netlify):
-```
-/*  /index.html  200
-```
-
-**`client/vercel.json`** (for Vercel):
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
-
-### Option B â€” Nginx (VPS)
-
-```nginx
-server {
-    listen 80;
-    server_name app.kinmarche.com;
-
-    root /opt/kinmarche/client/dist;
-    index index.html;
-
-    # SPA fallback â€” serve index.html for all non-file routes
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Cache static assets for 1 year
-    location ~* \.(js|css|png|jpg|ico|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-```
-
----
-
-## Database (PostgreSQL)
-
-### Supabase (recommended)
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Go to **Settings â†’ Database**
-3. Copy:
-   - **Connection pooling** URL â†’ use as `DATABASE_URL`
-   - **Direct connection** URL â†’ use as `DIRECT_URL`
-4. Run migrations from your local machine or CI:
-   ```bash
-   DATABASE_URL=<your-supabase-url> DIRECT_URL=<your-direct-url> npm run migrate
-   ```
-
-### Self-hosted PostgreSQL
-
-```bash
-# Ubuntu 22.04
 sudo apt install postgresql-15
-
-# Create database and user
 sudo -u postgres psql
-CREATE USER kinmarche WITH PASSWORD 'strong-password';
+CREATE USER kinmarche WITH PASSWORD 'yourpassword';
 CREATE DATABASE kinmarche OWNER kinmarche;
 \q
-
-# Set DATABASE_URL
-DATABASE_URL=postgresql://kinmarche:strong-password@localhost:5432/kinmarche
-DIRECT_URL=postgresql://kinmarche:strong-password@localhost:5432/kinmarche
 ```
 
----
+Set both `DATABASE_URL` and `DIRECT_URL` to `postgresql://kinmarche:yourpassword@localhost:5432/kinmarche`.
 
-## Environment Variables (Production)
+## VPS with PM2
 
-All variables go in `server/.env` (or as platform environment variables if using Railway/Render/etc.).
-
-```env
-# â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-DATABASE_URL=postgresql://user:pass@host:5432/kinmarche?pgbouncer=true
-DIRECT_URL=postgresql://user:pass@host:5432/kinmarche
-
-# â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-JWT_SECRET=<32+ character random string â€” generate with openssl rand -base64 32>
-JWT_EXPIRES_IN=8h
-
-# â”€â”€ Server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-PORT=5000
-NODE_ENV=production
-CLIENT_URL=https://app.kinmarche.com
-
-# â”€â”€ Email (optional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=noreply@kinmarche.com
-SMTP_PASS=<gmail-app-password>
-SMTP_FROM=KinMarchÃ© <noreply@kinmarche.com>
+```bash
+git clone https://github.com/Sumant3086/KinGuard.git /opt/kinmarche
+cd /opt/kinmarche
+npm install --include=dev
+npm run build --workspace=client
+cd server && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js && cd ..
+npm install -g pm2
+pm2 start server/src/server.js --name kinmarche --interpreter node
+pm2 save && pm2 startup
 ```
 
-> **Important:** `NODE_ENV=production` enables rate limiting and disables stack traces in error responses.
-
----
-
-## Nginx Reverse Proxy
-
-When hosting both the API and frontend on the same VPS, use Nginx to reverse-proxy API requests to Node.js and serve static files directly:
+Nginx config:
 
 ```nginx
 server {
     listen 80;
     server_name app.kinmarche.com;
-
-    # Serve the React SPA
     root /opt/kinmarche/client/dist;
     index index.html;
 
-    # Proxy API requests to Node.js
     location /api/ {
         proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        client_max_body_size 15M;  # must be >= Multer's 10MB limit
+        client_max_body_size 15M;
     }
 
-    # SPA fallback for client-side routing
     location / {
         try_files $uri $uri/ /index.html;
     }
@@ -271,111 +94,26 @@ server {
 }
 ```
 
-### HTTPS with Let's Encrypt
+HTTPS: `sudo certbot --nginx -d app.kinmarche.com`
 
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d app.kinmarche.com
-```
+## Checklist
 
-Certbot will automatically modify your Nginx config and set up auto-renewal.
-
----
-
-## Process Manager (PM2)
-
-PM2 keeps the Node.js server running and restarts it on crash or reboot.
-
-```bash
-# Start
-pm2 start server/src/server.js \
-  --name kinmarche-api \
-  --interpreter node \
-  --env production
-
-# View logs
-pm2 logs kinmarche-api
-
-# Monitor
-pm2 monit
-
-# Reload (zero-downtime restart)
-pm2 reload kinmarche-api
-
-# Save process list (survives reboots)
-pm2 save
-pm2 startup
-```
-
-**`ecosystem.config.js`** (optional â€” place in repo root):
-```js
-module.exports = {
-  apps: [{
-    name: 'kinmarche-api',
-    script: 'server/src/server.js',
-    interpreter: 'node',
-    env_production: {
-      NODE_ENV: 'production',
-      PORT: 5000,
-    },
-    max_memory_restart: '512M',
-    log_date_format: 'YYYY-MM-DD HH:mm:ss',
-  }],
-};
-```
-
-Then: `pm2 start ecosystem.config.js --env production`
-
----
-
-## Health Check
-
-The API exposes a health endpoint that does not require authentication:
-
-```
-GET /api/health
-```
-
-Response:
-```json
-{ "status": "ok", "timestamp": "2026-07-10T12:00:00.000Z" }
-```
-
-Use this with your load balancer, uptime monitor (Better Uptime, UptimeRobot), or container health check.
-
----
-
-## Deployment Checklist
-
-### Before first deploy
-
-- [ ] PostgreSQL database created and accessible
-- [ ] `server/.env` populated with all required variables
-- [ ] `JWT_SECRET` is at least 32 characters and randomly generated
-- [ ] `CLIENT_URL` matches the exact origin of the deployed frontend (no trailing slash)
+Before first deploy:
+- [ ] Database created and migrations run
+- [ ] `JWT_SECRET` is at least 32 random characters
+- [ ] `CLIENT_URL` matches the exact frontend origin (no trailing slash)
 - [ ] `NODE_ENV=production` is set
-- [ ] `npm run migrate` has been run against the production database
-- [ ] `npm run seed` has been run to create the admin account
+- [ ] Admin account seeded
 
-### Security before going live
+After deploy:
+- [ ] Login as admin works at the production URL
+- [ ] `/api/health` returns `{ "status": "ok" }`
+- [ ] Upload a test file and verify store managers receive it
+- [ ] Log in as a store manager and confirm store isolation
+- [ ] Default admin password changed
 
-- [ ] Default admin password has been changed from the seeded value
-- [ ] `server/.env` is in `.gitignore` (already configured) â€” confirm it is not committed
-- [ ] HTTPS is enabled (Let's Encrypt or platform TLS)
-- [ ] `client_max_body_size` in Nginx is set to â‰¥15 MB (to allow 10 MB file uploads)
-
-### After deploy
-
-- [ ] Test login as admin at the production URL
-- [ ] Upload a small test inventory file and verify stores receive it
-- [ ] Log in as a store manager and verify store isolation
-- [ ] Confirm the `/api/health` endpoint returns `200`
-- [ ] Verify email notifications if SMTP is configured (upload a file and check inbox)
-
-### Ongoing
-
+Ongoing:
 - [ ] Monitor `/api/health` with an uptime service
-- [ ] Review audit logs periodically via Admin â†’ Activity Log
-- [ ] Back up the PostgreSQL database regularly (daily recommended)
-- [ ] Run `npm run migrate` after each deployment that includes schema changes
-
+- [ ] Review audit logs via Admin -> Activity Log
+- [ ] Back up the PostgreSQL database regularly
+- [ ] Run `npx prisma migrate deploy` after schema changes

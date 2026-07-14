@@ -1,26 +1,4 @@
-# Database Schema
-
-> Table definitions, relationships, indexes, and data dictionary for KinMarché.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Entity Relationship Diagram](#entity-relationship-diagram)
-- [Tables](#tables)
-  - [Store](#store)
-  - [User](#user)
-  - [UploadBatch](#uploadbatch)
-  - [InventoryRecord](#inventoryrecord)
-  - [BatchDeadlineExtension](#batchdeadlineextension)
-  - [AuditLog](#auditlog)
-- [Enums](#enums)
-- [Indexes](#indexes)
-- [Data Dictionary](#data-dictionary)
-- [Column Name Quirk](#column-name-quirk)
-
----
+﻿# Database Schema
 
 ## Overview
 
@@ -34,8 +12,6 @@ The database is PostgreSQL 15+ managed via Prisma 5. All migrations live in `ser
 | `InventoryRecord` | 50–500 per batch × stores | The core data: one row per (store, item, batch) |
 | `BatchDeadlineExtension` | Occasional | Per-store deadline overrides |
 | `AuditLog` | Grows indefinitely | Immutable action log |
-
----
 
 ## Entity Relationship Diagram
 
@@ -60,8 +36,6 @@ User ─────────────────────────
       (grantedBy → User.id)                                  │
 ```
 
----
-
 ## Tables
 
 ### Store
@@ -79,8 +53,6 @@ Represents a retail location.
 
 **Unique constraints:** `storeCode`  
 **Indexes:** `storeCode`
-
----
 
 ### User
 
@@ -103,8 +75,6 @@ Admin and Store Manager accounts.
 **Unique constraints:** `employeeId`  
 **Indexes:** `employeeId`, `storeId`
 
----
-
 ### UploadBatch
 
 One row per file upload / inventory cycle.
@@ -124,8 +94,6 @@ One row per file upload / inventory cycle.
 | `status` | `UploadStatus` | No | `PENDING` | `PENDING` during processing, `COMPLETED` on success, `FAILED` if all rows rejected |
 
 **Indexes:** `uploadedBy`, `inventoryDate`, `status`
-
----
 
 ### InventoryRecord
 
@@ -153,8 +121,6 @@ The core table. One row per **(UploadBatch × Store × Item)**.
 
 **Indexes:** `batchId`, `storeId`, `materialCode`, `status`, `submittedAt`, `(storeId, batchId)`, `(storeId, status)`, `(batchId, status)`
 
----
-
 ### BatchDeadlineExtension
 
 Per-store deadline overrides. When an extension exists for a (batch, store) pair, the extension deadline supersedes the batch's global deadline.
@@ -172,8 +138,6 @@ Per-store deadline overrides. When an extension exists for a (batch, store) pair
 **Unique constraint:** `(batchId, storeId)` — one extension per store per batch. Upserted on update.  
 **Indexes:** `batchId`, `storeId`
 
----
-
 ### AuditLog
 
 Immutable record of every significant action in the system. Never deleted.
@@ -189,8 +153,6 @@ Immutable record of every significant action in the system. Never deleted.
 | `createdAt` | `DateTime` | No | `now()` | |
 
 **Indexes:** `userId`, `action`, `createdAt`
-
----
 
 ## Enums
 
@@ -216,8 +178,6 @@ Immutable record of every significant action in the system. Never deleted.
 | `PENDING` | Store manager has not yet submitted this item |
 | `SUBMITTED` | Count has been entered and submitted |
 
----
-
 ## Indexes
 
 The following composite and single-column indexes are defined to support the most frequent query patterns:
@@ -240,8 +200,6 @@ The following composite and single-column indexes are defined to support the mos
 | `InventoryRecord` | `(batchId, status)` | "All submitted in batch X" |
 | `BatchDeadlineExtension` | `batchId`, `storeId` | Extension lookup per (batch, store) |
 | `AuditLog` | `userId`, `action`, `createdAt` | Filtered audit log queries |
-
----
 
 ## Data Dictionary
 
@@ -267,8 +225,6 @@ Variance < 0   → Shortage (items missing — potential theft, damage, or loss)
 Variance > 0   → Surplus (extra items — receiving error or count error)
 ```
 
----
-
 ## Column Name Quirk
 
 When this system was first designed, the `materialCode` DB field was used to store the item's **name/identifier** (what you search for), and `materialName` was used for the **description** (the longer human-readable text). This mapping differs from what you might intuitively expect.
@@ -277,3 +233,4 @@ The current UI and all Excel exports present them correctly as **Item Code** and
 
 - `materialCode` → what the UI calls **"Item Code"** (e.g., `1000013986`)
 - `materialName` → what the UI calls **"Item Name"** (e.g., `Whisky Black Label 750Ml`)
+

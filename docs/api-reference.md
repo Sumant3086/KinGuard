@@ -1,29 +1,4 @@
-# API Reference
-
-> Complete REST API documentation for KinMarché.  
-> Base URL: `http://localhost:5000/api` (development) or your production API origin.
-
----
-
-## Table of Contents
-
-- [Authentication](#authentication)
-- [Rate Limits](#rate-limits)
-- [Error Format](#error-format)
-- [Auth Endpoints](#auth-endpoints)
-- [Admin Endpoints](#admin-endpoints)
-  - [Dashboard & Notifications](#dashboard--notifications)
-  - [Stores](#stores)
-  - [Users](#users)
-  - [File Upload](#file-upload)
-  - [Inventory](#inventory)
-  - [Reports](#reports)
-  - [Cycles (Batches)](#cycles-batches)
-  - [Analytics](#analytics)
-  - [Audit Log](#audit-log)
-- [Store Manager Endpoints](#store-manager-endpoints)
-
----
+﻿# API Reference
 
 ## Authentication
 
@@ -34,8 +9,6 @@ Authorization: Bearer <jwt_token>
 ```
 
 Tokens are obtained from `POST /auth/login`. They expire after `8h` by default (configurable via `JWT_EXPIRES_IN`).
-
----
 
 ## Error Format
 
@@ -63,8 +36,6 @@ In development mode, a `stack` field is also included.
 | `413` | Payload too large — export filter matches too many records |
 | `500` | Internal server error |
 | `503` | Service temporarily unavailable (DB cold-start) |
-
----
 
 ## Auth Endpoints
 
@@ -108,8 +79,6 @@ For `STORE_MANAGER` users the `store` field is populated:
 }
 ```
 
----
-
 ### `GET /auth/me`
 
 Returns the profile of the currently authenticated user.
@@ -128,13 +97,9 @@ Returns the profile of the currently authenticated user.
 }
 ```
 
----
-
 ## Admin Endpoints
 
 All admin endpoints require `Authorization: Bearer <token>` with role `ADMIN`.
-
----
 
 ### Dashboard & Notifications
 
@@ -196,8 +161,6 @@ Response is cached server-side for 30 seconds.
 **`riskLevel` values:** `RED` (≥20% shortage rate) · `YELLOW` (5–19%) · `GREEN` (<5%)  
 **`status` values:** `SUBMITTED` · `PENDING` · `NO_DATA`
 
----
-
 #### `GET /admin/notifications`
 
 Returns real-time notification items computed from current data. Never cached.
@@ -225,8 +188,6 @@ Returns real-time notification items computed from current data. Never cached.
 
 **`type` values:** `submitted` · `deadline` · `overdue`
 
----
-
 ### Stores
 
 #### `GET /admin/stores`
@@ -250,8 +211,6 @@ List all stores (active and inactive), ordered by store code.
 ]
 ```
 
----
-
 #### `POST /admin/stores`
 
 Create a new store.
@@ -269,8 +228,6 @@ Create a new store.
 
 **Error `409`:** Store code already exists.
 
----
-
 #### `PATCH /admin/stores/:id`
 
 Update a store's name or active status.
@@ -286,8 +243,6 @@ Update a store's name or active status.
 **Success response `200`:** The updated store object.  
 **Error `404`:** Store not found.
 
----
-
 #### `DELETE /admin/stores/:id`
 
 Delete a store. Fails if the store has inventory records.
@@ -299,8 +254,6 @@ Delete a store. Fails if the store has inventory records.
 
 **Error `409`:** Store has inventory records — deactivate it instead.
 
----
-
 #### `DELETE /admin/stores/:id/force`
 
 Force-delete a store and cascade-delete all its inventory records. Use with caution.
@@ -309,8 +262,6 @@ Force-delete a store and cascade-delete all its inventory records. Use with caut
 ```json
 { "message": "Store and all its data permanently deleted" }
 ```
-
----
 
 #### `DELETE /admin/stores/bulk`
 
@@ -335,8 +286,6 @@ With `force: true`, all records for those stores are cascade-deleted.
   "message": "Deleted 2 store(s). 1 skipped (have records — use force delete)."
 }
 ```
-
----
 
 #### `GET /admin/stores/:storeId/drilldown`
 
@@ -363,8 +312,6 @@ Shortage details for one store in a specific batch.
   }
 ]
 ```
-
----
 
 ### Users
 
@@ -393,8 +340,6 @@ List all users ordered by employee ID.
 ]
 ```
 
----
-
 #### `POST /admin/users`
 
 Create a new user.
@@ -422,8 +367,6 @@ Create a new user.
 **Success response `201`:** The created user object (without `passwordHash`).  
 **Error `409`:** Employee ID already exists.
 
----
-
 #### `PATCH /admin/users/:id`
 
 Update a user. All fields are optional.
@@ -447,8 +390,6 @@ Update a user. All fields are optional.
 
 **Success response `200`:** The updated user object.
 
----
-
 #### `DELETE /admin/users/:id`
 
 Delete a user. Cannot delete your own account. Cannot delete the last admin.
@@ -460,8 +401,6 @@ Reassigns non-nullable references (upload batches, deadline extensions) to the d
 { "message": "User deleted" }
 ```
 
----
-
 ### File Upload
 
 #### `GET /admin/uploads/template`
@@ -470,8 +409,6 @@ Download a sample Excel template with correct column headers and example rows.
 
 **Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`  
 **Filename:** `KinGuard_InventoryTemplate.xlsx`
-
----
 
 #### `POST /admin/uploads/preview`
 
@@ -526,8 +463,6 @@ Validate a file without committing any data. Returns a row-by-row preview.
 
 **Row `status` values:** `valid` · `warning` · `error`
 
----
-
 #### `POST /admin/uploads`
 
 Commit an upload — create the inventory cycle and distribute records to stores.
@@ -576,15 +511,11 @@ Add `?force=true` to the URL to override the duplicate-date warning.
 | System Stock | `System Stock`, `System  Stock`, `SYS`, `System Quantity`, `QTY` |
 | Remarks | `Remarks`, `remarks`, `Remark`, `Note` |
 
----
-
 #### `GET /admin/uploads`
 
 Upload history, ordered by upload date descending.
 
 **Success response `200`:** Array of batch objects with uploader name.
-
----
 
 ### Inventory
 
@@ -636,23 +567,17 @@ Paginated inventory records across all stores and cycles.
 
 **`isRepeat: true`** means this (store, item) combination had a shortage in a previous cycle.
 
----
-
 #### `GET /admin/inventory/export`
 
 Download filtered inventory as Excel. Accepts the same query params as `GET /admin/inventory` (no pagination).
 
 **Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 
----
-
 #### `GET /admin/inventory/export-pdf`
 
 Download filtered inventory as PDF.
 
 **Response:** `application/pdf`
-
----
 
 #### `PATCH /admin/inventory/:id/override`
 
@@ -674,8 +599,6 @@ Admin override for a single inventory record — change physical qty, remarks, c
 
 **Success response `200`:** The updated inventory record.
 
----
-
 ### Reports
 
 #### `GET /admin/reports/reconciliation`
@@ -693,23 +616,17 @@ Full reconciliation report — all inventory records matching the filters.
 
 **Success response `200`:** Array of inventory records with store, batch, and submitter details.
 
----
-
 #### `GET /admin/reports/reconciliation/download`
 
 Download the reconciliation report as Excel. Accepts the same query params.
 
 **Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 
----
-
 #### `GET /admin/reports/reconciliation/download-pdf`
 
 Download the reconciliation report as PDF. Accepts the same query params.
 
 **Response:** `application/pdf`
-
----
 
 ### Cycles (Batches)
 
@@ -739,8 +656,6 @@ All inventory cycles with per-store submission statistics.
 ]
 ```
 
----
-
 #### `PATCH /admin/batches/:id`
 
 Update the submission deadline for a cycle.
@@ -755,8 +670,6 @@ Update the submission deadline for a cycle.
 Pass `null` to remove the deadline.
 
 **Success response `200`:** The updated batch object.
-
----
 
 #### `POST /admin/batches/extend`
 
@@ -778,8 +691,6 @@ Grant a store-specific deadline extension without changing the global deadline.
 
 **Success response `200`:** The extension record.
 
----
-
 #### `DELETE /admin/batches/:id`
 
 Delete a cycle and all its inventory records. This is permanent.
@@ -788,8 +699,6 @@ Delete a cycle and all its inventory records. This is permanent.
 ```json
 { "message": "Cycle deleted" }
 ```
-
----
 
 #### `POST /admin/batches/:id/unlock-store`
 
@@ -805,23 +714,17 @@ Reset a store's submitted records back to PENDING, allowing the store manager to
 { "message": "42 record(s) reset to pending", "count": 42 }
 ```
 
----
-
 #### `GET /admin/batches/:batchId/export`
 
 Download all records for a single cycle as Excel, grouped by store.
 
 **Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 
----
-
 #### `GET /admin/batches/:batchId/export-pdf`
 
 Download all records for a single cycle as PDF.
 
 **Response:** `application/pdf`
-
----
 
 #### `POST /admin/batches/:id/send-reminders`
 
@@ -831,8 +734,6 @@ Send email reminders to all store managers with pending submissions for this cyc
 ```json
 { "message": "Reminders sent", "count": 2 }
 ```
-
----
 
 ### Analytics
 
@@ -868,8 +769,6 @@ Shortage rate trend data across the last N cycles, per store.
 }
 ```
 
----
-
 ### Audit Log
 
 #### `GET /admin/audit-logs`
@@ -901,8 +800,6 @@ Recent audit log entries, newest first.
 ]
 ```
 
----
-
 #### `GET /admin/audit-logs/export`
 
 Download the audit log as Excel.
@@ -911,15 +808,11 @@ Download the audit log as Excel.
 
 **Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 
----
-
 ## Store Manager Endpoints
 
 All store manager endpoints require `Authorization: Bearer <token>` with role `STORE_MANAGER`.
 
 Store isolation is enforced server-side — every query filters by `req.user.storeId`. A manager cannot read or write another store's data regardless of what they send in the request.
-
----
 
 ### `GET /store/dashboard`
 
@@ -954,8 +847,6 @@ Stock count progress summary for the active cycle.
 
 `olderPendingBatches` is an array of earlier cycles that still have pending items. Non-empty when an admin uploads inventory dated in the past.
 
----
-
 ### `GET /store/notifications`
 
 Real-time notification items for the store manager. Never cached.
@@ -983,8 +874,6 @@ Real-time notification items for the store manager. Never cached.
 
 **`type` values:** `pending` · `deadline` · `overdue`
 
----
-
 ### `GET /store/batches`
 
 All cycles that have inventory records for this store, ordered by date descending.
@@ -1002,8 +891,6 @@ All cycles that have inventory records for this store, ordered by date descendin
   }
 ]
 ```
-
----
 
 ### `GET /store/inventory`
 
@@ -1039,8 +926,6 @@ Inventory items for this store in a given cycle.
 
 `isLocked: true` when the submission deadline has passed and the manager can no longer edit records.
 
----
-
 ### `PATCH /store/inventory/:id`
 
 Save counted quantity and/or remarks for a single item. Called automatically 700 ms after the manager stops typing.
@@ -1062,8 +947,6 @@ Save counted quantity and/or remarks for a single item. Called automatically 700
 - Variance (`difference`) is always recalculated server-side
 
 **Success response `200`:** The updated inventory record.
-
----
 
 ### `POST /store/inventory/submit`
 
@@ -1096,8 +979,6 @@ Submit all pending items for this store in a given cycle. Marks all records as `
 }
 ```
 
----
-
 ### `GET /store/inventory/download`
 
 Download this store's inventory for a given cycle as Excel.
@@ -1110,3 +991,4 @@ Download this store's inventory for a given cycle as Excel.
 
 **Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`  
 **Filename:** `store_{storeCode}_inventory.xlsx`
+
