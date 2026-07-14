@@ -1,6 +1,6 @@
-# Deployment
+﻿# Deployment
 
-> Production deployment guide for KinMarché — backend, frontend, and database.
+> Production deployment guide for KinMarchÃ© â€” backend, frontend, and database.
 
 ---
 
@@ -21,15 +21,15 @@
 
 ## Overview
 
-KinMarché has two deployable units:
+KinMarchÃ© has two deployable units:
 
 | Unit | Tech | Recommended host |
 |------|------|-----------------|
-| **API server** | Node.js 18 + Express | Railway · Render · VPS (Ubuntu) · AWS EC2 |
-| **Frontend** | Static HTML/JS/CSS (Vite build) | Vercel · Netlify · Cloudflare Pages · Nginx |
-| **Database** | PostgreSQL 15 | Supabase · Neon · Railway Postgres · AWS RDS |
+| **API server** | Node.js 18 + Express | Railway Â· Render Â· VPS (Ubuntu) Â· AWS EC2 |
+| **Frontend** | Static HTML/JS/CSS (Vite build) | Vercel Â· Netlify Â· Cloudflare Pages Â· Nginx |
+| **Database** | PostgreSQL 15 | Supabase Â· Neon Â· Railway Postgres Â· AWS RDS |
 
-The frontend calls the API via HTTP/JSON. In production they are often on different domains — configure `CLIENT_URL` in the server and CORS headers accordingly.
+The frontend calls the API via HTTP/JSON. In production they are often on different domains â€” configure `CLIENT_URL` in the server and CORS headers accordingly.
 
 ---
 
@@ -54,11 +54,11 @@ Run everything on a single Ubuntu 22.04 LTS server with:
 
 ## Backend Deployment (Node.js / Express)
 
-### Option A — Railway / Render / Fly.io
+### Option A â€” Railway / Render / Fly.io
 
 1. Connect your GitHub repository to the platform
 2. Set the root directory to `/` (monorepo root) or `/server`
-3. Set the build command: *(none — no build step for Node.js)*
+3. Set the build command: *(none â€” no build step for Node.js)*
 4. Set the start command:
    ```bash
    npm run migrate && npm start --workspace=server
@@ -66,10 +66,10 @@ Run everything on a single Ubuntu 22.04 LTS server with:
 5. Add all required environment variables (see [Environment Variables](#environment-variables-production))
 6. Deploy
 
-### Option B — VPS with PM2
+### Option B â€” VPS with PM2
 
 ```bash
-# On the server — clone the repo
+# On the server â€” clone the repo
 git clone https://github.com/Sumant3086/KinGuard.git /opt/kinmarche
 cd /opt/kinmarche
 
@@ -104,7 +104,7 @@ npm run build:client
 
 Output goes to `client/dist/`. This directory contains static files that can be served by any web server or CDN.
 
-### Option A — Vercel / Netlify / Cloudflare Pages
+### Option A â€” Vercel / Netlify / Cloudflare Pages
 
 1. Connect your GitHub repository
 2. Set the root directory to `client/`
@@ -126,7 +126,7 @@ Output goes to `client/dist/`. This directory contains static files that can be 
 }
 ```
 
-### Option B — Nginx (VPS)
+### Option B â€” Nginx (VPS)
 
 ```nginx
 server {
@@ -136,7 +136,7 @@ server {
     root /opt/kinmarche/client/dist;
     index index.html;
 
-    # SPA fallback — serve index.html for all non-file routes
+    # SPA fallback â€” serve index.html for all non-file routes
     location / {
         try_files $uri $uri/ /index.html;
     }
@@ -156,10 +156,10 @@ server {
 ### Supabase (recommended)
 
 1. Create a project at [supabase.com](https://supabase.com)
-2. Go to **Settings → Database**
+2. Go to **Settings â†’ Database**
 3. Copy:
-   - **Connection pooling** URL → use as `DATABASE_URL`
-   - **Direct connection** URL → use as `DIRECT_URL`
+   - **Connection pooling** URL â†’ use as `DATABASE_URL`
+   - **Direct connection** URL â†’ use as `DIRECT_URL`
 4. Run migrations from your local machine or CI:
    ```bash
    DATABASE_URL=<your-supabase-url> DIRECT_URL=<your-direct-url> npm run migrate
@@ -189,25 +189,25 @@ DIRECT_URL=postgresql://kinmarche:strong-password@localhost:5432/kinmarche
 All variables go in `server/.env` (or as platform environment variables if using Railway/Render/etc.).
 
 ```env
-# ── Database ──────────────────────────────────────────────────────────
+# â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 DATABASE_URL=postgresql://user:pass@host:5432/kinmarche?pgbouncer=true
 DIRECT_URL=postgresql://user:pass@host:5432/kinmarche
 
-# ── Auth ──────────────────────────────────────────────────────────────
-JWT_SECRET=<32+ character random string — generate with openssl rand -base64 32>
+# â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+JWT_SECRET=<32+ character random string â€” generate with openssl rand -base64 32>
 JWT_EXPIRES_IN=8h
 
-# ── Server ────────────────────────────────────────────────────────────
+# â”€â”€ Server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 PORT=5000
 NODE_ENV=production
 CLIENT_URL=https://app.kinmarche.com
 
-# ── Email (optional) ─────────────────────────────────────────────────
+# â”€â”€ Email (optional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=noreply@kinmarche.com
 SMTP_PASS=<gmail-app-password>
-SMTP_FROM=KinMarché <noreply@kinmarche.com>
+SMTP_FROM=KinMarchÃ© <noreply@kinmarche.com>
 ```
 
 > **Important:** `NODE_ENV=production` enables rate limiting and disables stack traces in error responses.
@@ -289,7 +289,7 @@ pm2 save
 pm2 startup
 ```
 
-**`ecosystem.config.js`** (optional — place in repo root):
+**`ecosystem.config.js`** (optional â€” place in repo root):
 ```js
 module.exports = {
   apps: [{
@@ -341,10 +341,10 @@ Use this with your load balancer, uptime monitor (Better Uptime, UptimeRobot), o
 
 ### Security before going live
 
-- [ ] Default admin password (`Admin@123`) has been changed
-- [ ] `server/.env` is in `.gitignore` (already configured) — confirm it is not committed
+- [ ] Default admin password has been changed from the seeded value
+- [ ] `server/.env` is in `.gitignore` (already configured) â€” confirm it is not committed
 - [ ] HTTPS is enabled (Let's Encrypt or platform TLS)
-- [ ] `client_max_body_size` in Nginx is set to ≥15 MB (to allow 10 MB file uploads)
+- [ ] `client_max_body_size` in Nginx is set to â‰¥15 MB (to allow 10 MB file uploads)
 
 ### After deploy
 
@@ -357,6 +357,6 @@ Use this with your load balancer, uptime monitor (Better Uptime, UptimeRobot), o
 ### Ongoing
 
 - [ ] Monitor `/api/health` with an uptime service
-- [ ] Review audit logs periodically via Admin → Activity Log
+- [ ] Review audit logs periodically via Admin â†’ Activity Log
 - [ ] Back up the PostgreSQL database regularly (daily recommended)
 - [ ] Run `npm run migrate` after each deployment that includes schema changes

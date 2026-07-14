@@ -929,33 +929,10 @@ export async function previewUpload(req, res, next) {
       throw new AppError('No data rows found in file', 400);
     }
 
-    // Ensure database connection is active before querying
-    // This prevents the "first query fails" issue
-    await prisma.$connect();
-
-    // Fetch all plant codes for validation with proper error handling
-    let stores;
-    let retryCount = 0;
-    const maxRetries = 2;
-
-    while (retryCount <= maxRetries) {
-      try {
-        stores = await prisma.store.findMany({ select: { storeCode: true, storeName: true } });
-        break; // Success, exit the retry loop
-      } catch (dbErr) {
-        retryCount++;
-        if (retryCount > maxRetries) {
-          console.error('[previewUpload] DB query failed after all retries:', dbErr.message);
-          throw new AppError('Unable to reach the database. Please try again.', 503);
-        }
-        console.warn(`[previewUpload] DB query attempt ${retryCount} failed, retrying...`, dbErr.message);
-        // Wait before retry with exponential backoff
-        await new Promise(r => setTimeout(r, 200 * retryCount));
-        // Force reconnect
-        await prisma.$disconnect();
-        await prisma.$connect();
-      }
-    }
+    // Fetch all plant codes for validation — retry once on cold-start connection failure
+    const stores = await withDbRetry(() =>
+      prisma.store.findMany({ select: { storeCode: true, storeName: true } })
+    );
 
     const storeMap = new Map(stores.map(s => [s.storeCode, s.storeName]));
 

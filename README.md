@@ -110,11 +110,7 @@ npm run migrate    # Apply all Prisma migrations
 npm run seed       # Create the default admin account
 ```
 
-**Default admin credentials** (change immediately after first login):
-
-| Employee ID | Password |
-|---|---|
-| `ADMIN001` | `Admin@123` |
+**Default admin account** is created by the seed script. Check the console output of `npm run seed` for the credentials, then change the password immediately after first login via Admin → Users.
 
 ### 4. Start development servers
 
@@ -160,7 +156,7 @@ KinGuard/
 │   └── prisma/
 │       ├── schema.prisma
 │       ├── migrations/
-│       ├── seed.js             # Seeds ADMIN001 / Admin@123
+│       ├── seed.js             # Seeds the default admin account
 │       └── clear-all.js        # Wipes all data, preserves schema
 │
 ├── .env.example                # Template for all environment variables

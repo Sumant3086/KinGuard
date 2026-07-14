@@ -85,11 +85,23 @@ export default function Upload() {
 
   async function executePreview() {
     setPreviewing(true);
+    setError('');
     try {
       setPreview(await adminApi.previewUpload(file, inventoryDate));
-    } catch (err) {
-      setError(err.response?.data?.error || 'Preview failed. Check your file format.');
-      toast.error(err.response?.data?.error || 'Preview failed');
+    } catch (firstErr) {
+      let lastErr = firstErr;
+      // On 503 (server cold-start), retry once automatically after a short delay
+      if (firstErr.response?.status === 503) {
+        try {
+          await new Promise(r => setTimeout(r, 2000));
+          setPreview(await adminApi.previewUpload(file, inventoryDate));
+          return;
+        } catch (retryErr) {
+          lastErr = retryErr;
+        }
+      }
+      const msg = lastErr.response?.data?.error || 'Preview failed. Check your file format and try again.';
+      setError(msg);
     } finally {
       setPreviewing(false);
     }
@@ -107,7 +119,19 @@ export default function Upload() {
     setError('');
     setUploading(true);
     try {
-      setResult(await adminApi.uploadInventory(file, inventoryDate, submissionDeadline));
+      let result;
+      try {
+        result = await adminApi.uploadInventory(file, inventoryDate, submissionDeadline);
+      } catch (firstErr) {
+        // On 503 (server cold-start), retry once automatically after a short delay
+        if (firstErr.response?.status === 503) {
+          await new Promise(r => setTimeout(r, 2000));
+          result = await adminApi.uploadInventory(file, inventoryDate, submissionDeadline);
+        } else {
+          throw firstErr;
+        }
+      }
+      setResult(result);
       setPreview(null);
       clearUploadedFile();
     } catch (err) {

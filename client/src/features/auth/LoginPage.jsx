@@ -35,17 +35,23 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      // Pass the saved destination so AuthContext redirects there after login
       await login(employeeId, password, from);
     } catch (err) {
       if (!err.response) {
         setError('Unable to connect to the server. Check your network and try again.');
+      } else if (err.response.status === 503) {
+        // Server cold-start — auto-retry once after 2s so the user doesn't have to
+        try {
+          await new Promise(r => setTimeout(r, 2000));
+          await login(employeeId, password, from);
+          return; // success on retry — AuthContext handles redirect
+        } catch (retryErr) {
+          setError(retryErr.response?.data?.error || 'The service is starting up. Please wait a moment and try again.');
+        }
       } else if (err.response.status === 401) {
         setError('Employee ID or password is incorrect.');
       } else if (err.response.status === 403) {
         setError(err.response.data?.error || 'Access denied.');
-      } else if (err.response.status === 503) {
-        setError('The service is starting. Please wait a moment and try again.');
       } else {
         setError(err.response?.data?.error || 'Login failed. Please try again.');
       }
@@ -134,7 +140,7 @@ export default function LoginPage() {
                   type="text"
                   value={employeeId}
                   onChange={e => setEmployeeId(e.target.value)}
-                  placeholder="e.g. ADMIN001"
+                  placeholder="Employee ID"
                   required
                   autoFocus
                   autoComplete="username"

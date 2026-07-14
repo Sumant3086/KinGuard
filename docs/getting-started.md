@@ -108,15 +108,7 @@ This runs `prisma migrate deploy` which applies all pending migrations in `serve
 npm run seed
 ```
 
-Creates a single administrator account if it does not already exist:
-
-| Field | Value |
-|-------|-------|
-| Employee ID | `ADMIN001` |
-| Password | `Admin@123` |
-| Role | Administrator |
-
-> **Change this password immediately** after your first login via Admin → Users.
+Creates a single administrator account if it does not already exist. The credentials are printed to your console when the seed runs — copy them, then **change the password immediately** after your first login via Admin → Users.
 
 ### Verify the Schema
 
@@ -158,12 +150,12 @@ The Vite dev server proxies all `/api/*` requests to `localhost:5000`, so there 
 
 1. Navigate to [http://localhost:5173](http://localhost:5173)
 2. Click **Sign In**
-3. Enter Employee ID: `ADMIN001` and Password: `Admin@123`
+3. Enter the admin credentials printed to your console during the seed step
 4. You will land on the **Admin Dashboard**
 
 **Immediately change your admin password:**
 - Go to Admin → Users
-- Click **Edit** on the ADMIN001 account
+- Click **Edit** on the admin account
 - Set a strong password (8+ characters, uppercase, number, special character)
 
 ---
