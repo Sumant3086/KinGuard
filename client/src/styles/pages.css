@@ -712,48 +712,49 @@
 .home-eyebrow {
   display: inline-flex;
   align-items: center;
-  padding: 8px 22px;
+  padding: 9px 24px;
   border-radius: 99px;
-  background: rgba(220,38,38,0.22);
-  border: 1.5px solid rgba(220,38,38,0.65);
+  background: rgba(220,38,38,0.50);
+  border: 2px solid rgba(255,255,255,0.55);
   color: #ffffff;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 2.0px;
+  letter-spacing: 2.2px;
   text-transform: uppercase;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
   animation: fade-in-up 0.4s var(--ease-out) 0.1s both;
-  box-shadow: 0 4px 20px rgba(220,38,38,0.30), inset 0 1px 0 rgba(255,255,255,0.20);
-  backdrop-filter: blur(14px);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.50);
+  box-shadow: 0 6px 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.30);
+  backdrop-filter: blur(16px);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.70);
 }
 .home-hero h1 {
   font-size: 64px;
   font-weight: 900;
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
   line-height: 1.08;
   letter-spacing: -2.8px;
   margin-bottom: 26px;
   animation: fade-in-up 0.5s var(--ease-out) 0.18s both;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.50), 0 4px 20px rgba(0,0,0,0.30);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.70), 0 4px 28px rgba(0,0,0,0.45), 0 0 60px rgba(255,255,255,0.08);
 }
 .home-hero h1 em {
   font-style: normal;
-  /* Warm gold gradient — connects with supermarket warm lighting */
-  background: linear-gradient(135deg, #fde68a 0%, #fbbf24 50%, #f59e0b 100%);
+  /* Bright luminous gold — starts near white-yellow for maximum pop on dark warm bg */
+  background: linear-gradient(135deg, #fffde0 0%, #ffe566 40%, #fbbf24 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.50)) drop-shadow(0 0 28px rgba(251,191,36,0.60));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.60)) drop-shadow(0 0 40px rgba(255,220,50,0.80));
 }
 .home-hero p {
   font-size: 18px;
-  color: rgba(255,255,255,0.95);
+  color: #ffe8b0;
   line-height: 1.75;
   max-width: 640px;
   margin: 0 auto 48px;
   animation: fade-in-up 0.5s var(--ease-out) 0.28s both;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.60), 0 4px 20px rgba(0,0,0,0.35);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.70), 0 4px 24px rgba(0,0,0,0.45);
   font-weight: 600;
 }
 .home-cta-btn {
@@ -834,34 +835,34 @@
 .home-section-eyebrow {
   display: inline-flex;
   align-items: center;
-  padding: 7px 18px;
+  padding: 9px 22px;
   border-radius: 99px;
-  background: rgba(220,38,38,0.22);
-  border: 1.5px solid rgba(220,38,38,0.65);
+  background: rgba(220,38,38,0.50);
+  border: 2px solid rgba(255,255,255,0.55);
   color: #ffffff;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
-  letter-spacing: 2.0px;
+  letter-spacing: 2.2px;
   text-transform: uppercase;
-  margin-bottom: 14px;
-  box-shadow: 0 4px 20px rgba(220,38,38,0.30), inset 0 1px 0 rgba(255,255,255,0.20);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.50);
-  backdrop-filter: blur(14px);
+  margin-bottom: 16px;
+  box-shadow: 0 6px 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.30);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.70);
+  backdrop-filter: blur(16px);
 }
 .home-eyebrow-green {
-  background: rgba(220,38,38,0.22) !important;
-  border-color: rgba(220,38,38,0.65) !important;
+  background: rgba(220,38,38,0.50) !important;
+  border: 2px solid rgba(255,255,255,0.55) !important;
   color: #ffffff !important;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.50);
-  box-shadow: 0 4px 20px rgba(220,38,38,0.30), inset 0 1px 0 rgba(255,255,255,0.20) !important;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.70);
+  box-shadow: 0 6px 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.30) !important;
   font-weight: 800 !important;
 }
 .home-section-eyebrow-green {
-  background: rgba(220,38,38,0.22) !important;
-  border: 1.5px solid rgba(220,38,38,0.65) !important;
+  background: rgba(220,38,38,0.50) !important;
+  border: 2px solid rgba(255,255,255,0.55) !important;
   color: #ffffff !important;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.50);
-  box-shadow: 0 4px 20px rgba(220,38,38,0.30), inset 0 1px 0 rgba(255,255,255,0.20) !important;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.70);
+  box-shadow: 0 6px 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.30) !important;
   font-weight: 800 !important;
 }
 .home-feat-title-row {
@@ -886,16 +887,26 @@
   box-shadow: 0 2px 10px rgba(220,38,38,0.45);
 }
 .home-section-heading {
-  font-size: 34px;
+  font-size: 36px;
   font-weight: 900;
   color: #ffffff;
-  letter-spacing: -1px;
-  line-height: 1.15;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.60), 0 4px 24px rgba(0,0,0,0.35);
+  letter-spacing: -1.2px;
+  line-height: 1.12;
+  /* Golden glow ties heading to the warm supermarket ambient lighting */
+  text-shadow: 0 0 40px rgba(255,210,50,0.55), 0 2px 12px rgba(0,0,0,0.70), 0 4px 28px rgba(0,0,0,0.40);
+}
+
+/* Override for the subtitle paragraph inside the section header */
+.home-section-header > p {
+  color: #ffe8b0 !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.70), 0 4px 20px rgba(0,0,0,0.45) !important;
 }
 
 .home-section-heading-skyblue {
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 /* ── Features section ────────────── */
@@ -923,25 +934,35 @@
   z-index: 2;
 }
 .home-feat {
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 16px;
+  background: rgba(255,250,240,0.95);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1.5px solid rgba(220,38,38,0.18);
+  border-radius: 18px;
   padding: 28px 24px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 28px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.90);
   transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
   position: relative;
   overflow: hidden;
   z-index: 2;
 }
-.home-feat::before { display: none; }
-.home-feat::after  { display: none; }
+/* Red top accent stripe — ties cards to the KinMarché red branding */
+.home-feat::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #dc2626 30%, #ef4444 50%, #dc2626 70%, transparent);
+  border-radius: 18px 18px 0 0;
+}
+.home-feat::after { display: none; }
 
 .home-feat:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.08);
-  border-color: rgba(220,38,38,0.22);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.20), 0 6px 16px rgba(0,0,0,0.10);
+  border-color: rgba(220,38,38,0.35);
+  background: rgba(255,252,244,0.98);
 }
 
 .home-feat-icon {
@@ -969,7 +990,7 @@
 .home-feat h3 {
   font-size: 15px;
   font-weight: 800;
-  color: #111827;
+  color: #0f0503;
   margin-bottom: 10px;
   text-shadow: none;
   letter-spacing: -0.3px;
