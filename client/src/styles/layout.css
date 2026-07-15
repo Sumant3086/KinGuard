@@ -606,6 +606,10 @@
 .mob-logout:hover { color:var(--vi); }
 
 /* ─── Responsive ──────────────────────────────────────────────────── */
+@media (min-width:1440px) {
+  .hl-content   { padding:36px 52px 60px; }
+  .store-content { padding:36px 52px 100px; }
+}
 @media (max-width:900px) {
   .hl-links, .hl-user-info, .hl-signout { display:none; }
   .hl-hamburger { display:flex; }
