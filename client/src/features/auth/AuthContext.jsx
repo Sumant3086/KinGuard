@@ -9,15 +9,18 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Only these prefixes are protected routes — used to decide whether a saved
-// `from` destination is worth honouring after login.
 function isProtectedPath(path) {
-  return path &&
-    (path.startsWith('/admin') || path.startsWith('/store'));
+  return path && (
+    path.startsWith('/admin') ||
+    path.startsWith('/store') ||
+    path.startsWith('/am')
+  );
 }
 
 function defaultDashboard(role) {
-  return role === 'ADMIN' ? '/admin/dashboard' : '/store/dashboard';
+  if (role === 'ADMIN')        return '/admin/dashboard';
+  if (role === 'AREA_MANAGER') return '/am/dashboard';
+  return '/store/dashboard';
 }
 
 export function AuthProvider({ children }) {

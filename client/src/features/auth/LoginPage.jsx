@@ -91,7 +91,7 @@ export default function LoginPage() {
               <div className="lr-logo-wrap">
                 <img src={logoImg} alt="KinMarché" className="lr-logo-img" />
               </div>
-              <span style={{ display: 'block', fontSize: 20, fontWeight: 900, color: '#ffffff', letterSpacing: '0.6px', marginTop: 6, marginBottom: 2, textShadow: '0 2px 12px rgba(0,0,0,0.35)' }}>
+              <span style={{ display: 'block', fontSize: 20, fontWeight: 900, color: '#ffffff', letterSpacing: '0.6px', marginTop: 8, marginBottom: 6, textShadow: '0 2px 12px rgba(0,0,0,0.35)' }}>
                 KinMarché
               </span>
               <h2>Sign In</h2>

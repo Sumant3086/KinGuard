@@ -87,37 +87,35 @@ function App() {
       />
 
       <main id="main-content">
-        <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/"                element={<Home />} />
             <Route path="/login"           element={<LoginPage />} />
-            <Route path="/change-password" element={<PrivateRoute><ChangePassword /></PrivateRoute>} />
+            <Route path="/change-password" element={<PrivateRoute><ErrorBoundary><ChangePassword /></ErrorBoundary></PrivateRoute>} />
 
-            {/* Admin Routes */}
-            <Route path="/admin/dashboard"  element={<PrivateRoute role="ADMIN"><AdminDashboard /></PrivateRoute>} />
-            <Route path="/admin/stores"     element={<PrivateRoute role="ADMIN"><AdminStores /></PrivateRoute>} />
-            <Route path="/admin/users"      element={<PrivateRoute role="ADMIN"><AdminUsers /></PrivateRoute>} />
-            <Route path="/admin/upload"     element={<PrivateRoute role="ADMIN"><AdminUpload /></PrivateRoute>} />
-            <Route path="/admin/inventory"  element={<PrivateRoute role="ADMIN"><AdminInventory /></PrivateRoute>} />
-            <Route path="/admin/reports"    element={<PrivateRoute role="ADMIN"><AdminReports /></PrivateRoute>} />
-            <Route path="/admin/audit-logs" element={<PrivateRoute role="ADMIN"><AdminAuditLogs /></PrivateRoute>} />
-            <Route path="/admin/analytics"  element={<PrivateRoute role="ADMIN"><AdminAnalytics /></PrivateRoute>} />
-            <Route path="/admin/batches"    element={<PrivateRoute role="ADMIN"><AdminBatches /></PrivateRoute>} />
+            {/* Admin Routes — each page has its own boundary */}
+            <Route path="/admin/dashboard"  element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminDashboard /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/stores"     element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminStores /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/users"      element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminUsers /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/upload"     element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminUpload /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/inventory"  element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminInventory /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/reports"    element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminReports /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/audit-logs" element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminAuditLogs /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/analytics"  element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminAnalytics /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/batches"    element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminBatches /></ErrorBoundary></PrivateRoute>} />
 
             {/* Store Manager Routes */}
-            <Route path="/store/dashboard" element={<PrivateRoute role="STORE_MANAGER"><StoreDashboard /></PrivateRoute>} />
-            <Route path="/store/inventory" element={<PrivateRoute role="STORE_MANAGER"><StoreInventory /></PrivateRoute>} />
+            <Route path="/store/dashboard" element={<PrivateRoute role="STORE_MANAGER"><ErrorBoundary><StoreDashboard /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/store/inventory" element={<PrivateRoute role="STORE_MANAGER"><ErrorBoundary><StoreInventory /></ErrorBoundary></PrivateRoute>} />
 
             {/* Area Manager Routes */}
-            <Route path="/am/dashboard"    element={<PrivateRoute role="AREA_MANAGER"><AMDashboard  /></PrivateRoute>} />
-            <Route path="/am/review"       element={<PrivateRoute role="AREA_MANAGER"><AMReviewList /></PrivateRoute>} />
-            <Route path="/am/review/:batchId" element={<PrivateRoute role="AREA_MANAGER"><AMReview /></PrivateRoute>} />
+            <Route path="/am/dashboard"       element={<PrivateRoute role="AREA_MANAGER"><ErrorBoundary><AMDashboard /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/am/review"          element={<PrivateRoute role="AREA_MANAGER"><ErrorBoundary><AMReviewList /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/am/review/:batchId" element={<PrivateRoute role="AREA_MANAGER"><ErrorBoundary><AMReview /></ErrorBoundary></PrivateRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
-        </ErrorBoundary>
       </main>
     </>
   );
