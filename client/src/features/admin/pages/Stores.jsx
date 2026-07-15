@@ -300,14 +300,29 @@ export default function Stores() {
                   <span className="store-card-dot">·</span>
                   <span>{store._count.inventoryRecords} record{store._count.inventoryRecords !== 1 ? 's' : ''}</span>
                 </div>
-                {/* Row 4: action buttons */}
-                <div className="store-card-actions">
-                  <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm" style={{ flex: 1 }}>Edit</button>
+                {/* AM badge if assigned */}
+                {store.areaManagerId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(124,58,237,0.10)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)', fontWeight: 700 }}>
+                      AM Assigned
+                    </span>
+                  </div>
+                )}
+                {/* Row 4: action buttons — 2-row grid so Assign AM is always visible */}
+                <div className="store-card-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
+                  <button
+                    onClick={() => { setAmModal({ storeId: store.id, storeName: store.storeName, currentAmId: store.areaManagerId }); setSelectedAmId(store.areaManagerId ? String(store.areaManagerId) : ''); }}
+                    className="btn btn-sm"
+                    style={{ background: 'rgba(124,58,237,0.09)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)', fontWeight: 600 }}
+                  >
+                    {store.areaManagerId ? 'Change AM' : 'Assign AM'}
+                  </button>
                   {store._count.inventoryRecords === 0 ? (
                     <button
                       onClick={() => setDeleteTarget(store)}
                       className="btn btn-sm"
-                      style={{ flex: 1, background: 'rgba(239,68,68,0.12)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.28)', fontWeight: 700 }}
+                      style={{ gridColumn: 'span 2', background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)', fontWeight: 700 }}
                     >
                       Delete
                     </button>
@@ -315,8 +330,7 @@ export default function Stores() {
                     <button
                       onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }}
                       className="btn btn-sm"
-                      title={`Erases ${store._count.inventoryRecords} record(s)`}
-                      style={{ flex: 1, background: 'rgba(239,68,68,0.07)', color: '#f87171', border: '1px solid rgba(239,68,68,0.20)', fontWeight: 600 }}
+                      style={{ gridColumn: 'span 2', background: 'rgba(239,68,68,0.06)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontWeight: 600, fontSize: 11 }}
                     >
                       Force Delete
                     </button>

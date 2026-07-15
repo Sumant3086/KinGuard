@@ -197,8 +197,94 @@ export default function AdminDashboard() {
   );
 }
 
+const IcoAMReview = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </svg>
+);
+
+function AMPipelineCard({ pipeline }) {
+  if (!pipeline || pipeline.length === 0) return null;
+
+  const pending  = pipeline.filter(r => r.status === 'PENDING_REVIEW');
+  const approved = pipeline.filter(r => r.status === 'APPROVED');
+  const returned = pipeline.filter(r => r.status === 'RETURNED');
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title"><IcoAMReview /> Area Manager Review Pipeline</span>
+        <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 500 }}>
+          {pipeline.length} store{pipeline.length !== 1 ? 's' : ''} in review
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        {/* Pending AM review */}
+        {pending.length > 0 && (
+          <div style={{ border: '1px solid rgba(217,119,6,0.25)', borderLeft: '3px solid #d97706', borderRadius: 10, padding: '12px 14px', background: 'rgba(217,119,6,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d97706', display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Awaiting AM Review · {pending.length}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {pending.map(r => (
+                <div key={r.storeId} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#92400e', flexShrink: 0 }}>{r.storeCode}</span>
+                  <span style={{ fontSize: 11, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.storeName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Approved by AM */}
+        {approved.length > 0 && (
+          <div style={{ border: '1px solid rgba(22,163,74,0.25)', borderLeft: '3px solid #16a34a', borderRadius: 10, padding: '12px 14px', background: 'rgba(22,163,74,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                AM Approved · {approved.length}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {approved.map(r => (
+                <div key={r.storeId} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#166534', flexShrink: 0 }}>{r.storeCode}</span>
+                  <span style={{ fontSize: 11, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.storeName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Returned by AM */}
+        {returned.length > 0 && (
+          <div style={{ border: '1px solid rgba(220,38,38,0.25)', borderLeft: '3px solid #dc2626', borderRadius: 10, padding: '12px 14px', background: 'rgba(220,38,38,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626', display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Returned for Recount · {returned.length}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {returned.map(r => (
+                <div key={r.storeId} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#991b1b', flexShrink: 0 }}>{r.storeCode}</span>
+                  <span style={{ fontSize: 11, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.storeName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DashboardContent({ data, navigate }) {
-  const { totalStores, currentBatch: cb, storeScorecard, hotspots, networkSummary: ns } = data;
+  const { totalStores, currentBatch: cb, storeScorecard, hotspots, amReviewPipeline = [], networkSummary: ns } = data;
   const now = new Date();
   const submittedPct = totalStores > 0 ? Math.round(((cb?.storesSubmitted ?? 0) / totalStores) * 100) : 0;
 
@@ -309,6 +395,9 @@ function DashboardContent({ data, navigate }) {
           <div className="kpi-sub">physical &gt; system stock</div>
         </div>
       </div>
+
+      {/* ── AM Review Pipeline ── */}
+      <AMPipelineCard pipeline={amReviewPipeline} />
 
       {/* ── Store Submission Status Scorecard — full width ── */}
       <div className="card">
