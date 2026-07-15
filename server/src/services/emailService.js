@@ -183,3 +183,66 @@ export async function sendManagerSubmissionConfirmation({ managerEmail, managerN
     `),
   });
 }
+
+// ── Notify admin when Area Manager approves a store's submission ──────────────
+export async function sendAMApprovalEmail({ adminEmail, adminName, store, areaManagerName, batchDate, remarks }) {
+  if (!isConfigured() || !adminEmail) return;
+  await sendOne({
+    to: adminEmail,
+    toName: adminName,
+    subject: `${store.storeName} approved by ${areaManagerName}`,
+    htmlContent: html(`
+      <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Area Manager Approved Submission</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${adminName}, <strong>${areaManagerName}</strong> has reviewed and approved the inventory submission from <strong>${store.storeName}</strong>.</p>
+      <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+        ${row('Store', `${store.storeCode} — ${store.storeName}`)}
+        ${row('Cycle Date', batchDate)}
+        ${row('Approved by', areaManagerName)}
+        ${remarks ? row('AM Remarks', remarks) : ''}
+      </table>
+      <p style="color:#64748b;font-size:13px;margin:20px 0 0">This submission is now ready for your final review in the admin panel.</p>
+    `),
+  });
+}
+
+// ── Notify Area Manager when a new cycle is uploaded ─────────────────────────
+export async function sendNewCycleEmailAM({ managers, inventoryDate, deadline }) {
+  if (!isConfigured()) {
+    console.warn('[email] BREVO_API_KEY not set — AM email notifications disabled');
+    return { configured: false, sent: 0, failed: 0 };
+  }
+
+  const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dlStr   = deadline
+    ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+    : 'No deadline set';
+
+  const notifiable = managers.filter(m => m.email);
+  if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
+
+  const results = await Promise.allSettled(
+    notifiable.map(m => sendOne({
+      to: m.email,
+      toName: m.name,
+      subject: `New Inventory Cycle — ${dateStr}`,
+      htmlContent: html(`
+        <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Uploaded</p>
+        <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new inventory cycle has been published. Your store managers will begin their physical counts.</p>
+        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+          ${row('Inventory Date', dateStr)}
+          ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
+          ${row('Stores Under You', String(m.storeCount || '—'))}
+        </table>
+        <p style="color:#64748b;font-size:13px;margin:20px 0 0">You will receive submissions from your store managers for review. Log in to monitor progress.</p>
+      `),
+    }))
+  );
+
+  const sent   = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
+  results.filter(r => r.status === 'rejected').forEach(r =>
+    console.error('[email] AM new-cycle send failed:', r.reason?.message)
+  );
+  console.warn(`[email] AM new-cycle: sent=${sent}, failed=${failed}`);
+  return { configured: true, sent, failed };
+}

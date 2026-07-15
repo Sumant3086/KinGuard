@@ -21,6 +21,8 @@ function resolveNav(type, role) {
 
 const typeDot = {
   new:       '#7c3aed',
+  review:    '#d97706',
+  returned:  '#dc2626',
   pending:   '#3b82f6',
   deadline:  '#d97706',
   overdue:   '#dc2626',

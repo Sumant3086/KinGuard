@@ -21,8 +21,11 @@ const AdminAuditLogs = lazy(() => import('./features/admin/pages/AuditLogs'));
 const AdminAnalytics = lazy(() => import('./features/admin/pages/Analytics'));
 const AdminBatches   = lazy(() => import('./features/admin/pages/Batches'));
 const AdminReports   = lazy(() => import('./features/admin/pages/Reports'));
-const StoreDashboard = lazy(() => import('./features/store/pages/Dashboard'));
-const StoreInventory = lazy(() => import('./features/store/pages/Inventory'));
+const StoreDashboard   = lazy(() => import('./features/store/pages/Dashboard'));
+const StoreInventory   = lazy(() => import('./features/store/pages/Inventory'));
+const AMDashboard      = lazy(() => import('./features/areaManager/pages/AMDashboard'));
+const AMReviewList     = lazy(() => import('./features/areaManager/pages/AMReviewList'));
+const AMReview         = lazy(() => import('./features/areaManager/pages/AMReview'));
 
 /**
  * Shown while a route chunk downloads or the session is being validated.
@@ -64,7 +67,9 @@ function PrivateRoute({ children, role }) {
   }
   // Wrong role — send to the user's own dashboard, not home
   if (role && user.role !== role) {
-    const dash = user.role === 'ADMIN' ? '/admin/dashboard' : '/store/dashboard';
+    const dash = user.role === 'ADMIN' ? '/admin/dashboard'
+               : user.role === 'AREA_MANAGER' ? '/am/dashboard'
+               : '/store/dashboard';
     return <Navigate to={dash} replace />;
   }
   return children;
@@ -108,6 +113,11 @@ function App() {
             {/* Store Manager Routes */}
             <Route path="/store/dashboard" element={<PrivateRoute role="STORE_MANAGER"><StoreDashboard /></PrivateRoute>} />
             <Route path="/store/inventory" element={<PrivateRoute role="STORE_MANAGER"><StoreInventory /></PrivateRoute>} />
+
+            {/* Area Manager Routes */}
+            <Route path="/am/dashboard"    element={<PrivateRoute role="AREA_MANAGER"><AMDashboard  /></PrivateRoute>} />
+            <Route path="/am/review"       element={<PrivateRoute role="AREA_MANAGER"><AMReviewList /></PrivateRoute>} />
+            <Route path="/am/review/:batchId" element={<PrivateRoute role="AREA_MANAGER"><AMReview /></PrivateRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

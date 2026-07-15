@@ -221,6 +221,16 @@ export async function sendBatchReminders(batchId) {
   return data;
 }
 
+// ── Area Manager Management ────────────────────────────────────────────────
+export async function getAreaManagers() {
+  const { data } = await client.get('/admin/area-managers');
+  return data;
+}
+export async function assignStoreAM(storeId, areaManagerId) {
+  const { data } = await client.patch(`/admin/stores/${storeId}/assign-am`, { areaManagerId });
+  return data;
+}
+
 // ── Reports ────────────────────────────────────────────────────────────────
 export async function getReconciliationReport(filters) {
   const { data } = await client.get('/admin/reports/reconciliation', { params: filters });

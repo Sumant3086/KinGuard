@@ -46,6 +46,17 @@
   min-height: calc(100vh - 60px);
 }
 
+/* ─── Area Manager nav override — indigo instead of red ─────────── */
+.am-nav {
+  background: linear-gradient(90deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%) !important;
+  border-bottom-color: rgba(255,255,255,0.10) !important;
+}
+.am-nav .hl-link.active,
+.am-nav .hl-mob-link.active { color:#a5b4fc; border-bottom-color:#a5b4fc; }
+.am-nav .hl-link:hover,
+.am-nav .hl-mob-link:hover  { color:#c7d2fe; }
+.am-mobile-menu { background: linear-gradient(180deg,#1e1b4b,#312e81); }
+
 /* ─── Admin top nav ───────────────────────────────────────────────── */
 .hl-nav {
   height: 60px;

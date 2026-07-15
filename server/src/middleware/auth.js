@@ -112,3 +112,9 @@ export function requireStoreManager(req, res, next) {
   if (!req.user.storeId)                  return next(new AppError('Store assignment required', 403));
   next();
 }
+
+export function requireAreaManager(req, res, next) {
+  if (!req.user)                           return next(new AppError('Authentication required', 401));
+  if (req.user.role !== 'AREA_MANAGER')    return next(new AppError('Access forbidden', 403));
+  next();
+}

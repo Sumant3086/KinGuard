@@ -10,6 +10,7 @@ datasource db {
 
 enum UserRole {
   ADMIN
+  AREA_MANAGER
   STORE_MANAGER
 }
 
@@ -24,19 +25,29 @@ enum InventoryStatus {
   SUBMITTED
 }
 
-model Store {
-  id        Int      @id @default(autoincrement())
-  storeCode String   @unique
-  storeName String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum ReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  RETURNED
+}
 
-  users               User[]
-  inventoryRecords    InventoryRecord[]
-  deadlineExtensions  BatchDeadlineExtension[]
+model Store {
+  id            Int      @id @default(autoincrement())
+  storeCode     String   @unique
+  storeName     String
+  isActive      Boolean  @default(true)
+  areaManagerId Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  areaManager        User?                  @relation("AreaManagerStores", fields: [areaManagerId], references: [id])
+  users              User[]                 @relation("StoreUsers")
+  inventoryRecords   InventoryRecord[]
+  deadlineExtensions BatchDeadlineExtension[]
+  amReviews          AreaManagerReview[]
 
   @@index([storeCode])
+  @@index([areaManagerId])
 }
 
 model User {
@@ -55,12 +66,14 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  store                Store?            @relation(fields: [storeId], references: [id])
-  uploadBatches        UploadBatch[]
-  submittedRecords     InventoryRecord[] @relation("SubmittedBy")
-  auditLogs            AuditLog[]
-  deadlineExtensions   BatchDeadlineExtension[] @relation("DeadlineExtensions")
-  refreshTokens        RefreshToken[]
+  store              Store?             @relation("StoreUsers", fields: [storeId], references: [id])
+  managedStores      Store[]            @relation("AreaManagerStores")
+  uploadBatches      UploadBatch[]
+  submittedRecords   InventoryRecord[]  @relation("SubmittedBy")
+  auditLogs          AuditLog[]
+  deadlineExtensions BatchDeadlineExtension[] @relation("DeadlineExtensions")
+  refreshTokens      RefreshToken[]
+  amReviews          AreaManagerReview[] @relation("AMReviews")
 
   @@index([employeeId])
   @@index([storeId])
@@ -93,9 +106,10 @@ model UploadBatch {
   rejectedRows       Int          @default(0)
   status             UploadStatus @default(PENDING)
 
-  uploader            User              @relation(fields: [uploadedBy], references: [id])
-  inventoryRecords    InventoryRecord[]
-  deadlineExtensions  BatchDeadlineExtension[]
+  uploader           User                    @relation(fields: [uploadedBy], references: [id])
+  inventoryRecords   InventoryRecord[]
+  deadlineExtensions BatchDeadlineExtension[]
+  amReviews          AreaManagerReview[]
 
   @@index([uploadedBy])
   @@index([inventoryDate])
@@ -103,25 +117,25 @@ model UploadBatch {
 }
 
 model InventoryRecord {
-  id               Int              @id @default(autoincrement())
-  batchId          Int
-  storeId          Int
-  materialCode     String
-  materialName     String
-  systemQuantity   Float
-  physicalQuantity Float?
-  difference       Float?
+  id                Int             @id @default(autoincrement())
+  batchId           Int
+  storeId           Int
+  materialCode      String
+  materialName      String
+  systemQuantity    Float
+  physicalQuantity  Float?
+  difference        Float?
   remarks           String?
   shrinkageCategory String?
-  status            InventoryStatus  @default(PENDING)
-  submittedBy      Int?
-  submittedAt      DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  status            InventoryStatus @default(PENDING)
+  submittedBy       Int?
+  submittedAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  batch         UploadBatch @relation(fields: [batchId], references: [id])
-  store         Store       @relation(fields: [storeId], references: [id])
-  submitter     User?       @relation("SubmittedBy", fields: [submittedBy], references: [id])
+  batch     UploadBatch @relation(fields: [batchId], references: [id])
+  store     Store       @relation(fields: [storeId], references: [id])
+  submitter User?       @relation("SubmittedBy", fields: [submittedBy], references: [id])
 
   @@unique([batchId, storeId, materialCode])
   @@index([batchId])
@@ -132,6 +146,28 @@ model InventoryRecord {
   @@index([storeId, batchId])
   @@index([storeId, status])
   @@index([batchId, status])
+}
+
+model AreaManagerReview {
+  id            Int          @id @default(autoincrement())
+  batchId       Int
+  storeId       Int
+  areaManagerId Int
+  status        ReviewStatus @default(PENDING_REVIEW)
+  remarks       String?
+  reviewedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  batch       UploadBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  areaManager User        @relation("AMReviews", fields: [areaManagerId], references: [id])
+
+  @@unique([batchId, storeId])
+  @@index([batchId])
+  @@index([areaManagerId])
+  @@index([storeId])
+  @@index([status])
 }
 
 model AuditLog {

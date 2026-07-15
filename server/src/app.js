@@ -84,13 +84,17 @@ app.use((req, res, next) => {
 });
 
 // ── Routes ─────────────────────────────────────────────────────────────────
-import authRoutes from './routes/authRoutes.js';
-import storeRoutes from './routes/storeRoutes.js';
-import adminRoutes from './routes/adminRoutes.js';
+import authRoutes      from './routes/authRoutes.js';
+import storeRoutes     from './routes/storeRoutes.js';
+import adminRoutes     from './routes/adminRoutes.js';
+import amRoutes        from './routes/areaManagerRoutes.js';
+import adminAmRoutes   from './routes/adminAmRoutes.js';
 
-app.use('/api/auth',  authRoutes);
-app.use('/api/store', storeRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/auth',       authRoutes);
+app.use('/api/store',      storeRoutes);
+app.use('/api/admin',      adminRoutes);
+app.use('/api/am',         amRoutes);
+app.use('/api/admin',      adminAmRoutes);
 
 // ── 404 for unknown /api routes ────────────────────────────────────────────
 app.all('/api/*', (_req, res) => {

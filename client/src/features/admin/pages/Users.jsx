@@ -94,8 +94,8 @@ function UserCard({ user, self, adminCount, selected, onSelect, onEdit, onDelete
       {/* Row 2: meta */}
       <div className="user-card-meta">
         <span>
-          <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`} style={{ fontSize: 10 }}>
-            {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
+          <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : user.role === 'AREA_MANAGER' ? 'badge-shortage' : 'badge-excess'}`} style={{ fontSize: 10 }}>
+            {user.role === 'ADMIN' ? 'Administrator' : user.role === 'AREA_MANAGER' ? 'Area Manager' : 'Store Manager'}
           </span>
           {user.store && <span style={{ marginLeft: 6 }}>· {user.store.storeCode} — {user.store.storeName}</span>}
         </span>
@@ -456,7 +456,7 @@ export default function AdminUsers() {
     setSubmitting(true);
     try {
       const payload = { ...formData };
-      if (payload.role === 'ADMIN') payload.storeId = null;
+      if (payload.role === 'ADMIN' || payload.role === 'AREA_MANAGER') payload.storeId = null;
       if (!payload.password) delete payload.password;
       if (editingId) {
         const updated = await adminApi.updateUser(editingId, payload);
@@ -1274,6 +1274,7 @@ export default function AdminUsers() {
                 <select id="user-role" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value, storeId: '' })}
                   required disabled={!!editingId || submitting}>
                   <option value="STORE_MANAGER">Store Manager</option>
+                  <option value="AREA_MANAGER">Area Manager</option>
                   <option value="ADMIN">Administrator</option>
                 </select>
                 {editingId && (
