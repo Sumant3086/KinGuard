@@ -137,10 +137,11 @@ export async function getInventory(req, res, next) {
           })
         : Promise.resolve(null),
       batchId
-        ? prisma.areaManagerReview.findUnique({
-            where: { batchId_storeId: { batchId, storeId } },
-            select: { status: true, remarks: true },
-          })
+        ? prisma.$queryRaw`
+            SELECT status, remarks FROM "AreaManagerReview"
+            WHERE "batchId" = ${batchId} AND "storeId" = ${storeId}
+            LIMIT 1
+          `.then(rows => rows[0] ?? null).catch(() => null)
         : Promise.resolve(null),
     ]);
 
@@ -364,15 +365,16 @@ export async function submitInventory(req, res, next) {
     }).catch(err => console.error('[audit] SUBMIT_INVENTORY log failed:', err.message));
     detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(err => console.error('[detect-repeat] Failed:', err.message));
 
-    // Create or reset AreaManagerReview so AM sees the new submission
+    // Create or reset AreaManagerReview so AM sees the new submission (raw SQL for DLL compat)
     prisma.store.findUnique({ where: { id: storeId }, select: { areaManagerId: true } })
-      .then(store => {
+      .then(async store => {
         if (!store?.areaManagerId) return;
-        return prisma.areaManagerReview.upsert({
-          where: { batchId_storeId: { batchId: parsedBatchId, storeId } },
-          create: { batchId: parsedBatchId, storeId, areaManagerId: store.areaManagerId, status: 'PENDING_REVIEW' },
-          update: { status: 'PENDING_REVIEW', remarks: null, reviewedAt: null },
-        });
+        await prisma.$executeRaw`
+          INSERT INTO "AreaManagerReview" ("batchId", "storeId", "areaManagerId", status, "createdAt", "updatedAt")
+          VALUES (${parsedBatchId}, ${storeId}, ${store.areaManagerId}, 'PENDING_REVIEW'::"ReviewStatus", NOW(), NOW())
+          ON CONFLICT ("batchId", "storeId")
+          DO UPDATE SET status = 'PENDING_REVIEW'::"ReviewStatus", remarks = NULL, "reviewedAt" = NULL, "updatedAt" = NOW()
+        `;
       })
       .catch(e => console.error('[submit] AM review upsert failed:', e.message));
 

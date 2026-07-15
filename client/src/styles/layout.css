@@ -419,167 +419,21 @@
   color: #1a0f0a !important;
 }
 
-/* ── Developer credit ─────────────────────────────────────────────── */
-.dev-credit {
-  text-align: center;
-  padding: 24px 24px 16px;
-  margin: 32px auto 0;
-  max-width: 400px;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 2.2px;
-  text-transform: uppercase;
-  user-select: none;
-  transition: all 0.3s;
-  background: rgba(255, 252, 250, 0.96) !important;
-  border: 2px solid rgba(185, 28, 28, 0.30) !important;
-  border-radius: 16px;
-  box-shadow: 
-    0 6px 24px rgba(185, 28, 28, 0.16),
-    0 2px 8px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,0.90) !important;
-  position: relative;
-}
-
-.dev-credit::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent 0%, rgba(185, 28, 28, 0.60) 50%, transparent 100%);
-  border-radius: 16px 16px 0 0;
-}
-
-.dev-credit span {
-  background: linear-gradient(
-    90deg,
-    #dc2626    0%,
-    #ef4444   20%,
-    #f87171   40%,
-    #ef4444   60%,
-    #dc2626   80%,
-    #b91c1c  100%
-  ) !important;
-  background-size: 200% auto !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-  animation: dev-shine 3s linear infinite;
-  filter:
-    drop-shadow(0 0 12px rgba(220,38,38,0.70))
-    drop-shadow(0 0 24px rgba(239,68,68,0.50))
-    drop-shadow(0 0 36px rgba(185,28,28,0.30));
-}
-
-.dev-credit:hover {
-  transform: translateY(-2px);
-  box-shadow: 
-    0 10px 36px rgba(185, 28, 28, 0.24),
-    0 4px 12px rgba(0,0,0,0.14),
-    inset 0 1px 0 rgba(255,255,255,1) !important;
-}
-
-.dev-credit:hover span {
-  filter:
-    drop-shadow(0 0 16px rgba(220,38,38,0.90))
-    drop-shadow(0 0 32px rgba(239,68,68,0.70))
-    drop-shadow(0 0 48px rgba(185,28,28,0.50));
-}
+/* ── Developer credit — small subtle footnote ────────────────────── */
+.dev-credit,
 .dev-credit-store {
   text-align: center;
-  padding: 28px 32px 20px;
-  margin: 40px auto 20px;
-  max-width: 460px;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 2.6px;
-  text-transform: uppercase;
+  padding: 8px 0 12px;
+  margin-top: 32px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(100, 50, 40, 0.45);
   user-select: none;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.96) 0%,
-    rgba(236, 254, 255, 0.94) 50%,
-    rgba(240, 253, 250, 0.95) 100%) !important;
-  backdrop-filter: blur(24px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
-  border: 3px solid rgba(16, 185, 129, 0.35) !important;
-  border-radius: 20px;
-  box-shadow: 
-    0 8px 32px rgba(16, 185, 129, 0.18),
-    0 4px 16px rgba(59, 130, 246, 0.10),
-    0 2px 8px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,1) !important;
-  position: relative;
-  overflow: hidden;
 }
-
-.dev-credit-store::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 5px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(16, 185, 129, 0.70) 20%,
-    rgba(59, 130, 246, 0.70) 50%,
-    rgba(16, 185, 129, 0.70) 80%,
-    transparent 100%
-  );
-  border-radius: 20px 20px 0 0;
-}
-
+.dev-credit span,
 .dev-credit-store span {
-  background: linear-gradient(
-    135deg,
-    #0d9488    0%,
-    #14b8a6   15%,
-    #3b82f6   35%,
-    #2dd4bf   55%,
-    #3b82f6   75%,
-    #14b8a6   90%,
-    #0d9488  100%
-  ) !important;
-  background-size: 300% auto !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-  animation: dev-shine-colorful 4s linear infinite;
-  filter:
-    drop-shadow(0 0 16px rgba(13,148,136,0.60))
-    drop-shadow(0 0 32px rgba(59,130,246,0.45))
-    drop-shadow(0 0 48px rgba(20,184,166,0.30));
-}
-
-.dev-credit-store:hover {
-  transform: translateY(-3px) scale(1.02);
-  border-color: rgba(16, 185, 129, 0.50) !important;
-  box-shadow: 
-    0 12px 48px rgba(16, 185, 129, 0.25),
-    0 6px 24px rgba(59, 130, 246, 0.15),
-    0 3px 12px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,1) !important;
-}
-
-.dev-credit-store:hover span {
-  filter:
-    drop-shadow(0 0 20px rgba(13,148,136,0.75))
-    drop-shadow(0 0 40px rgba(59,130,246,0.60))
-    drop-shadow(0 0 60px rgba(20,184,166,0.45));
-}
-
-@keyframes dev-shine-colorful {
-  0%   { background-position: 300% center; }
-  100% { background-position:   0% center; }
-}
-
-@keyframes dev-shine {
-  0%   { background-position: 200% center; }
-  100% { background-position:   0% center; }
+  color: inherit;
 }
 
 /* ── Store mobile bottom nav ─────────────────────────────────────── */
