@@ -400,7 +400,7 @@ export default function StoreInventory() {
                   <thead>
                     <tr>
                       <th scope="col">Item Code</th>
-                      <th scope="col">Book Stock</th>
+                      <th scope="col">System Stock</th>
                       <th scope="col">Your Count</th>
                       <th scope="col">Variance</th>
                       <th scope="col">Category</th>
@@ -623,81 +623,115 @@ export default function StoreInventory() {
           {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
           <div className="store-inv-cards">
             {records.map(record => {
-              const isPending  = record.status === 'PENDING';
-              const isEditable = isPending && !isLocked;
-              const saveState  = getSaveState(record.id);
+              const isPending   = record.status === 'PENDING';
+              const isEditable  = isPending && !isLocked;
+              const saveState   = getSaveState(record.id);
               const instantDiff = getInstantDiff(record);
-              const cat = getFieldValue(record, 'shrinkageCategory');
+              const cat         = getFieldValue(record, 'shrinkageCategory');
               const hasDiscrepancy = instantDiff !== null && instantDiff !== 0;
 
               return (
-                <div key={record.id} className="store-inv-card">
-                  <div className="store-inv-card-top">
-                    <div>
-                      <span className="store-inv-code">{record.materialCode}</span>
-                      {' '}
-                      <span className="store-inv-name">{record.materialName}</span>
-                    </div>
-                    {record.status === 'PENDING' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, background: 'rgba(217,119,6,0.13)', color: '#92400e', border: '1.5px solid rgba(217,119,6,0.30)', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>Pending</span>
-                    ) : (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, background: 'rgba(22,163,74,0.13)', color: '#15803d', border: '1.5px solid rgba(22,163,74,0.30)', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>Submitted</span>
-                    )}
-                  </div>
-                  <div className="store-inv-sys">Book Stock: {record.systemQuantity}</div>
+                <div key={record.id} className={`store-inv-card${!isPending ? ' sic-done' : ''}`}>
 
-                  {isEditable ? (
-                    <input
-                      ref={el => { blankRowRefs.current[record.id] = el; }}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={getFieldValue(record, 'physicalQuantity')}
-                      onChange={e => updateField(record.id, 'physicalQuantity', e.target.value)}
-                      placeholder="Enter count…"
-                      className="qty-input"
-                    />
-                  ) : (
-                    <div style={{ fontSize: 13, color: 'var(--t2)' }}>Your Count: <strong>{record.physicalQuantity ?? '—'}</strong>
-                      {instantDiff !== null && (
-                        <span style={{ marginLeft: 8 }} className={`badge diff-badge ${instantDiff === 0 ? 'badge-matched' : instantDiff < 0 ? 'badge-shortage' : 'badge-excess'}`}>
-                          {instantDiff > 0 ? '+' : ''}{instantDiff}
-                        </span>
+                  {/* ── Header: code + name + status ── */}
+                  <div className="store-inv-card-top">
+                    <div className="sic-item-info">
+                      <span className="store-inv-code">{record.materialCode}</span>
+                      <div className="sic-item-name">{record.materialName}</div>
+                    </div>
+                    {record.status === 'PENDING'
+                      ? <span className="sic-status sic-status-pending">Pending</span>
+                      : <span className="sic-status sic-status-done">✓ Done</span>
+                    }
+                  </div>
+
+                  {/* ── Stock metrics row ── */}
+                  <div className="sic-metrics">
+                    <div className="sic-metric">
+                      <div className="sic-metric-label">System Stock</div>
+                      {isEditable ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={getFieldValue(record, 'systemQuantity')}
+                          onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
+                          placeholder="0"
+                          className="qty-input sic-sys-input"
+                        />
+                      ) : (
+                        <div className="sic-metric-val">{record.systemQuantity ?? '—'}</div>
                       )}
                     </div>
-                  )}
+                    {!isEditable && (
+                      <div className="sic-metric">
+                        <div className="sic-metric-label">Your Count</div>
+                        <div className="sic-metric-val sic-metric-count">{record.physicalQuantity ?? '—'}</div>
+                      </div>
+                    )}
+                    {instantDiff !== null && (
+                      <div className="sic-metric">
+                        <div className="sic-metric-label">Variance</div>
+                        <div className="sic-metric-badge">
+                          <span className={`badge diff-badge ${instantDiff === 0 ? 'badge-matched' : instantDiff < 0 ? 'badge-shortage' : 'badge-excess'}`}>
+                            {instantDiff > 0 ? '+' : ''}{instantDiff}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                  {isEditable && instantDiff !== null && (
-                    <span className={`badge diff-badge ${instantDiff === 0 ? 'badge-matched' : instantDiff < 0 ? 'badge-shortage' : 'badge-excess'}`} style={{ alignSelf: 'flex-start' }}>
-                      {instantDiff > 0 ? '+' : ''}{instantDiff}
-                    </span>
-                  )}
-
+                  {/* ── Your Count input ── */}
                   {isEditable && (
-                    <select
-                      value={getFieldValue(record, 'shrinkageCategory')}
-                      onChange={e => {
-                        updateField(record.id, 'shrinkageCategory', e.target.value);
-                        updateField(record.id, 'remarks', '');
-                      }}
-                      className="remark-select"
-                    >
-                      <option value="">Select category…</option>
-                      {CATEGORIES.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
+                    <div className="sic-field">
+                      <label className="sic-field-label">Your Count (Physical)</label>
+                      <input
+                        ref={el => { blankRowRefs.current[record.id] = el; }}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={getFieldValue(record, 'physicalQuantity')}
+                        onChange={e => updateField(record.id, 'physicalQuantity', e.target.value)}
+                        placeholder="Enter physical count…"
+                        className="qty-input sic-count-input"
+                      />
+                    </div>
                   )}
 
+                  {/* ── Category select ── */}
+                  {isEditable && (
+                    <div className="sic-field">
+                      <label className="sic-field-label">
+                        Category
+                        {hasDiscrepancy && !cat && <span className="sic-req"> — required for variance</span>}
+                      </label>
+                      <select
+                        value={getFieldValue(record, 'shrinkageCategory')}
+                        onChange={e => {
+                          updateField(record.id, 'shrinkageCategory', e.target.value);
+                          updateField(record.id, 'remarks', '');
+                        }}
+                        className="remark-select"
+                      >
+                        <option value="">Select category…</option>
+                        {CATEGORIES.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* ── Issue Detail ── */}
                   {isEditable && cat && (() => {
-                    const remarks = getFieldValue(record, 'remarks');
-                    const presets = ISSUE_REASONS[cat] || [];
+                    const remarks  = getFieldValue(record, 'remarks');
+                    const presets  = ISSUE_REASONS[cat] || [];
                     const isPreset = presets.includes(remarks);
                     const isCustom = otherCustomIds.has(record.id) || (cat === 'Other' && remarks !== '' && !isPreset);
 
                     if (cat === 'Other') {
                       return (
-                        <>
+                        <div className="sic-field">
+                          <label className="sic-field-label">Issue Detail</label>
                           <select
                             value={isCustom ? '__CUSTOM__' : remarks}
                             onChange={e => {
@@ -725,28 +759,51 @@ export default function StoreInventory() {
                               className="inline-input remark-input"
                             />
                           )}
-                        </>
+                        </div>
                       );
                     }
                     return (
-                      <select
-                        value={remarks}
-                        onChange={e => updateField(record.id, 'remarks', e.target.value)}
-                        className="remark-select"
-                      >
-                        <option value="">Select issue detail…</option>
-                        {presets.map(reason => <option key={reason} value={reason}>{reason}</option>)}
-                      </select>
+                      <div className="sic-field">
+                        <label className="sic-field-label">Issue Detail</label>
+                        <select
+                          value={remarks}
+                          onChange={e => updateField(record.id, 'remarks', e.target.value)}
+                          className="remark-select"
+                        >
+                          <option value="">Select issue detail…</option>
+                          {presets.map(reason => <option key={reason} value={reason}>{reason}</option>)}
+                        </select>
+                      </div>
                     );
                   })()}
 
+                  {/* ── Variance hint when no category chosen ── */}
                   {isEditable && hasDiscrepancy && !cat && (
-                    <div style={{ fontSize: 11, color: 'var(--t3)', fontStyle: 'italic' }}>Select a category above to add issue detail.</div>
+                    <div className="sic-hint">Select a category above — required when there is a variance.</div>
                   )}
 
+                  {/* ── Submitted: show category + remarks read-only ── */}
+                  {!isEditable && (record.shrinkageCategory || record.remarks) && (
+                    <div className="sic-detail">
+                      {record.shrinkageCategory && (
+                        <div className="sic-detail-row">
+                          <span className="sic-detail-key">Category</span>
+                          <span className="sic-detail-val">{record.shrinkageCategory}</span>
+                        </div>
+                      )}
+                      {record.remarks && (
+                        <div className="sic-detail-row">
+                          <span className="sic-detail-key">Issue</span>
+                          <span className="sic-detail-val">{record.remarks}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Save state actions ── */}
                   <div className="store-inv-card-actions">
                     {saveState === 'saving' && <span className="save-spinner" title="Saving…" />}
-                    {saveState === 'saved' && <span className="save-check" title="Saved"><IconCheck /></span>}
+                    {saveState === 'saved'  && <span className="save-check"   title="Saved"><IconCheck /></span>}
                     {saveState === 'unsaved' && isEditable && (
                       <button className="btn-row-save" onClick={() => saveNow(record.id)} title="Save now">
                         <IconSave /> Save
@@ -758,6 +815,7 @@ export default function StoreInventory() {
                       </button>
                     )}
                   </div>
+
                 </div>
               );
             })}
@@ -770,7 +828,7 @@ export default function StoreInventory() {
                 <tr>
                   <th scope="col">Item Code</th>
                   <th scope="col">Item Name</th>
-                  <th scope="col" style={{ textAlign: 'right' }}>Book Stock</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>System Stock</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Your Count</th>
                   <th scope="col">Variance</th>
                   <th scope="col">Category</th>
