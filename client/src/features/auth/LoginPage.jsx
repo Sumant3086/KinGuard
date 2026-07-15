@@ -3,6 +3,25 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import logoImg from '../../assets/img/logo 32px32px.png';
 
+const IconAdmin = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    <path d="M9 12l2 2 4-4"/>
+  </svg>
+);
+const IconAM = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+    <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+    <path d="M12 7v4m0 0-5.5 6M12 11l5.5 6"/>
+  </svg>
+);
+const IconStore = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+);
+
 export default function LoginPage() {
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword]     = useState('');
@@ -80,12 +99,22 @@ export default function LoginPage() {
 
             <div className="lr-roles-inline">
               <div className="lr-role">
-                <span className="lr-role-badge admin">Admin</span>
-                <span className="lr-role-desc">Admin</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <IconAdmin />
+                  <span className="lr-role-desc">Admin</span>
+                </span>
               </div>
               <div className="lr-role">
-                <span className="lr-role-badge mgr">Store Manager</span>
-                <span className="lr-role-desc">Store Manager</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <IconAM />
+                  <span className="lr-role-desc">Area Manager</span>
+                </span>
+              </div>
+              <div className="lr-role">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <IconStore />
+                  <span className="lr-role-desc">Store Manager</span>
+                </span>
               </div>
             </div>
 
