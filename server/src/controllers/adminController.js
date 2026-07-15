@@ -337,7 +337,7 @@ export async function createStore(req, res, next) {
       throw new AppError('Plant code and name are required', 400);
     }
 
-    const normalizedCode = storeCode.toString().trim();
+    const normalizedCode = storeCode.toString().trim().toUpperCase();
     if (!normalizedCode) throw new AppError('Plant code cannot be blank', 400);
     if (normalizedCode.length > 50) throw new AppError('Plant code must be 50 characters or fewer', 400);
 
@@ -357,7 +357,7 @@ export async function createStore(req, res, next) {
       action: 'CREATE_STORE',
       entityType: 'STORE',
       entityId: store.id,
-      metadata: { storeCode, storeName },
+      metadata: { storeCode: store.storeCode, storeName: store.storeName },
     });
 
     sInvalidate('admin:dashboard');
@@ -434,7 +434,7 @@ export async function updateStore(req, res, next) {
       action: 'UPDATE_STORE',
       entityType: 'STORE',
       entityId: store.id,
-      metadata: { storeName, isActive },
+      metadata: { storeCode: store.storeCode, storeName: store.storeName, isActive },
     });
 
     sInvalidate('admin:dashboard');
@@ -533,7 +533,7 @@ export async function createUser(req, res, next) {
       action: 'CREATE_USER',
       entityType: 'USER',
       entityId: user.id,
-      metadata: { employeeId, role, storeId },
+      metadata: { employeeId, name, role },
     });
 
     const { passwordHash: _, ...userWithoutPassword } = user;
@@ -605,7 +605,7 @@ export async function updateUser(req, res, next) {
       action: 'UPDATE_USER',
       entityType: 'USER',
       entityId: user.id,
-      metadata: { name, storeId, isActive },
+      metadata: { employeeId: user.employeeId, name: user.name, role: user.role, isActive },
     });
 
     invalidateUserCache(userId);
@@ -673,7 +673,7 @@ export async function uploadInventory(req, res, next) {
     // Auto-create any stores found in the file that don't exist yet
     const fileStoreCodes = new Set();
     for (const row of rows) {
-      const code = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
+      const code = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim().toUpperCase();
       if (code) fileStoreCodes.add(code);
     }
     let existingStores;
@@ -737,7 +737,7 @@ export async function uploadInventory(req, res, next) {
       const rowNum = i + 2; // +2 for header row and 0-index
 
       try {
-        const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
+        const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim().toUpperCase();
         const materialCode = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
         const materialDescription = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
         const rawQty = findColumn(row, COLUMN_MAP.systemQuantity);
@@ -898,7 +898,7 @@ export async function previewUpload(req, res, next) {
       const row = rows[i];
       const rowNum = i + 2; // +2 for header row and 0-index
 
-      const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim();
+      const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim().toUpperCase();
       const materialCode = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
       const materialDescription = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
       const rawQty = findColumn(row, COLUMN_MAP.systemQuantity);
@@ -1460,8 +1460,8 @@ export async function grantStoreExtension(req, res, next) {
     if (isNaN(deadlineDate.getTime())) throw new AppError('Invalid deadline date', 400);
     if (deadlineDate <= new Date()) throw new AppError('Extension deadline must be in the future', 400);
     const [batch, store] = await Promise.all([
-      prisma.uploadBatch.findUnique({ where: { id: batchId }, select: { id: true } }),
-      prisma.store.findUnique({ where: { id: storeId }, select: { id: true } }),
+      prisma.uploadBatch.findUnique({ where: { id: batchId }, select: { id: true, inventoryDate: true } }),
+      prisma.store.findUnique({ where: { id: storeId }, select: { id: true, storeCode: true, storeName: true } }),
     ]);
     if (!batch) throw new AppError('Batch not found', 404);
     if (!store) throw new AppError('Store not found', 404);
@@ -1473,7 +1473,7 @@ export async function grantStoreExtension(req, res, next) {
     await createAuditLog({
       userId: req.user.id, action: 'GRANT_STORE_EXTENSION',
       entityType: 'UPLOAD_BATCH', entityId: batchId,
-      metadata: { storeId, newDeadline, note },
+      metadata: { storeCode: store.storeCode, storeName: store.storeName, newDeadline, note },
     });
     res.json(ext);
   } catch (error) { next(error); }
