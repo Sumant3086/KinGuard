@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AMLayout from '../layout/AMLayout';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
+import { useToast } from '../../../shared/context/ToastContext';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
@@ -13,13 +14,14 @@ export default function AMReviewList() {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const toast    = useToast();
 
   useEffect(() => {
     amApi.getBatches()
       .then(setBatches)
-      .catch(e => console.error('AM batches:', e))
+      .catch(e => { console.error('AM batches:', e); toast.error('Could not load review cycles. Please refresh.'); })
       .finally(() => setLoading(false));
-  }, []);
+  }, [toast]);
 
   return (
     <AMLayout>

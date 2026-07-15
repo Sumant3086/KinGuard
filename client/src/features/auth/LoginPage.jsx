@@ -72,9 +72,9 @@ export default function LoginPage() {
       } else if (err.response.status === 401) {
         setError('Employee ID or password is incorrect.');
       } else if (err.response.status === 403) {
-        setError(err.response.data?.error || 'Access denied.');
+        setError(err.response.data?.error || 'Access denied. Contact your administrator.');
       } else {
-        setError(err.response?.data?.error || 'Login failed. Please try again.');
+        setError('Login failed. Please try again.');
       }
     } finally {
       setLoading(false);
