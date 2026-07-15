@@ -136,10 +136,11 @@ export default function Upload() {
       clearUploadedFile();
     } catch (err) {
       if (err.response?.status === 409 && err.response.data?.warning === 'duplicate_batch') {
-        setDuplicateMessage(err.response.data.message || 'A batch for this date already exists.');
+        setDuplicateMessage('A cycle for this date already exists. Do you want to replace it?');
         setShowDuplicateConfirm(true);
       } else {
-        setError(err.response?.data?.error || 'Upload failed. Please try again.');
+        console.error('Upload:', err);
+        setError('Upload failed. Please check your file and try again.');
       }
     } finally {
       setUploading(false);
@@ -154,8 +155,9 @@ export default function Upload() {
       setPreview(null);
       clearUploadedFile();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Upload failed.');
-      setError(err.response?.data?.error || 'Upload failed.');
+      console.error('Force upload:', err);
+      toast.error('Upload failed. Please try again.');
+      setError('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }

@@ -2250,14 +2250,14 @@ export async function sendBatchReminders(req, res, next) {
     const managersWithEmail = managers.length;
     let message;
     if (!emailResult.configured) {
-      message = `${storeIds.length} store(s) pending, but email is not configured — no emails sent. Set BREVO_API_KEY in environment variables to enable email.`;
+      message = 'Email is not set up on this server. No reminders were sent.';
     } else if (managersWithEmail === 0) {
-      message = `${storeIds.length} store(s) still pending but no manager email addresses on file. Go to Users → Edit each store manager → add their email.`;
+      message = 'No email addresses found for the pending store managers. Add emails in Users.';
     } else if (emailResult.sent === 0 && emailResult.failed > 0) {
-      message = `Email delivery failed for all ${emailResult.failed} manager(s). Check Render logs for the exact error.`;
+      message = 'Could not send emails. Please try again later.';
     } else {
-      const failedPart = emailResult.failed > 0 ? ` (${emailResult.failed} failed to deliver)` : '';
-      message = `Email reminder sent to ${emailResult.sent} store manager(s)${failedPart} (${storeIds.length} store(s) pending).`;
+      const failedPart = emailResult.failed > 0 ? `, ${emailResult.failed} could not be delivered` : '';
+      message = `Reminder sent to ${emailResult.sent} manager(s)${failedPart}.`;
     }
 
     res.json({

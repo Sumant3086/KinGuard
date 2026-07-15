@@ -73,7 +73,7 @@ export default function AuditLogs() {
     setLogs([]);
     adminApi.getAuditLogs(null, limit)
       .then(data  => { if (live) setLogs(data); })
-      .catch(e    => { if (live) toast.error(e.response?.data?.error || 'Failed to load activity logs. Please try again.'); })
+      .catch(e    => { console.error('Load audit logs:', e); if (live) toast.error('Could not load activity logs. Please refresh.'); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [limit]); // eslint-disable-line react-hooks/exhaustive-deps

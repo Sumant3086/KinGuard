@@ -287,8 +287,8 @@ export default function AdminUsers() {
       setSelected(new Set());
       setLoading(false);
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message || 'Failed to load users';
-      setLoadError(errorMsg);
+      console.error('Load users:', err);
+      setLoadError('Could not load users. Please refresh.');
       setLoading(false);
     }
   }
@@ -344,12 +344,8 @@ export default function AdminUsers() {
       ));
       load(); // background sync
     } catch (err) {
-      const msg = err.response?.data?.error || 'Approval failed';
-      toast.error(
-        msg.toLowerCase().includes('already active')
-          ? 'This user is already approved. Refresh the page to see the latest state.'
-          : msg
-      );
+      console.error('Approve user:', err);
+      toast.error('Could not approve user. Try again.');
     } finally {
       setApprovingId(null);
     }
@@ -367,11 +363,12 @@ export default function AdminUsers() {
     setUsers(prev => prev.filter(u => u.id !== target.id));
     try {
       await adminApi.rejectUser(target.id, rejectReason);
-      toast.success(`"${target.name}" rejected and removed`);
-      load(); // background sync
+      toast.success(`${target.name} rejected`);
+      load();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Rejection failed');
-      load(); // restore on failure
+      console.error('Reject user:', err);
+      toast.error('Could not reject user. Try again.');
+      load();
     } finally {
       setRejectingId(null);
     }
@@ -408,13 +405,8 @@ export default function AdminUsers() {
       // Sync in background to catch any server-side partial failures
       load();
     } catch (err) {
-      const msg = err.response?.data?.error || 'Bulk action failed';
-      // "already active" means the user clicked Approve twice — show a clear message
-      toast.error(
-        msg.toLowerCase().includes('already active')
-          ? 'These users are already approved. Refresh the page to see the latest state.'
-          : msg
-      );
+      console.error('Bulk action:', err);
+      toast.error('Action failed. Please refresh and try again.');
       load();
     } finally {
       setBulkWorking(false);
@@ -433,8 +425,9 @@ export default function AdminUsers() {
       toast.success(result.message);
       load(); // sync in background
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Bulk delete failed');
-      load(); // restore list on failure
+      console.error('Bulk delete users:', err);
+      toast.error('Could not delete users. Try again.');
+      load();
     } finally {
       setBulkWorking(false);
     }
@@ -476,7 +469,8 @@ export default function AdminUsers() {
       setEditingId(null);
       load(); // background sync
     } catch (err) {
-      setFormError(err.response?.data?.error || 'Operation failed.');
+      console.error('Save user:', err);
+      setFormError('Could not save. Please check the details and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -495,14 +489,15 @@ export default function AdminUsers() {
     setUsers(prev => prev.filter(u => u.id !== user.id));
     try {
       await adminApi.deleteUser(user.id);
-      toast.success(`"${user.name}" deleted`);
+      toast.success(`${user.name} deleted`);
       load();
     } catch (err) {
       setUsers(prev => {
         if (prev.find(u => u.id === user.id)) return prev;
         return [...prev, user].sort((a, b) => a.employeeId.localeCompare(b.employeeId));
       });
-      toast.error(err.response?.data?.error || 'Delete failed');
+      console.error('Delete user:', err);
+      toast.error('Could not delete user. Try again.');
     } finally {
       setDeletingId(null);
     }
@@ -526,7 +521,8 @@ export default function AdminUsers() {
       setImportPreview(preview);
       setImportStep('preview');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Preview failed');
+      console.error('Import preview:', err);
+      toast.error('Could not load preview. Check the file and try again.');
     } finally {
       setImportPreviewing(false);
     }
@@ -541,7 +537,8 @@ export default function AdminUsers() {
       setImportStep('result');
       await load();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Import failed');
+      console.error('Import commit:', err);
+      toast.error('Import failed. Try again.');
     } finally {
       setImportCommitting(false);
     }
@@ -551,14 +548,14 @@ export default function AdminUsers() {
   async function openBatchCreateModal() {
     try {
       const plants = await adminApi.getPlantsWithoutUsers();
-      if (plants.length === 0) { toast.info('All stores already have assigned users.'); return; }
+      if (plants.length === 0) { toast.info('All stores already have a manager assigned.'); return; }
       const defaultNames = {};
       plants.forEach(p => { defaultNames[p.id] = `Manager ${p.storeCode}`; });
       setPlantsWithoutUsers(plants);
       setBatchFormData(defaultNames);
       setBatchResult(null);
       setShowBatchModal(true);
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to load stores'); }
+    } catch (err) { console.error('Load stores:', err); toast.error('Could not load stores. Try again.'); }
   }
 
   async function handleBatchCreate() {
@@ -568,9 +565,9 @@ export default function AdminUsers() {
       const result = await adminApi.batchCreateUsersForPlants(plantsData);
       setBatchResult(result);
       await load();
-      if (result.errorCount === 0) toast.success(`Created ${result.successCount} user(s)`);
-      else toast.warning(`Created ${result.successCount}, ${result.errorCount} failed`);
-    } catch (err) { toast.error(err.response?.data?.error || 'Batch creation failed'); }
+      if (result.errorCount === 0) toast.success(`${result.successCount} user(s) created`);
+      else toast.warning(`${result.successCount} created, ${result.errorCount} failed`);
+    } catch (err) { console.error('Batch create users:', err); toast.error('Could not create users. Try again.'); }
     finally { setBatchCreating(false); }
   }
 

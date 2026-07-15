@@ -38,7 +38,8 @@ export function useApiRequest({ showErrorToast = true, initialData = null } = {}
       return result;
     } catch (err) {
       if (!mountedRef.current) return null;
-      const message = err.response?.data?.error ?? err.message ?? 'An unexpected error occurred';
+      console.error('API request failed:', err.response?.data?.error ?? err.message ?? err);
+      const message = 'Something went wrong. Please try again.';
       setError(message);
       if (showErrorToast) toast.error(message);
       return null;

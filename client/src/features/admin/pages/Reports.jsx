@@ -42,7 +42,7 @@ export default function Reports() {
     const tasks = [];
     if (!cache.get(STORES_KEY))  tasks.push(adminApi.getStores().then(d  => { cache.set(STORES_KEY,  d, STORES_TTL);  setStores(d);  }));
     if (!cache.get(BATCHES_KEY)) tasks.push(adminApi.getBatches().then(d => { cache.set(BATCHES_KEY, d, BATCHES_TTL); setBatches(d); }));
-    if (tasks.length) Promise.all(tasks).catch(() => toast.error('Failed to load stores or cycles. Please refresh.'));
+    if (tasks.length) Promise.all(tasks).catch(e => { console.error('Load report data:', e); toast.error('Could not load data. Please refresh.'); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function buildParams() {
@@ -56,7 +56,8 @@ export default function Reports() {
       setRecords(await adminApi.getReconciliationReport(params));
       setLoadedParams(params);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to load report. Please try again.');
+      console.error('Load report:', err);
+      toast.error('Could not load report. Please try again.');
     } finally {
       setLoading(false);
     }
