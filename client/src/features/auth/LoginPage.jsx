@@ -91,6 +91,9 @@ export default function LoginPage() {
               <div className="lr-logo-wrap">
                 <img src={logoImg} alt="KinMarché" className="lr-logo-img" />
               </div>
+              <span style={{ display: 'block', fontSize: 20, fontWeight: 900, color: '#ffffff', letterSpacing: '0.6px', marginTop: 6, marginBottom: 2, textShadow: '0 2px 12px rgba(0,0,0,0.35)' }}>
+                KinMarché
+              </span>
               <h2>Sign In</h2>
               <p>Access your KinMarché account</p>
             </div>
@@ -98,19 +101,19 @@ export default function LoginPage() {
             <div className="lr-divider"><span>User Roles</span></div>
 
             <div className="lr-roles-inline">
-              <div className="lr-role">
+              <div className="lr-role" style={{ borderLeft: '3px solid rgba(255,180,180,0.80)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconAdmin />
                   <span className="lr-role-desc">Admin</span>
                 </span>
               </div>
-              <div className="lr-role">
+              <div className="lr-role" style={{ borderLeft: '3px solid rgba(147,197,253,0.80)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconAM />
                   <span className="lr-role-desc">Area Manager</span>
                 </span>
               </div>
-              <div className="lr-role">
+              <div className="lr-role" style={{ borderLeft: '3px solid rgba(134,239,172,0.80)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconStore />
                   <span className="lr-role-desc">Store Manager</span>
