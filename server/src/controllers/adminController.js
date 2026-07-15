@@ -471,8 +471,8 @@ export async function createUser(req, res, next) {
       throw new AppError('Store assignment is required for Store Managers', 400);
     }
 
-    if (role === 'ADMIN' && storeId) {
-      throw new AppError('Admin users cannot be assigned to a store', 400);
+    if ((role === 'ADMIN' || role === 'AREA_MANAGER') && storeId) {
+      throw new AppError('Admins and Area Managers cannot be assigned to a store', 400);
     }
 
     validatePassword(password);
@@ -536,8 +536,8 @@ export async function updateUser(req, res, next) {
     // Handle store assignment
     if (storeId !== undefined) {
       const parsedStoreId = storeId ? requireId(storeId, 'storeId') : null;
-      if (parsedStoreId && currentUser.role === 'ADMIN') {
-        throw new AppError('Administrator accounts cannot be assigned to a store', 400);
+      if (parsedStoreId && (currentUser.role === 'ADMIN' || currentUser.role === 'AREA_MANAGER')) {
+        throw new AppError('Admins and Area Managers cannot be assigned to a store', 400);
       }
       if (parsedStoreId) {
         data.store = { connect: { id: parsedStoreId } };
@@ -806,21 +806,21 @@ export async function uploadInventory(req, res, next) {
       autoCreatedUsers: autoCreatedUsers.length > 0 ? autoCreatedUsers : undefined,
     });
 
-    // Send emails in background — notify ALL active store managers, not just affected stores
-    prisma.user.findMany({
-      where: { role: 'STORE_MANAGER', isActive: true, pendingApproval: false, email: { not: null } },
-      include: { store: true },
-    }).then(async (notifiable) => {
-      if (!notifiable.length) {
-        console.log('[upload] No active managers with email addresses — skipping notifications');
-        return;
-      }
-      console.log(`[upload] Sending new-cycle emails to ${notifiable.length} manager(s)`);
-      const { sendNewCycleEmail } = await import('../services/emailService.js');
-      sendNewCycleEmail({ managers: notifiable, inventoryDate, deadline: submissionDeadline || null })
-        .then(r => console.log(`[upload] Email result: sent=${r.sent}, failed=${r.failed}`))
-        .catch(e => console.error('[upload] Email send error:', e.message));
-    }).catch(e => console.error('[upload] Manager query failed:', e.message));
+    // Send emails to store managers (bell notification only — no email per new design)
+    // Send emails to area managers (they get email on new cycle)
+    Promise.all([
+      prisma.user.findMany({
+        where: { role: 'AREA_MANAGER', isActive: true, pendingApproval: false, email: { not: null } },
+        select: { id: true, name: true, email: true, managedStores: { select: { id: true } } },
+      }),
+    ]).then(async ([areaManagers]) => {
+      if (!areaManagers.length) return;
+      const { sendNewCycleEmailAM } = await import('../services/emailService.js');
+      const amWithCount = areaManagers.map(am => ({ ...am, storeCount: am.managedStores.length }));
+      sendNewCycleEmailAM({ managers: amWithCount, inventoryDate, deadline: submissionDeadline || null })
+        .then(r => console.warn(`[upload] AM email result: sent=${r.sent}, failed=${r.failed}`))
+        .catch(e => console.error('[upload] AM email send error:', e.message));
+    }).catch(e => console.error('[upload] AM query failed:', e.message));
   } catch (error) {
     next(error);
   }
@@ -2358,10 +2358,36 @@ export async function getNotifications(req, res, next) {
     const items = [];
     const dateLabel = new Date(latestBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-    if (recentSubmits.length > 0) {
+    // AM review status for admin
+    const amReviews = await prisma.areaManagerReview.findMany({
+      where: { batchId: latestBatch.id },
+      select: { status: true, storeId: true },
+    });
+    const amApproved = amReviews.filter(r => r.status === 'APPROVED').length;
+    const amPending  = amReviews.filter(r => r.status === 'PENDING_REVIEW').length;
+
+    if (amApproved > 0) {
       items.push({
         type: 'submitted',
-        message: `${recentSubmits.length} store${recentSubmits.length > 1 ? 's' : ''} submitted counts in the last 24h`,
+        message: `${amApproved} store${amApproved > 1 ? 's' : ''} approved by Area Manager — ready for review`,
+        batchId: latestBatch.id,
+        urgent: false,
+      });
+    }
+
+    if (amPending > 0) {
+      items.push({
+        type: 'pending',
+        message: `${amPending} store${amPending > 1 ? 's' : ''} pending Area Manager review`,
+        batchId: latestBatch.id,
+        urgent: false,
+      });
+    }
+
+    if (recentSubmits.length > 0 && amReviews.length === 0) {
+      items.push({
+        type: 'submitted',
+        message: `${recentSubmits.length} store${recentSubmits.length > 1 ? 's' : ''} submitted counts — awaiting Area Manager review`,
         batchId: latestBatch.id,
         urgent: false,
       });

@@ -23,6 +23,7 @@ export default function Stores() {
   const [loading, setLoading]   = useState(true);
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState(new Set());
+  const [areaManagers, setAreaManagers] = useState([]);
 
   // Add / Edit modal
   const [showModal, setShowModal]   = useState(false);
@@ -30,6 +31,11 @@ export default function Stores() {
   const [formError, setFormError]   = useState('');
   const [editingId, setEditingId]   = useState(null);
   const [formData, setFormData]     = useState({ storeCode: '', storeName: '', isActive: true });
+
+  // AM assignment modal
+  const [amModal, setAmModal]       = useState(null); // { storeId, storeName, currentAmId }
+  const [amAssigning, setAmAssigning] = useState(false);
+  const [selectedAmId, setSelectedAmId] = useState('');
 
   // Delete / force-delete modals
   const [deleteTarget, setDeleteTarget]           = useState(null);
@@ -42,7 +48,10 @@ export default function Stores() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkConfirmText, setBulkConfirmText] = useState('');
 
-  useEffect(() => { loadStores(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadStores();
+    adminApi.getAreaManagers().then(setAreaManagers).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadStores() {
     setLoadError('');
@@ -357,6 +366,13 @@ export default function Stores() {
                     </td>
                     <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
+                      <button
+                        onClick={() => { setAmModal({ storeId: store.id, storeName: store.storeName, currentAmId: store.areaManagerId }); setSelectedAmId(store.areaManagerId ? String(store.areaManagerId) : ''); }}
+                        className="btn btn-sm"
+                        style={{ background: 'rgba(124,58,237,0.09)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)' }}
+                      >
+                        {store.areaManagerId ? 'Change AM' : 'Assign AM'}
+                      </button>
                       {store._count.inventoryRecords === 0 ? (
                         <button onClick={() => setDeleteTarget(store)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
                           Delete
@@ -485,6 +501,51 @@ export default function Stores() {
                 </button>
               </div>
             </form>
+          </div>
+        </Modal>
+      )}
+
+      {/* Area Manager Assignment Modal */}
+      {amModal && (
+        <Modal onClose={() => setAmModal(null)}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Assign Area Manager</h3>
+              <button className="close-btn" onClick={() => setAmModal(null)}>&times;</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 16 }}>
+              Assign an Area Manager to <strong>{amModal.storeName}</strong>. They will review this store's submissions before they reach you.
+            </p>
+            <div className="form-group">
+              <label>Area Manager</label>
+              <select value={selectedAmId} onChange={e => setSelectedAmId(e.target.value)}>
+                <option value="">— Unassigned —</option>
+                {areaManagers.map(am => (
+                  <option key={am.id} value={am.id}>{am.name} ({am.employeeId}) — {am.managedStores.length} stores</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="btn btn-secondary" onClick={() => setAmModal(null)} disabled={amAssigning}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                disabled={amAssigning}
+                onClick={async () => {
+                  setAmAssigning(true);
+                  try {
+                    await adminApi.assignStoreAM(amModal.storeId, selectedAmId ? parseInt(selectedAmId) : null);
+                    toast.success('Area Manager assigned');
+                    setStores(prev => prev.map(s => s.id === amModal.storeId ? { ...s, areaManagerId: selectedAmId ? parseInt(selectedAmId) : null } : s));
+                    setAmModal(null);
+                  } catch (e) {
+                    console.error('Assign AM:', e);
+                    toast.error('Could not assign. Try again.');
+                  } finally { setAmAssigning(false); }
+                }}
+              >
+                {amAssigning ? 'Saving…' : 'Save Assignment'}
+              </button>
+            </div>
           </div>
         </Modal>
       )}

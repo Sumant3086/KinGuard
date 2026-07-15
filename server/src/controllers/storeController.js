@@ -355,6 +355,18 @@ export async function submitInventory(req, res, next) {
     }).catch(err => console.error('[audit] SUBMIT_INVENTORY log failed:', err.message));
     detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(err => console.error('[detect-repeat] Failed:', err.message));
 
+    // Create or reset AreaManagerReview so AM sees the new submission
+    prisma.store.findUnique({ where: { id: storeId }, select: { areaManagerId: true } })
+      .then(store => {
+        if (!store?.areaManagerId) return;
+        return prisma.areaManagerReview.upsert({
+          where: { batchId_storeId: { batchId: parsedBatchId, storeId } },
+          create: { batchId: parsedBatchId, storeId, areaManagerId: store.areaManagerId, status: 'PENDING_REVIEW' },
+          update: { status: 'PENDING_REVIEW', remarks: null, reviewedAt: null },
+        });
+      })
+      .catch(e => console.error('[submit] AM review upsert failed:', e.message));
+
     // Fire-and-forget email notifications after successful submission
     const shortageCount = records.filter(r => (r.difference ?? 0) < 0).length;
     const matchedCount  = records.filter(r => (r.difference ?? 0) === 0).length;
@@ -478,6 +490,18 @@ export async function getNotifications(req, res, next) {
     const items = [];
 
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Check for returned reviews (AM sent back) — high priority
+    const returnedReviews = await prisma.areaManagerReview.findMany({
+      where: { storeId, status: 'RETURNED' },
+      select: { batchId: true, remarks: true },
+    });
+    for (const r of returnedReviews) {
+      const batch = await prisma.uploadBatch.findUnique({ where: { id: r.batchId }, select: { inventoryDate: true } });
+      if (!batch) continue;
+      const dateLabel = new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      items.push({ type: 'returned', message: `${dateLabel} — Returned by Area Manager. Please recount and resubmit.`, batchId: r.batchId, urgent: true });
+    }
 
     // Every batch that still has PENDING records for this store
     const pendingBatches = await prisma.uploadBatch.findMany({
