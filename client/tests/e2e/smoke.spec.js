@@ -7,10 +7,11 @@ test.describe('Login flow', () => {
 
   test('login page renders brand and role cards', async ({ page }) => {
     await expect(page.locator('h2', { hasText: 'Sign In' })).toBeVisible();
-    await expect(page.locator('text=KinMarché')).toBeVisible();
-    await expect(page.locator('text=Admin')).toBeVisible();
-    await expect(page.locator('text=Area Manager')).toBeVisible();
-    await expect(page.locator('text=Store Manager')).toBeVisible();
+    // Target the brand name span inside the left-panel header specifically
+    await expect(page.locator('.lr-header span').first()).toContainText('KinMarché');
+    await expect(page.locator('.lr-role-desc').nth(0)).toContainText('Admin');
+    await expect(page.locator('.lr-role-desc').nth(1)).toContainText('Area Manager');
+    await expect(page.locator('.lr-role-desc').nth(2)).toContainText('Store Manager');
   });
 
   test('shows error on wrong credentials', async ({ page }) => {
@@ -46,7 +47,8 @@ test.describe('Login flow', () => {
 test.describe('Home page', () => {
   test('renders and has sign-in link', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('text=KinMarché')).toBeVisible();
+    // Use the specific logo-name class to avoid matching footer copies
+    await expect(page.locator('.home-logo-name')).toBeVisible();
     const signInLink = page.locator('a', { hasText: /sign.?in/i }).first();
     await expect(signInLink).toBeVisible();
   });
