@@ -38,10 +38,6 @@ export async function getDashboard(req, res, next) {
       }),
     ]);
 
-    const pendingReview = totalSubmitted.filter(s =>
-      !reviews.find(r => r.status !== 'PENDING_REVIEW')
-    ).length;
-
     res.json({
       storeCount:    storeIds.length,
       pendingReview: reviews.filter(r => r.status === 'PENDING_REVIEW').length,

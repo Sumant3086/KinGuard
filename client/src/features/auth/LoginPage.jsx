@@ -17,7 +17,7 @@ export default function LoginPage() {
   // We only use it if it's an actual protected path — a `from` of '/' means
   // they clicked "Sign In" from the home page and should go to their dashboard.
   const from = location.state?.from;
-  const protectedFrom = from && (from.startsWith('/admin') || from.startsWith('/store'))
+  const protectedFrom = from && (from.startsWith('/admin') || from.startsWith('/store') || from.startsWith('/am'))
     ? from : null;
 
   // Redirect already-authenticated users — but only after the session check
@@ -25,7 +25,9 @@ export default function LoginPage() {
   // fires the redirect before getCurrentUser() can invalidate it.
   useEffect(() => {
     if (!authLoading && user) {
-      const defaultDash = user.role === 'ADMIN' ? '/admin/dashboard' : '/store/dashboard';
+      const defaultDash = user.role === 'ADMIN' ? '/admin/dashboard'
+                        : user.role === 'AREA_MANAGER' ? '/am/dashboard'
+                        : '/store/dashboard';
       navigate(protectedFrom || defaultDash, { replace: true });
     }
   }, [user, authLoading, navigate, protectedFrom]);

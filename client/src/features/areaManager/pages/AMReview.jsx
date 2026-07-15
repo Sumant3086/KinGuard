@@ -110,7 +110,7 @@ export default function AMReview() {
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/am/review')}>← Back to cycles</button>
       </PageHeader>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '300px 1fr' : '1fr', gap: 16, alignItems: 'start' }}>
+      <div className="am-review-grid" style={{ display: 'grid', gridTemplateColumns: selected ? 'min(300px, 100%) 1fr' : '1fr', gap: 16, alignItems: 'start' }}>
 
         {/* Store list */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

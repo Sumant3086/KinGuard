@@ -16,7 +16,10 @@ function resolveNav(type, role) {
   if (role === 'ADMIN') {
     return type === 'submitted' ? '/admin/inventory' : '/admin/batches';
   }
-  return '/store/inventory'; // store managers always go to their count page
+  if (role === 'AREA_MANAGER') {
+    return '/am/review';
+  }
+  return '/store/inventory';
 }
 
 const typeDot = {

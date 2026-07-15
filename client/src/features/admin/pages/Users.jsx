@@ -94,7 +94,7 @@ function UserCard({ user, self, adminCount, selected, onSelect, onEdit, onDelete
       {/* Row 2: meta */}
       <div className="user-card-meta">
         <span>
-          <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : user.role === 'AREA_MANAGER' ? 'badge-shortage' : 'badge-excess'}`} style={{ fontSize: 10 }}>
+          <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : user.role === 'AREA_MANAGER' ? 'badge-excess' : ''}`} style={{ fontSize: 10 }}>
             {user.role === 'ADMIN' ? 'Administrator' : user.role === 'AREA_MANAGER' ? 'Area Manager' : 'Store Manager'}
           </span>
           {user.store && <span style={{ marginLeft: 6 }}>· {user.store.storeCode} — {user.store.storeName}</span>}
@@ -162,8 +162,8 @@ function UserRow({ user, self, adminCount, selected, onSelect, onEdit, onDelete,
         <SourceBadge source={user.source} />
       </td>
       <td>
-        <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : 'badge-excess'}`}>
-          {user.role === 'ADMIN' ? 'Administrator' : 'Store Manager'}
+        <span className={`badge ${user.role === 'ADMIN' ? 'badge-matched' : user.role === 'AREA_MANAGER' ? 'badge-excess' : ''}`}>
+          {user.role === 'ADMIN' ? 'Administrator' : user.role === 'AREA_MANAGER' ? 'Area Manager' : 'Store Manager'}
         </span>
       </td>
       <td style={{ color: 'var(--t3)', fontSize: 12 }}>
