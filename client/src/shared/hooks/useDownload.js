@@ -22,7 +22,8 @@ export function useDownload() {
       const blob = await apiFn(...args);
       downloadBlob(blob, filename);
     } catch (err) {
-      toast.error(err.response?.data?.error ?? 'Download failed');
+      console.error('Download failed:', err);
+      toast.error('Download failed. Please try again.');
     } finally {
       setDownloading(false);
     }

@@ -81,10 +81,10 @@ export default function Batches() {
       setStores(s);
       setLoading(false);
     } catch (e) {
-      const errorMsg = e.response?.data?.error || e.message || 'Failed to load cycles';
-      setLoadError(errorMsg);
+      console.error('Load cycles:', e);
+      setLoadError('Could not load cycles. Please refresh.');
       setLoading(false);
-      toast.error(errorMsg);
+      toast.error('Could not load cycles. Please refresh.');
     }
   }
 
@@ -104,12 +104,13 @@ export default function Batches() {
       setEditingDeadline(null);
       load(); // background sync
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Failed to update deadline');
+      console.error('Update deadline:', e);
+      toast.error('Could not update deadline. Try again.');
     } finally { setSavingDeadline(false); }
   }
 
   async function handleGrantExtension() {
-    if (!extStoreId || !extDeadline) { toast.warning('Store and deadline are required'); return; }
+    if (!extStoreId || !extDeadline) { toast.warning('Please select a store and a deadline'); return; }
     setSavingExt(true);
     const storeId = parseInt(extStoreId);
     const newDeadline = new Date(extDeadline).toISOString();
@@ -125,21 +126,23 @@ export default function Batches() {
       setExtStoreId(''); setExtDeadline(''); setExtNote('');
       load(); // background sync
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Failed to grant extension');
+      console.error('Grant extension:', e);
+      toast.error('Could not give extension. Try again.');
     } finally { setSavingExt(false); }
   }
 
   async function handleUnlockStore() {
-    if (!unlockStoreId) { toast.warning('Select a store to unlock'); return; }
+    if (!unlockStoreId) { toast.warning('Select a store first'); return; }
     setUnlocking(true);
     try {
       const res = await adminApi.unlockStoreForBatch(unlockModal.batchId, parseInt(unlockStoreId));
-      toast.success(`${res.count} record(s) reset to Pending. The store manager can now re-count and re-submit.`);
+      toast.success(`Done — manager can now re-count and submit again`);
       setUnlockModal(null);
       setUnlockStoreId('');
       load(); // background sync
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Unlock failed');
+      console.error('Unlock store:', e);
+      toast.error('Could not unlock. Try again.');
     } finally { setUnlocking(false); }
   }
 
@@ -154,8 +157,9 @@ export default function Batches() {
       await adminApi.deleteBatch(target.id);
       toast.success('Cycle deleted');
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Failed to delete cycle');
-      load(); // restore on failure
+      console.error('Delete cycle:', e);
+      toast.error('Could not delete cycle. Try again.');
+      load();
     } finally { setDeletingBatch(false); }
   }
 
@@ -172,22 +176,19 @@ export default function Batches() {
       if (res.sent > 0) {
         toast.success(res.message || `Reminder sent to ${res.sent} manager(s)`);
       } else {
-        toast.error(res.message || 'Failed to send email reminders');
+        toast.error(res.message || 'Could not send email reminders');
       }
     } catch (e) {
-      const msg = e.response?.data?.error
-        || (e.code === 'ECONNABORTED' ? 'Request timed out — email server may be slow, try again' : null)
-        || (!e.response ? 'Could not reach server — check your connection' : null)
-        || 'Failed to send email reminders';
-      toast.error(msg);
+      console.error('Send email reminders:', e);
+      toast.error('Could not send reminders. Try again.');
     } finally { setEmailReminding(null); }
   }
 
   function sendWhatsAppReminder(store, inventoryDate, deadline) {
     const mgr = users.find(u => u.storeId === store.id && u.role === 'STORE_MANAGER' && u.isActive);
-    if (!mgr?.phone) { toast.warning(`No phone number for ${store.storeName}. Add one in Users → Edit.`); return; }
+    if (!mgr?.phone) { toast.warning(`${store.storeName} has no phone number. Add it in Users.`); return; }
     const digits = mgr.phone.replace(/\D/g, '');
-    if (digits.length < 7 || digits.length > 15) { toast.warning(`Phone number for ${store.storeName} doesn't look valid. Please update it in Users → Edit.`); return; }
+    if (digits.length < 7 || digits.length > 15) { toast.warning(`${store.storeName} has an invalid phone number. Fix it in Users.`); return; }
     const safeName = mgr.name.replace(/[<>&"]/g, '');
     const dlStr    = deadline ? `before ${fmtDate(deadline, 'time')}` : 'as soon as possible';
     const msg = `Hi ${safeName},\n\nThis is a reminder from *KinMarché L&P*.\n\nYour inventory count for *${fmtDate(inventoryDate, 'long')}* is still pending. Please log in and complete your submission ${dlStr}.\n\nThank you.`;

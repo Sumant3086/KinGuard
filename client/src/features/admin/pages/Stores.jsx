@@ -52,9 +52,9 @@ export default function Stores() {
       const data = await adminApi.getStores();
       setStores(data);
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message || 'Failed to load stores.';
-      setLoadError(errorMsg);
-      toast.error(errorMsg);
+      console.error('Load stores:', err);
+      setLoadError('Could not load stores. Please refresh.');
+      toast.error('Could not load stores. Please refresh.');
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,8 @@ export default function Stores() {
       toast.success(result.message);
       await loadStores();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Bulk delete failed');
+      console.error('Bulk delete stores:', err);
+      toast.error('Could not delete stores. Try again.');
       await loadStores();
     } finally {
       setBulkDeleting(false);
@@ -133,7 +134,8 @@ export default function Stores() {
       setEditingId(null);
       loadStores(); // background sync
     } catch (err) {
-      setFormError(err.response?.data?.error || 'Operation failed. Please try again.');
+      console.error('Save store:', err);
+      setFormError('Could not save. Please check the details and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -147,9 +149,10 @@ export default function Stores() {
       await adminApi.deleteStore(target.id);
       setDeleteTarget(null);
       setStores(prev => prev.filter(s => s.id !== target.id));
-      toast.success(`"${target.storeName}" deleted`);
+      toast.success('Store deleted');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Delete failed');
+      console.error('Delete store:', err);
+      toast.error('Could not delete store. Try again.');
       setDeleteTarget(null);
       await loadStores();
     } finally {
@@ -165,9 +168,10 @@ export default function Stores() {
       await adminApi.forceDeleteStore(target.id);
       setForceDeleteTarget(null);
       setStores(prev => prev.filter(s => s.id !== target.id));
-      toast.success(`"${target.storeName}" and all its data deleted`);
+      toast.success('Store and all its data deleted');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Force delete failed');
+      console.error('Force delete store:', err);
+      toast.error('Could not delete store. Try again.');
       setForceDeleteTarget(null);
       await loadStores();
     } finally {

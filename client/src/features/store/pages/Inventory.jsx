@@ -176,7 +176,8 @@ export default function StoreInventory() {
         loadInventory();
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load inventory cycles. Please refresh.');
+      console.error('Load inventory cycles:', err);
+      setError('Could not load inventory cycles. Please refresh.');
       setLoading(false);
     }
   }
@@ -195,7 +196,8 @@ export default function StoreInventory() {
       setErrorRecords(new Map());
       setOtherCustomIds(new Set());
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load inventory');
+      console.error('Load inventory records:', err);
+      setError('Could not load inventory. Please refresh.');
     } finally {
       setLoading(false);
     }
@@ -300,11 +302,11 @@ export default function StoreInventory() {
 
   async function handleSubmit() {
     if (!selectedBatch) {
-      toast.warning('Select an inventory cycle before submitting.');
+      toast.warning('Select a cycle before submitting.');
       return;
     }
     if (Object.keys(editedRecordsRef.current).length > 0) {
-      toast.warning('Wait for all changes to finish saving before submitting.');
+      toast.warning('Wait for your changes to save first.');
       return;
     }
 
@@ -312,18 +314,18 @@ export default function StoreInventory() {
     const pending = records.filter(r => r.status === 'PENDING');
     const missingPhysical = pending.filter(r => r.physicalQuantity === null);
     if (missingPhysical.length > 0) {
-      toast.error(`Physical count missing for ${missingPhysical.length} item(s). Enter all quantities before submitting.`);
+      toast.error(`${missingPhysical.length} item(s) still need a physical count.`);
       return;
     }
     const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
     const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
     if (missingCategory.length > 0) {
-      toast.error(`${missingCategory.length} item(s) with variances require a category selection.`);
+      toast.error(`${missingCategory.length} item(s) have a difference — please select a category for each.`);
       return;
     }
     const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
     if (missingDetail.length > 0) {
-      toast.error(`${missingDetail.length} item(s) with variances are missing issue details.`);
+      toast.error(`${missingDetail.length} item(s) need an issue detail filled in.`);
       return;
     }
 
@@ -336,9 +338,10 @@ export default function StoreInventory() {
       setSubmitting(true);
       const res = await storeApi.submitInventory(batchId);
       setSubmitResult(res);
-      toast.success('Inventory submitted successfully.', 5000);
+      toast.success('Submitted! Your count has been sent.', 5000);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to submit inventory');
+      console.error('Submit inventory:', err);
+      toast.error('Could not submit. Please try again.');
     } finally {
       setSubmitting(false);
     }
