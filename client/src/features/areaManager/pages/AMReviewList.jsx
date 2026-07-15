@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AMLayout from '../layout/AMLayout';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
+import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
@@ -25,7 +26,7 @@ export default function AMReviewList() {
       <PageHeader title="Review Submissions" subtitle="All inventory cycles for your stores" />
 
       {loading ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--tx3)' }}>Loading…</div>
+        <SkeletonTable rows={5} cols={6} />
       ) : batches.length === 0 ? (
         <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>
           No inventory cycles yet.

@@ -348,8 +348,10 @@ export async function assignStoreAM(req, res, next) {
     if (isNaN(storeId)) throw new AppError('Invalid store ID', 400);
 
     if (areaManagerId !== null && areaManagerId !== undefined) {
-      const am = await prisma.user.findUnique({ where: { id: parseInt(areaManagerId) }, select: { role: true } });
-      if (!am || am.role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
+      const rows = await prisma.$queryRaw`
+        SELECT role FROM "User" WHERE id = ${parseInt(areaManagerId)} LIMIT 1
+      `;
+      if (!rows.length || rows[0].role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
     }
 
     const store = await prisma.store.update({
@@ -366,14 +368,22 @@ export async function assignStoreAM(req, res, next) {
 // ── Admin: list all area managers ─────────────────────────────────────────────
 export async function getAreaManagers(req, res, next) {
   try {
-    const ams = await prisma.user.findMany({
-      where: { role: 'AREA_MANAGER', isActive: true },
-      select: {
-        id: true, name: true, employeeId: true, email: true,
-        managedStores: { select: { id: true, storeCode: true, storeName: true } },
-      },
-      orderBy: { name: 'asc' },
-    });
+    // Use raw SQL — Prisma DLL may not recognise AREA_MANAGER until regenerated
+    const ams = await prisma.$queryRaw`
+      SELECT
+        u.id, u."employeeId", u.name, u.email,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT('id', s.id, 'storeCode', s."storeCode", 'storeName', s."storeName")
+          ) FILTER (WHERE s.id IS NOT NULL),
+          '[]'::json
+        ) AS "managedStores"
+      FROM "User" u
+      LEFT JOIN "Store" s ON s."areaManagerId" = u.id
+      WHERE u.role::text = 'AREA_MANAGER' AND u."isActive" = true
+      GROUP BY u.id, u."employeeId", u.name, u.email
+      ORDER BY u.name ASC
+    `;
     res.json(ams);
   } catch (error) { next(error); }
 }

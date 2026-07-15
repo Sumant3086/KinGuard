@@ -479,21 +479,41 @@ export async function createUser(req, res, next) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        employeeId,
-        name,
-        passwordHash,
-        role,
-        storeId: storeId ? requireId(storeId, 'storeId') : null,
-        isActive: isActive !== undefined ? isActive : true,
-        email: email || null,
-        phone: phone || null,
-      },
-      include: {
-        store: true,
-      },
-    });
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          employeeId,
+          name,
+          passwordHash,
+          role,
+          storeId: storeId ? requireId(storeId, 'storeId') : null,
+          isActive: isActive !== undefined ? isActive : true,
+          email: email || null,
+          phone: phone || null,
+        },
+        include: { store: true },
+      });
+    } catch (createErr) {
+      // Prisma DLL may be stale and not recognise AREA_MANAGER — bypass with raw SQL
+      if (createErr.message?.includes('Expected UserRole') || createErr.message?.includes('PrismaClientValidationError')) {
+        const rows = await prisma.$queryRaw`
+          INSERT INTO "User" ("employeeId", name, "passwordHash", role, "storeId", "isActive", email, phone, "createdAt", "updatedAt")
+          VALUES (
+            ${employeeId}, ${name}, ${passwordHash}, ${role}::"UserRole",
+            ${storeId ? requireId(storeId, 'storeId') : null},
+            ${isActive !== undefined ? isActive : true},
+            ${email || null}, ${phone || null},
+            NOW(), NOW()
+          )
+          RETURNING id, "employeeId", name, role, "storeId", "isActive", "pendingApproval",
+                    "mustChangePassword", source, email, phone, "createdAt", "updatedAt"
+        `;
+        user = { ...rows[0], store: null };
+      } else {
+        throw createErr;
+      }
+    }
 
     await createAuditLog({
       userId: req.user.id,
@@ -506,7 +526,7 @@ export async function createUser(req, res, next) {
     const { passwordHash: _, ...userWithoutPassword } = user;
     res.status(201).json(userWithoutPassword);
   } catch (error) {
-    if (error.code === 'P2002') {
+    if (error.code === 'P2002' || error.message?.includes('unique') || (error.code && error.code === '23505')) {
       next(new AppError('Employee ID already exists', 409));
     } else {
       next(error);
@@ -2359,13 +2379,16 @@ export async function getNotifications(req, res, next) {
     const items = [];
     const dateLabel = new Date(latestBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-    // AM review status for admin
-    const amReviews = await prisma.areaManagerReview.findMany({
-      where: { batchId: latestBatch.id },
-      select: { status: true, storeId: true },
-    });
-    const amApproved = amReviews.filter(r => r.status === 'APPROVED').length;
-    const amPending  = amReviews.filter(r => r.status === 'PENDING_REVIEW').length;
+    // AM review status for admin — use raw SQL so this works even if
+    // the Prisma client DLL hasn't been regenerated after the AM migration.
+    let amApproved = 0, amPending = 0;
+    try {
+      const amReviews = await prisma.$queryRaw`
+        SELECT status FROM "AreaManagerReview" WHERE "batchId" = ${latestBatch.id}
+      `;
+      amApproved = amReviews.filter(r => r.status === 'APPROVED').length;
+      amPending  = amReviews.filter(r => r.status === 'PENDING_REVIEW').length;
+    } catch { /* AreaManagerReview table not yet available — skip AM stats */ }
 
     if (amApproved > 0) {
       items.push({
@@ -2385,7 +2408,7 @@ export async function getNotifications(req, res, next) {
       });
     }
 
-    if (recentSubmits.length > 0 && amReviews.length === 0) {
+    if (recentSubmits.length > 0 && amApproved === 0 && amPending === 0) {
       items.push({
         type: 'submitted',
         message: `${recentSubmits.length} store${recentSubmits.length > 1 ? 's' : ''} submitted counts — awaiting Area Manager review`,

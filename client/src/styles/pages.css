@@ -518,46 +518,48 @@
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
   .login-shell { max-width: 100%; padding: 16px; }
-  .login-right { 
-    grid-template-columns: 1fr; 
+  .login-right {
+    grid-template-columns: 1fr;
     min-height: auto;
     border-radius: 16px;
   }
-  .lr-left-panel { 
+  .lr-left-panel {
     border-right: none;
     border-bottom: 3px solid rgba(255,255,255,0.20);
-    padding: 36px 28px;
+    padding: 28px 24px;
   }
-  .lr-right-panel { 
-    padding: 36px 28px;
-  }
-  .lr-logo-wrap { width: 80px; height: 80px; margin-bottom: 24px; }
-  .lr-logo-img { width: 48px; height: 48px; }
-  .lr-header h2 { font-size: 28px; }
-  .lr-header p { font-size: 14px; }
-  .lr-divider { margin: 32px 0 28px; }
+  .lr-right-panel { padding: 28px 24px; }
+  .lr-logo-wrap { width: 72px; height: 72px; margin-bottom: 16px; }
+  .lr-logo-img { width: 44px; height: 44px; }
+  .lr-header h2 { font-size: 26px; }
+  .lr-header p { font-size: 13px; }
+  .lr-divider { margin: 20px 0 16px; }
+  .lr-roles-inline { gap: 10px; }
+  .lr-role { padding: 12px 16px; }
   .lr-developer-credit { font-size: 8px; }
 }
 
 @media (max-width: 480px) {
-  .login-shell { padding: 12px; }
-  .login-right { border-radius: 14px; }
-  .lr-left-panel { padding: 28px 20px; }
-  .lr-right-panel { padding: 28px 20px; }
-  .lr-logo-wrap { width: 72px; height: 72px; margin-bottom: 20px; }
-  .lr-logo-img { width: 42px; height: 42px; }
-  .lr-header h2 { font-size: 24px; }
-  .lr-header p { font-size: 13px; }
-  .lr-btn { padding: 14px; font-size: 14px; }
-  .lr-input { padding: 12px 14px; font-size: 14px; }
-  .lr-divider { margin: 24px 0 20px; }
+  .login-shell { padding: 10px; }
+  .login-right { border-radius: 12px; }
+  .lr-left-panel { padding: 20px 16px; }
+  .lr-right-panel { padding: 20px 16px; }
+  .lr-logo-wrap { width: 60px; height: 60px; margin-bottom: 12px; }
+  .lr-logo-img { width: 38px; height: 38px; }
+  .lr-header h2 { font-size: 22px; }
+  .lr-header p { font-size: 12px; }
+  .lr-btn { padding: 13px; font-size: 14px; }
+  .lr-input { padding: 11px 13px; font-size: 14px; }
+  .lr-divider { margin: 16px 0 14px; }
+  .lr-roles-inline { gap: 8px; }
+  .lr-role { padding: 10px 14px; }
 }
 
 @media (max-width: 380px) {
-  .lr-left-panel { padding: 24px 16px; }
-  .lr-right-panel { padding: 24px 16px; }
-  .lr-header h2 { font-size: 22px; }
-  .lr-header p { font-size: 12px; }
+  .lr-left-panel { padding: 16px 12px; }
+  .lr-right-panel { padding: 16px 12px; }
+  .lr-header h2 { font-size: 20px; }
+  .lr-header p { font-size: 11px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════

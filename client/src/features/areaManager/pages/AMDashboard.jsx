@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AMLayout from '../layout/AMLayout';
+import { LoadingText } from '../../../shared/components/ui/LoadingCard';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
@@ -82,8 +83,12 @@ export default function AMDashboard() {
           <div key={k.label} className={`kpi-card ${k.cls}`}>
             <div className="kpi-icon">{k.icon}</div>
             <div className="kpi-label">{k.label}</div>
-            <div className="kpi-value">{loading ? '—' : k.value}</div>
-            <div className="kpi-sub">{k.sub}</div>
+            <div className="kpi-value">
+              {loading
+                ? <LoadingText width="40%" height={28} style={{ margin: '4px 0' }} />
+                : k.value}
+            </div>
+            {!loading && <div className="kpi-sub">{k.sub}</div>}
           </div>
         ))}
       </div>
@@ -103,7 +108,17 @@ export default function AMDashboard() {
         </div>
 
         {loading ? (
-          <div style={{ padding: 32, textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>Loading…</div>
+          <div style={{ padding: '8px 0' }}>
+            {[80, 65, 75].map((w, i) => (
+              <div key={i} style={{ padding: '14px 20px', borderBottom: '1px solid var(--red-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div className="skeleton skeleton-text" style={{ width: w, height: 14, marginBottom: 8 }} />
+                  <div className="skeleton skeleton-text" style={{ width: 140, height: 11 }} />
+                </div>
+                <div className="skeleton skeleton-text" style={{ width: 72, height: 36, borderRadius: 8 }} />
+              </div>
+            ))}
+          </div>
         ) : batches.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>
             No cycles yet. You will be notified when an inventory cycle is created.
