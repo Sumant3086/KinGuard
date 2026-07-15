@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './features/auth/AuthContext';
 import TopProgress from './shared/components/ui/TopProgress';
+import ErrorBoundary from './shared/components/ui/ErrorBoundary';
 import { progressStart, progressDone } from './shared/api/progress';
 
 // Eagerly loaded — needed on first paint for every user
@@ -86,6 +87,7 @@ function App() {
       />
 
       <main id="main-content">
+        <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/"                element={<Home />} />
@@ -110,6 +112,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </main>
     </>
   );
