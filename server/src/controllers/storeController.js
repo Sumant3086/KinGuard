@@ -125,7 +125,7 @@ export async function getInventory(req, res, next) {
       where.status = status;
     }
 
-    const [records, batchInfo] = await Promise.all([
+    const [records, batchInfo, amReview] = await Promise.all([
       prisma.inventoryRecord.findMany({
         where,
         orderBy: { materialCode: 'asc' },
@@ -134,6 +134,12 @@ export async function getInventory(req, res, next) {
         ? prisma.uploadBatch.findUnique({
             where: { id: batchId },
             select: { submissionDeadline: true },
+          })
+        : Promise.resolve(null),
+      batchId
+        ? prisma.areaManagerReview.findUnique({
+            where: { batchId_storeId: { batchId, storeId } },
+            select: { status: true, remarks: true },
           })
         : Promise.resolve(null),
     ]);
@@ -151,7 +157,11 @@ export async function getInventory(req, res, next) {
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_INVENTORY (${records.length} records): ${duration}ms`);
 
-    res.json({ records, isLocked });
+    res.json({
+      records,
+      isLocked,
+      returnedByAM: amReview?.status === 'RETURNED' ? amReview.remarks || 'Your submission was returned. Please recount and resubmit.' : null,
+    });
   } catch (error) {
     next(error);
   }
@@ -491,15 +501,14 @@ export async function getNotifications(req, res, next) {
 
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    // Check for returned reviews (AM sent back) — high priority
+    // Check for returned reviews (AM sent back) — high priority — single query with join
     const returnedReviews = await prisma.areaManagerReview.findMany({
       where: { storeId, status: 'RETURNED' },
-      select: { batchId: true, remarks: true },
+      select: { batchId: true, remarks: true, batch: { select: { inventoryDate: true } } },
     });
     for (const r of returnedReviews) {
-      const batch = await prisma.uploadBatch.findUnique({ where: { id: r.batchId }, select: { inventoryDate: true } });
-      if (!batch) continue;
-      const dateLabel = new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (!r.batch) continue;
+      const dateLabel = new Date(r.batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       items.push({ type: 'returned', message: `${dateLabel} — Returned by Area Manager. Please recount and resubmit.`, batchId: r.batchId, urgent: true });
     }
 

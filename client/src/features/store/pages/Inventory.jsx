@@ -85,6 +85,7 @@ export default function StoreInventory() {
   const [batches, setBatches]           = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(urlBatchId);
   const [isLocked, setIsLocked]         = useState(false);
+  const [returnedReason, setReturnedReason] = useState('');
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -186,9 +187,10 @@ export default function StoreInventory() {
     try {
       setLoading(true);
       const res = await storeApi.getInventory(search, statusFilter, selectedBatch);
-      const { records: recs, isLocked: locked } = res;
+      const { records: recs, isLocked: locked, returnedByAM } = res;
       setRecords(recs);
       setIsLocked(locked);
+      setReturnedReason(returnedByAM || '');
       editedRecordsRef.current = {};
       setEditedRecords({});
       setSavingRecords(new Set());
@@ -521,6 +523,18 @@ export default function StoreInventory() {
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      {returnedReason && (
+        <div className="deadline-banner" style={{ background: 'rgba(220,38,38,0.08)', borderColor: 'rgba(220,38,38,0.30)', marginBottom: 12 }}>
+          <span className="deadline-banner-icon" style={{ color: '#dc2626' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+          </span>
+          <div>
+            <p style={{ fontWeight: 700, color: '#dc2626' }}>Returned for recount by Area Manager</p>
+            <span style={{ color: '#7f1d1d' }}>{returnedReason}</span>
+          </div>
+        </div>
+      )}
 
       {isLocked && (
         <div className="lock-banner">

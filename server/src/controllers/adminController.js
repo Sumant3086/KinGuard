@@ -1917,18 +1917,22 @@ export async function unlockStoreForBatch(req, res, next) {
     const batchId = requireId(req.params.id, 'batchId');
     const storeId = requireId(req.body.storeId, 'storeId');
 
-    const result = await prisma.inventoryRecord.updateMany({
-      where: { batchId, storeId, status: 'SUBMITTED' },
-      data: {
-        status: 'PENDING',
-        physicalQuantity: null,
-        difference: null,
-        shrinkageCategory: null,
-        remarks: null,
-        submittedBy: null,
-        submittedAt: null,
-      },
-    });
+    const [result] = await prisma.$transaction([
+      prisma.inventoryRecord.updateMany({
+        where: { batchId, storeId, status: 'SUBMITTED' },
+        data: {
+          status: 'PENDING',
+          physicalQuantity: null,
+          difference: null,
+          shrinkageCategory: null,
+          remarks: null,
+          submittedBy: null,
+          submittedAt: null,
+        },
+      }),
+      // Clear any stale AM review so the store goes through review again after resubmission
+      prisma.areaManagerReview.deleteMany({ where: { batchId, storeId } }),
+    ]);
 
     await createAuditLog({
       userId: req.user.id, action: 'UNLOCK_STORE_SUBMISSION',

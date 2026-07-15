@@ -35,13 +35,19 @@ const typeDot = {
 export default function NotificationBell({ fetcher, role }) {
   const [data, setData] = useState({ items: [], count: 0 });
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const ref     = useRef(null);
+  const mounted = useRef(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const d = await fetcher();
-      setData(d);
+      if (mounted.current) setData(d);
     } catch {
       // 401 is handled globally by the axios interceptor (redirects to login).
       // Other transient failures are silently skipped so the bell stays visible.
