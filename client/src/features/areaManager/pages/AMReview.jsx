@@ -17,6 +17,7 @@ export default function AMReview() {
   const [stores,      setStores]      = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [selected,    setSelected]    = useState(null); // { storeId, storeName, storeCode }
+  const [batchDate,   setBatchDate]   = useState('');
   const [records,     setRecords]     = useState([]);
   const [review,      setReview]      = useState(null);
   const [loadingRecs, setLoadingRecs] = useState(false);
@@ -27,8 +28,14 @@ export default function AMReview() {
   const [working,     setWorking]     = useState(false);
 
   useEffect(() => {
-    amApi.getBatchStores(batchId)
-      .then(setStores)
+    Promise.all([
+      amApi.getBatchStores(batchId),
+      amApi.getBatches(),
+    ]).then(([s, batches]) => {
+      setStores(s);
+      const batch = batches.find(b => String(b.id) === String(batchId));
+      if (batch?.inventoryDate) setBatchDate(fmtDate(batch.inventoryDate, 'long'));
+    })
       .catch(e => { console.error('AM batch stores:', e); toast.error('Could not load stores.'); })
       .finally(() => setLoading(false));
   }, [batchId]); // eslint-disable-line
@@ -74,9 +81,10 @@ export default function AMReview() {
     setWorking(true);
     try {
       await amApi.approveStore(batchId, selected.id, { remarks });
-      toast.success(`${selected.storeName} approved`);
+      toast.success(`${selected.storeName} approved — passed to Admin`);
       setStores(prev => prev.map(s => s.id === selected.id ? { ...s, reviewStatus: 'APPROVED', reviewRemarks: remarks } : s));
-      setReview(r => ({ ...r, status: 'APPROVED', remarks }));
+      setReview({ status: 'APPROVED', remarks });
+      setEditedRecs({});
     } catch (e) {
       console.error('AM approve:', e);
       toast.error('Could not approve. Try again.');
@@ -91,6 +99,8 @@ export default function AMReview() {
       toast.success(`${selected.storeName} sent back for recount`);
       setStores(prev => prev.map(s => s.id === selected.id ? { ...s, reviewStatus: 'RETURNED', reviewRemarks: returnReason } : s));
       setReview({ status: 'RETURNED', remarks: returnReason });
+      setEditedRecs({});
+      setRecords([]);
       setShowReturn(false);
       setReturnReason('');
     } catch (e) {
@@ -105,7 +115,7 @@ export default function AMReview() {
     <AMLayout>
       <PageHeader
         title="Review Submissions"
-        subtitle={`Cycle: ${stores[0] ? fmtDate(stores[0]?.inventoryDate, 'long') : '…'}`}
+        subtitle={batchDate ? `Cycle: ${batchDate}` : 'Loading…'}
       >
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/am/review')}>← Back to cycles</button>
       </PageHeader>
