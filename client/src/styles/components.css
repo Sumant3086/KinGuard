@@ -811,6 +811,18 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   box-shadow:0 12px 36px rgba(100,20,10,0.18);
   z-index:9999; overflow:hidden; animation:slide-up 0.15s var(--ease) both;
 }
+@media (max-width:600px) {
+  .notif-dropdown {
+    position:fixed;
+    top:62px;
+    left:8px;
+    right:8px;
+    width:auto;
+    max-height:calc(100dvh - 80px);
+    overflow-y:auto;
+    border-radius:14px;
+  }
+}
 .notif-header { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:rgba(250,236,232,0.70); border-bottom:1px solid rgba(185,28,28,0.10); font-size:12px; font-weight:700; color:var(--tx1); }
 .notif-header-count { font-size:10.5px; font-weight:700; color:#dc2626; background:rgba(185,28,28,0.10); padding:2px 7px; border-radius:99px; border:1px solid rgba(185,28,28,0.18); }
 .notif-empty  { display:flex; align-items:center; gap:8px; padding:18px 14px; font-size:13px; color:var(--tx3); }
