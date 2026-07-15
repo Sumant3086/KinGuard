@@ -288,7 +288,7 @@ export default function Batches() {
                   {/* Action buttons — 3-column grid */}
                   <div className="batch-card-actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDeadline(b.id); setDeadlineInput(b.submissionDeadline ? toLocalInputValue(b.submissionDeadline) : ''); }}>Set Deadline</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setExtendModal({ batchId: b.id })}>Extend</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setExtendModal({ batchId: b.id }); setExtStoreId(''); setExtDeadline(''); setExtNote(''); }}>Extend</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setUnlockModal({ batchId: b.id })}>Unlock</button>
                     <button className="btn btn-success btn-sm" onClick={() => handleBatchExport(b.id, b.inventoryDate)}>Excel</button>
                     <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>
@@ -363,7 +363,7 @@ export default function Batches() {
                       <td>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDeadline(b.id); setDeadlineInput(b.submissionDeadline ? toLocalInputValue(b.submissionDeadline) : ''); }}>Deadline</button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setExtendModal({ batchId: b.id })}>Extend Store</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => { setExtendModal({ batchId: b.id }); setExtStoreId(''); setExtDeadline(''); setExtNote(''); }}>Extend Store</button>
                           <button className="btn btn-ghost btn-sm" onClick={() => setUnlockModal({ batchId: b.id })} title="Reset a store's submission so they can re-count">Unlock Store</button>
                           <button className="btn btn-success btn-sm" onClick={() => handleBatchExport(b.id, b.inventoryDate)}>Excel</button>
                           <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>

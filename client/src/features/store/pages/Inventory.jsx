@@ -253,7 +253,8 @@ export default function StoreInventory() {
       setTimeout(() => setSavedRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; }), 2000);
     } catch (err) {
       setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
-      setErrorRecords(prev => new Map(prev).set(recordId, err.response?.data?.error || 'Save failed'));
+      console.error('Save record:', err);
+      setErrorRecords(prev => new Map(prev).set(recordId, 'Could not save. Tap to retry.'));
     }
   }
 

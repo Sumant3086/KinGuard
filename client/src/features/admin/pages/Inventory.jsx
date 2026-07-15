@@ -132,7 +132,8 @@ export default function Inventory() {
       setRecords(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r));
       setOverrideRecord(null);
     } catch (err) {
-      setOverrideError(err.response?.data?.error || 'Override failed');
+      console.error('Override record:', err);
+      setOverrideError('Could not save changes. Please try again.');
     } finally {
       setOverriding(false);
     }
