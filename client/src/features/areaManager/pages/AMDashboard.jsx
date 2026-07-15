@@ -69,10 +69,10 @@ export default function AMDashboard() {
                     </div>
                     <button
                       className="btn btn-sm"
-                      style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)' }}
+                      style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)', minHeight: 44, whiteSpace: 'nowrap' }}
                       onClick={() => navigate(`/am/review/${b.id}`)}
                     >
-                      Review Stores →
+                      Review →
                     </button>
                   </div>
                 ))}

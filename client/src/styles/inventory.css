@@ -400,6 +400,16 @@
 @media (max-width:480px) {
   .summary-metrics, .summary-wrap { grid-template-columns:repeat(2,1fr); }
 }
+@media (max-width:380px) {
+  .summary-metrics, .summary-wrap { grid-template-columns:1fr 1fr; }
+  .inv-filters        { padding:8px 10px; gap:6px; }
+  .filter-group label { font-size:10px; }
+  .search-input       { font-size:13px; }
+  .sic-count-input    { font-size:17px !important; min-height:48px !important; }
+  .sic-metric-val     { font-size:17px !important; }
+  .sic-metric-label   { font-size:8.5px !important; }
+  .btn-row-save       { padding:8px 14px !important; font-size:11px !important; }
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    STORE INVENTORY MOBILE CARDS — Full Redesign (sic-* namespace)

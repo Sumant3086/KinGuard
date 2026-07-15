@@ -184,18 +184,18 @@ export default function AMReview() {
             ) : (
               <>
                 {/* Records table */}
-                <div className="table-wrap" style={{ maxHeight: 380, overflowY: 'auto' }}>
-                  <table>
+                <div className="table-wrap" style={{ maxHeight: 380, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ minWidth: 560 }}>
                     <thead>
                       <tr>
-                        <th>Item Code</th>
-                        <th>Name</th>
-                        <th style={{ textAlign: 'right' }}>System</th>
-                        <th style={{ textAlign: 'right' }}>Physical</th>
-                        <th style={{ textAlign: 'right' }}>Variance</th>
-                        <th>Category</th>
-                        <th>Remarks</th>
-                        {review?.status !== 'APPROVED' && <th></th>}
+                        <th style={{ minWidth: 80 }}>Item Code</th>
+                        <th style={{ minWidth: 120 }}>Name</th>
+                        <th style={{ textAlign: 'right', minWidth: 64 }}>System</th>
+                        <th style={{ textAlign: 'right', minWidth: 80 }}>Physical</th>
+                        <th style={{ textAlign: 'right', minWidth: 72 }}>Variance</th>
+                        <th style={{ minWidth: 100 }}>Category</th>
+                        <th style={{ minWidth: 110 }}>Remarks</th>
+                        {review?.status !== 'APPROVED' && <th style={{ minWidth: 52 }}></th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -282,13 +282,13 @@ export default function AMReview() {
                         style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--red-border)', borderRadius: 8, resize: 'vertical', boxSizing: 'border-box' }}
                       />
                     </div>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      <button className="btn btn-success" onClick={handleApprove} disabled={working}>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
+                      <button className="btn btn-success" onClick={handleApprove} disabled={working} style={{ flex: '1 1 auto', minHeight: 44 }}>
                         {working ? '…' : '✓ Approve & Pass to Admin'}
                       </button>
                       <button
                         className="btn btn-sm"
-                        style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.25)' }}
+                        style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.25)', flex: '0 0 auto', minHeight: 44 }}
                         onClick={() => setShowReturn(v => !v)}
                       >
                         ↩ Return for Recount
