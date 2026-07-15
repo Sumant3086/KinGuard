@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AMLayout from '../layout/AMLayout';
 import { LoadingText } from '../../../shared/components/ui/LoadingCard';
+import { useToast } from '../../../shared/context/ToastContext';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
@@ -37,13 +38,14 @@ export default function AMDashboard() {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const toast    = useToast();
 
   useEffect(() => {
     Promise.all([amApi.getDashboard(), amApi.getBatches()])
       .then(([d, b]) => { setData(d); setBatches(b); })
-      .catch(e => console.error('AM dashboard:', e))
+      .catch(e => { console.error('AM dashboard:', e); toast.error('Could not load dashboard. Please refresh.'); })
       .finally(() => setLoading(false));
-  }, []);
+  }, [toast]);
 
   const kpis = [
     { label: 'Stores Under You',    value: data?.storeCount    ?? 0, cls: 'kpi-blue',  icon: <IcoStores />, sub: 'assigned locations' },

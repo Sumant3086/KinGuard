@@ -90,7 +90,8 @@ export default function Analytics() {
         }
       } catch (e) {
         if (!live) return;
-        setError(e.response?.data?.error || 'Failed to load analytics data.');
+        console.error('Analytics load:', e);
+        setError('Could not load analytics. Please refresh.');
       } finally {
         if (live) setLoading(false);
       }

@@ -395,26 +395,19 @@ export async function submitInventory(req, res, next) {
       let adminList = admins;
       if (adminList.length === 0 && process.env.ADMIN_EMAIL) {
         adminList = [{ email: process.env.ADMIN_EMAIL, name: 'Administrator' }];
-        console.log('[submit] No DB admins with email — falling back to ADMIN_EMAIL env var');
       }
-      if (!req.user.store) {
-        console.log('[submit] User has no store attached — skipping admin notification');
-      } else {
-        console.log(`[submit] Notifying ${adminList.length} admin(s) of submission from ${req.user.store.storeName}`);
+      if (req.user.store && adminList.length > 0) {
         const adminResults = await Promise.allSettled(
           adminList.map(admin =>
             sendSubmissionEmail({ adminEmail: admin.email, adminName: admin.name, store: req.user.store, batchDate, recordCount: count, shortages: shortageCount })
           )
         );
-        const adminSent   = adminResults.filter(r => r.status === 'fulfilled').length;
         const adminFailed = adminResults.filter(r => r.status === 'rejected');
         if (adminFailed.length) console.error('[submit] Admin notification error:', adminFailed[0].reason?.message);
-        console.log(`[submit] Admin notification: sent=${adminSent}, failed=${adminFailed.length}`);
       }
 
       // 2. Confirm to the submitting store manager
       if (req.user.email && req.user.store) {
-        console.log(`[submit] Sending confirmation to manager: ${req.user.email}`);
         sendManagerSubmissionConfirmation({
           managerEmail: req.user.email,
           managerName:  req.user.name,
@@ -424,10 +417,7 @@ export async function submitInventory(req, res, next) {
           shortages:    shortageCount,
           matched:      matchedCount,
           excess:       excessCount,
-        }).then(() => console.log('[submit] Manager confirmation sent'))
-          .catch(e => console.error('[submit] Manager confirmation error:', e.message));
-      } else {
-        console.log('[submit] Manager has no email — skipping confirmation');
+        }).catch(e => console.error('[submit] Manager confirmation error:', e.message));
       }
     }).catch(e => console.error('[submit] Email query failed:', e.message));
 

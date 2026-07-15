@@ -48,10 +48,13 @@ app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Suppress debug noise in production (errors/warns kept for monitoring)
+// In production suppress all non-error output — only console.error survives
+// so critical failures are visible in Render logs without any noise.
 if (IS_PROD) {
-  console.log = () => {};
+  console.log   = () => {};
   console.debug = () => {};
+  console.info  = () => {};
+  console.warn  = () => {};
 }
 
 // ── Health check — also used as keep-alive ping by UptimeRobot / cron ─────

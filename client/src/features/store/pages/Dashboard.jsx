@@ -32,7 +32,7 @@ export default function StoreDashboard() {
     let live = true;
     storeApi.getDashboard()
       .then(data => { if (live) { cache.set(CACHE_KEY, data, CACHE_TTL); setDashboard(data); } })
-      .catch(err  => { if (live) setError(err.response?.data?.error || 'Failed to load dashboard'); })
+      .catch(err  => { console.error('Store dashboard:', err); if (live) setError('Could not load your dashboard. Please refresh.'); })
       .finally(()  => { if (live) setLoading(false); });
     return () => { live = false; };
   }, []);

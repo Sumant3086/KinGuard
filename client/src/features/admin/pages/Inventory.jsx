@@ -84,7 +84,8 @@ export default function Inventory() {
       setRecords(data.data);
       setPagination(data.pagination);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to load inventory.');
+      console.error('Load inventory:', err);
+      toast.error('Could not load inventory. Please try again.');
     } finally {
       setLoading(false);
     }
