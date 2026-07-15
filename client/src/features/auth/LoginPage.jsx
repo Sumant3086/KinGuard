@@ -101,19 +101,19 @@ export default function LoginPage() {
             <div className="lr-divider"><span>User Roles</span></div>
 
             <div className="lr-roles-inline">
-              <div className="lr-role" style={{ borderLeft: '3px solid rgba(255,180,180,0.80)' }}>
+              <div className="lr-role lr-role-admin">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconAdmin />
                   <span className="lr-role-desc">Admin</span>
                 </span>
               </div>
-              <div className="lr-role" style={{ borderLeft: '3px solid rgba(147,197,253,0.80)' }}>
+              <div className="lr-role lr-role-am">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconAM />
                   <span className="lr-role-desc">Area Manager</span>
                 </span>
               </div>
-              <div className="lr-role" style={{ borderLeft: '3px solid rgba(134,239,172,0.80)' }}>
+              <div className="lr-role lr-role-store">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconStore />
                   <span className="lr-role-desc">Store Manager</span>

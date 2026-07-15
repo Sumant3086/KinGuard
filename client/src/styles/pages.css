@@ -477,6 +477,11 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
 
+/* Per-role left-border color accents — must come after .lr-role to win the !important cascade */
+.lr-role-admin { border-left-color: rgba(255, 150, 150, 0.90) !important; border-left-width: 3px !important; }
+.lr-role-am    { border-left-color: rgba(147, 197, 253, 0.90) !important; border-left-width: 3px !important; }
+.lr-role-store { border-left-color: rgba(134, 239, 172, 0.90) !important; border-left-width: 3px !important; }
+
 /* Hide the circular badges */
 .lr-role-badge {
   display: none;
