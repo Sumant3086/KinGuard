@@ -526,6 +526,10 @@ export async function updateUser(req, res, next) {
     });
     if (!currentUser) throw new AppError('User not found', 404);
 
+    if (currentUser.pendingApproval) {
+      throw new AppError('Cannot edit users in pending approval state. Please approve or reject first.', 400);
+    }
+
     const data = {
       name:     name     !== undefined ? name     : undefined,
       isActive: isActive !== undefined ? isActive : undefined,
@@ -546,16 +550,10 @@ export async function updateUser(req, res, next) {
       }
     }
 
-    // Handle password update
     if (password) {
       validatePassword(password);
       data.passwordHash = await bcrypt.hash(password, 10);
-      data.mustChangePassword = false; // Admin resetting password clears the force-change flag
-    }
-
-    // Prevent editing users in pending approval state - they should be approved/rejected instead
-    if (currentUser.pendingApproval) {
-      throw new AppError('Cannot edit users in pending approval state. Please approve or reject first.', 400);
+      data.mustChangePassword = false;
     }
 
     const user = await prisma.user.update({
@@ -615,7 +613,6 @@ export async function uploadInventory(req, res, next) {
 
     const file = req.file;
     const rows = await parseFileToRows(file);
-
 
     // Create upload batch
     const batch = await prisma.uploadBatch.create({
@@ -1360,7 +1357,7 @@ export async function getAuditLogs(req, res, next) {
   }
 }
 
-// """ C1: New batch management endpoints """""""""""""""""""""""""""""""""""""""
+// ── Batch management endpoints ───────────────────────────────────────────────
 
 export async function getBatches(req, res, next) {
   try {
@@ -1563,7 +1560,7 @@ export async function getBatchExport(req, res, next) {
   } catch (error) { next(error); }
 }
 
-// """ Excel sample template """"""""""""""""""""""""""""""""""""""""""""""""""""
+// ── Excel sample template ────────────────────────────────────────────────────
 
 export async function downloadSampleTemplate(req, res, next) {
   try {

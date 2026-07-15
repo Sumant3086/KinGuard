@@ -95,7 +95,6 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
     console.error('[email] New-cycle send failed:', r.reason?.message)
   );
   console.warn(`[email] New-cycle: sent=${sent}, failed=${failed}`);
-  if (sent === 0 && failed > 0) { /* nothing to reset, stateless now */ }
   return { configured: true, sent, failed };
 }
 

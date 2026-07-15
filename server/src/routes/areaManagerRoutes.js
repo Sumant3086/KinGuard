@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate, requireAreaManager, requireRole } from '../middleware/auth.js';
+import { authenticate, requireAreaManager } from '../middleware/auth.js';
 import * as amController from '../controllers/areaManagerController.js';
 
 const router = express.Router();

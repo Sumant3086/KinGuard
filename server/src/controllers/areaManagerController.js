@@ -245,7 +245,7 @@ export async function updateRecord(req, res, next) {
 
     const record = await prisma.inventoryRecord.findUnique({
       where: { id },
-      select: { storeId: true, batchId: true, status: true },
+      select: { storeId: true, batchId: true, status: true, systemQuantity: true },
     });
     if (!record) throw new AppError('Record not found', 404);
     if (record.status !== 'SUBMITTED') throw new AppError('Only submitted records can be edited', 400);
@@ -258,9 +258,8 @@ export async function updateRecord(req, res, next) {
     if (physicalQuantity !== undefined) {
       const qty = parseFloat(physicalQuantity);
       if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be 0 or more', 400);
-      const updated = await prisma.inventoryRecord.findUnique({ where: { id }, select: { systemQuantity: true } });
       updateData.physicalQuantity = qty;
-      updateData.difference = qty - updated.systemQuantity;
+      updateData.difference = qty - record.systemQuantity;
     }
     if (remarks !== undefined)          updateData.remarks = remarks || null;
     if (shrinkageCategory !== undefined) updateData.shrinkageCategory = shrinkageCategory || null;

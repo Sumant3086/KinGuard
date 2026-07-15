@@ -1922,33 +1922,6 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     inset 0 1px 0 rgba(255,255,255,0.58);
 }
 
-/* Store KPI and metric cards - warm amber glass (fallback) */
-.store-shell .kpi-card,
-.store-shell .metric-card,
-.store-shell .stat-card {
-  background: linear-gradient(135deg, rgba(255,242,200,0.80) 0%, rgba(255,238,185,0.78) 100%);
-  backdrop-filter: blur(28px) saturate(195%);
-  -webkit-backdrop-filter: blur(28px) saturate(195%);
-  border: 2px solid rgba(220,38,38,0.22);
-  border-radius: 15px;
-  box-shadow:
-    0 4px 20px rgba(180,100,20,0.16),
-    0 1px 6px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.55);
-}
-
-.store-shell .kpi-card:hover,
-.store-shell .metric-card:hover,
-.store-shell .stat-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  background: linear-gradient(135deg, rgba(255,246,210,0.86) 0%, rgba(255,242,196,0.84) 100%);
-  border-color: rgba(220,38,38,0.38);
-  box-shadow:
-    0 8px 32px rgba(180,100,20,0.24),
-    0 3px 10px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,0.65);
-}
-
 .store-shell .kpi-label,
 .store-shell .metric-label,
 .store-shell .stat-card h4 {

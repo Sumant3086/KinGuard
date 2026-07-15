@@ -27,11 +27,6 @@ const AMDashboard      = lazy(() => import('./features/areaManager/pages/AMDashb
 const AMReviewList     = lazy(() => import('./features/areaManager/pages/AMReviewList'));
 const AMReview         = lazy(() => import('./features/areaManager/pages/AMReview'));
 
-/**
- * Shown while a route chunk downloads or the session is being validated.
- * Renders a neutral page-shaped skeleton and drives the global top progress
- * bar for the duration it is mounted.
- */
 function PageLoader() {
   useEffect(() => {
     progressStart();
