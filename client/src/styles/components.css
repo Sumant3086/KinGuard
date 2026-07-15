@@ -1585,6 +1585,13 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   overflow: hidden;
 }
 
+/* ─── Area Manager review grid — stacks on phones ────────────────── */
+@media (max-width: 768px) {
+  .am-review-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .store-shell .empty-state::before {
   content: '';
   position: absolute;
