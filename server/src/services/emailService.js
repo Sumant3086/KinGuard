@@ -12,7 +12,7 @@ function getTransporter() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
 
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.log('[email] Missing SMTP credentials — email notifications disabled');
+    console.warn('[email] Missing SMTP credentials — email notifications disabled');
     return { transporter: null, configured: false };
   }
   const smtpPort = parseInt(SMTP_PORT || '587');
@@ -26,11 +26,16 @@ function getTransporter() {
       // No connection pool — pooled connections go stale when service sleeps
       // (Render free tier sleeps after 15 min). Fresh connection per send is
       // slightly slower but always works after a cold start.
+      // Timeouts prevent SMTP hangs from causing Render's 30s request timeout
+      // to fire before the server can return a proper JSON error response.
+      connectionTimeout: 10_000,
+      greetingTimeout:   10_000,
+      socketTimeout:     20_000,
       logger: IS_DEV,
       debug:  IS_DEV,
     });
     _configured = true;
-    console.log('[email] SMTP transporter configured');
+    console.warn('[email] SMTP transporter configured (%s:%d)', SMTP_HOST, smtpPort);
     return { transporter: _transporter, configured: true };
   } catch (err) {
     console.error('[email] Failed to create transporter:', err.message);
@@ -99,7 +104,8 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
   results.filter(r => r.status === 'rejected').forEach(r =>
     console.error('[email] New-cycle send failed:', r.reason?.message)
   );
-  console.log(`[email] New-cycle: sent=${sent}, failed=${failed}`);
+  console.warn(`[email] New-cycle: sent=${sent}, failed=${failed}`);
+  if (sent === 0 && failed > 0) { _transporter = null; _configured = false; }
   return { configured: true, sent, failed };
 }
 
@@ -135,7 +141,13 @@ export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadl
 
   const sent   = results.filter(r => r.status === 'fulfilled').length;
   const failed = results.filter(r => r.status === 'rejected').length;
-  console.log(`[email] Reminder: sent=${sent}, failed=${failed}`);
+  results.filter(r => r.status === 'rejected').forEach(r =>
+    console.error('[email] Reminder send failed:', r.reason?.message)
+  );
+  console.warn(`[email] Reminder: sent=${sent}, failed=${failed}`);
+  // If every send failed, the transporter may be broken (bad credentials, blocked IP).
+  // Reset the singleton so the next request creates a fresh one and retries auth.
+  if (sent === 0 && failed > 0) { _transporter = null; _configured = false; }
   return { configured: true, sent, failed };
 }
 
