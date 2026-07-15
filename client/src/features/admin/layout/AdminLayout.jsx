@@ -91,6 +91,14 @@ export default function AdminLayout({ children }) {
         <>
           <div className="hl-overlay" onClick={() => setMobileOpen(false)} />
           <div className="hl-mobile-menu">
+            {/* User greeting */}
+            <div className="hl-mob-user">
+              <div className="hl-mob-user-avatar">{initials}</div>
+              <div>
+                <div className="hl-mob-user-name">{user?.name || user?.employeeId}</div>
+                <div className="hl-mob-user-role">Administrator</div>
+              </div>
+            </div>
             {NAV.map((item, i) => {
               if (item.divider) return <div key={i} className="hl-mob-sep" />;
               return (

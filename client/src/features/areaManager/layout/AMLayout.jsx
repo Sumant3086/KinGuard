@@ -72,6 +72,13 @@ export default function AMLayout({ children }) {
         <>
           <div className="hl-overlay" onClick={() => setMobileOpen(false)} />
           <div className="hl-mobile-menu am-mobile-menu">
+            <div className="hl-mob-user">
+              <div className="hl-mob-user-avatar">{initials}</div>
+              <div>
+                <div className="hl-mob-user-name">{user?.name || user?.employeeId}</div>
+                <div className="hl-mob-user-role">Area Manager</div>
+              </div>
+            </div>
             {NAV.map(item => (
               <Link
                 key={item.to}

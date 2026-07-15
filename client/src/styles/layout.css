@@ -195,15 +195,15 @@
 }
 .hl-mobile-menu {
   position: fixed; top: 60px; left: 0; right: 0;
-  background: linear-gradient(90deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%);
+  background: linear-gradient(180deg, #7f1d1d 0%, #991b1b 100%);
   border-bottom: 1px solid rgba(255,255,255,0.15);
   box-shadow: 0 8px 28px rgba(220,38,38,0.35);
-  z-index: 300; padding: 10px 16px 16px;
+  z-index: 300; padding: 0 8px 12px;
   display: flex; flex-direction: column; gap: 2px;
 }
 .hl-mob-link {
   display: flex; align-items: center; gap: 10px;
-  padding: 13px 14px; border-radius: var(--r-md);
+  padding: 12px 14px; border-radius: var(--r-md);
   color: rgba(255,255,255,0.80);
   font-size: 13.5px; font-weight: 500;
   text-decoration: none; transition: background var(--fast);
@@ -476,10 +476,34 @@
   .store-content { padding:36px 52px 100px; }
 }
 @media (max-width:900px) {
-  .hl-links, .hl-user-info, .hl-signout { display:none; }
-  .hl-hamburger { display:flex; }
+  .hl-links, .hl-user-info, .hl-signout, .hl-avatar { display:none; }
+  .hl-hamburger { display:flex; width:40px; height:40px; border-radius:10px; }
+  .hl-right     { gap:6px; }
+  .notif-bell   { width:40px !important; height:40px !important; border-radius:10px !important; }
   .hl-content   { padding:16px 16px 40px; }
 }
+
+/* ── Mobile menu user header ─────────────────────────────────── */
+.hl-mob-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.14);
+  margin: 0 -8px 4px;          /* bleed edge to edge */
+  padding-left: 14px;
+}
+.hl-mob-user-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  border: 1.5px solid rgba(255,255,255,0.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: #fff;
+  flex-shrink: 0;
+}
+.hl-mob-user-name  { font-size: 13px; font-weight: 700; color: #fff; }
+.hl-mob-user-role  { font-size: 10px; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.7px; margin-top: 1px; }
 @media (max-width:768px) {
   .store-nav-desktop { display:none; }
   .store-bottom-nav  { display:flex; }
