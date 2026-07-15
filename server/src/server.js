@@ -1,6 +1,7 @@
 import app from './app.js';
 import { env } from './config/env.js';
 import prisma from './config/prisma.js';
+import { startReminderScheduler } from './services/reminderScheduler.js';
 import { exec } from 'child_process';
 import { platform } from 'os';
 
@@ -69,6 +70,9 @@ async function startServer() {
       try { await prisma.$queryRaw`SELECT 1`; }
       catch { /* ignore — next real request will reconnect */ }
     }, 180_000).unref();
+
+    // Start the automated 1-hour deadline reminder scheduler
+    startReminderScheduler();
 
     // Only kill the port in development — never do this in production
     if (env.server.nodeEnv === 'development') await freePort(env.server.port);
