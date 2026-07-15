@@ -169,7 +169,11 @@ export default function Batches() {
     setEmailReminding(batchId);
     try {
       const res = await adminApi.sendBatchReminders(batchId);
-      toast.success(res.message || `Reminder sent to ${res.sent} manager(s)`);
+      if (res.sent > 0) {
+        toast.success(res.message || `Reminder sent to ${res.sent} manager(s)`);
+      } else {
+        toast.error(res.message || 'Failed to send email reminders');
+      }
     } catch (e) {
       const msg = e.response?.data?.error
         || (e.code === 'ECONNABORTED' ? 'Request timed out — email server may be slow, try again' : null)
