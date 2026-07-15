@@ -217,7 +217,7 @@ export default function Batches() {
             <line x1="9" y1="9" x2="15" y2="15"/>
           </svg>
           <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--t1)' }}>Failed to Load Cycles</h3>
-          <p style={{ color: 'var(--t3)', marginBottom: 16 }}>{loadError}</p>
+          <p style={{ color: 'var(--t3)', marginBottom: 16 }}>Could not load inventory cycles. Please check your connection and try again.</p>
           <button onClick={load} className="btn btn-primary">Retry</button>
         </div>
       ) : batches.length === 0 ? (

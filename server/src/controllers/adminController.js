@@ -539,11 +539,16 @@ export async function createUser(req, res, next) {
     const { passwordHash: _, ...userWithoutPassword } = user;
     res.status(201).json(userWithoutPassword);
   } catch (error) {
-    if (error.code === 'P2002' || error.message?.includes('unique') || (error.code && error.code === '23505')) {
-      next(new AppError('Employee ID already exists', 409));
-    } else {
-      next(error);
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.includes('email') ? 'Email address' : 'Employee ID';
+      return next(new AppError(`${field} is already in use`, 409));
     }
+    // Raw SQL unique violation (PostgreSQL error code 23505)
+    if (error.code === '23505') {
+      const field = error.detail?.includes('email') ? 'Email address' : 'Employee ID';
+      return next(new AppError(`${field} is already in use`, 409));
+    }
+    next(error);
   }
 }
 
@@ -604,6 +609,7 @@ export async function updateUser(req, res, next) {
     });
 
     invalidateUserCache(userId);
+    if (storeId !== undefined) sInvalidate('admin:stores'); // manager count changed on store card
     const { passwordHash: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {

@@ -40,7 +40,10 @@ export default function ChangePasswordPage() {
       // redirects back to this page immediately after navigating to the dashboard.
       const updated = await refreshUser();
       const role = updated?.role ?? user.role;
-      navigate(role === 'ADMIN' ? '/admin/dashboard' : '/store/dashboard', { replace: true });
+      const dest = role === 'ADMIN' ? '/admin/dashboard'
+                 : role === 'AREA_MANAGER' ? '/am/dashboard'
+                 : '/store/dashboard';
+      navigate(dest, { replace: true });
     } catch (err) {
       console.error('Change password:', err);
       const code = err?.response?.status;

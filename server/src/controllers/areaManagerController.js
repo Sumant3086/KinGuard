@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
+import { sInvalidate } from '../services/serverCache.js';
 
 // ── Helper: get all storeIds managed by this AM ───────────────────────────────
 async function getManagedStoreIds(areaManagerId) {
@@ -288,6 +289,7 @@ export async function approveStore(req, res, next) {
     });
 
     createAuditLog({ userId: req.user.id, action: 'AM_APPROVE', entityType: 'STORE', entityId: storeId, metadata: { batchId, remarks } }).catch(() => {});
+    sInvalidate('admin:dashboard');
 
     // Notify all admins
     Promise.all([
@@ -335,6 +337,7 @@ export async function returnStore(req, res, next) {
     ]);
 
     createAuditLog({ userId: req.user.id, action: 'AM_RETURN', entityType: 'STORE', entityId: storeId, metadata: { batchId, remarks } }).catch(() => {});
+    sInvalidate('admin:dashboard');
 
     res.json({ ok: true });
   } catch (error) { next(error); }

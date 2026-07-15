@@ -22,10 +22,15 @@ export default class ErrorBoundary extends Component {
           justifyContent: 'center', minHeight: '60vh', padding: '32px 16px',
           textAlign: 'center', gap: 12,
         }}>
-          <div style={{ fontSize: 40 }}>⚠️</div>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc2626"
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
           <div style={{ fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Something went wrong</div>
           <div style={{ fontSize: 14, color: '#64748b', maxWidth: 340 }}>
-            An unexpected error occurred. Please refresh the page.
+            An unexpected error occurred on this page. Please refresh to continue.
           </div>
           <button
             onClick={() => window.location.reload()}
