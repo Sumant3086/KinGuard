@@ -27,9 +27,10 @@ const allowedOrigins = env.client.url.split(',').map(url => url.trim()).filter(B
 app.use(
   cors({
     origin: (origin, callback) => {
-      // In production every browser request carries an Origin header.
-      // Requests without one (curl, server-to-server) are allowed only in dev.
-      if (!origin) return callback(null, !IS_PROD);
+      // Dev: allow all origins (Vite proxy, curl, Postman, etc.)
+      if (!IS_PROD) return callback(null, true);
+      // Prod: deny no-origin requests and restrict to configured origins
+      if (!origin) return callback(null, false);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error('Not allowed by CORS'));
     },

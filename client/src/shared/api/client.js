@@ -63,6 +63,7 @@ client.interceptors.response.use(
         const path = window.location.pathname;
         const isProtected = path.startsWith('/admin') ||
                             path.startsWith('/store') ||
+                            path.startsWith('/am') ||
                             path === '/change-password';
         if (isProtected) {
           window.location.href = '/login';

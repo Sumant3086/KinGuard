@@ -9,6 +9,16 @@ const IcoBannerLock  = () => <svg viewBox="0 0 24 24" fill="none" stroke="curren
 const IcoBannerClock = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
 const IcoCheck       = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>;
 
+const StatIcon = ({ children }) => (
+  <div style={{ marginBottom: 8, opacity: 0.55 }}>{children}</div>
+);
+const IcoList     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
+const IcoPending  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+const IcoSubmit   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+const IcoMatch    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9S3 16.97 3 12 7.03 3 12 3s9 4.03 9 9z"/></svg>;
+const IcoShort    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>;
+const IcoExcess   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
+
 const CACHE_KEY = 'store:dashboard';
 const CACHE_TTL = 30_000;
 
@@ -201,31 +211,37 @@ export default function StoreDashboard() {
       {/* Summary stat cards */}
       <div className="stats-grid">
         <div className="stat-card info">
+          <StatIcon><IcoList /></StatIcon>
           <h4>Total Items</h4>
           <div className="value">{stats.totalItems}</div>
           <p>assigned to this store</p>
         </div>
         <div className="stat-card warning">
+          <StatIcon><IcoPending /></StatIcon>
           <h4>Pending Count</h4>
           <div className="value">{stats.pendingItems}</div>
           <p>awaiting physical count</p>
         </div>
         <div className="stat-card success">
+          <StatIcon><IcoSubmit /></StatIcon>
           <h4>Submitted</h4>
           <div className="value">{stats.submittedItems}</div>
           <p>submitted and saved</p>
         </div>
         <div className="stat-card">
+          <StatIcon><IcoMatch /></StatIcon>
           <h4>Matched</h4>
           <div className="value">{stats.matchedItems}</div>
           <p>physical = system stock</p>
         </div>
         <div className="stat-card danger">
+          <StatIcon><IcoShort /></StatIcon>
           <h4>Shortage Items</h4>
           <div className="value">{stats.shortageItems}</div>
           <p>physical &lt; system stock</p>
         </div>
         <div className="stat-card accent">
+          <StatIcon><IcoExcess /></StatIcon>
           <h4>Excess Items</h4>
           <div className="value">{stats.excessItems}</div>
           <p>physical &gt; system stock</p>
