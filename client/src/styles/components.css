@@ -1592,6 +1592,75 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   }
 }
 
+/* ─── Universal mobile polish ─────────────────────────────────────── */
+
+/* Ensure ALL table wrappers scroll horizontally on touch devices */
+.table-wrap, .table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Minimum column widths on AM review records table */
+.am-review-grid .table-wrap th,
+.am-review-grid .table-wrap td {
+  white-space: nowrap;
+}
+
+/* KPI grid: 2 cols on 520px, 1 col on 360px */
+@media (max-width: 380px) {
+  .kpi-grid, .metrics-row, .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Batch card actions: 2-col on very small phones */
+@media (max-width: 380px) {
+  .batch-card-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* Page headers: tighter on very small phones */
+@media (max-width: 380px) {
+  .page-header h2, .page-header-text h2 { font-size: 15px; }
+  .page-header p,  .page-header-text p  { font-size: 11.5px; }
+  .page-header, .page-header-root { padding: 10px 12px; }
+  .card { padding: 10px; }
+  .btn  { padding: 8px 12px; font-size: 12px; min-height: 40px; }
+}
+
+/* Dashboard side grids: always single-column on mobile */
+@media (max-width: 768px) {
+  .dash-grid, .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* Form rows: single column on mobile */
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+
+/* Ensure inputs in filters are always accessible */
+@media (max-width: 480px) {
+  .filter-group { width: 100%; min-width: 0; }
+  .filter-group input,
+  .filter-group select { width: 100%; min-height: 44px; font-size: 14px; }
+}
+
+/* Prevent overflow on badge/tag content */
+.badge, .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Users / Stores cards: better tap targets on 360px */
+@media (max-width: 480px) {
+  .user-card, .store-card { padding: 12px; }
+  .user-card-actions,
+  .store-card-actions { gap: 6px; flex-wrap: wrap; }
+}
+
+/* Ensure modals are scrollable with safe area */
+.modal-content {
+  -webkit-overflow-scrolling: touch;
+}
+
 .store-shell .empty-state::before {
   content: '';
   position: absolute;

@@ -174,15 +174,22 @@
 
 /* Mobile responsive */
 @media (max-width: 480px) {
-  .toast-stack { 
-    left: var(--space-3); 
-    right: var(--space-3); 
-    bottom: var(--space-4); 
-    max-width: none; 
+  .toast-stack {
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: var(--space-4);
+    max-width: none;
   }
   .toast {
     padding: var(--space-3);
     font-size: var(--text-sm);
+  }
+}
+
+/* Store pages have a fixed bottom nav (62px + safe area) — push toasts above it */
+@media (max-width: 768px) {
+  .store-shell .toast-stack {
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
   }
 }
 

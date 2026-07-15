@@ -668,3 +668,20 @@
   /* store content safe-area override for small phones */
   .store-content       { padding:10px 10px calc(76px + env(safe-area-inset-bottom)) !important; }
 }
+
+/* ─── 360px ultra-small phones ─────────────────────────────────── */
+@media (max-width:380px) {
+  .hl-nav              { padding:0 10px; height:48px; }
+  .hl-content          { padding:10px 10px calc(32px + env(safe-area-inset-bottom)); }
+  .hl-logo-img         { width:26px; height:26px; }
+  .hl-name             { font-size:11px; }
+  .store-header-inner  { padding:0 10px; height:48px; }
+  .store-logo-img      { width:26px; height:26px; padding:3px; }
+  .store-brand-name    { font-size:12px; }
+  .store-content       { padding:8px 8px calc(76px + env(safe-area-inset-bottom)) !important; }
+  .hl-mobile-menu      { top:48px; max-height:calc(100vh - 48px); }
+  .hl-shell::before,
+  .hl-shell::after,
+  .store-shell::before,
+  .store-shell::after  { top:48px; }
+}
