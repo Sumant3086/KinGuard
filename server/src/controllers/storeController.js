@@ -268,7 +268,6 @@ export async function updateInventoryRecord(req, res, next) {
   }
 }
 
-
 export async function submitInventory(req, res, next) {
   try {
     const storeId = req.user.storeId;

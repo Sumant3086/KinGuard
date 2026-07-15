@@ -6,8 +6,9 @@ import { useToast } from '../../../shared/context/ToastContext';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
-const STATUS_LABEL = { PENDING_REVIEW: 'Awaiting Review', APPROVED: 'Approved', RETURNED: 'Returned' };
-const STATUS_COLOR = { PENDING_REVIEW: '#d97706', APPROVED: '#16a34a', RETURNED: '#dc2626' };
+const STATUS_LABEL  = { PENDING_REVIEW: 'Awaiting Review', APPROVED: 'Approved', RETURNED: 'Returned' };
+const STATUS_COLOR  = { PENDING_REVIEW: '#d97706', APPROVED: '#16a34a', RETURNED: '#dc2626' };
+const CATEGORIES    = ['Theft', 'Damage', 'Expiry', 'Miscount', 'Transfer', 'Supplier', 'Other'];
 
 export default function AMReview() {
   const { batchId } = useParams();
@@ -28,17 +29,20 @@ export default function AMReview() {
   const [working,     setWorking]     = useState(false);
 
   useEffect(() => {
+    let live = true;
     Promise.all([
       amApi.getBatchStores(batchId),
       amApi.getBatches(),
     ]).then(([s, batches]) => {
+      if (!live) return;
       setStores(s);
       const batch = batches.find(b => String(b.id) === String(batchId));
       if (batch?.inventoryDate) setBatchDate(fmtDate(batch.inventoryDate, 'long'));
     })
-      .catch(e => { console.error('AM batch stores:', e); toast.error('Could not load stores.'); })
-      .finally(() => setLoading(false));
-  }, [batchId]); // eslint-disable-line
+      .catch(e => { if (!live) return; console.error('AM batch stores:', e); toast.error('Could not load stores.'); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [batchId, toast]);
 
   const openStore = useCallback(async (store) => {
     setSelected(store);
@@ -57,7 +61,7 @@ export default function AMReview() {
     } finally {
       setLoadingRecs(false);
     }
-  }, [batchId]); // eslint-disable-line
+  }, [batchId, toast]);
 
   function editField(id, field, value) {
     setEditedRecs(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: value } }));
@@ -108,8 +112,6 @@ export default function AMReview() {
       toast.error('Could not return. Try again.');
     } finally { setWorking(false); }
   }
-
-  const CATEGORIES = ['Theft', 'Damage', 'Expiry', 'Miscount', 'Transfer', 'Supplier', 'Other'];
 
   return (
     <AMLayout>
