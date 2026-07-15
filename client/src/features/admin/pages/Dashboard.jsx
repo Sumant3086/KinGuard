@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
@@ -8,6 +8,21 @@ import * as cache from '../../../shared/api/cache';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
 const CACHE_KEY = 'admin:dashboard';
+
+function useRelativeTime(ts) {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    if (!ts) return;
+    function tick() {
+      const mins = Math.floor((Date.now() - ts) / 60000);
+      setLabel(mins < 1 ? 'just now' : mins === 1 ? '1 min ago' : `${mins} min ago`);
+    }
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, [ts]);
+  return label;
+}
 
 /* ── Banner icons ───────────────────────────────────────────────── */
 const IcoBannerLock   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
@@ -156,19 +171,34 @@ function NetworkBar({ submitted, total, overdueCount }) {
 }
 
 export default function AdminDashboard() {
-  const [data, setData]       = useState(() => cache.get(CACHE_KEY) ?? null);
-  const [loading, setLoading] = useState(!cache.get(CACHE_KEY));
+  const [data, setData]           = useState(() => cache.get(CACHE_KEY) ?? null);
+  const [loading, setLoading]     = useState(!cache.get(CACHE_KEY));
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchedAt, setFetchedAt] = useState(() => cache.get(CACHE_KEY) ? Date.now() : null);
   const navigate = useNavigate();
+  const ageLabel = useRelativeTime(fetchedAt);
+
+  const load = useCallback(async (force = false) => {
+    if (force) {
+      cache.invalidate(CACHE_KEY);
+      setRefreshing(true);
+    }
+    let live = true;
+    try {
+      const d = await adminApi.getDashboard();
+      if (live) { setData(d); setFetchedAt(Date.now()); }
+    } catch {
+      if (live && !data) setData(null);
+    } finally {
+      if (live) { setLoading(false); setRefreshing(false); }
+    }
+    return () => { live = false; };
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (cache.get(CACHE_KEY)) return;
-    let live = true;
-    adminApi.getDashboard()
-      .then(d => { if (live) setData(d); })
-      .catch(() => { if (live) setData(null); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, []);
+    load();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AdminLayout>
@@ -188,10 +218,16 @@ export default function AdminDashboard() {
           icon={<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
           title="Failed to Load Dashboard"
           description="We couldn't retrieve dashboard data. Please check your connection and try again."
-          action={<button onClick={() => window.location.reload()} className="btn btn-primary">Retry</button>}
+          action={<button onClick={() => load(true)} className="btn btn-primary">Retry</button>}
         />
       ) : (
-        <DashboardContent data={data} navigate={navigate} />
+        <DashboardContent
+          data={data}
+          navigate={navigate}
+          ageLabel={ageLabel}
+          onRefresh={() => load(true)}
+          refreshing={refreshing}
+        />
       )}
     </AdminLayout>
   );
@@ -283,7 +319,14 @@ function AMPipelineCard({ pipeline }) {
   );
 }
 
-function DashboardContent({ data, navigate }) {
+const IcoRefresh = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+  </svg>
+);
+
+function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
   const { totalStores, currentBatch: cb, storeScorecard, hotspots, amReviewPipeline = [], networkSummary: ns } = data;
   const now = new Date();
   const submittedPct = totalStores > 0 ? Math.round(((cb?.storesSubmitted ?? 0) / totalStores) * 100) : 0;
@@ -315,6 +358,30 @@ function DashboardContent({ data, navigate }) {
           {cb && <NetworkBar submitted={cb.storesSubmitted ?? 0} total={totalStores} overdueCount={cb.overdueStores?.length ?? 0} />}
         </div>
         {cb && <NetworkRing submitted={cb.storesSubmitted ?? 0} total={totalStores} overdueCount={cb.overdueStores?.length ?? 0} />}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            title="Refresh dashboard data"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '5px 10px', borderRadius: 8, border: '1px solid var(--red-border)',
+              background: 'rgba(185,28,28,0.06)', color: 'var(--tx2)',
+              fontSize: 11, fontWeight: 600, cursor: refreshing ? 'wait' : 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            <span style={{ display: 'inline-block', animation: refreshing ? 'spin .8s linear infinite' : 'none' }}>
+              <IcoRefresh />
+            </span>
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+          {ageLabel && (
+            <span style={{ fontSize: 10, color: 'var(--tx3)', fontWeight: 500 }}>
+              Updated {ageLabel}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── Deadline / overdue banner ── */}

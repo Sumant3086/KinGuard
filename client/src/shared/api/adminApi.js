@@ -187,9 +187,9 @@ export async function overrideRecord(id, payload) {
 }
 
 // ── Batches ────────────────────────────────────────────────────────────────
-export async function getBatches() {
-  const { data } = await client.get('/admin/batches');
-  return data;
+export function getBatches() {
+  return withCache('admin:batches-client', 60_000,
+    async () => { const { data } = await client.get('/admin/batches'); return data; });
 }
 
 export async function updateBatch(id, payload) {
@@ -222,12 +222,13 @@ export async function sendBatchReminders(batchId) {
 }
 
 // ── Area Manager Management ────────────────────────────────────────────────
-export async function getAreaManagers() {
-  const { data } = await client.get('/admin/area-managers');
-  return data;
+export function getAreaManagers() {
+  return withCache('admin:area-managers', 120_000,
+    async () => { const { data } = await client.get('/admin/area-managers'); return data; });
 }
 export async function assignStoreAM(storeId, areaManagerId) {
   const { data } = await client.patch(`/admin/stores/${storeId}/assign-am`, { areaManagerId });
+  cacheInvalidate('admin:area-managers', 'admin:stores');
   return data;
 }
 

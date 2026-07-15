@@ -282,13 +282,17 @@ export async function approveStore(req, res, next) {
 
     const { remarks } = req.body;
 
-    const review = await prisma.areaManagerReview.upsert({
-      where: { batchId_storeId: { batchId, storeId } },
-      create: { batchId, storeId, areaManagerId: req.user.id, status: 'APPROVED', remarks: remarks || null, reviewedAt: new Date() },
-      update: { status: 'APPROVED', remarks: remarks || null, reviewedAt: new Date() },
-    });
+    const [review, storeRow] = await Promise.all([
+      prisma.areaManagerReview.upsert({
+        where: { batchId_storeId: { batchId, storeId } },
+        create: { batchId, storeId, areaManagerId: req.user.id, status: 'APPROVED', remarks: remarks || null, reviewedAt: new Date() },
+        update: { status: 'APPROVED', remarks: remarks || null, reviewedAt: new Date() },
+      }),
+      prisma.$queryRaw`SELECT "storeCode", "storeName" FROM "Store" WHERE id = ${storeId} LIMIT 1`,
+    ]);
+    const storeMeta = storeRow[0] ?? {};
 
-    createAuditLog({ userId: req.user.id, action: 'AM_APPROVE', entityType: 'STORE', entityId: storeId, metadata: { batchId, remarks } }).catch(() => {});
+    createAuditLog({ userId: req.user.id, action: 'AM_APPROVE', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: storeMeta.storeCode, storeName: storeMeta.storeName, remarks } }).catch(() => {});
     sInvalidate('admin:dashboard');
 
     // Notify all admins
@@ -336,7 +340,9 @@ export async function returnStore(req, res, next) {
       }),
     ]);
 
-    createAuditLog({ userId: req.user.id, action: 'AM_RETURN', entityType: 'STORE', entityId: storeId, metadata: { batchId, remarks } }).catch(() => {});
+    const retStoreRow = await prisma.$queryRaw`SELECT "storeCode", "storeName" FROM "Store" WHERE id = ${storeId} LIMIT 1`;
+    const retStore = retStoreRow[0] ?? {};
+    createAuditLog({ userId: req.user.id, action: 'AM_RETURN', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: retStore.storeCode, storeName: retStore.storeName, reason: remarks } }).catch(() => {});
     sInvalidate('admin:dashboard');
 
     res.json({ ok: true });
@@ -357,13 +363,19 @@ export async function assignStoreAM(req, res, next) {
       if (!rows.length || rows[0].role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
     }
 
-    const store = await prisma.store.update({
-      where: { id: storeId },
-      data: { areaManagerId: areaManagerId ? parseInt(areaManagerId) : null },
-      select: { id: true, storeCode: true, storeName: true, areaManagerId: true },
-    });
+    const [store, amUser] = await Promise.all([
+      prisma.store.update({
+        where: { id: storeId },
+        data: { areaManagerId: areaManagerId ? parseInt(areaManagerId) : null },
+        select: { id: true, storeCode: true, storeName: true, areaManagerId: true },
+      }),
+      areaManagerId
+        ? prisma.$queryRaw`SELECT "employeeId", name FROM "User" WHERE id = ${parseInt(areaManagerId)} LIMIT 1`
+        : Promise.resolve([]),
+    ]);
+    const am = amUser[0] ?? null;
 
-    createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { areaManagerId } }).catch(() => {});
+    createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { storeCode: store.storeCode, storeName: store.storeName, areaManagerId: areaManagerId ?? null, areaManagerName: am?.name ?? null } }).catch(() => {});
     res.json(store);
   } catch (error) { next(error); }
 }
