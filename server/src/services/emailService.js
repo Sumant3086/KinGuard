@@ -1,49 +1,38 @@
-import nodemailer from 'nodemailer';
+// emailService.js — Brevo HTTP API (not SMTP)
+// Render free tier blocks outbound SMTP ports (25/465/587). The Brevo REST API
+// uses HTTPS (port 443) which is never blocked by cloud providers.
 
-// Singleton transporter — reuses the SMTP connection pool across all emails.
-// Lazy-initialized so missing SMTP env vars don't crash the module on import.
-let _transporter = null;
-let _configured  = false;
+const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
 
-const IS_DEV = process.env.NODE_ENV !== 'production';
-
-function getTransporter() {
-  if (_transporter) return { transporter: _transporter, configured: _configured };
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.warn('[email] Missing SMTP credentials — email notifications disabled');
-    return { transporter: null, configured: false };
-  }
-  const smtpPort = parseInt(SMTP_PORT || '587');
-
-  try {
-    _transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-      // No connection pool — pooled connections go stale when service sleeps
-      // (Render free tier sleeps after 15 min). Fresh connection per send is
-      // slightly slower but always works after a cold start.
-      // Timeouts prevent SMTP hangs from causing Render's 30s request timeout
-      // to fire before the server can return a proper JSON error response.
-      connectionTimeout: 10_000,
-      greetingTimeout:   10_000,
-      socketTimeout:     20_000,
-      logger: IS_DEV,
-      debug:  IS_DEV,
-    });
-    _configured = true;
-    console.warn('[email] SMTP transporter configured (%s:%d)', SMTP_HOST, smtpPort);
-    return { transporter: _transporter, configured: true };
-  } catch (err) {
-    console.error('[email] Failed to create transporter:', err.message);
-    return { transporter: null, configured: false };
-  }
+function isConfigured() {
+  return !!process.env.BREVO_API_KEY;
 }
 
-const FROM = process.env.SMTP_FROM || 'KinMarché <noreply@kinmarche.com>';
+function parseSender() {
+  const raw = (process.env.SMTP_FROM || '').trim();
+  const m = raw.match(/^(.+?)\s*<([^>]+)>$/);
+  if (m) return { name: m[1].trim(), email: m[2].trim() };
+  return { name: 'KinMarché', email: raw || 'noreply@kinmarche.com' };
+}
+
+async function sendOne({ to, toName, subject, htmlContent }) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const sender = parseSender();
+  const res = await fetch(BREVO_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: to, name: toName || to }],
+      subject,
+      htmlContent,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Brevo ${res.status}: ${body}`);
+  }
+}
 
 function html(body) {
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:system-ui,sans-serif">
@@ -68,10 +57,11 @@ function row(label, value, valueColor) {
 }
 
 // ── Notify all store managers when a new cycle is uploaded ────────────────────
-// Sends all emails in parallel — much faster than sequential for many managers.
 export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
-  const { transporter, configured } = getTransporter();
-  if (!configured) return { configured: false, sent: 0, failed: 0 };
+  if (!isConfigured()) {
+    console.warn('[email] BREVO_API_KEY not set — email notifications disabled');
+    return { configured: false, sent: 0, failed: 0 };
+  }
 
   const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr   = deadline
@@ -82,11 +72,11 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
   if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
 
   const results = await Promise.allSettled(
-    notifiable.map(m => transporter.sendMail({
-      from: FROM,
+    notifiable.map(m => sendOne({
       to: m.email,
+      toName: m.name,
       subject: `New Inventory Cycle — ${dateStr}`,
-      html: html(`
+      htmlContent: html(`
         <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Ready</p>
         <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new cycle has been published. Log in to begin your physical count.</p>
         <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
@@ -105,14 +95,16 @@ export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
     console.error('[email] New-cycle send failed:', r.reason?.message)
   );
   console.warn(`[email] New-cycle: sent=${sent}, failed=${failed}`);
-  if (sent === 0 && failed > 0) { _transporter = null; _configured = false; }
+  if (sent === 0 && failed > 0) { /* nothing to reset, stateless now */ }
   return { configured: true, sent, failed };
 }
 
 // ── Remind pending stores before deadline ─────────────────────────────────────
 export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadline }) {
-  const { transporter, configured } = getTransporter();
-  if (!configured) return { configured: false, sent: 0, failed: 0 };
+  if (!isConfigured()) {
+    console.warn('[email] BREVO_API_KEY not set — email notifications disabled');
+    return { configured: false, sent: 0, failed: 0 };
+  }
   if (!deadline) return { configured: true, sent: 0, failed: 0 };
 
   const dateStr   = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -123,11 +115,11 @@ export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadl
   if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
 
   const results = await Promise.allSettled(
-    notifiable.map(m => transporter.sendMail({
-      from: FROM,
+    notifiable.map(m => sendOne({
       to: m.email,
+      toName: m.name,
       subject: `Reminder — Submit inventory by ${dlStr}`,
-      html: html(`
+      htmlContent: html(`
         <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">Submission Deadline Approaching</p>
         <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
         <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
@@ -145,23 +137,17 @@ export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadl
     console.error('[email] Reminder send failed:', r.reason?.message)
   );
   console.warn(`[email] Reminder: sent=${sent}, failed=${failed}`);
-  // If every send failed, the transporter may be broken (bad credentials, blocked IP).
-  // Reset the singleton so the next request creates a fresh one and retries auth.
-  if (sent === 0 && failed > 0) { _transporter = null; _configured = false; }
   return { configured: true, sent, failed };
 }
 
 // ── Notify admin when a store submits ─────────────────────────────────────────
-// Intentionally no internal try/catch — caller uses Promise.allSettled to
-// capture failures per-admin and log them accurately.
 export async function sendSubmissionEmail({ adminEmail, adminName, store, batchDate, recordCount, shortages }) {
-  const { transporter, configured } = getTransporter();
-  if (!configured || !adminEmail) return;
-  await transporter.sendMail({
-    from: FROM,
+  if (!isConfigured() || !adminEmail) return;
+  await sendOne({
     to: adminEmail,
+    toName: adminName,
     subject: `${store.storeName} submitted inventory`,
-    html: html(`
+    htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Store Submission Received</p>
       <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${adminName}, <strong>${store.storeName}</strong> (${store.storeCode}) has submitted their inventory count.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
@@ -175,16 +161,14 @@ export async function sendSubmissionEmail({ adminEmail, adminName, store, batchD
 }
 
 // ── Confirm to store manager that their submission was received ───────────────
-// Intentionally no internal try/catch — caller's .catch() handles and logs errors.
 export async function sendManagerSubmissionConfirmation({ managerEmail, managerName, store, batchDate, recordCount, shortages, matched, excess }) {
-  const { transporter, configured } = getTransporter();
-  if (!configured || !managerEmail) return;
+  if (!isConfigured() || !managerEmail) return;
   const shortageColor = shortages > 0 ? '#dc2626' : '#059669';
-  await transporter.sendMail({
-    from: FROM,
+  await sendOne({
     to: managerEmail,
+    toName: managerName,
     subject: `Submission confirmed — ${store.storeName} · ${batchDate}`,
-    html: html(`
+    htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Inventory Submission Confirmed</p>
       <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${managerName}, your inventory count for <strong>${store.storeName}</strong> has been successfully submitted. Here is your summary:</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
