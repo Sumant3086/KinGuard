@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
@@ -8,18 +8,25 @@ import { fmtDate } from '../../../shared/utils/dateUtils';
 
 /* ── Pure-SVG sparkline — no library needed ─────────────────────── */
 function Sparkline({ values, width = 80, height = 28 }) {
-  const safe = (values || []).filter(v => typeof v === 'number' && !isNaN(v));
-  if (safe.length < 2) return null;
-  const max = Math.max(...safe, 1);
-  const pts = safe.map((v, i) => {
-    const x = (i / (safe.length - 1)) * width;
-    const y = height - (v / max) * (height - 4) - 2;
-    return `${x},${y}`;
-  }).join(' ');
-
-  const last   = safe[safe.length - 1];
-  const prev   = safe[safe.length - 2];
-  const stroke = last > prev ? '#ef4444' : last < prev ? '#10b981' : '#64748b';
+  const safe = useMemo(
+    () => (values || []).filter(v => typeof v === 'number' && !isNaN(v)),
+    [values]
+  );
+  const computed = useMemo(() => {
+    if (safe.length < 2) return null;
+    const max = Math.max(...safe, 1);
+    const pts = safe.map((v, i) => {
+      const x = (i / (safe.length - 1)) * width;
+      const y = height - (v / max) * (height - 4) - 2;
+      return `${x},${y}`;
+    }).join(' ');
+    const last = safe[safe.length - 1];
+    const prev = safe[safe.length - 2];
+    const stroke = last > prev ? '#ef4444' : last < prev ? '#10b981' : '#64748b';
+    return { pts, stroke };
+  }, [safe, width, height]);
+  if (!computed) return null;
+  const { pts, stroke } = computed;
 
   return (
     <svg width={width} height={height} style={{ display: 'block' }}>

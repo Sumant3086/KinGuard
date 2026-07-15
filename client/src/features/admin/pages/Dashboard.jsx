@@ -466,7 +466,7 @@ function DashboardContent({ data, navigate }) {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
             {hotspots.map((h, i) => (
-              <div key={i} style={{
+              <div key={`${h.materialCode}-${h.storeCode ?? i}`} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10,
                 padding: '12px 14px', borderRadius: 'var(--r)',
                 border: `1px solid ${i === 0 ? 'rgba(220,38,38,0.25)' : 'var(--red-border)'}`,
