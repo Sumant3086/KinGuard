@@ -265,6 +265,18 @@ export async function getDashboard(req, res, next) {
     const storesSubmitted = storeScorecard.filter((s) => s.status === 'SUBMITTED').length;
     const overdueStores = storeScorecard.filter((s) => s.isOverdue).map((s) => s.storeName);
 
+    // AM review pipeline — raw SQL for DLL compat
+    let amReviewPipeline = [];
+    try {
+      amReviewPipeline = await prisma.$queryRaw`
+        SELECT r.status, r."storeId", s."storeCode", s."storeName"
+        FROM "AreaManagerReview" r
+        JOIN "Store" s ON s.id = r."storeId"
+        WHERE r."batchId" = ${latestBatch.id}
+        ORDER BY r.status, s."storeName"
+      `;
+    } catch { /* table not yet available */ }
+
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);
 
@@ -281,6 +293,7 @@ export async function getDashboard(req, res, next) {
       },
       storeScorecard,
       hotspots,
+      amReviewPipeline,
       networkSummary: {
         totalRecords: Number(net.totalRecords || 0),
         matchedItems: Number(net.matchedItems || 0),
