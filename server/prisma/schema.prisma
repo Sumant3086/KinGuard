@@ -87,6 +87,7 @@ model UploadBatch {
   uploadedAt         DateTime     @default(now())
   inventoryDate      DateTime
   submissionDeadline DateTime?
+  autoReminderSentAt DateTime?
   totalRows          Int          @default(0)
   successfulRows     Int          @default(0)
   rejectedRows       Int          @default(0)

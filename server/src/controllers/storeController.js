@@ -477,6 +477,8 @@ export async function getNotifications(req, res, next) {
     const now = new Date();
     const items = [];
 
+    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
     // Every batch that still has PENDING records for this store
     const pendingBatches = await prisma.uploadBatch.findMany({
       where: { inventoryRecords: { some: { storeId, status: 'PENDING' } } },
@@ -485,6 +487,7 @@ export async function getNotifications(req, res, next) {
         id: true,
         inventoryDate: true,
         submissionDeadline: true,
+        uploadedAt: true,
         deadlineExtensions: {
           where: { storeId },
           select: { newDeadline: true },
@@ -496,6 +499,7 @@ export async function getNotifications(req, res, next) {
       const ext = batch.deadlineExtensions[0];
       const deadline = ext ? ext.newDeadline : batch.submissionDeadline;
       const dateLabel = new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const isNew = batch.uploadedAt && new Date(batch.uploadedAt) >= since24h;
 
       if (deadline && now > new Date(deadline)) {
         items.push({ type: 'overdue', message: `${dateLabel} — Past deadline, contact your admin`, batchId: batch.id, urgent: true });
@@ -503,9 +507,13 @@ export async function getNotifications(req, res, next) {
         const hoursLeft = Math.round((new Date(deadline) - now) / 3600000);
         if (hoursLeft <= 48) {
           items.push({ type: 'deadline', message: `${dateLabel} — Deadline in ${hoursLeft < 1 ? '<1' : hoursLeft}h`, batchId: batch.id, urgent: hoursLeft <= 12 });
+        } else if (isNew) {
+          items.push({ type: 'new', message: `New cycle for ${dateLabel} — start your count!`, batchId: batch.id, urgent: false });
         } else {
           items.push({ type: 'pending', message: `${dateLabel} — Items waiting for your count`, batchId: batch.id, urgent: false });
         }
+      } else if (isNew) {
+        items.push({ type: 'new', message: `New cycle for ${dateLabel} — start your count!`, batchId: batch.id, urgent: false });
       } else {
         items.push({ type: 'pending', message: `${dateLabel} — Items waiting for your count`, batchId: batch.id, urgent: false });
       }

@@ -20,6 +20,7 @@ function resolveNav(type, role) {
 }
 
 const typeDot = {
+  new:       '#7c3aed',
   pending:   '#3b82f6',
   deadline:  '#d97706',
   overdue:   '#dc2626',
