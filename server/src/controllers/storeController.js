@@ -496,6 +496,8 @@ export async function getNotifications(req, res, next) {
     const returnedReviews = await prisma.areaManagerReview.findMany({
       where: { storeId, status: 'RETURNED' },
       select: { batchId: true, remarks: true, batch: { select: { inventoryDate: true } } },
+      take: 20,
+      orderBy: { reviewedAt: 'desc' },
     });
     for (const r of returnedReviews) {
       if (!r.batch) continue;
