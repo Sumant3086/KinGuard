@@ -77,10 +77,18 @@ async function runReminderCheck() {
   }
 }
 
+let _timer = null;
+let _initTimer = null;
+
 export function startReminderScheduler() {
-  // Run once shortly after startup (2 min delay to let DB settle), then every 30 min
-  setTimeout(runReminderCheck, 2 * 60 * 1000);
-  const timer = setInterval(runReminderCheck, CHECK_INTERVAL_MS);
-  timer.unref(); // don't keep the process alive just for this timer
+  if (_timer) return; // guard against accidental double-start
+  _initTimer = setTimeout(runReminderCheck, 2 * 60 * 1000);
+  _timer = setInterval(runReminderCheck, CHECK_INTERVAL_MS);
+  _timer.unref();
   console.warn('[scheduler] 1-hour deadline reminder scheduler started (every 30 min)');
+}
+
+export function stopReminderScheduler() {
+  if (_initTimer) { clearTimeout(_initTimer);  _initTimer = null; }
+  if (_timer)     { clearInterval(_timer); _timer = null; }
 }

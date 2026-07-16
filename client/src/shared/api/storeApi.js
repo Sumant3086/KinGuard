@@ -1,5 +1,5 @@
 import client from './client';
-import { get as cacheGet, set as cacheSet } from './cache';
+import { get as cacheGet, set as cacheSet, invalidate as cacheInvalidate } from './cache';
 
 export async function getDashboard() {
   const key = 'store:dashboard';
@@ -11,7 +11,11 @@ export async function getDashboard() {
 }
 
 export async function getBatches() {
+  const key = 'store:batches';
+  const cached = cacheGet(key);
+  if (cached) return cached;
   const { data } = await client.get('/store/batches');
+  cacheSet(key, data, 60_000); // 1 min — batch list is stable within a session
   return data;
 }
 
@@ -36,6 +40,7 @@ export async function updateRecord(id, physicalQuantity, systemQuantity, remarks
 
 export async function submitInventory(batchId) {
   const { data } = await client.post('/store/inventory/submit', { batchId });
+  cacheInvalidate('store:batches', 'store:dashboard');
   return data;
 }
 

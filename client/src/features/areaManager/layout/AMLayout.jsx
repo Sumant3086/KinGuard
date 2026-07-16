@@ -23,7 +23,7 @@ export default function AMLayout({ children }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = p => location.pathname.startsWith(p);
+  const isActive = p => location.pathname === p || location.pathname.startsWith(p + '/');
   const initials = user?.name
     ? user.name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'AM';

@@ -72,9 +72,12 @@ export default function Analytics() {
   const [batchB, setBatchB]         = useState('');
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
+  const [retryKey, setRetryKey]     = useState(0);
 
   useEffect(() => {
     let live = true;
+    setLoading(true);
+    setError('');
     (async () => {
       try {
         const [trends, batchList] = await Promise.all([
@@ -91,13 +94,13 @@ export default function Analytics() {
       } catch (e) {
         if (!live) return;
         console.error('Analytics load:', e);
-        setError('Could not load analytics. Please refresh.');
+        setError('Could not load analytics. Please try again.');
       } finally {
         if (live) setLoading(false);
       }
     })();
     return () => { live = false; };
-  }, []);
+  }, [retryKey]);
 
   if (loading) return (
     <AdminLayout>
@@ -112,7 +115,7 @@ export default function Analytics() {
         icon={<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
         title="Failed to Load Analytics"
         description={error}
-        action={<button onClick={() => window.location.reload()} className="btn btn-primary">Retry</button>}
+        action={<button onClick={() => setRetryKey(k => k + 1)} className="btn btn-primary">Retry</button>}
       />
     </AdminLayout>
   );
