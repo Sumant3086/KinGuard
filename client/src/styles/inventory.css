@@ -54,24 +54,6 @@
 }
 .btn-jump:hover { background:var(--vi-deep); box-shadow:0 4px 14px rgba(220,38,38,0.28); }
 
-/* ─── Entry/progress bar (alias) ─────────────────────────────────── */
-.entry-bar, .entry-progress {
-  position: sticky;
-  top: var(--bar-h);
-  z-index: 90;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 24px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-.entry-label, .progress-label { font-size:12px; font-weight:600; color:var(--t2); white-space:nowrap; min-width:120px; }
-.progress-wrap, .progress-track { flex:1; height:7px; background:var(--surface-2); border-radius:99px; overflow:hidden; max-width:260px; border:1px solid var(--border-subtle); }
-.progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#16a34a,#22c55e); transition:width var(--slow) var(--ease); }
-.progress-fill.partial, .progress-fill.warning { background:linear-gradient(90deg,var(--amber),var(--amber-light)); }
-
 /* ─── Autosave notice ────────────────────────────────────────────── */
 .autosave-notice {
   display: inline-flex;
