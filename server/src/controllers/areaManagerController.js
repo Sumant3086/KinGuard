@@ -12,6 +12,18 @@ async function getManagedStoreIds(areaManagerId) {
   return stores.map(s => s.id);
 }
 
+// ── My assigned stores ────────────────────────────────────────────────────────
+export async function getMyStores(req, res, next) {
+  try {
+    const stores = await prisma.store.findMany({
+      where: { areaManagerId: req.user.id, isActive: true },
+      select: { id: true, storeCode: true, storeName: true },
+      orderBy: { storeCode: 'asc' },
+    });
+    res.json(stores);
+  } catch (error) { next(error); }
+}
+
 // ── Dashboard overview ────────────────────────────────────────────────────────
 export async function getDashboard(req, res, next) {
   try {

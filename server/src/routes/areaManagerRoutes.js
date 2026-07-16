@@ -7,6 +7,7 @@ const router = express.Router();
 // Area Manager routes
 router.use(authenticate, requireAreaManager);
 router.get('/dashboard',                                         amController.getDashboard);
+router.get('/stores',                                            amController.getMyStores);
 router.get('/notifications',                                     amController.getNotifications);
 router.get('/batches',                                           amController.getBatches);
 router.get('/batches/:batchId/stores',                           amController.getBatchStores);
