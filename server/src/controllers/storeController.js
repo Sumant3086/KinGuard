@@ -367,18 +367,17 @@ export async function submitInventory(req, res, next) {
     }).catch(err => console.error('[audit] SUBMIT_INVENTORY log failed:', err.message));
     detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(err => console.error('[detect-repeat] Failed:', err.message));
 
-    // Create or reset AreaManagerReview so AM sees the new submission (raw SQL for DLL compat)
-    prisma.store.findUnique({ where: { id: storeId }, select: { areaManagerId: true } })
-      .then(async store => {
-        if (!store?.areaManagerId) return;
-        await prisma.$executeRaw`
-          INSERT INTO "AreaManagerReview" ("batchId", "storeId", "areaManagerId", status, "createdAt", "updatedAt")
-          VALUES (${parsedBatchId}, ${storeId}, ${store.areaManagerId}, 'PENDING_REVIEW'::"ReviewStatus", NOW(), NOW())
-          ON CONFLICT ("batchId", "storeId")
-          DO UPDATE SET status = 'PENDING_REVIEW'::"ReviewStatus", remarks = NULL, "reviewedAt" = NULL, "updatedAt" = NOW()
-        `;
-      })
-      .catch(e => console.error('[submit] AM review upsert failed:', e.message));
+    // Create or reset AreaManagerReview so AM sees the new submission.
+    // areaManagerId is already on req.user.store (cached by auth middleware) — no extra DB call.
+    const amId = req.user.store?.areaManagerId ?? null;
+    if (amId) {
+      prisma.$executeRaw`
+        INSERT INTO "AreaManagerReview" ("batchId", "storeId", "areaManagerId", status, "createdAt", "updatedAt")
+        VALUES (${parsedBatchId}, ${storeId}, ${amId}, 'PENDING_REVIEW'::"ReviewStatus", NOW(), NOW())
+        ON CONFLICT ("batchId", "storeId")
+        DO UPDATE SET status = 'PENDING_REVIEW'::"ReviewStatus", remarks = NULL, "reviewedAt" = NULL, "updatedAt" = NOW()
+      `.catch(e => console.error('[submit] AM review upsert failed:', e.message));
+    }
 
     // Fire-and-forget email notifications after successful submission
     const shortageCount = records.filter(r => (r.difference ?? 0) < 0).length;

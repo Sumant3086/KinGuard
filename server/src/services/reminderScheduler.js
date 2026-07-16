@@ -1,6 +1,6 @@
 // reminderScheduler.js — automatic 1-hour deadline email reminders
 // Runs every 30 minutes. Finds batches whose deadline falls within the next
-// 50-70 minutes (giving a consistent "~1 hour left" window), sends emails
+// 50-90 minutes (giving a consistent "~1 hour left" window), sends emails
 // to all pending stores, then stamps autoReminderSentAt so it never fires twice.
 
 import prisma from '../config/prisma.js';

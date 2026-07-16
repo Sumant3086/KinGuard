@@ -1792,15 +1792,16 @@ export async function deleteUser(req, res, next) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError('User not found', 404);
 
-    if (user.role === 'ADMIN') {
-      const adminCount = await prisma.user.count({ where: { role: 'ADMIN', isActive: true } });
-      if (adminCount <= 1) {
-        throw new AppError('Cannot delete the last active administrator account', 400);
-      }
-    }
-
-    // Wrap all FK reassignments + delete in a single transaction
+    // Wrap all FK reassignments + delete in a single transaction.
+    // Admin count check is inside the transaction to prevent TOCTOU: two concurrent
+    // deletes could both pass the count check outside and wipe all admins.
     await prisma.$transaction(async (tx) => {
+      if (user.role === 'ADMIN') {
+        const adminCount = await tx.user.count({ where: { role: 'ADMIN', isActive: true } });
+        if (adminCount <= 1) {
+          throw new AppError('Cannot delete the last active administrator account', 400);
+        }
+      }
       // Reassign non-nullable FK references to the deleting admin so data isn't orphaned
       await tx.uploadBatch.updateMany({ where: { uploadedBy: userId }, data: { uploadedBy: req.user.id } });
       await tx.batchDeadlineExtension.updateMany({ where: { grantedBy: userId }, data: { grantedBy: req.user.id } });
