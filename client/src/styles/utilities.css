@@ -109,12 +109,14 @@ tbody tr { contain: layout style; }
   font-weight: 800 !important;
 }
 
-/* Tab bar — solid background so tabs are always readable on background images */
+/* Tab bar — glass background, readable on background images */
 .tab-bar {
-  background: rgba(255, 252, 250, 0.97) !important;
-  border-radius: 10px 10px 0 0 !important;
+  background: rgba(255, 252, 250, 0.88) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border-radius: 12px 12px 0 0 !important;
   padding: 4px 8px 0 !important;
-  border-bottom: 2px solid rgba(185,28,28,0.18) !important;
+  border-bottom: 2px solid rgba(185,28,28,0.22) !important;
 }
 .tab-btn           { color: #3d1a18 !important; font-weight: 600 !important; }
 .tab-btn:hover     { color: #1c0a08 !important; }
@@ -122,13 +124,15 @@ tbody tr { contain: layout style; }
 .tab-btn.warn      { color: #b45309 !important; }
 .tab-btn.warn.active { color: #dc2626 !important; }
 
-/* Empty state inside admin — solid card so it's not floating on the image */
+/* Empty state inside admin — glass card so background shows through */
 .hl-shell:not(.am-shell) .empty-state,
 .hl-content .empty-state {
-  background: rgba(255, 252, 250, 0.97) !important;
-  border: 1px solid rgba(185,28,28,0.14) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 24px rgba(100,20,10,0.12) !important;
+  background: rgba(255, 252, 250, 0.86) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(185,28,28,0.18) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(100,20,10,0.14), inset 0 1px 0 rgba(255,255,255,0.80) !important;
 }
 
 /* Empty state text — always clearly readable */

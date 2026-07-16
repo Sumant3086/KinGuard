@@ -74,15 +74,17 @@
 /* ─── Inventory filters ──────────────────────────────────────────── */
 .inv-filters {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: flex-end;
-  margin-bottom: 16px;
-  background: rgba(255, 252, 250, 0.97);
+  margin-bottom: 14px;
+  background: rgba(255, 252, 250, 0.86);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
   border: 1.5px solid rgba(185,28,28,0.20);
-  border-radius: var(--r-md);
-  padding: 14px 20px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.14), 0 1px 5px rgba(0,0,0,0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 6px 20px rgba(100,20,10,0.10), inset 0 1px 0 rgba(255,255,255,0.70);
 }
 .search-wrap { position:relative; display:flex; align-items:center; }
 .search-icon { position:absolute; left:9px; color:var(--t4); pointer-events:none; }
