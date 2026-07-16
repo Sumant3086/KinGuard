@@ -58,8 +58,8 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)' }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '40px 36px', width: '100%', maxWidth: 420, boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '16px' }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'clamp(20px, 5vw, 40px) clamp(16px, 5vw, 36px)', width: '100%', maxWidth: 420, boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}>
         <div style={{ marginBottom: 24 }}>
           <h2 style={{ fontWeight: 800, fontSize: 20, color: 'var(--t1)', marginBottom: 6 }}>Set a new password</h2>
           <p style={{ fontSize: 13, color: 'var(--t3)' }}>
@@ -87,7 +87,7 @@ export default function ChangePasswordPage() {
             <label htmlFor="cp-confirm">Confirm new password</label>
             <input id="cp-confirm" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required disabled={saving} autoComplete="new-password" />
           </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
             <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
               {saving ? 'Saving…' : 'Change Password'}
             </button>

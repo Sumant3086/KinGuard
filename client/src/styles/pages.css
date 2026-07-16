@@ -481,9 +481,9 @@
 /* ─── Developer credit (bottom right corner) ─── */
 .lr-developer-credit {
   position: absolute;
-  bottom: 16px;
-  right: 20px;
-  font-size: 9px;
+  bottom: 14px;
+  right: 16px;
+  font-size: 10px;
   font-weight: 600;
   color: #8b7e73;
   letter-spacing: 0.3px;
@@ -518,7 +518,7 @@
   .lr-divider { margin: 14px 0 10px; }
   .lr-roles-inline { gap: 7px; }
   .lr-role { padding: 8px 12px; }
-  .lr-developer-credit { font-size: 8px; }
+  .lr-developer-credit { display: none; }
 }
 
 @media (max-width: 480px) {
@@ -1227,8 +1227,8 @@
   .home-section-header   { padding: 24px 18px 20px; border-radius: 16px; }
   .home-hero h1          { font-size: 26px; letter-spacing: -0.8px; }
   .home-hero p           { font-size: 13.5px; }
-  .home-eyebrow          { font-size: 9.5px; padding: 6px 14px; letter-spacing: 1.6px; }
-  .home-section-eyebrow  { font-size: 9.5px; padding: 6px 14px; }
+  .home-eyebrow          { font-size: 11px; padding: 6px 14px; letter-spacing: 1.2px; }
+  .home-section-eyebrow  { font-size: 11px; padding: 6px 14px; }
   .home-cta-btn          { padding: 13px 28px; font-size: 14px; }
   .home-section-heading  { font-size: 22px; }
   .home-features         { grid-template-columns: 1fr; gap: 12px; }
@@ -1236,6 +1236,7 @@
   .home-feat-icon        { width: 46px; height: 46px; border-radius: 12px; }
   .home-feat-step-num    { width: 22px; height: 22px; font-size: 10px; }
   .home-features-section { padding: 40px 14px 50px; }
+  .home-dark-section     { padding-left: 14px; padding-right: 14px; }
   .home-footer           { padding: 10px 14px 8px; }
   .home-footer-developer { font-size: 11px; letter-spacing: 1.8px; }
   .home-footer-copyright { font-size: 10px; }
