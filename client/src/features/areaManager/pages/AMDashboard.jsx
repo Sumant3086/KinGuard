@@ -35,11 +35,13 @@ export default function AMDashboard() {
   const toast    = useToast();
 
   useEffect(() => {
+    let live = true;
     Promise.all([amApi.getDashboard(), amApi.getMyStores()])
-      .then(([d, s]) => { setData(d); setStores(s); })
-      .catch(e => { console.error('AM dashboard:', e); toast.error('Could not load dashboard. Please refresh.'); })
-      .finally(() => setLoading(false));
-  }, [toast]);
+      .then(([d, s]) => { if (live) { setData(d); setStores(s); } })
+      .catch(e => { console.error('AM dashboard:', e); if (live) toast.error('Could not load dashboard. Please refresh.'); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kpis = [
     { label: 'Stores Under You',    value: data?.storeCount    ?? 0, cls: 'kpi-blue',  icon: <IcoStores />, sub: 'assigned locations' },

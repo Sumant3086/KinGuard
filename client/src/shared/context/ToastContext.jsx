@@ -41,12 +41,15 @@ export function ToastProvider({ children }) {
     timers.current.add(t);
   }
 
-  const toast = {
+  // Memoize so the object reference is stable across renders — without this,
+  // any useEffect or useCallback that lists `toast` as a dep re-fires on every
+  // notification, which can cause infinite loops in error paths.
+  const toast = useMemo(() => ({
     success: (msg, dur = 4000)  => push(msg, 'success', dur),
     error:   (msg, dur = 6000)  => push(msg, 'error',   dur),
     warning: (msg, dur = 4500)  => push(msg, 'warning', dur),
     info:    (msg, dur = 4000)  => push(msg, 'info',    dur),
-  };
+  }), [push]);
 
   return (
     <ToastCtx.Provider value={toast}>
