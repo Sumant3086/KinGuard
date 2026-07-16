@@ -5,14 +5,8 @@ import { EmptyState } from '../../../shared/components/ui/EmptyState';
 import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
-import * as cache from '../../../shared/api/cache';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate, fmtISO } from '../../../shared/utils/dateUtils';
-
-const STORES_KEY  = 'admin:stores';
-const STORES_TTL  = 60_000;
-const BATCHES_KEY = 'admin:batches';
-const BATCHES_TTL = 30_000;
 
 const ReportIcon = (
   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -30,8 +24,8 @@ export default function Reports() {
   const { downloading: dlPdf,   download: downloadPdf   } = useDownload();
 
   const [records, setRecords]   = useState([]);
-  const [stores, setStores]     = useState(() => cache.get(STORES_KEY)  ?? []);
-  const [batches, setBatches]   = useState(() => cache.get(BATCHES_KEY) ?? []);
+  const [stores, setStores]     = useState([]);
+  const [batches, setBatches]   = useState([]);
   const [loading, setLoading]   = useState(false);
   const [filters, setFilters]   = useState({ batchId: '', storeId: '', status: 'SUBMITTED', discrepancy: '' });
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -39,10 +33,10 @@ export default function Reports() {
   const [loadedParams, setLoadedParams] = useState(null);
 
   useEffect(() => {
-    const tasks = [];
-    if (!cache.get(STORES_KEY))  tasks.push(adminApi.getStores().then(d  => { cache.set(STORES_KEY,  d, STORES_TTL);  setStores(d);  }));
-    if (!cache.get(BATCHES_KEY)) tasks.push(adminApi.getBatches().then(d => { cache.set(BATCHES_KEY, d, BATCHES_TTL); setBatches(d); }));
-    if (tasks.length) Promise.all(tasks).catch(e => { console.error('Load report data:', e); toast.error('Could not load data. Please refresh.'); });
+    // Use adminApi directly — it has proper caching and correct cache keys
+    Promise.all([adminApi.getStores(), adminApi.getBatches()])
+      .then(([s, b]) => { setStores(s); setBatches(b); })
+      .catch(e => { console.error('Load report data:', e); toast.error('Could not load data. Please refresh.'); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function buildParams() {

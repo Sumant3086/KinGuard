@@ -98,7 +98,7 @@ export default function StoreInventory() {
   const [searchInput, setSearchInput]   = useState('');
   // Track which records have "custom reason" mode active for the Other category
   const [otherCustomIds, setOtherCustomIds] = useState(new Set());
-  const search = useDebounce(searchInput, 400);
+  const search = useDebounce(searchInput, 600);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const debounceTimers    = useRef({});
@@ -241,7 +241,7 @@ export default function StoreInventory() {
 
     try {
       const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.systemQuantity, edits.remarks, edits.shrinkageCategory);
-      setRecords(prev => prev.map(r => r.id === parseInt(recordId) ? updated : r));
+      setRecords(prev => prev.map(r => r.id === parseInt(recordId, 10) ? updated : r));
       setSavedRecords(prev => new Set(prev).add(recordId));
       setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
 
