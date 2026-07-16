@@ -23,11 +23,12 @@ const IconStore = () => (
 );
 
 export default function LoginPage() {
-  const [employeeId, setEmployeeId] = useState('');
-  const [password, setPassword]     = useState('');
-  const [error, setError]           = useState('');
-  const [loading, setLoading]       = useState(false);
-  const [showPw, setShowPw]         = useState(false);
+  const [employeeId, setEmployeeId]   = useState('');
+  const [password, setPassword]       = useState('');
+  const [error, setError]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
+  const [showPw, setShowPw]           = useState(false);
   const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,46 +55,45 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setReconnecting(false);
     setLoading(true);
     try {
       await attemptLogin();
     } finally {
       setLoading(false);
+      setReconnecting(false);
     }
   }
 
-  async function attemptLogin(isRetry = false) {
+  // Retry delays for transient server errors (ECONNRESET, ECONNREFUSED, 503, 500).
+  // node --watch typically takes 3-5 s to restart + reconnect Supabase.
+  // We keep retrying silently — button shows "Reconnecting…" so the user
+  // knows something is happening and doesn't need to click again.
+  const RETRY_DELAYS = [600, 1200, 2000, 2500, 3000, 3000];
+
+  async function attemptLogin(attempt = 0) {
     try {
       await login(employeeId, password, from);
-      // AuthContext handles redirect on success — nothing to do here
+      // AuthContext handles redirect on success
     } catch (err) {
       const status = err.response?.status;
 
-      // 401 / 403 — real auth errors, show immediately, do NOT retry
-      if (status === 401) {
-        setError('Employee ID or password is incorrect.');
-        return;
-      }
-      if (status === 403) {
-        setError(err.response.data?.error || 'Access denied. Contact your administrator.');
-        return;
+      // Real credential / access errors — show immediately, never retry
+      if (status === 401) { setError('Employee ID or password is incorrect.'); return; }
+      if (status === 403) { setError(err.response.data?.error || 'Access denied. Contact your administrator.'); return; }
+
+      // Transient: network down, server restarting, or cold-start 503/500
+      if (attempt < RETRY_DELAYS.length) {
+        setReconnecting(true); // switch button to "Reconnecting…"
+        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+        return attemptLogin(attempt + 1);
       }
 
-      // Network error, 500, or 503 — likely a cold-start transient failure.
-      // Silently retry once with a short delay before showing any error.
-      if (!isRetry) {
-        const delay = status === 503 ? 1800 : 1000;
-        await new Promise(r => setTimeout(r, delay));
-        return attemptLogin(true); // tail-call retry — still inside setLoading(true)
-      }
-
-      // Second failure — show an appropriate message
+      // All retries exhausted — show a clear message
       if (!err.response) {
-        setError('Unable to connect to the server. Check your network and try again.');
-      } else if (status === 503) {
-        setError('Server is starting up. Please wait a moment and try again.');
+        setError('Cannot reach the server. Please check your connection and try again.');
       } else {
-        setError('Login failed. Please try again.');
+        setError('Server is taking too long to respond. Please try again in a moment.');
       }
     }
   }
@@ -240,7 +240,7 @@ export default function LoginPage() {
                       style={{ animation: 'spin .8s linear infinite', flexShrink: 0 }}>
                       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                     </svg>
-                    Signing in…
+                    {reconnecting ? 'Reconnecting…' : 'Signing in…'}
                   </>
                 ) : (
                   <>Sign In →</>
