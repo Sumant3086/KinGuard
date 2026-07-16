@@ -8,5 +8,6 @@ const router = express.Router();
 router.use(authenticate, requireRole('ADMIN'));
 router.get('/area-managers',                     amController.getAreaManagers);
 router.patch('/stores/:storeId/assign-am',       amController.assignStoreAM);
+router.patch('/area-managers/:amId/stores',      amController.batchAssignAMStores);
 
 export default router;
