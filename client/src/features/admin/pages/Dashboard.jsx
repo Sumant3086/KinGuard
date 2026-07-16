@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
@@ -175,25 +175,25 @@ export default function AdminDashboard() {
   const [loading, setLoading]     = useState(!cache.get(CACHE_KEY));
   const [refreshing, setRefreshing] = useState(false);
   const [fetchedAt, setFetchedAt] = useState(() => cache.get(CACHE_KEY) ? Date.now() : null);
-  const navigate = useNavigate();
-  const ageLabel = useRelativeTime(fetchedAt);
+  const navigate    = useNavigate();
+  const ageLabel    = useRelativeTime(fetchedAt);
+  const mountedRef  = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const load = useCallback(async (force = false) => {
     if (force) {
       cache.invalidate(CACHE_KEY);
       setRefreshing(true);
     }
-    let live = true;
     try {
       const d = await adminApi.getDashboard();
-      if (live) { setData(d); setFetchedAt(Date.now()); }
+      if (mountedRef.current) { setData(d); setFetchedAt(Date.now()); }
     } catch {
-      if (live && !data) setData(null);
-    } finally {
-      if (live) { setLoading(false); setRefreshing(false); }
+      if (mountedRef.current) { setLoading(false); setRefreshing(false); }
+      return;
     }
-    return () => { live = false; };
-  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (mountedRef.current) { setLoading(false); setRefreshing(false); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (cache.get(CACHE_KEY)) return;
@@ -327,7 +327,7 @@ const IcoRefresh = () => (
 );
 
 function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
-  const { totalStores, currentBatch: cb, storeScorecard, hotspots, amReviewPipeline = [], networkSummary: ns } = data;
+  const { totalStores, currentBatch: cb, storeScorecard, hotspots, amReviewPipeline = [], networkSummary: ns = {} } = data;
   const now = new Date();
   const submittedPct = totalStores > 0 ? Math.round(((cb?.storesSubmitted ?? 0) / totalStores) * 100) : 0;
 

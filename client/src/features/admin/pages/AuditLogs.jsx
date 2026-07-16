@@ -87,7 +87,7 @@ export default function AuditLogs() {
   }
 
   const handleExport = () =>
-    download(adminApi.exportAuditLogs, `KinGuard_ActivityLog_${new Date().toISOString().split('T')[0]}.xlsx`, { limit: 2000 });
+    download(adminApi.exportAuditLogs, `KinGuard_ActivityLog_${new Date().toISOString().split('T')[0]}.xlsx`, { limit });
 
   const limitSelect = (
     <select
