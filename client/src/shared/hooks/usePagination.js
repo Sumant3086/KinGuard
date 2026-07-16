@@ -20,9 +20,9 @@ export function usePagination({ initialPage = 1, pageSize = 50 } = {}) {
     setPagination(prev => ({ ...prev, page }));
   }, []);
 
-  /** Sync the full pagination object returned by the API. */
+  /** Sync pagination fields returned by the API — merges so local pageSize is never lost. */
   const updateFromResponse = useCallback(response => {
-    setPagination(response);
+    setPagination(prev => ({ ...prev, ...response }));
   }, []);
 
   /** Reset to the first page. */

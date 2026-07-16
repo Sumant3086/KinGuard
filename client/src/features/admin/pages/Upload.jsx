@@ -136,7 +136,7 @@ export default function Upload() {
       clearUploadedFile();
     } catch (err) {
       if (err.response?.status === 409 && err.response.data?.warning === 'duplicate_batch') {
-        setDuplicateMessage('A cycle for this date already exists. Do you want to replace it?');
+        setDuplicateMessage('A cycle already exists for this date. A new separate cycle will be created alongside it — the existing cycle and its data will not be affected.');
         setShowDuplicateConfirm(true);
       } else {
         console.error('Upload:', err);
@@ -496,11 +496,11 @@ export default function Upload() {
         isOpen={showDuplicateConfirm}
         onClose={() => setShowDuplicateConfirm(false)}
         onConfirm={handleForceUpload}
-        title="Duplicate Cycle Detected"
-        message={`${duplicateMessage} Do you want to upload anyway and create a second batch?`}
-        confirmText="Upload Anyway"
+        title="Cycle Already Exists for This Date"
+        message={duplicateMessage}
+        confirmText="Yes, Upload New Cycle"
         cancelText="Cancel"
-        type="warning"
+        type="info"
       />
     </AdminLayout>
   );

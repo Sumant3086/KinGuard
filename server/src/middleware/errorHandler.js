@@ -2,7 +2,8 @@ import { env } from '../config/env.js';
 
 export function errorHandler(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
-  const isOperational = err instanceof AppError;
+  // Check both instanceof and name — instanceof can fail after ESM hot-reload
+  const isOperational = err instanceof AppError || err.name === 'AppError';
 
   // Log unexpected server errors (not intentional 4xx or AppError 5xx)
   if (statusCode >= 500) {

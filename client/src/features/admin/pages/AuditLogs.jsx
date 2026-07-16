@@ -212,8 +212,7 @@ export default function AuditLogs() {
             </table>
           </div>
           <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--t3)', background: 'var(--surface-2)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Showing {logs.length} entries · Click any row to expand metadata</span>
-            <span>Actions with ▶ contain additional details</span>
+            <span>Showing {logs.length} entries{logs.some(l => l.metadata && Object.keys(l.metadata).length > 0) ? ' · Click ▶ to expand details' : ''}</span>
           </div>
         </div>
       )}

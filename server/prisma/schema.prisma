@@ -146,6 +146,7 @@ model InventoryRecord {
   @@index([storeId, batchId])
   @@index([storeId, status])
   @@index([batchId, status])
+  @@index([batchId, status, difference])
 }
 
 model AreaManagerReview {
@@ -168,6 +169,7 @@ model AreaManagerReview {
   @@index([areaManagerId])
   @@index([storeId])
   @@index([status])
+  @@index([batchId, areaManagerId, status])
 }
 
 model AuditLog {

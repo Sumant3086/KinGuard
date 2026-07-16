@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
@@ -79,7 +79,7 @@ const IcoHotspot = () => (
   </svg>
 );
 
-function RiskTag({ level }) {
+const RiskTag = memo(function RiskTag({ level }) {
   const map = {
     RED:    { cls: 'risk-tag risk-high', label: 'High Risk' },
     YELLOW: { cls: 'risk-tag risk-mid',  label: 'Watch'     },
@@ -87,9 +87,9 @@ function RiskTag({ level }) {
   };
   const { cls, label } = map[level] || map.GREEN;
   return <span className={cls}>{label}</span>;
-}
+});
 
-function ShortageBar({ rate }) {
+const ShortageBar = memo(function ShortageBar({ rate }) {
   const cls = rate >= 20 ? 'high' : rate >= 5 ? 'mid' : 'low';
   return (
     <div className="sbar-wrap">
@@ -99,10 +99,10 @@ function ShortageBar({ rate }) {
       <span className="sbar-pct">{rate}%</span>
     </div>
   );
-}
+});
 
 /* ── Donut ring — network submission overview ──────────────────── */
-function NetworkRing({ submitted, total, overdueCount }) {
+const NetworkRing = memo(function NetworkRing({ submitted, total, overdueCount }) {
   if (!total) return null;
   const pending  = Math.max(0, total - submitted - (overdueCount || 0));
   const pct      = Math.round((submitted / total) * 100);
@@ -146,10 +146,10 @@ function NetworkRing({ submitted, total, overdueCount }) {
       </div>
     </div>
   );
-}
+});
 
 /* ── Stacked network bar ──────────────────────────────────────── */
-function NetworkBar({ submitted, total, overdueCount }) {
+const NetworkBar = memo(function NetworkBar({ submitted, total, overdueCount }) {
   if (!total) return null;
   const pending  = Math.max(0, total - submitted - (overdueCount||0));
   const sW = (submitted / total) * 100;
@@ -168,7 +168,7 @@ function NetworkBar({ submitted, total, overdueCount }) {
       </div>
     </div>
   );
-}
+});
 
 const LOAD_TIMEOUT_MS = 20_000; // show error state after 20 s — never hang forever
 
