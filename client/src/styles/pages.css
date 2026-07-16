@@ -423,14 +423,6 @@
   background: rgba(255,255,255,0.30);
 }
 
-/* ─── Role badges (simplified text boxes) ─── */
-.lr-roles { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 0; 
-  width: 100%;
-}
-
 .lr-roles-inline {
   display: flex;
   flex-direction: column;
@@ -438,10 +430,6 @@
   gap: 14px;
   margin-top: 0;
   width: 100%;
-}
-
-.lr-separator {
-  display: none;
 }
 
 .lr-role {
@@ -481,11 +469,6 @@
 .lr-role-admin { border-left-color: rgba(255, 150, 150, 0.90) !important; border-left-width: 3px !important; }
 .lr-role-am    { border-left-color: rgba(147, 197, 253, 0.90) !important; border-left-width: 3px !important; }
 .lr-role-store { border-left-color: rgba(134, 239, 172, 0.90) !important; border-left-width: 3px !important; }
-
-/* Hide the circular badges */
-.lr-role-badge {
-  display: none;
-}
 
 .lr-role-desc {
   font-size: 15px;
@@ -882,14 +865,6 @@
   box-shadow: 0 6px 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.30);
   text-shadow: 0 1px 6px rgba(0,0,0,0.70);
   backdrop-filter: blur(16px);
-}
-.home-eyebrow-green {
-  background: rgba(220,38,38,0.50) !important;
-  border: 2px solid rgba(255,255,255,0.55) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.70);
-  box-shadow: 0 6px 28px rgba(220,38,38,0.55), inset 0 1px 0 rgba(255,255,255,0.30) !important;
-  font-weight: 800 !important;
 }
 .home-section-eyebrow-green {
   background: rgba(220,38,38,0.50) !important;

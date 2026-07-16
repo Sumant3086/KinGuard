@@ -147,31 +147,6 @@
   color: #93c5fd;
 }
 
-/* Toast positioning variants */
-.toast-stack.top-right {
-  top: var(--space-6);
-  right: var(--space-6);
-  bottom: auto;
-}
-.toast-stack.top-left {
-  top: var(--space-6);
-  left: var(--space-6);
-  right: auto;
-  bottom: auto;
-}
-.toast-stack.bottom-left {
-  bottom: var(--space-6);
-  left: var(--space-6);
-  right: auto;
-}
-.toast-stack.top-center {
-  top: var(--space-6);
-  left: 50%;
-  transform: translateX(-50%);
-  right: auto;
-  bottom: auto;
-}
-
 /* Mobile responsive */
 @media (max-width: 480px) {
   .toast-stack {
