@@ -46,8 +46,8 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 900px;
-  padding: 20px;
+  max-width: 720px;
+  padding: 16px;
   animation: hero-enter 0.55s var(--ease-out) both;
 }
 
@@ -58,30 +58,30 @@
 .login-right {
   width: 100%;
   background: #f5f0eb !important;
-  border-radius: 24px;
+  border-radius: 20px;
   padding: 0;
   box-shadow:
-    0 24px 96px rgba(0,0,0,0.40),
-    0 12px 48px rgba(0,0,0,0.30),
-    0 0 0 1px rgba(0,0,0,0.10);
+    0 16px 64px rgba(0,0,0,0.38),
+    0 8px 32px rgba(0,0,0,0.24),
+    0 0 0 1px rgba(0,0,0,0.08);
   border: none;
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 400px 1fr;
-  min-height: 600px;
+  grid-template-columns: 300px 1fr;
+  min-height: 0;
 }
 
 /* Left side - Bold KinMarché red gradient with organic shapes */
 .lr-left-panel {
-  background: 
+  background:
     linear-gradient(155deg,
       #dc2626 0%,
       #b91c1c 40%,
       #991b1b 75%,
       #7f1d1d 100%
     ) !important;
-  padding: 56px 42px;
+  padding: 36px 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -135,7 +135,7 @@
 
 /* Right side - Beige workspace */
 .lr-right-panel {
-  padding: 56px 52px;
+  padding: 36px 36px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -189,57 +189,55 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 108px;
-  height: 108px;
-  border-radius: 26px;
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
   background: rgba(255,255,255,0.98);
-  border: 3px solid rgba(255,255,255,0.70);
-  box-shadow: 
-    0 20px 64px rgba(0,0,0,0.45),
-    0 10px 32px rgba(0,0,0,0.30),
-    inset 0 2px 0 rgba(255,255,255,0.90),
-    0 0 0 1px rgba(0,0,0,0.10);
-  margin-bottom: 36px;
-  transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+  border: 2px solid rgba(255,255,255,0.65);
+  box-shadow:
+    0 12px 40px rgba(0,0,0,0.40),
+    0 6px 20px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.90),
+    0 0 0 1px rgba(0,0,0,0.08);
+  margin-bottom: 20px;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
 }
 
 .lr-logo-wrap:hover {
-  transform: translateY(-6px) scale(1.04);
-  box-shadow: 
-    0 28px 80px rgba(0,0,0,0.50),
-    0 14px 40px rgba(0,0,0,0.35),
-    inset 0 2px 0 rgba(255,255,255,1),
-    0 0 0 1px rgba(0,0,0,0.15);
+  transform: translateY(-4px) scale(1.03);
+  box-shadow:
+    0 18px 52px rgba(0,0,0,0.45),
+    0 8px 28px rgba(0,0,0,0.30),
+    inset 0 1px 0 rgba(255,255,255,1),
+    0 0 0 1px rgba(0,0,0,0.12);
 }
 
 .lr-logo-img {
-  width: 60px;
-  height: 60px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
 }
 
 .lr-header h2 {
-  font-size: 40px;
+  font-size: 26px;
   font-weight: 900;
   color: #ffffff !important;
-  letter-spacing: -1.5px;
-  margin-bottom: 16px;
-  text-shadow: 
-    0 4px 20px rgba(0,0,0,0.55), 
-    0 2px 8px rgba(0,0,0,0.35),
-    0 0 40px rgba(255,255,255,0.10);
+  letter-spacing: -0.8px;
+  margin-bottom: 10px;
+  text-shadow:
+    0 2px 12px rgba(0,0,0,0.50),
+    0 1px 4px rgba(0,0,0,0.30);
 }
 
 .lr-header p {
-  font-size: 16px;
-  color: rgba(255,255,255,0.96) !important;
-  margin: 0;
-  line-height: 1.65;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.40);
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  max-width: 300px;
+  font-size: 13.5px;
+  color: rgba(255,255,255,0.90) !important;
   margin: 0 auto;
+  line-height: 1.55;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.35);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  max-width: 240px;
 }
 
 /* ─── Error banner ─── */
@@ -251,28 +249,28 @@
   border: 1.5px solid #fca5a5;
   border-left: 4px solid #dc2626;
   border-radius: 12px;
-  padding: 14px 16px;
-  font-size: 13.5px;
+  padding: 10px 14px;
+  font-size: 12.5px;
   color: #991b1b;
   font-weight: 600;
-  margin-bottom: 28px;
-  line-height: 1.6;
-  box-shadow: 0 4px 16px rgba(220,38,38,0.12);
+  margin-bottom: 16px;
+  line-height: 1.5;
+  box-shadow: 0 2px 10px rgba(220,38,38,0.10);
 }
 
 /* ─── Form ─── */
-.lr-form { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 22px;
+.lr-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   position: relative;
   z-index: 1;
 }
 
-.lr-field { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 9px; 
+.lr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .lr-label {
@@ -284,16 +282,16 @@
 
 .lr-input {
   width: 100%;
-  padding: 14px 16px;
-  min-height: 50px;
-  border: 2px solid #d4cdc5 !important;
-  border-radius: 10px;
-  font-size: 15px;
+  padding: 10px 13px;
+  min-height: 42px;
+  border: 1.5px solid #d4cdc5 !important;
+  border-radius: 9px;
+  font-size: 14px;
   font-weight: 500;
   color: #111827 !important;
   background: #fefdfb !important;
   outline: none;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
 }
 
@@ -348,23 +346,24 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 16px 28px;
+  padding: 11px 22px;
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   color: #ffffff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
   border: none;
-  border-radius: 10px;
+  border-radius: 9px;
   cursor: pointer;
-  margin-top: 8px;
-  box-shadow: 
-    0 8px 32px rgba(220,38,38,0.40),
-    0 4px 16px rgba(0,0,0,0.20),
+  margin-top: 6px;
+  box-shadow:
+    0 6px 22px rgba(220,38,38,0.38),
+    0 3px 10px rgba(0,0,0,0.18),
     inset 0 1px 0 rgba(255,255,255,0.20);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  min-height: 42px;
 }
 
 .lr-btn::before {
@@ -405,9 +404,9 @@
 .lr-divider {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin: 44px 0 36px;
-  font-size: 11px;
+  gap: 12px;
+  margin: 22px 0 16px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.8px;
   text-transform: uppercase;
@@ -427,7 +426,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 14px;
+  gap: 8px;
   margin-top: 0;
   width: 100%;
 }
@@ -436,8 +435,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 24px;
-  border-radius: 12px;
+  padding: 10px 16px;
+  border-radius: 10px;
   background: rgba(255,255,255,0.15) !important;
   border: 2px solid rgba(255,255,255,0.30) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -471,12 +470,12 @@
 .lr-role-store { border-left-color: rgba(134, 239, 172, 0.90) !important; border-left-width: 3px !important; }
 
 .lr-role-desc {
-  font-size: 15px;
+  font-size: 13px;
   color: #ffffff !important;
-  font-weight: 800;
-  letter-spacing: 0.4px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   text-align: center;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.30);
 }
 
 /* ─── Developer credit (bottom right corner) ─── */
@@ -500,7 +499,7 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .login-shell { max-width: 100%; padding: 16px; }
+  .login-shell { max-width: 100%; padding: 14px; }
   .login-right {
     grid-template-columns: 1fr;
     min-height: auto;
@@ -508,40 +507,40 @@
   }
   .lr-left-panel {
     border-right: none;
-    border-bottom: 3px solid rgba(255,255,255,0.20);
-    padding: 28px 24px;
+    border-bottom: 2px solid rgba(255,255,255,0.18);
+    padding: 22px 20px;
   }
-  .lr-right-panel { padding: 28px 24px; }
-  .lr-logo-wrap { width: 72px; height: 72px; margin-bottom: 16px; }
-  .lr-logo-img { width: 44px; height: 44px; }
-  .lr-header h2 { font-size: 26px; }
-  .lr-header p { font-size: 13px; }
-  .lr-divider { margin: 20px 0 16px; }
-  .lr-roles-inline { gap: 10px; }
-  .lr-role { padding: 12px 16px; }
+  .lr-right-panel { padding: 22px 20px; }
+  .lr-logo-wrap { width: 58px; height: 58px; margin-bottom: 12px; border-radius: 14px; }
+  .lr-logo-img { width: 34px; height: 34px; }
+  .lr-header h2 { font-size: 21px; }
+  .lr-header p { font-size: 12.5px; }
+  .lr-divider { margin: 14px 0 10px; }
+  .lr-roles-inline { gap: 7px; }
+  .lr-role { padding: 8px 12px; }
   .lr-developer-credit { font-size: 8px; }
 }
 
 @media (max-width: 480px) {
   .login-shell { padding: 10px; }
   .login-right { border-radius: 12px; }
-  .lr-left-panel { padding: 20px 16px; }
-  .lr-right-panel { padding: 20px 16px; }
-  .lr-logo-wrap { width: 60px; height: 60px; margin-bottom: 12px; }
-  .lr-logo-img { width: 38px; height: 38px; }
-  .lr-header h2 { font-size: 22px; }
-  .lr-header p { font-size: 12px; }
-  .lr-btn { padding: 13px; font-size: 14px; }
-  .lr-input { padding: 11px 13px; font-size: 14px; }
-  .lr-divider { margin: 16px 0 14px; }
-  .lr-roles-inline { gap: 8px; }
-  .lr-role { padding: 10px 14px; }
+  .lr-left-panel { padding: 18px 14px; }
+  .lr-right-panel { padding: 18px 14px; }
+  .lr-logo-wrap { width: 50px; height: 50px; margin-bottom: 10px; border-radius: 12px; }
+  .lr-logo-img { width: 30px; height: 30px; }
+  .lr-header h2 { font-size: 18px; }
+  .lr-header p { font-size: 11.5px; }
+  .lr-btn { padding: 10px; font-size: 13.5px; min-height: 40px; }
+  .lr-input { padding: 9px 12px; font-size: 14px; min-height: 40px; }
+  .lr-divider { margin: 12px 0 10px; }
+  .lr-roles-inline { gap: 6px; }
+  .lr-role { padding: 8px 12px; }
 }
 
 @media (max-width: 380px) {
-  .lr-left-panel { padding: 16px 12px; }
-  .lr-right-panel { padding: 16px 12px; }
-  .lr-header h2 { font-size: 20px; }
+  .lr-left-panel { padding: 14px 10px; }
+  .lr-right-panel { padding: 14px 10px; }
+  .lr-header h2 { font-size: 16px; }
   .lr-header p { font-size: 11px; }
 }
 
