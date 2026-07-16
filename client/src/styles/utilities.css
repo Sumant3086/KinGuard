@@ -1,3 +1,23 @@
+/* ─── Performance: GPU-promote animated shell backgrounds ────────── */
+.hl-shell::before,
+.store-shell::before,
+.am-shell.hl-shell::before {
+  will-change: transform; /* keep on compositor layer — no repaint on scroll */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Cards animate in with transform — promote early to avoid layer promotion churn */
+.card, .kpi-card, .stat-card {
+  will-change: transform;
+}
+
+/* Table bodies can be long — skip paint for off-screen rows */
+tbody tr { contain: layout style; }
+
+/* Modal backdrop — separate compositor layer so background doesn't repaint */
+.modal { will-change: opacity; }
+
 /* ─── Screen-reader only ─────────────────────────────────────────── */
 .sr-only {
   position:absolute; width:1px; height:1px; padding:0;
@@ -20,19 +40,32 @@
 ::selection      { background: #dc2626 !important; color: #ffffff !important; }
 ::-moz-selection { background: #dc2626 !important; color: #ffffff !important; }
 
-/* ─── Admin panel headings — deep vibrant blue (loads last — guaranteed win) */
-.hl-shell .page-header h2,
-.hl-shell .page-header-text h2 {
+/* ─── Admin panel headings — deep vibrant blue ───────────────────── */
+.hl-shell:not(.am-shell) .page-header h2,
+.hl-shell:not(.am-shell) .page-header-text h2 {
   color: #1d4ed8 !important;
   text-shadow: none !important;
   font-weight: 900 !important;
 }
-
-.hl-shell .page-header p,
-.hl-shell .page-header-text p {
+.hl-shell:not(.am-shell) .page-header p,
+.hl-shell:not(.am-shell) .page-header-text p {
   color: #334155 !important;
   text-shadow: none !important;
   font-weight: 600 !important;
+}
+
+/* ─── AM panel headings — deep mahogany (loads last — wins) ─────── */
+.am-shell .page-header h2,
+.am-shell .page-header-text h2 {
+  color: #6b1503 !important;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important;
+  font-weight: 900 !important;
+}
+.am-shell .page-header p,
+.am-shell .page-header-text p {
+  color: #92400e !important;
+  text-shadow: none !important;
+  font-weight: 700 !important;
 }
 
 /* Store shell headings — vibrant red */
@@ -90,7 +123,7 @@
 .tab-btn.warn.active { color: #dc2626 !important; }
 
 /* Empty state inside admin — solid card so it's not floating on the image */
-.hl-shell .empty-state,
+.hl-shell:not(.am-shell) .empty-state,
 .hl-content .empty-state {
   background: rgba(255, 252, 250, 0.97) !important;
   border: 1px solid rgba(185,28,28,0.14) !important;
