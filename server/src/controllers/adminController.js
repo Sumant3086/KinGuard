@@ -470,6 +470,9 @@ export async function createUser(req, res, next) {
       throw new AppError('Employee ID, name, password, and role are required', 400);
     }
 
+    const VALID_ROLES = new Set(['ADMIN', 'AREA_MANAGER', 'STORE_MANAGER']);
+    if (!VALID_ROLES.has(role)) throw new AppError('Invalid role', 400);
+
     if (role === 'STORE_MANAGER' && !storeId) {
       throw new AppError('Store assignment is required for Store Managers', 400);
     }
@@ -581,7 +584,8 @@ export async function updateUser(req, res, next) {
     if (password) {
       validatePassword(password);
       data.passwordHash = await bcrypt.hash(password, 10);
-      data.mustChangePassword = false;
+      // Admin-reset passwords must be changed on next login
+      data.mustChangePassword = true;
     }
 
     const user = await prisma.user.update({
@@ -1789,9 +1793,9 @@ export async function deleteUser(req, res, next) {
     if (!user) throw new AppError('User not found', 404);
 
     if (user.role === 'ADMIN') {
-      const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
+      const adminCount = await prisma.user.count({ where: { role: 'ADMIN', isActive: true } });
       if (adminCount <= 1) {
-        throw new AppError('Cannot delete the last administrator account', 400);
+        throw new AppError('Cannot delete the last active administrator account', 400);
       }
     }
 

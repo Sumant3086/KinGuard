@@ -133,7 +133,14 @@ export async function getInventory(req, res, next) {
       batchId
         ? prisma.uploadBatch.findUnique({
             where: { id: batchId },
-            select: { submissionDeadline: true },
+            select: {
+              submissionDeadline: true,
+              deadlineExtensions: {
+                where: { storeId },
+                select: { newDeadline: true },
+                take: 1,
+              },
+            },
           })
         : Promise.resolve(null),
       batchId
@@ -145,13 +152,8 @@ export async function getInventory(req, res, next) {
         : Promise.resolve(null),
     ]);
 
-    // C2: Check for per-store deadline extension override
-    const extension = batchInfo?.submissionDeadline && batchId
-      ? await prisma.batchDeadlineExtension.findUnique({
-          where: { batchId_storeId: { batchId, storeId } },
-          select: { newDeadline: true },
-        })
-      : null;
+    // C2: Check for per-store deadline extension override (fetched inline with batchInfo)
+    const extension = batchInfo?.deadlineExtensions?.[0] ?? null;
     const effectiveDeadline = extension ? extension.newDeadline : batchInfo?.submissionDeadline;
     const isLocked = effectiveDeadline ? new Date() > new Date(effectiveDeadline) : false;
 
@@ -385,7 +387,7 @@ export async function submitInventory(req, res, next) {
 
     Promise.all([
       prisma.uploadBatch.findUnique({ where: { id: parsedBatchId }, select: { inventoryDate: true } }),
-      prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } }, select: { email: true, name: true } }),
+      prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, pendingApproval: false, NOT: { email: null } }, select: { email: true, name: true } }),
     ]).then(async ([b, admins]) => {
       if (!b) return;
       const batchDate = b.inventoryDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -438,24 +440,24 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
   });
   if (!currentBatch) return;
 
-  const priorBatches = await prisma.uploadBatch.findMany({
-    where: { inventoryDate: { lt: currentBatch.inventoryDate } },
-    orderBy: { inventoryDate: 'desc' },
-    take: 2,
-    select: { id: true },
-  });
-  if (priorBatches.length === 0) return;
+  // Run priorBatches and currentShortages in parallel — neither depends on the other
+  const [priorBatches, currentShortages] = await Promise.all([
+    prisma.uploadBatch.findMany({
+      where: { inventoryDate: { lt: currentBatch.inventoryDate } },
+      orderBy: { inventoryDate: 'desc' },
+      take: 2,
+      select: { id: true },
+    }),
+    prisma.inventoryRecord.findMany({
+      where: { storeId, batchId, status: 'SUBMITTED', difference: { lt: 0 } },
+      select: { materialCode: true },
+    }),
+  ]);
+  if (priorBatches.length === 0 || currentShortages.length === 0) return;
 
   const priorBatchIds = priorBatches.map((b) => b.id);
 
-  const currentShortages = await prisma.inventoryRecord.findMany({
-    where: { storeId, batchId, status: 'SUBMITTED', difference: { lt: 0 } },
-    select: { materialCode: true },
-  });
-  if (currentShortages.length === 0) return;
-
   const currentMaterials = currentShortages.map((r) => r.materialCode);
-
   const priorShortages = await prisma.inventoryRecord.findMany({
     where: {
       storeId,

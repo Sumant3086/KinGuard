@@ -195,7 +195,7 @@ export async function getBatchStores(req, res, next) {
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.length) return res.json([]);
 
-    const [stores, reviewMap] = await Promise.all([
+    const [stores, reviewMap, recordCounts] = await Promise.all([
       prisma.store.findMany({
         where: { id: { in: storeIds } },
         select: { id: true, storeCode: true, storeName: true },
@@ -204,13 +204,12 @@ export async function getBatchStores(req, res, next) {
         where: { batchId, storeId: { in: storeIds } },
         select: { storeId: true, status: true, remarks: true, reviewedAt: true },
       }),
+      prisma.inventoryRecord.groupBy({
+        by: ['storeId', 'status'],
+        where: { batchId, storeId: { in: storeIds } },
+        _count: true,
+      }),
     ]);
-
-    const recordCounts = await prisma.inventoryRecord.groupBy({
-      by: ['storeId', 'status'],
-      where: { batchId, storeId: { in: storeIds } },
-      _count: true,
-    });
 
     const result = stores.map(store => {
       const review   = reviewMap.find(r => r.storeId === store.id);
@@ -319,16 +318,16 @@ export async function approveStore(req, res, next) {
     createAuditLog({ userId: req.user.id, action: 'AM_APPROVE', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: storeMeta.storeCode, storeName: storeMeta.storeName, remarks } }).catch(() => {});
     sInvalidate('admin:dashboard', `am:batches:${req.user.id}`);
 
-    // Notify all admins
+    // Notify all admins — reuse storeMeta already fetched above, only fetch admins + batch
+    const storeMeta_ = { storeName: storeMeta.storeName, storeCode: storeMeta.storeCode };
     Promise.all([
       prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } }, select: { email: true, name: true } }),
-      prisma.store.findUnique({ where: { id: storeId }, select: { storeName: true, storeCode: true } }),
       prisma.uploadBatch.findUnique({ where: { id: batchId }, select: { inventoryDate: true } }),
-    ]).then(async ([admins, store, batch]) => {
-      if (!admins.length || !store || !batch) return;
+    ]).then(async ([admins, batch]) => {
+      if (!admins.length || !batch) return;
       const { sendAMApprovalEmail } = await import('../services/emailService.js');
       for (const admin of admins) {
-        sendAMApprovalEmail({ adminEmail: admin.email, adminName: admin.name, store, areaManagerName: req.user.name, batchDate: new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), remarks: remarks || null })
+        sendAMApprovalEmail({ adminEmail: admin.email, adminName: admin.name, store: storeMeta_, areaManagerName: req.user.name, batchDate: new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), remarks: remarks || null })
           .catch(e => console.error('[am-approve] Email error:', e.message));
       }
     }).catch(e => console.error('[am-approve] Notify error:', e.message));

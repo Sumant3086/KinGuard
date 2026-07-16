@@ -53,10 +53,18 @@ export function AuthProvider({ children }) {
         setUser(userData);
         localStorage.setItem('kg_user', JSON.stringify(userData));
       })
-      .catch(() => {
+      .catch(err => {
         if (!live) return;
-        localStorage.removeItem('kg_user');
-        setUser(null);
+        // Only clear session on definitive auth failures (401/403).
+        // Network errors, 502s, or timeouts should NOT log the user out —
+        // they are transient and the token is likely still valid.
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          localStorage.removeItem('kg_user');
+          setUser(null);
+        }
+        // On network error: keep the stored user so the page renders,
+        // individual API calls will retry or handle 401 via the refresh interceptor.
       })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };

@@ -54,11 +54,16 @@ export default function NotificationBell({ fetcher, role }) {
     }
   }, [fetcher]);
 
-  // Fetch on mount then poll every 60 s
+  // Fetch on mount, poll every 60 s, and refresh immediately when tab regains focus
   useEffect(() => {
     load();
     const interval = setInterval(load, 60_000);
-    return () => clearInterval(interval);
+    function onVisible() { if (document.visibilityState === 'visible') load(); }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [load]);
 
   // Close dropdown when clicking outside

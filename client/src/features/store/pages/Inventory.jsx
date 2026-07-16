@@ -7,6 +7,7 @@ import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as storeApi from '../../../shared/api/storeApi';
 import { useToast } from '../../../shared/context/ToastContext';
+import { fmtDate } from '../../../shared/utils/dateUtils';
 
 // Category -> Issue Detail sub-reasons mapping
 const ISSUE_REASONS = {
@@ -496,7 +497,7 @@ export default function StoreInventory() {
           {selectedBatch && batches.length > 0 && (() => {
             const b = batches.find(b => b.id.toString() === selectedBatch);
             return b ? (
-              <p>{new Date(b.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p>{fmtDate(b.inventoryDate, 'long')}</p>
             ) : null;
           })()}
         </div>
