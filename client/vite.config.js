@@ -19,6 +19,17 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
         timeout: 120000,
+        configure(proxy) {
+          proxy.on('error', (err, _req, res) => {
+            if (err.code === 'ECONNREFUSED') {
+              // Server not ready yet — return 503 so the client handles it gracefully
+              if (res.writeHead) {
+                res.writeHead(503, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Server starting up…' }));
+              }
+            }
+          });
+        },
       },
     },
   },
