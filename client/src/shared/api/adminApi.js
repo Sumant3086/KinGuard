@@ -231,6 +231,11 @@ export async function assignStoreAM(storeId, areaManagerId) {
   cacheInvalidate('admin:area-managers', 'admin:stores');
   return data;
 }
+export async function batchAssignAMStores(amId, storeIds) {
+  const { data } = await client.patch(`/admin/area-managers/${amId}/stores`, { storeIds });
+  cacheInvalidate('admin:area-managers', 'admin:stores');
+  return data;
+}
 
 // ── Reports ────────────────────────────────────────────────────────────────
 export async function getReconciliationReport(filters) {

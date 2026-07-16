@@ -2409,28 +2409,11 @@ export async function getNotifications(req, res, next) {
       amPending  = amReviews.filter(r => r.status === 'PENDING_REVIEW').length;
     } catch { /* AreaManagerReview table not yet available — skip AM stats */ }
 
+    // Only notify admin about stores they can act on: AM-approved = ready for admin's final review
     if (amApproved > 0) {
       items.push({
         type: 'submitted',
-        message: `${amApproved} store${amApproved > 1 ? 's' : ''} approved by Area Manager — ready for review`,
-        batchId: latestBatch.id,
-        urgent: false,
-      });
-    }
-
-    if (amPending > 0) {
-      items.push({
-        type: 'pending',
-        message: `${amPending} store${amPending > 1 ? 's' : ''} pending Area Manager review`,
-        batchId: latestBatch.id,
-        urgent: false,
-      });
-    }
-
-    if (recentSubmits.length > 0 && amApproved === 0 && amPending === 0) {
-      items.push({
-        type: 'submitted',
-        message: `${recentSubmits.length} store${recentSubmits.length > 1 ? 's' : ''} submitted counts — awaiting Area Manager review`,
+        message: `${amApproved} store${amApproved > 1 ? 's' : ''} approved by Area Manager — ready for your review`,
         batchId: latestBatch.id,
         urgent: false,
       });

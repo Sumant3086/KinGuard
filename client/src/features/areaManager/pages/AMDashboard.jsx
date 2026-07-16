@@ -43,9 +43,9 @@ export default function AMDashboard() {
 
   const kpis = [
     { label: 'Stores Under You',    value: data?.storeCount    ?? 0, cls: 'kpi-blue',  icon: <IcoStores />, sub: 'assigned locations' },
-    { label: 'Pending Your Review', value: data?.pendingReview ?? 0, cls: 'kpi-amber', icon: <IcoClock />,  sub: 'awaiting approval' },
-    { label: 'Approved by You',     value: data?.approved      ?? 0, cls: 'kpi-green', icon: <IcoCheck />,  sub: 'this cycle' },
-    { label: 'Returned to Stores',  value: data?.returned      ?? 0, cls: 'kpi-red',   icon: <IcoReturn />, sub: 'sent back for correction' },
+    { label: 'Pending Your Review', value: data?.pendingReview ?? 0, cls: 'kpi-amber', icon: <IcoClock />,  sub: 'awaiting approval', link: '/am/review' },
+    { label: 'Approved by You',     value: data?.approved      ?? 0, cls: 'kpi-green', icon: <IcoCheck />,  sub: 'this cycle',        link: '/am/review' },
+    { label: 'Returned to Stores',  value: data?.returned      ?? 0, cls: 'kpi-red',   icon: <IcoReturn />, sub: 'sent back for correction', link: '/am/review' },
   ];
 
   return (
@@ -70,7 +70,7 @@ export default function AMDashboard() {
         {!loading && data?.pendingReview > 0 && (
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => navigate('/am/reviews')}
+            onClick={() => navigate('/am/review')}
           >
             Go to Reviews →
           </button>
@@ -80,7 +80,13 @@ export default function AMDashboard() {
       {/* KPI grid */}
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         {kpis.map(k => (
-          <div key={k.label} className={`kpi-card ${k.cls}`}>
+          <div
+            key={k.label}
+            className={`kpi-card ${k.cls}`}
+            onClick={k.link ? () => navigate(k.link) : undefined}
+            style={k.link ? { cursor: 'pointer' } : {}}
+            title={k.link ? 'Click to go to reviews' : undefined}
+          >
             <div className="kpi-icon">{k.icon}</div>
             <div className="kpi-label">{k.label}</div>
             <div className="kpi-value">
@@ -102,7 +108,7 @@ export default function AMDashboard() {
           </span>
           <button
             className="btn btn-ghost btn-sm"
-            onClick={() => navigate('/am/reviews')}
+            onClick={() => navigate('/am/review')}
           >
             Review Submissions →
           </button>

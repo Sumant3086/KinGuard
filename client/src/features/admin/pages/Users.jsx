@@ -229,6 +229,8 @@ export default function AdminUsers() {
     employeeId: '', name: '', password: '',
     role: 'STORE_MANAGER', storeId: '', isActive: true, email: '', phone: '',
   });
+  // Stores to assign when creating an Area Manager (up to 10)
+  const [amStoreIds, setAmStoreIds] = useState([]);
 
   // Single approve/reject/delete
   const [approvingId, setApprovingId]   = useState(null);
@@ -437,6 +439,7 @@ export default function AdminUsers() {
   function openCreate() {
     setEditingId(null);
     setFormData({ employeeId: '', name: '', password: '', role: 'STORE_MANAGER', storeId: '', isActive: true, email: '', phone: '' });
+    setAmStoreIds([]);
     setFormError('');
     setShowModal(true);
   }
@@ -444,11 +447,20 @@ export default function AdminUsers() {
   function openEdit(user) {
     setEditingId(user.id);
     setFormData({ employeeId: user.employeeId, name: user.name, password: '', role: user.role, storeId: user.storeId || '', isActive: user.isActive, email: user.email || '', phone: user.phone || '' });
+    setAmStoreIds([]);
     setFormError('');
     setShowModal(true);
   }
 
-  function closeModal() { if (submitting) return; setShowModal(false); setEditingId(null); setFormError(''); }
+  function closeModal() { if (submitting) return; setShowModal(false); setEditingId(null); setFormError(''); setAmStoreIds([]); }
+
+  function toggleAmStore(storeId) {
+    setAmStoreIds(prev =>
+      prev.includes(storeId)
+        ? prev.filter(id => id !== storeId)
+        : prev.length >= 10 ? prev : [...prev, storeId]
+    );
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -461,13 +473,22 @@ export default function AdminUsers() {
       if (editingId) {
         const updated = await adminApi.updateUser(editingId, payload);
         setUsers(prev => prev.map(u => u.id === editingId ? { ...u, ...updated } : u));
+        // Re-assign stores if any selected (edit mode)
+        if (payload.role === 'AREA_MANAGER' && amStoreIds.length > 0) {
+          await adminApi.batchAssignAMStores(editingId, amStoreIds);
+        }
       } else {
         const created = await adminApi.createUser(payload);
         setUsers(prev => [...prev, created]);
+        // Assign selected stores to the new AM
+        if (payload.role === 'AREA_MANAGER' && amStoreIds.length > 0) {
+          await adminApi.batchAssignAMStores(created.id, amStoreIds);
+        }
       }
       setShowModal(false);
       setEditingId(null);
-      load(); // background sync
+      setAmStoreIds([]);
+      load();
     } catch (err) {
       console.error('Save user:', err);
       setFormError('Could not save. Please check the details and try again.');
@@ -1296,6 +1317,49 @@ export default function AdminUsers() {
                   {editingId && !formData.storeId && (
                     <small style={{ color: 'var(--amber)', fontSize: 11, marginTop: 4, display: 'block' }}>
                       No store assigned — upload inventory first to create stores, then reassign.
+                    </small>
+                  )}
+                </div>
+              )}
+              {formData.role === 'AREA_MANAGER' && (
+                <div className="form-group">
+                  <label>
+                    Assign Stores{' '}
+                    <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>
+                      ({amStoreIds.length} / 10 selected — optional)
+                    </span>
+                  </label>
+                  {stores.filter(s => s.isActive).length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--t3)' }}>No active stores available yet.</p>
+                  ) : (
+                    <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid rgba(185,28,28,0.18)', borderRadius: 'var(--r)', padding: '6px 0' }}>
+                      {stores.filter(s => s.isActive).map(s => {
+                        const checked = amStoreIds.includes(s.id);
+                        const disabled = !checked && amStoreIds.length >= 10;
+                        return (
+                          <label
+                            key={s.id}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1, transition: 'background 0.12s' }}
+                            onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'rgba(109,40,217,0.05)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={disabled || submitting}
+                              onChange={() => toggleAmStore(s.id)}
+                              style={{ width: 15, height: 15, accentColor: '#7c3aed', flexShrink: 0 }}
+                            />
+                            <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>{s.storeCode}</span>
+                            <span style={{ fontSize: 12.5, color: 'var(--t1)' }}>{s.storeName}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {amStoreIds.length >= 10 && (
+                    <small style={{ color: '#b45309', fontSize: 11, marginTop: 4, display: 'block' }}>
+                      Maximum 10 stores per Area Manager. Deselect one to add another.
                     </small>
                   )}
                 </div>

@@ -361,6 +361,27 @@ export async function returnStore(req, res, next) {
   } catch (error) { next(error); }
 }
 
+// ── Admin: batch-assign multiple stores to one area manager ───────────────────
+export async function batchAssignAMStores(req, res, next) {
+  try {
+    const amId     = parseInt(req.params.amId);
+    const storeIds = req.body.storeIds ?? [];
+    if (isNaN(amId)) throw new AppError('Invalid area manager ID', 400);
+    if (!Array.isArray(storeIds)) throw new AppError('storeIds must be an array', 400);
+    if (storeIds.length > 10) throw new AppError('Cannot assign more than 10 stores at once', 400);
+
+    const rows = await prisma.$queryRaw`SELECT role FROM "User" WHERE id = ${amId} LIMIT 1`;
+    if (!rows.length || rows[0].role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
+
+    await prisma.$transaction(
+      storeIds.map(sid => prisma.store.update({ where: { id: parseInt(sid) }, data: { areaManagerId: amId } }))
+    );
+
+    createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds, areaManagerId: amId } }).catch(() => {});
+    res.json({ assigned: storeIds.length });
+  } catch (error) { next(error); }
+}
+
 // ── Admin: assign a store to an area manager ──────────────────────────────────
 export async function assignStoreAM(req, res, next) {
   try {
