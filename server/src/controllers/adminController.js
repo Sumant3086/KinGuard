@@ -183,9 +183,9 @@ export async function getDashboard(req, res, next) {
 
     const batchIds = last4Batches.map((b) => b.id);
 
-    // Round 3 — top remarks + hotspot detection run in parallel
-    // Hotspot: single GROUP BY SQL instead of loading all shortage rows into Node memory
-    const [topRemarkRows, hotspotRows] = await Promise.all([
+    // Round 3 — top remarks + hotspot + AM pipeline all in one parallel burst.
+    // Moving amReviewPipeline here saves an entire Supabase round-trip vs running it sequentially after.
+    const [topRemarkRows, hotspotRows, amReviewPipelineRaw] = await Promise.all([
       prisma.$queryRaw`
         SELECT "storeId", remarks, COUNT(*)::int AS cnt
         FROM "InventoryRecord"
@@ -214,6 +214,14 @@ export async function getDashboard(req, res, next) {
             LIMIT 5
           `
         : Promise.resolve([]),
+      // AM pipeline — runs in parallel with hotspot, no longer a 4th sequential round trip
+      prisma.$queryRaw`
+        SELECT r.status, r."storeId", s."storeCode", s."storeName"
+        FROM "AreaManagerReview" r
+        JOIN "Store" s ON s.id = r."storeId"
+        WHERE r."batchId" = ${latestBatch.id}
+        ORDER BY r.status, s."storeName"
+      `.catch(() => []), // table may not exist yet — silently return []
     ]);
 
     const topRemarkMap = new Map();
@@ -261,21 +269,10 @@ export async function getDashboard(req, res, next) {
     }));
 
     const net = networkStats[0] || {};
-    const storesPending = storeScorecard.filter((s) => s.status === 'PENDING').length;
+    const storesPending   = storeScorecard.filter((s) => s.status === 'PENDING').length;
     const storesSubmitted = storeScorecard.filter((s) => s.status === 'SUBMITTED').length;
-    const overdueStores = storeScorecard.filter((s) => s.isOverdue).map((s) => s.storeName);
-
-    // AM review pipeline — raw SQL for DLL compat
-    let amReviewPipeline = [];
-    try {
-      amReviewPipeline = await prisma.$queryRaw`
-        SELECT r.status, r."storeId", s."storeCode", s."storeName"
-        FROM "AreaManagerReview" r
-        JOIN "Store" s ON s.id = r."storeId"
-        WHERE r."batchId" = ${latestBatch.id}
-        ORDER BY r.status, s."storeName"
-      `;
-    } catch { /* table not yet available */ }
+    const overdueStores   = storeScorecard.filter((s) => s.isOverdue).map((s) => s.storeName);
+    const amReviewPipeline = amReviewPipelineRaw; // already fetched in Round 3
 
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);
