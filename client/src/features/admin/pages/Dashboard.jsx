@@ -170,29 +170,48 @@ function NetworkBar({ submitted, total, overdueCount }) {
   );
 }
 
+const LOAD_TIMEOUT_MS = 20_000; // show error state after 20 s — never hang forever
+
 export default function AdminDashboard() {
-  const [data, setData]           = useState(() => cache.get(CACHE_KEY) ?? null);
-  const [loading, setLoading]     = useState(!cache.get(CACHE_KEY));
+  const [data, setData]             = useState(() => cache.get(CACHE_KEY) ?? null);
+  const [loading, setLoading]       = useState(!cache.get(CACHE_KEY));
+  const [loadError, setLoadError]   = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [fetchedAt, setFetchedAt] = useState(() => cache.get(CACHE_KEY) ? Date.now() : null);
+  const [fetchedAt, setFetchedAt]   = useState(() => cache.get(CACHE_KEY) ? Date.now() : null);
   const navigate    = useNavigate();
   const ageLabel    = useRelativeTime(fetchedAt);
   const mountedRef  = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
   const load = useCallback(async (force = false) => {
-    if (force) {
-      cache.invalidate(CACHE_KEY);
-      setRefreshing(true);
-    }
+    if (!mountedRef.current) return;
+    if (force) { cache.invalidate(CACHE_KEY); setRefreshing(true); }
+    setLoadError('');
+
+    // Race the real fetch against a timeout so the skeleton never hangs forever
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), LOAD_TIMEOUT_MS)
+    );
+
     try {
-      const d = await adminApi.getDashboard();
-      if (mountedRef.current) { setData(d); setFetchedAt(Date.now()); }
-    } catch {
-      if (mountedRef.current) { setLoading(false); setRefreshing(false); }
-      return;
+      const d = await Promise.race([adminApi.getDashboard(), timeoutPromise]);
+      if (mountedRef.current) {
+        setData(d);
+        setFetchedAt(Date.now());
+        setLoading(false);
+        setRefreshing(false);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setLoadError(
+          err?.message === 'timeout'
+            ? 'Dashboard is taking too long to load. Check your connection and retry.'
+            : 'Could not load dashboard data. Please retry.'
+        );
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    if (mountedRef.current) { setLoading(false); setRefreshing(false); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -212,12 +231,12 @@ export default function AdminDashboard() {
           </div>
           <div className="skeleton skeleton-card" style={{ height: 300, marginTop: 32 }} />
         </div>
-      ) : !data ? (
+      ) : (loadError || !data) ? (
         <EmptyState
           variant="error"
           icon={<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
           title="Failed to Load Dashboard"
-          description="We couldn't retrieve dashboard data. Please check your connection and try again."
+          description={loadError || "We couldn't retrieve dashboard data. Please check your connection and try again."}
           action={<button onClick={() => load(true)} className="btn btn-primary">Retry</button>}
         />
       ) : (

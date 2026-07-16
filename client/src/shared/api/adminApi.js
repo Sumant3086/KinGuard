@@ -3,7 +3,7 @@ import { get as cacheGet, set as cacheSet, invalidate as cacheInvalidate } from 
 
 // ── Cache TTLs (centralised) ───────────────────────────────────────────────
 const TTL = {
-  DASHBOARD:  300_000, // 5 min
+  DASHBOARD:  120_000, // 2 min — reduced from 5 min so data feels fresh
   STORES:     180_000, // 3 min
   USERS:      120_000, // 2 min
   BATCHES:     60_000, // 1 min
