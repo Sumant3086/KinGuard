@@ -46,16 +46,29 @@
   min-height: calc(100vh - 60px);
 }
 
-/* ─── Area Manager nav override — indigo instead of red ─────────── */
+/* ─── Area Manager shell — KinMarché store interior background ───── */
+/* Override the admin ::before background with the store image */
+.am-shell.hl-shell::before {
+  background-image: url('../assets/img/AreaManagerPage.png') !important;
+  /* Warm dark overlay so cards remain readable */
+  filter: blur(3px) brightness(0.88) saturate(1.1) !important;
+}
+
+/* ─── Area Manager nav — deep mahogany from shelving tones ──────── */
 .am-nav {
-  background: linear-gradient(90deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%) !important;
-  border-bottom-color: rgba(255,255,255,0.10) !important;
+  background: linear-gradient(90deg, #3b0f02 0%, #6b1503 50%, #3b0f02 100%) !important;
+  border-bottom-color: rgba(255, 200, 100, 0.18) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.30), 0 2px 8px rgba(107,21,3,0.22) !important;
 }
 .am-nav .hl-link.active,
-.am-nav .hl-mob-link.active { color:#a5b4fc; border-bottom-color:#a5b4fc; }
+.am-nav .hl-mob-link.active {
+  color: #fbbf24 !important;
+  border-bottom-color: #fbbf24 !important;
+  background: rgba(251,191,36,0.15) !important;
+}
 .am-nav .hl-link:hover,
-.am-nav .hl-mob-link:hover  { color:#c7d2fe; }
-.am-mobile-menu { background: linear-gradient(180deg,#1e1b4b,#312e81); }
+.am-nav .hl-mob-link:hover { color: #fde68a !important; background: rgba(251,191,36,0.10) !important; }
+.am-mobile-menu { background: linear-gradient(180deg, #3b0f02 0%, #6b1503 100%) !important; }
 
 /* ─── Admin top nav ───────────────────────────────────────────────── */
 .hl-nav {

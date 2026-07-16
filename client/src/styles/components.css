@@ -2333,3 +2333,214 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   background: rgba(255, 252, 250, 0.92) !important;
   border-color: rgba(185,28,28,0.20) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   AREA MANAGER SHELL THEME
+   Derived from AreaManagerPage.png — KinMarché store interior
+   Dominant tones: deep mahogany red · warm amber gold · crisp white
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── AM cards — warm ivory glass with mahogany borders ─────────── */
+.am-shell .card,
+.am-shell .page-header,
+.am-shell .page-header-root,
+.am-shell .dash-command,
+.am-shell .filter-card,
+.am-shell .table-wrap,
+.am-shell .table-container {
+  background: linear-gradient(135deg,
+    rgba(255, 250, 244, 0.95) 0%,
+    rgba(255, 245, 235, 0.93) 100%) !important;
+  backdrop-filter: blur(32px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(185%) !important;
+  border: 1.5px solid rgba(107, 21, 3, 0.18) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 8px 32px rgba(59, 15, 2, 0.16),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Gold accent top-line on each card */
+.am-shell .card::before,
+.am-shell .page-header::before,
+.am-shell .page-header-root::before,
+.am-shell .dash-command::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(245, 158, 11, 0.80) 30%,
+    rgba(220, 38, 38, 0.70) 60%,
+    transparent 100%);
+  border-radius: 18px 18px 0 0;
+}
+
+.am-shell .card:hover {
+  border-color: rgba(107, 21, 3, 0.30) !important;
+  box-shadow:
+    0 12px 48px rgba(59, 15, 2, 0.22),
+    0 4px 14px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+  transform: translateY(-2px);
+}
+
+/* ─── AM headings ────────────────────────────────────────────────── */
+.am-shell .page-header h2,
+.am-shell .page-header-text h2,
+.am-shell .card-title,
+.am-shell .card h3,
+.am-shell .dash-cmd-title {
+  color: #6b1503 !important;
+  -webkit-text-fill-color: #6b1503 !important;
+  background: none !important;
+  font-weight: 900 !important;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important;
+}
+
+.am-shell .page-header p,
+.am-shell .page-header-text p,
+.am-shell .dash-cmd-sub {
+  color: #92400e !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 1px rgba(255,255,255,0.6) !important;
+}
+
+/* ─── AM KPI cards — amber glass ────────────────────────────────── */
+.am-shell .kpi-card,
+.am-shell .stat-card {
+  background: linear-gradient(135deg,
+    rgba(255, 248, 230, 0.92) 0%,
+    rgba(255, 243, 215, 0.90) 100%) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 2px solid rgba(107, 21, 3, 0.18) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 6px 24px rgba(59, 15, 2, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Amber-to-mahogany left accent bar */
+.am-shell .kpi-card::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #f59e0b 0%, #dc2626 60%, #6b1503 100%);
+  border-radius: 18px 0 0 18px;
+}
+
+.am-shell .kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(107, 21, 3, 0.30) !important;
+  box-shadow:
+    0 10px 40px rgba(59, 15, 2, 0.20),
+    0 4px 12px rgba(0, 0, 0, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.am-shell .kpi-label { color: #6b1503 !important; font-weight: 900 !important; text-shadow: none !important; }
+.am-shell .kpi-value { color: #3b0f02 !important; text-shadow: none !important; }
+.am-shell .kpi-sub   { color: #92400e !important; font-weight: 600 !important; text-shadow: none !important; }
+
+/* KPI icon — amber ring */
+.am-shell .kpi-icon {
+  background: linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(220,38,38,0.10) 100%) !important;
+  border: 1.5px solid rgba(245,158,11,0.30) !important;
+  border-radius: 12px !important;
+  width: 46px !important; height: 46px !important;
+  margin-bottom: 14px;
+  transition: transform 0.22s, box-shadow 0.22s;
+}
+.am-shell .kpi-card:hover .kpi-icon {
+  transform: scale(1.10) rotate(4deg);
+  box-shadow: 0 4px 14px rgba(245,158,11,0.25) !important;
+}
+.am-shell .kpi-icon svg { color: #b45309 !important; }
+
+/* ─── AM tables ──────────────────────────────────────────────────── */
+.am-shell th {
+  background: rgba(255, 244, 220, 0.95) !important;
+  color: #3b0f02 !important;
+  border-bottom: 1.5px solid rgba(107, 21, 3, 0.20) !important;
+  font-weight: 900 !important;
+}
+.am-shell td {
+  color: #2d0a06 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid rgba(107, 21, 3, 0.08) !important;
+}
+.am-shell tbody tr:hover td { background: rgba(255, 243, 205, 0.80) !important; }
+
+/* ─── AM buttons ─────────────────────────────────────────────────── */
+.am-shell .btn-primary {
+  background: linear-gradient(135deg, #dc2626 0%, #6b1503 100%) !important;
+  box-shadow: 0 4px 16px rgba(107,21,3,0.38) !important;
+}
+.am-shell .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c 0%, #3b0f02 100%) !important;
+  box-shadow: 0 6px 22px rgba(107,21,3,0.48) !important;
+}
+.am-shell .btn-secondary, .am-shell .btn-ghost {
+  background: rgba(255, 250, 244, 0.88) !important;
+  border: 1.5px solid rgba(107, 21, 3, 0.22) !important;
+  color: #3b0f02 !important;
+  font-weight: 700 !important;
+}
+.am-shell .btn-secondary:hover:not(:disabled), .am-shell .btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 248, 235, 0.98) !important;
+  border-color: rgba(107, 21, 3, 0.38) !important;
+}
+.am-shell .btn-success {
+  background: linear-gradient(135deg, #15803d 0%, #14532d 100%) !important;
+  box-shadow: 0 4px 16px rgba(22,163,74,0.32) !important;
+}
+
+/* ─── AM mobile cards ────────────────────────────────────────────── */
+.am-shell .batch-card {
+  background: linear-gradient(135deg, rgba(255,250,244,0.97) 0%, rgba(255,245,235,0.95) 100%) !important;
+  border: 1.5px solid rgba(107,21,3,0.18) !important;
+  box-shadow: 0 3px 16px rgba(59,15,2,0.10), inset 0 1px 0 rgba(255,255,255,0.80) !important;
+}
+
+/* ─── AM empty state ─────────────────────────────────────────────── */
+.am-shell .empty-state {
+  background: rgba(255, 250, 244, 0.97) !important;
+  border: 1px solid rgba(107,21,3,0.14) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 24px rgba(59,15,2,0.10) !important;
+}
+
+/* ─── AM review grid responsive layout ──────────────────────────── */
+.am-review-grid {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .am-review-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .am-review-store-panel {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+}
+@media (min-width: 769px) {
+  .am-review-grid.has-selection {
+    grid-template-columns: min(280px, 30%) 1fr;
+  }
+  .am-review-grid.no-selection {
+    grid-template-columns: 1fr;
+  }
+}

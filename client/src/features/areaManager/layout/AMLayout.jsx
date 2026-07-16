@@ -32,7 +32,7 @@ export default function AMLayout({ children }) {
     <div className="hl-shell am-shell">
       <nav className="hl-nav am-nav">
         <Link to="/am/dashboard" className="hl-brand">
-          <img src={logoImg} alt="KinMarché" className="hl-logo-img" />
+          <img src={logoImg} alt="KinMarché" className="hl-logo-img" loading="eager" fetchPriority="high" />
           <div className="hl-brand-text">
             <span className="hl-name">KinMarché</span>
             <span className="hl-tagline">Area Manager</span>
