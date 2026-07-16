@@ -8,21 +8,24 @@ function isConfigured() {
   return !!process.env.BREVO_API_KEY;
 }
 
-function parseSender() {
+// Parsed once at module load — env vars don't change at runtime
+const SENDER = (() => {
   const raw = (process.env.SMTP_FROM || '').trim();
   const m = raw.match(/^(.+?)\s*<([^>]+)>$/);
   if (m) return { name: m[1].trim(), email: m[2].trim() };
   return { name: 'KinMarché', email: raw || 'noreply@kinmarche.com' };
-}
+})();
+
+const EMAIL_TIMEOUT_MS = 10_000; // abort stalled Brevo requests after 10 s
 
 async function sendOne({ to, toName, subject, htmlContent }) {
   const apiKey = process.env.BREVO_API_KEY;
-  const sender = parseSender();
   const res = await fetch(BREVO_API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+    signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
     body: JSON.stringify({
-      sender,
+      sender: SENDER,
       to: [{ email: to, name: toName || to }],
       subject,
       htmlContent,

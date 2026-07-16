@@ -1,15 +1,22 @@
 import prisma from '../config/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
-import { sInvalidate } from '../services/serverCache.js';
+import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 
-// ── Helper: get all storeIds managed by this AM ───────────────────────────────
+const AM_STORES_TTL = 60_000; // 60 s — refreshed on assign/unassign
+
+// ── Helper: get all storeIds managed by this AM (cached per user) ─────────────
 async function getManagedStoreIds(areaManagerId) {
+  const key = `am:stores:${areaManagerId}`;
+  const cached = sGet(key);
+  if (cached) return cached;
   const stores = await prisma.store.findMany({
     where: { areaManagerId, isActive: true },
     select: { id: true },
   });
-  return stores.map(s => s.id);
+  const ids = stores.map(s => s.id);
+  sSet(key, ids, AM_STORES_TTL);
+  return ids;
 }
 
 // ── My assigned stores ────────────────────────────────────────────────────────
@@ -148,7 +155,7 @@ export async function getBatches(req, res, next) {
         const review = b.amReviews.find(r => r.storeId === sid);
         const records = b.inventoryRecords.filter(r => r.storeId === sid);
         const allSubmitted = records.length > 0 && records.every(r => r.status === 'SUBMITTED');
-        const allPending   = records.every(r => r.status === 'PENDING');
+        const allPending   = records.length > 0 && records.every(r => r.status === 'PENDING');
         return {
           storeId: sid,
           reviewStatus: review?.status || null,
@@ -389,6 +396,7 @@ export async function batchAssignAMStores(req, res, next) {
       throw txErr;
     }
 
+    sInvalidate(`am:stores:${amId}`); // bust cache after bulk assignment
     createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds: parsedStoreIds, areaManagerId: amId } }).catch(() => {});
     res.json({ assigned: parsedStoreIds.length });
   } catch (error) { next(error); }
@@ -419,6 +427,12 @@ export async function assignStoreAM(req, res, next) {
         : Promise.resolve([]),
     ]);
     const am = amUser[0] ?? null;
+
+    // Bust the AM stores cache for both old and new AM so getManagedStoreIds stays fresh
+    if (areaManagerId) sInvalidate(`am:stores:${parseInt(areaManagerId)}`);
+    // Also bust previous AM if the store was already assigned to someone else
+    const prevAmId = store.areaManagerId;
+    if (prevAmId && prevAmId !== parseInt(areaManagerId)) sInvalidate(`am:stores:${prevAmId}`);
 
     createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { storeCode: store.storeCode, storeName: store.storeName, areaManagerId: areaManagerId ?? null, areaManagerName: am?.name ?? null } }).catch(() => {});
     res.json(store);

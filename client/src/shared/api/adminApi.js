@@ -64,9 +64,9 @@ export async function bulkDeleteStores(ids, force = false) {
 }
 
 // ── Users ──────────────────────────────────────────────────────────────────
-export async function getUsers() {
-  const { data } = await client.get('/admin/users');
-  return data;
+export function getUsers() {
+  return withCache('admin:users', TTL.USERS,
+    async () => { const { data } = await client.get('/admin/users'); return data; });
 }
 
 export async function createUser(userData) {
@@ -194,19 +194,19 @@ export function getBatches() {
 
 export async function updateBatch(id, payload) {
   const { data } = await client.patch(`/admin/batches/${id}`, payload);
-  cacheInvalidate('admin:batches', 'admin:dashboard');
+  cacheInvalidate('admin:batches-client', 'admin:dashboard');
   return data;
 }
 
 export async function deleteBatch(id) {
   const { data } = await client.delete(`/admin/batches/${id}`);
-  cacheInvalidate('admin:batches', 'admin:dashboard', 'admin:uploads');
+  cacheInvalidate('admin:batches-client', 'admin:dashboard', 'admin:uploads');
   return data;
 }
 
 export async function grantStoreExtension(payload) {
   const { data } = await client.post('/admin/batches/extend', payload);
-  cacheInvalidate('admin:batches');
+  cacheInvalidate('admin:batches-client');
   return data;
 }
 

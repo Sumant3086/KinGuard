@@ -53,11 +53,12 @@ client.interceptors.response.use(
       originalRequest._retried = true;
 
       try {
-        // Use the configured baseURL so this works in both dev and production
         await client.post('/auth/refresh', {}, { withCredentials: true });
+        isRefreshing = false; // clear BEFORE drain so queued retries don't re-enter queue
         drainQueue(null);
         return client(originalRequest);
       } catch {
+        isRefreshing = false;
         drainQueue(new Error('Session expired'));
         // Only hard-redirect from protected routes — public pages handle it themselves
         const path = window.location.pathname;
@@ -69,9 +70,7 @@ client.interceptors.response.use(
           window.location.href = '/login';
         }
         return Promise.reject(error);
-      } finally {
-        isRefreshing = false;
-      }
+      } finally { /* isRefreshing is already cleared above before drainQueue */ }
     }
 
     return Promise.reject(error);
