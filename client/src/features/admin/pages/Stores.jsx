@@ -14,15 +14,18 @@ const StoreIcon = (
   </svg>
 );
 
+const MAX_STORES_PER_AM = 5;
+
 export default function Stores() {
   const toast = useToast();
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
-  const [stores, setStores]     = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [tab, setTab]            = useState('stores'); // 'stores' | 'assignments'
+  const [stores, setStores]      = useState([]);
+  const [loading, setLoading]    = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [selected, setSelected] = useState(new Set());
+  const [selected, setSelected]  = useState(new Set());
   const [areaManagers, setAreaManagers] = useState([]);
 
   // Add / Edit modal
@@ -33,7 +36,7 @@ export default function Stores() {
   const [formData, setFormData]     = useState({ storeCode: '', storeName: '', isActive: true });
 
   // AM assignment modal
-  const [amModal, setAmModal]       = useState(null); // { storeId, storeName, currentAmId }
+  const [amModal, setAmModal]         = useState(null);
   const [amAssigning, setAmAssigning] = useState(false);
   const [selectedAmId, setSelectedAmId] = useState('');
 
@@ -52,6 +55,9 @@ export default function Stores() {
     loadStores();
     adminApi.getAreaManagers().then(setAreaManagers).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Build lookup: amId → AM object (for displaying AM name in stores list)
+  const amById = Object.fromEntries(areaManagers.map(am => [String(am.id), am]));
 
   async function loadStores() {
     setLoadError('');
@@ -141,7 +147,7 @@ export default function Stores() {
       }
       setShowModal(false);
       setEditingId(null);
-      loadStores(); // background sync
+      loadStores();
     } catch (err) {
       console.error('Save store:', err);
       setFormError('Could not save. Please check the details and try again.');
@@ -188,8 +194,31 @@ export default function Stores() {
     }
   }
 
+  async function handleAssignAM() {
+    setAmAssigning(true);
+    try {
+      await adminApi.assignStoreAM(amModal.storeId, selectedAmId ? parseInt(selectedAmId) : null);
+      toast.success(selectedAmId ? 'Area Manager assigned' : 'Area Manager removed');
+      // Update local store state
+      setStores(prev => prev.map(s =>
+        s.id === amModal.storeId
+          ? { ...s, areaManagerId: selectedAmId ? parseInt(selectedAmId) : null }
+          : s
+      ));
+      // Refresh AM list so store counts update
+      adminApi.getAreaManagers().then(setAreaManagers).catch(() => {});
+      setAmModal(null);
+    } catch (e) {
+      console.error('Assign AM:', e);
+      toast.error('Could not assign. Try again.');
+    } finally {
+      setAmAssigning(false);
+    }
+  }
+
   const activeCount   = stores.filter(s => s.isActive).length;
   const inactiveCount = stores.filter(s => !s.isActive).length;
+  const unassignedCount = stores.filter(s => !s.areaManagerId).length;
 
   const subtitle = loading
     ? 'Loading stores…'
@@ -197,7 +226,11 @@ export default function Stores() {
       ? 'Failed to load stores — see below'
       : stores.length === 0
         ? 'No stores yet — add your first store to get started.'
-        : `${activeCount} active · ${inactiveCount} inactive · ${stores.length} total`;
+        : `${activeCount} active · ${inactiveCount} inactive · ${unassignedCount} without AM`;
+
+  // ── AM Assignments view ────────────────────────────────────────────
+  // Derive unassigned stores for the assignments view
+  const unassignedStores = stores.filter(s => !s.areaManagerId);
 
   return (
     <AdminLayout>
@@ -207,203 +240,288 @@ export default function Stores() {
         actions={<button onClick={openCreate} className="btn btn-primary">+ Add Store</button>}
       />
 
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', marginBottom: 12, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--r-md)' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>
-            {selected.size} store{selected.size !== 1 ? 's' : ''} selected
-          </span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => setSelected(new Set())} disabled={bulkDeleting}>
-              Clear selection
-            </button>
-            <button
-              className="btn btn-sm"
-              onClick={() => { setBulkConfirmText(''); setShowBulkConfirm(true); }}
-              disabled={bulkDeleting}
-              style={{ background: 'rgba(239,68,68,0.14)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.28)', fontWeight: 600 }}
-            >
-              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
-            </button>
-          </div>
+      {/* Tab bar */}
+      <div className="tab-bar" style={{ marginBottom: 16 }}>
+        <button
+          className={`tab-btn${tab === 'stores' ? ' active' : ''}`}
+          onClick={() => setTab('stores')}
+        >
+          All Stores {!loading && stores.length > 0 && `(${stores.length})`}
+        </button>
+        <button
+          className={`tab-btn${tab === 'assignments' ? ' active' : ''}`}
+          onClick={() => setTab('assignments')}
+        >
+          AM Assignments {!loading && unassignedCount > 0 && <span style={{ marginLeft: 5, fontSize: 10, background: 'rgba(217,119,6,0.12)', color: '#b45309', border: '1px solid rgba(217,119,6,0.25)', borderRadius: 99, padding: '1px 6px', fontWeight: 700 }}>{unassignedCount} unassigned</span>}
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: AM ASSIGNMENTS
+          ══════════════════════════════════════════════════════════ */}
+      {tab === 'assignments' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Area Manager cards */}
+          {areaManagers.length === 0 ? (
+            <div className="card" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>
+              No Area Managers found. Create an Area Manager user account first.
+            </div>
+          ) : (
+            areaManagers.map(am => (
+              <div key={am.id} className="card" style={{ padding: '16px 20px' }}>
+                {/* AM header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(109,40,217,0.10)', border: '1.5px solid rgba(109,40,217,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>
+                      {am.name?.[0]?.toUpperCase() ?? 'A'}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--tx1)' }}>{am.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--tx3)', fontFamily: 'monospace' }}>{am.employeeId}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99,
+                      background: am.managedStores.length >= MAX_STORES_PER_AM
+                        ? 'rgba(220,38,38,0.10)'
+                        : am.managedStores.length > 0
+                          ? 'rgba(22,163,74,0.10)'
+                          : 'rgba(0,0,0,0.06)',
+                      color: am.managedStores.length >= MAX_STORES_PER_AM
+                        ? '#b91c1c'
+                        : am.managedStores.length > 0
+                          ? '#15803d'
+                          : 'var(--tx3)',
+                      border: `1px solid ${am.managedStores.length >= MAX_STORES_PER_AM ? 'rgba(220,38,38,0.22)' : am.managedStores.length > 0 ? 'rgba(22,163,74,0.22)' : 'rgba(0,0,0,0.10)'}`,
+                    }}>
+                      {am.managedStores.length} / {MAX_STORES_PER_AM} stores
+                    </span>
+                  </div>
+                </div>
+
+                {/* Assigned stores */}
+                {am.managedStores.length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--tx3)', padding: '8px 0' }}>No stores assigned yet.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                    {am.managedStores.map(s => (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: 'rgba(109,40,217,0.06)', border: '1px solid rgba(109,40,217,0.16)' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 800, color: '#7c3aed' }}>{s.storeCode}</span>
+                        <span style={{ fontSize: 12, color: 'var(--tx2)' }}>{s.storeName}</span>
+                        <button
+                          title={`Remove ${s.storeName} from ${am.name}`}
+                          onClick={() => { setAmModal({ storeId: s.id, storeName: s.storeName, currentAmId: am.id }); setSelectedAmId(''); }}
+                          style={{ background: 'none', border: 'none', color: 'var(--tx4)', fontSize: 14, lineHeight: 1, cursor: 'pointer', padding: '0 0 0 2px', fontWeight: 700 }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+
+          {/* Unassigned stores */}
+          {unassignedStores.length > 0 && (
+            <div className="card" style={{ padding: '16px 20px' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#b45309', marginBottom: 10 }}>
+                {unassignedStores.length} store{unassignedStores.length !== 1 ? 's' : ''} without an Area Manager
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                {unassignedStores.map(s => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.22)' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 800, color: '#b45309' }}>{s.storeCode}</span>
+                    <span style={{ fontSize: 12, color: 'var(--tx2)' }}>{s.storeName}</span>
+                    <button
+                      title={`Assign AM to ${s.storeName}`}
+                      onClick={() => { setAmModal({ storeId: s.id, storeName: s.storeName, currentAmId: null }); setSelectedAmId(''); }}
+                      style={{ background: 'none', border: 'none', color: '#b45309', fontSize: 11, cursor: 'pointer', padding: '0 0 0 2px', fontWeight: 700 }}
+                    >
+                      + Assign
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {loading ? (
-        <SkeletonTable rows={6} cols={5} />
-      ) : loadError ? (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', color: 'var(--red)' }}>
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="15" y1="9" x2="9" y2="15"/>
-            <line x1="9" y1="9" x2="15" y2="15"/>
-          </svg>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--t1)' }}>Failed to Load Stores</h3>
-          <p style={{ color: 'var(--t3)', marginBottom: 16 }}>{loadError}</p>
-          <button onClick={loadStores} className="btn btn-primary">Retry</button>
-        </div>
-      ) : stores.length === 0 ? (
-        <EmptyState
-          icon={StoreIcon}
-          title="No Stores Yet"
-          description="Add your first store to start managing inventory across your network."
-          action={<button onClick={openCreate} className="btn btn-primary">+ Add First Store</button>}
-        />
-      ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
-          <div className="stores-cards" style={{ padding: 12 }}>
-            {/* Select All row */}
-            <div className="mobile-select-bar">
-              <label className="mobile-select-all-label">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  ref={el => { if (el) el.indeterminate = someSelected; }}
-                  onChange={toggleSelectAll}
-                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0 }}
-                />
-                <span className="mobile-select-all-text">
-                  {selected.size > 0 ? `${selected.size} of ${stores.length} selected` : `Select all ${stores.length} stores`}
-                </span>
-              </label>
-              {selected.size > 0 && (
-                <button className="btn btn-ghost btn-sm" onClick={() => setSelected(new Set())} style={{ flexShrink: 0 }}>
-                  Clear
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: STORES LIST
+          ══════════════════════════════════════════════════════════ */}
+      {tab === 'stores' && (
+        <>
+          {/* Bulk action bar */}
+          {selected.size > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', marginBottom: 12, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--r-md)' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>
+                {selected.size} store{selected.size !== 1 ? 's' : ''} selected
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setSelected(new Set())} disabled={bulkDeleting}>Clear selection</button>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => { setBulkConfirmText(''); setShowBulkConfirm(true); }}
+                  disabled={bulkDeleting}
+                  style={{ background: 'rgba(239,68,68,0.14)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.28)', fontWeight: 600 }}
+                >
+                  {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
                 </button>
-              )}
-            </div>
-
-            {stores.map(store => (
-              <div
-                key={store.id}
-                className={`store-card${selected.has(store.id) ? ' store-card-selected' : ''}`}
-              >
-                {/* Row 1: checkbox + code + status */}
-                <div className="store-card-row1">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(store.id)}
-                    onChange={() => toggleSelect(store.id)}
-                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0 }}
-                  />
-                  <span className="store-card-code">{store.storeCode}</span>
-                  <span className={`badge ${store.isActive ? 'badge-active' : 'badge-inactive'}`} style={{ marginLeft: 'auto' }}>
-                    {store.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                {/* Row 2: store name */}
-                <div className="store-card-name">{store.storeName}</div>
-                {/* Row 3: meta counts */}
-                <div className="store-card-meta">
-                  <span>{store._count.users} manager{store._count.users !== 1 ? 's' : ''}</span>
-                  <span className="store-card-dot">·</span>
-                  <span>{store._count.inventoryRecords} record{store._count.inventoryRecords !== 1 ? 's' : ''}</span>
-                </div>
-                {/* AM badge if assigned */}
-                {store.areaManagerId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(124,58,237,0.10)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)', fontWeight: 700 }}>
-                      AM Assigned
-                    </span>
-                  </div>
-                )}
-                {/* Row 4: action buttons — 2-row grid so Assign AM is always visible */}
-                <div className="store-card-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                  <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
-                  <button
-                    onClick={() => { setAmModal({ storeId: store.id, storeName: store.storeName, currentAmId: store.areaManagerId }); setSelectedAmId(store.areaManagerId ? String(store.areaManagerId) : ''); }}
-                    className="btn btn-sm"
-                    style={{ background: 'rgba(124,58,237,0.09)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)', fontWeight: 600 }}
-                  >
-                    {store.areaManagerId ? 'Change AM' : 'Assign AM'}
-                  </button>
-                  {store._count.inventoryRecords === 0 ? (
-                    <button
-                      onClick={() => setDeleteTarget(store)}
-                      className="btn btn-sm"
-                      style={{ gridColumn: 'span 2', background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)', fontWeight: 700 }}
-                    >
-                      Delete
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }}
-                      className="btn btn-sm"
-                      style={{ gridColumn: 'span 2', background: 'rgba(239,68,68,0.06)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontWeight: 600, fontSize: 11 }}
-                    >
-                      Force Delete
-                    </button>
-                  )}
-                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
 
-          {/* ── Desktop table (>768px) ────────────────────────────── */}
-          <div className="table-container stores-table-desktop">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col" style={{ width: 36, paddingRight: 0 }}>
+          {loading ? (
+            <SkeletonTable rows={6} cols={5} />
+          ) : loadError ? (
+            <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: 'var(--t1)' }}>Failed to Load Stores</h3>
+              <p style={{ color: 'var(--t3)', marginBottom: 16 }}>{loadError}</p>
+              <button onClick={loadStores} className="btn btn-primary">Retry</button>
+            </div>
+          ) : stores.length === 0 ? (
+            <EmptyState
+              icon={StoreIcon}
+              title="No Stores Yet"
+              description="Add your first store to start managing inventory across your network."
+              action={<button onClick={openCreate} className="btn btn-primary">+ Add First Store</button>}
+            />
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              {/* ── Mobile cards ─────────────────────────────── */}
+              <div className="stores-cards" style={{ padding: 12 }}>
+                <div className="mobile-select-bar">
+                  <label className="mobile-select-all-label">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       ref={el => { if (el) el.indeterminate = someSelected; }}
                       onChange={toggleSelectAll}
-                      style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }}
-                      title={allSelected ? 'Deselect all' : 'Select all'}
+                      style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0 }}
                     />
-                  </th>
-                  <th scope="col">Store Code</th>
-                  <th scope="col">Store Name</th>
-                  <th scope="col">Managers</th>
-                  <th scope="col">Records</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stores.map(store => (
-                  <tr key={store.id} style={selected.has(store.id) ? { background: 'rgba(139,92,246,0.06)' } : {}}>
-                    <td style={{ paddingRight: 0 }}>
-                      <input type="checkbox" checked={selected.has(store.id)} onChange={() => toggleSelect(store.id)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }} />
-                    </td>
-                    <td style={{ fontWeight: 700, color: 'var(--vi-light)', fontFamily: 'monospace' }}>{store.storeCode}</td>
-                    <td style={{ fontWeight: 600 }}>{store.storeName}</td>
-                    <td style={{ color: 'var(--t3)' }}>{store._count.users}</td>
-                    <td style={{ color: 'var(--t3)' }}>{store._count.inventoryRecords}</td>
-                    <td>
-                      <span className={`badge ${store.isActive ? 'badge-active' : 'badge-inactive'}`}>
-                        {store.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
-                      <button
-                        onClick={() => { setAmModal({ storeId: store.id, storeName: store.storeName, currentAmId: store.areaManagerId }); setSelectedAmId(store.areaManagerId ? String(store.areaManagerId) : ''); }}
-                        className="btn btn-sm"
-                        style={{ background: 'rgba(124,58,237,0.09)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)' }}
-                      >
-                        {store.areaManagerId ? 'Change AM' : 'Assign AM'}
-                      </button>
-                      {store._count.inventoryRecords === 0 ? (
-                        <button onClick={() => setDeleteTarget(store)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>
-                          Delete
-                        </button>
+                    <span className="mobile-select-all-text">
+                      {selected.size > 0 ? `${selected.size} of ${stores.length} selected` : `Select all ${stores.length} stores`}
+                    </span>
+                  </label>
+                  {selected.size > 0 && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => setSelected(new Set())} style={{ flexShrink: 0 }}>Clear</button>
+                  )}
+                </div>
+
+                {stores.map(store => {
+                  const am = store.areaManagerId ? amById[String(store.areaManagerId)] : null;
+                  return (
+                    <div key={store.id} className={`store-card${selected.has(store.id) ? ' store-card-selected' : ''}`}>
+                      <div className="store-card-row1">
+                        <input type="checkbox" checked={selected.has(store.id)} onChange={() => toggleSelect(store.id)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--vi)', flexShrink: 0 }} />
+                        <span className="store-card-code">{store.storeCode}</span>
+                        <span className={`badge ${store.isActive ? 'badge-active' : 'badge-inactive'}`} style={{ marginLeft: 'auto' }}>
+                          {store.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="store-card-name">{store.storeName}</div>
+                      <div className="store-card-meta">
+                        <span>{store._count.users} manager{store._count.users !== 1 ? 's' : ''}</span>
+                        <span className="store-card-dot">·</span>
+                        <span>{store._count.inventoryRecords} records</span>
+                      </div>
+                      {am ? (
+                        <div style={{ fontSize: 11, color: '#7c3aed', fontWeight: 600 }}>AM: {am.name}</div>
                       ) : (
-                        <button onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }} className="btn btn-sm" title={`Force delete — erases ${store._count.inventoryRecords} record(s)`} style={{ background: 'rgba(239,68,68,0.07)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }}>
-                          Force Delete
-                        </button>
+                        <div style={{ fontSize: 11, color: '#b45309', fontWeight: 600 }}>No AM assigned</div>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                      <div className="store-card-actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                        <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
+                        <button
+                          onClick={() => { setAmModal({ storeId: store.id, storeName: store.storeName, currentAmId: store.areaManagerId }); setSelectedAmId(store.areaManagerId ? String(store.areaManagerId) : ''); }}
+                          className="btn btn-sm"
+                          style={{ background: 'rgba(124,58,237,0.09)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)', fontWeight: 600 }}
+                        >
+                          {store.areaManagerId ? 'Change AM' : 'Assign AM'}
+                        </button>
+                        {store._count.inventoryRecords === 0 ? (
+                          <button onClick={() => setDeleteTarget(store)} className="btn btn-sm" style={{ gridColumn: 'span 2', background: 'rgba(239,68,68,0.08)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)', fontWeight: 700 }}>Delete</button>
+                        ) : (
+                          <button onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }} className="btn btn-sm" style={{ gridColumn: 'span 2', background: 'rgba(239,68,68,0.06)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontWeight: 600, fontSize: 11 }}>Force Delete</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Desktop table ─────────────────────────── */}
+              <div className="table-container stores-table-desktop">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 36, paddingRight: 0 }}>
+                        <input type="checkbox" checked={allSelected} ref={el => { if (el) el.indeterminate = someSelected; }} onChange={toggleSelectAll} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }} />
+                      </th>
+                      <th>Store Code</th>
+                      <th>Store Name</th>
+                      <th>Area Manager</th>
+                      <th>Managers</th>
+                      <th>Records</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stores.map(store => {
+                      const am = store.areaManagerId ? amById[String(store.areaManagerId)] : null;
+                      return (
+                        <tr key={store.id} style={selected.has(store.id) ? { background: 'rgba(139,92,246,0.06)' } : {}}>
+                          <td style={{ paddingRight: 0 }}>
+                            <input type="checkbox" checked={selected.has(store.id)} onChange={() => toggleSelect(store.id)} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--vi)' }} />
+                          </td>
+                          <td style={{ fontWeight: 700, color: 'var(--vi-light)', fontFamily: 'monospace' }}>{store.storeCode}</td>
+                          <td style={{ fontWeight: 600 }}>{store.storeName}</td>
+                          <td>
+                            {am ? (
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>{am.name}</span>
+                            ) : (
+                              <span style={{ fontSize: 12, color: 'var(--tx4)' }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ color: 'var(--t3)' }}>{store._count.users}</td>
+                          <td style={{ color: 'var(--t3)' }}>{store._count.inventoryRecords}</td>
+                          <td>
+                            <span className={`badge ${store.isActive ? 'badge-active' : 'badge-inactive'}`}>
+                              {store.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <button onClick={() => openEdit(store)} className="btn btn-secondary btn-sm">Edit</button>
+                            <button
+                              onClick={() => { setAmModal({ storeId: store.id, storeName: store.storeName, currentAmId: store.areaManagerId }); setSelectedAmId(store.areaManagerId ? String(store.areaManagerId) : ''); }}
+                              className="btn btn-sm"
+                              style={{ background: 'rgba(124,58,237,0.09)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.22)' }}
+                            >
+                              {store.areaManagerId ? 'Change AM' : 'Assign AM'}
+                            </button>
+                            {store._count.inventoryRecords === 0 ? (
+                              <button onClick={() => setDeleteTarget(store)} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.22)' }}>Delete</button>
+                            ) : (
+                              <button onClick={() => { setForceDeleteTarget(store); setForceDeleteCode(''); }} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.07)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }}>Force Delete</button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
+
+      {/* ── Modals ─────────────────────────────────────────────────── */}
 
       {/* Single delete */}
       {deleteTarget && (
@@ -456,7 +574,7 @@ export default function Stores() {
         <Modal onClose={() => !bulkDeleting && setShowBulkConfirm(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div className="modal-header">
-              <h3>Delete {selected.size} Plant{selected.size !== 1 ? 's' : ''}</h3>
+              <h3>Delete {selected.size} Store{selected.size !== 1 ? 's' : ''}</h3>
               <button className="close-btn" onClick={() => setShowBulkConfirm(false)} disabled={bulkDeleting}>&times;</button>
             </div>
             <div className="alert alert-error" style={{ marginBottom: 16 }}>
@@ -521,42 +639,37 @@ export default function Stores() {
 
       {/* Area Manager Assignment Modal */}
       {amModal && (
-        <Modal onClose={() => setAmModal(null)}>
-          <div className="modal-content">
+        <Modal onClose={() => !amAssigning && setAmModal(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Assign Area Manager</h3>
-              <button className="close-btn" onClick={() => setAmModal(null)}>&times;</button>
+              <button className="close-btn" onClick={() => setAmModal(null)} disabled={amAssigning}>&times;</button>
             </div>
             <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 16 }}>
               Assign an Area Manager to <strong>{amModal.storeName}</strong>. They will review this store's submissions before they reach you.
             </p>
             <div className="form-group">
               <label>Area Manager</label>
-              <select value={selectedAmId} onChange={e => setSelectedAmId(e.target.value)}>
+              <select value={selectedAmId} onChange={e => setSelectedAmId(e.target.value)} disabled={amAssigning}>
                 <option value="">— Unassigned —</option>
-                {areaManagers.map(am => (
-                  <option key={am.id} value={am.id}>{am.name} ({am.employeeId}) — {am.managedStores.length} stores</option>
-                ))}
+                {areaManagers.map(am => {
+                  const isFull = am.managedStores.length >= MAX_STORES_PER_AM && String(am.id) !== String(amModal.currentAmId);
+                  return (
+                    <option key={am.id} value={am.id} disabled={isFull}>
+                      {am.name} ({am.employeeId}) — {am.managedStores.length}/{MAX_STORES_PER_AM} stores{isFull ? ' — full' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
+            {selectedAmId && amById[selectedAmId]?.managedStores.length >= MAX_STORES_PER_AM - 1 && String(selectedAmId) !== String(amModal.currentAmId) && (
+              <div style={{ fontSize: 12, color: '#b45309', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.22)', borderRadius: 'var(--r)', padding: '8px 12px', marginBottom: 10 }}>
+                This Area Manager is near or at the recommended limit of {MAX_STORES_PER_AM} stores.
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
               <button className="btn btn-secondary" onClick={() => setAmModal(null)} disabled={amAssigning}>Cancel</button>
-              <button
-                className="btn btn-primary"
-                disabled={amAssigning}
-                onClick={async () => {
-                  setAmAssigning(true);
-                  try {
-                    await adminApi.assignStoreAM(amModal.storeId, selectedAmId ? parseInt(selectedAmId) : null);
-                    toast.success('Area Manager assigned');
-                    setStores(prev => prev.map(s => s.id === amModal.storeId ? { ...s, areaManagerId: selectedAmId ? parseInt(selectedAmId) : null } : s));
-                    setAmModal(null);
-                  } catch (e) {
-                    console.error('Assign AM:', e);
-                    toast.error('Could not assign. Try again.');
-                  } finally { setAmAssigning(false); }
-                }}
-              >
+              <button className="btn btn-primary" disabled={amAssigning} onClick={handleAssignAM}>
                 {amAssigning ? 'Saving…' : 'Save Assignment'}
               </button>
             </div>

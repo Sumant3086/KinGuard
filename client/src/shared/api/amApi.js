@@ -1,6 +1,7 @@
 import client from './client';
 
 export const getDashboard       = async ()                         => { const { data } = await client.get('/am/dashboard');                                             return data; };
+export const getMyStores        = async ()                         => { const { data } = await client.get('/am/stores');                                                  return data; };
 export const getNotifications   = async ()                         => { const { data } = await client.get('/am/notifications');                                         return data; };
 export const getBatches         = async ()                         => { const { data } = await client.get('/am/batches');                                               return data; };
 export const getBatchStores     = async (batchId)                  => { const { data } = await client.get(`/am/batches/${batchId}/stores`);                             return data; };
