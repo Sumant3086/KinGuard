@@ -127,6 +127,10 @@ export async function getNotifications(req, res, next) {
 // ── All batches for AM's stores ───────────────────────────────────────────────
 export async function getBatches(req, res, next) {
   try {
+    const cacheKey = `am:batches:${req.user.id}`;
+    const cached = sGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.length) return res.json([]);
 
@@ -177,6 +181,7 @@ export async function getBatches(req, res, next) {
       };
     });
 
+    sSet(cacheKey, result, 60_000);
     res.json(result);
   } catch (error) { next(error); }
 }
@@ -312,7 +317,7 @@ export async function approveStore(req, res, next) {
     const storeMeta = storeRow[0] ?? {};
 
     createAuditLog({ userId: req.user.id, action: 'AM_APPROVE', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: storeMeta.storeCode, storeName: storeMeta.storeName, remarks } }).catch(() => {});
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', `am:batches:${req.user.id}`);
 
     // Notify all admins
     Promise.all([
@@ -362,7 +367,7 @@ export async function returnStore(req, res, next) {
     const retStoreRow = await prisma.$queryRaw`SELECT "storeCode", "storeName" FROM "Store" WHERE id = ${storeId} LIMIT 1`;
     const retStore = retStoreRow[0] ?? {};
     createAuditLog({ userId: req.user.id, action: 'AM_RETURN', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: retStore.storeCode, storeName: retStore.storeName, reason: remarks } }).catch(() => {});
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', `am:batches:${req.user.id}`);
 
     res.json({ ok: true });
   } catch (error) { next(error); }

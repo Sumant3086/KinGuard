@@ -6,7 +6,7 @@ export async function getDashboard() {
   const cached = cacheGet(key);
   if (cached) return cached;
   const { data } = await client.get('/store/dashboard');
-  cacheSet(key, data, 30_000);
+  cacheSet(key, data, 120_000); // 2 min
   return data;
 }
 

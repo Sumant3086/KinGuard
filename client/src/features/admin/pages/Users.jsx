@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
 import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
@@ -59,7 +59,7 @@ function SourceBadge({ source }) {
 }
 
 // ── Single user mobile card ───────────────────────────────────────
-function UserCard({ user, self, adminCount, selected, onSelect, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
+const UserCard = memo(function UserCard({ user, self, adminCount, selected, onSelect, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
   const isSelf      = user.id === self?.id;
   const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1;
   const canDelete   = !isSelf && !isLastAdmin;
@@ -136,10 +136,10 @@ function UserCard({ user, self, adminCount, selected, onSelect, onEdit, onDelete
       </div>
     </div>
   );
-}
+});
 
 // ── Single user table row ─────────────────────────────────────────
-function UserRow({ user, self, adminCount, selected, onSelect, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
+const UserRow = memo(function UserRow({ user, self, adminCount, selected, onSelect, onEdit, onDelete, onApprove, onReject, approving, rejecting, deleting }) {
   const isSelf      = user.id === self?.id;
   const isLastAdmin = user.role === 'ADMIN' && adminCount <= 1;
   const canDelete   = !isSelf && !isLastAdmin;
@@ -206,7 +206,7 @@ function UserRow({ user, self, adminCount, selected, onSelect, onEdit, onDelete,
       </td>
     </tr>
   );
-}
+});
 
 // ── Main component ───────────────────────────────────────────────
 export default function AdminUsers() {
@@ -295,26 +295,24 @@ export default function AdminUsers() {
     }
   }
 
-  // ── Tab filtering ────────────────────────────────────────────────
-  const pendingUsers = users.filter(u => u.pendingApproval);
-  const activeUsers  = users.filter(u => u.isActive);
-  const inactiveUsers= users.filter(u => !u.isActive && !u.pendingApproval);
-
-  const visibleUsers = tab === 'pending'  ? pendingUsers
-                     : tab === 'active'   ? activeUsers
-                     : tab === 'inactive' ? inactiveUsers
-                     : users;
-
-  const adminCount = users.filter(u => u.role === 'ADMIN' && u.isActive).length;
+  // ── Tab filtering — memoised so re-renders from modal/checkbox don't recompute ──
+  const { pendingUsers, activeUsers, inactiveUsers, visibleUsers, adminCount } = useMemo(() => {
+    const pending  = users.filter(u => u.pendingApproval);
+    const active   = users.filter(u => u.isActive);
+    const inactive = users.filter(u => !u.isActive && !u.pendingApproval);
+    const visible  = tab === 'pending' ? pending : tab === 'active' ? active : tab === 'inactive' ? inactive : users;
+    const admins   = users.filter(u => u.role === 'ADMIN' && u.isActive).length;
+    return { pendingUsers: pending, activeUsers: active, inactiveUsers: inactive, visibleUsers: visible, adminCount: admins };
+  }, [users, tab]);
 
   // ── Selection helpers ────────────────────────────────────────────
-  function toggleSelect(id, checked) {
+  const toggleSelect = useCallback((id, checked) => {
     setSelected(prev => {
       const next = new Set(prev);
       checked ? next.add(id) : next.delete(id);
       return next;
     });
-  }
+  }, []);
 
   function selectAllVisible() {
     // Selectable = all visible except yourself (can't bulk-delete self)
@@ -335,26 +333,23 @@ export default function AdminUsers() {
   const selectedAllIds = Array.from(selected);
 
   // ── Single approve ───────────────────────────────────────────────
-  async function handleApprove(user) {
+  const handleApprove = useCallback(async (user) => {
     setApprovingId(user.id);
     try {
       const result = await adminApi.approveUser(user.id);
       setApprovedCredentials({ employeeId: result.employeeId, name: result.name, tempPassword: result.tempPassword, store: result.store });
-      // Optimistic update — mark user active immediately
-      setUsers(prev => prev.map(u =>
-        u.id === user.id ? { ...u, isActive: true, pendingApproval: false } : u
-      ));
-      load(); // background sync
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: true, pendingApproval: false } : u));
+      load();
     } catch (err) {
       console.error('Approve user:', err);
       toast.error('Could not approve user. Try again.');
     } finally {
       setApprovingId(null);
     }
-  }
+  }, [load, toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Single reject ────────────────────────────────────────────────
-  function openReject(user) { setRejectTarget(user); setRejectReason(''); }
+  const openReject = useCallback((user) => { setRejectTarget(user); setRejectReason(''); }, []);
 
   async function confirmReject() {
     if (!rejectTarget) return;
@@ -444,13 +439,13 @@ export default function AdminUsers() {
     setShowModal(true);
   }
 
-  function openEdit(user) {
+  const openEdit = useCallback((user) => {
     setEditingId(user.id);
     setFormData({ employeeId: user.employeeId, name: user.name, password: '', role: user.role, storeId: user.storeId || '', isActive: user.isActive, email: user.email || '', phone: user.phone || '' });
     setAmStoreIds([]);
     setFormError('');
     setShowModal(true);
-  }
+  }, []);
 
   function closeModal() { if (submitting) return; setShowModal(false); setEditingId(null); setFormError(''); setAmStoreIds([]); }
 
@@ -497,10 +492,10 @@ export default function AdminUsers() {
     }
   }
 
-  function handleDelete(user) {
+  const handleDelete = useCallback((user) => {
     if (deletingId) return;
     setDeleteTarget(user);
-  }
+  }, [deletingId]);
 
   async function confirmDelete() {
     if (!deleteTarget) return;

@@ -20,7 +20,7 @@ const IcoShort    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 const IcoExcess   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
 
 const CACHE_KEY = 'store:dashboard';
-const CACHE_TTL = 30_000;
+const CACHE_TTL = 120_000;
 
 export default function StoreDashboard() {
   const [dashboard, setDashboard] = useState(() => cache.get(CACHE_KEY) ?? null);

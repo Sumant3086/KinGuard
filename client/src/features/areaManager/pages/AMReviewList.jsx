@@ -17,11 +17,13 @@ export default function AMReviewList() {
   const toast    = useToast();
 
   useEffect(() => {
+    let live = true;
     amApi.getBatches()
-      .then(setBatches)
-      .catch(e => { console.error('AM batches:', e); toast.error('Could not load review cycles. Please refresh.'); })
-      .finally(() => setLoading(false));
-  }, [toast]);
+      .then(d => { if (live) setBatches(d); })
+      .catch(e => { console.error('AM batches:', e); if (live) toast.error('Could not load review cycles. Please refresh.'); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AMLayout>

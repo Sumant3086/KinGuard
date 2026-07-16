@@ -308,18 +308,17 @@ export async function getDashboard(req, res, next) {
 
 export async function getStores(req, res, next) {
   try {
+    const cached = sGet('admin:stores');
+    if (cached) return res.json(cached);
+
     const stores = await prisma.store.findMany({
       orderBy: { storeCode: 'asc' },
       include: {
-        _count: {
-          select: {
-            users: true,
-            inventoryRecords: true,
-          },
-        },
+        _count: { select: { users: true, inventoryRecords: true } },
       },
     });
 
+    sSet('admin:stores', stores, 120_000);
     res.json(stores);
   } catch (error) {
     next(error);
@@ -357,7 +356,7 @@ export async function createStore(req, res, next) {
       metadata: { storeCode: store.storeCode, storeName: store.storeName },
     });
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:stores');
     res.status(201).json(store);
   } catch (error) {
     if (error.code === 'P2002') {
@@ -403,7 +402,7 @@ export async function deleteStore(req, res, next) {
       metadata: { storeCode: store.storeCode, storeName: store.storeName },
     });
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:stores');
     res.json({ message: 'Store deleted' });
   } catch (error) {
     next(error);
@@ -434,7 +433,7 @@ export async function updateStore(req, res, next) {
       metadata: { storeCode: store.storeCode, storeName: store.storeName, isActive },
     });
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:stores');
     res.json(store);
   } catch (error) {
     next(error);
@@ -443,26 +442,20 @@ export async function updateStore(req, res, next) {
 
 export async function getUsers(req, res, next) {
   try {
+    const cached = sGet('admin:users');
+    if (cached) return res.json(cached);
+
     const users = await prisma.user.findMany({
       orderBy: { employeeId: 'asc' },
       select: {
-        id: true,
-        employeeId: true,
-        name: true,
-        role: true,
-        storeId: true,
-        isActive: true,
-        pendingApproval: true,
-        source: true,
-        email: true,
-        phone: true,
-        createdAt: true,
-        updatedAt: true,
-        store: {
-          select: { id: true, storeCode: true, storeName: true },
-        },
+        id: true, employeeId: true, name: true, role: true,
+        storeId: true, isActive: true, pendingApproval: true,
+        source: true, email: true, phone: true, createdAt: true,
+        store: { select: { id: true, storeCode: true, storeName: true } },
       },
     });
+
+    sSet('admin:users', users, 60_000);
     res.json(users);
   } catch (error) {
     next(error);
@@ -606,6 +599,7 @@ export async function updateUser(req, res, next) {
     });
 
     invalidateUserCache(userId);
+    sInvalidate('admin:users');
     if (storeId !== undefined) sInvalidate('admin:stores'); // manager count changed on store card
     const { passwordHash: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
@@ -1813,6 +1807,7 @@ export async function deleteUser(req, res, next) {
     });
 
     invalidateUserCache(userId);
+    sInvalidate('admin:users');
 
     createAuditLog({
       userId: req.user.id, action: 'DELETE_USER',
@@ -2494,7 +2489,7 @@ export async function approveUser(req, res, next) {
     });
 
     invalidateUserCache(userId);
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:users');
     const { passwordHash: _, ...safeUser } = result.updated;
     res.json({ ...safeUser, tempPassword: result.tempPassword });
   } catch (error) { next(error); }
@@ -2896,6 +2891,7 @@ export async function rejectUser(req, res, next) {
 
     await prisma.user.delete({ where: { id: userId } });
     invalidateUserCache(userId);
+    sInvalidate('admin:users');
 
     createAuditLog({
       userId: req.user.id, action: 'REJECT_USER',
@@ -3058,6 +3054,7 @@ export async function bulkDeleteUsers(req, res, next) {
     });
 
     validIds.forEach(id => invalidateUserCache(id));
+    sInvalidate('admin:users');
 
     createAuditLog({
       userId: req.user.id, action: 'BULK_DELETE_USERS',

@@ -5,11 +5,11 @@ import TopProgress from './shared/components/ui/TopProgress';
 import ErrorBoundary from './shared/components/ui/ErrorBoundary';
 import { progressStart, progressDone } from './shared/api/progress';
 
-// Eagerly loaded — needed on first paint for every user
-import Home           from './pages/Home';
-import NotFound       from './pages/NotFound';
-import LoginPage      from './features/auth/LoginPage';
-import ChangePassword from './features/auth/ChangePasswordPage';
+// Lazy-loaded — these are only needed per-role, not on every first paint
+const Home           = lazy(() => import('./pages/Home'));
+const NotFound       = lazy(() => import('./pages/NotFound'));
+const LoginPage      = lazy(() => import('./features/auth/LoginPage'));
+const ChangePassword = lazy(() => import('./features/auth/ChangePasswordPage'));
 
 // Lazy-loaded by feature — each chunk only downloads when needed
 const AdminDashboard = lazy(() => import('./features/admin/pages/Dashboard'));
