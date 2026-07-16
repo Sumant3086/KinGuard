@@ -370,15 +370,27 @@ export async function batchAssignAMStores(req, res, next) {
     if (!Array.isArray(storeIds)) throw new AppError('storeIds must be an array', 400);
     if (storeIds.length > 10) throw new AppError('Cannot assign more than 10 stores at once', 400);
 
+    // Validate every storeId is a clean positive integer
+    const parsedStoreIds = storeIds.map((sid, i) => {
+      const n = parseInt(sid, 10);
+      if (isNaN(n) || n < 1) throw new AppError(`Invalid storeId at index ${i}`, 400);
+      return n;
+    });
+
     const rows = await prisma.$queryRaw`SELECT role FROM "User" WHERE id = ${amId} LIMIT 1`;
     if (!rows.length || rows[0].role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
 
-    await prisma.$transaction(
-      storeIds.map(sid => prisma.store.update({ where: { id: parseInt(sid) }, data: { areaManagerId: amId } }))
-    );
+    try {
+      await prisma.$transaction(
+        parsedStoreIds.map(sid => prisma.store.update({ where: { id: sid }, data: { areaManagerId: amId } }))
+      );
+    } catch (txErr) {
+      if (txErr.code === 'P2025') throw new AppError('One or more stores not found', 404);
+      throw txErr;
+    }
 
-    createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds, areaManagerId: amId } }).catch(() => {});
-    res.json({ assigned: storeIds.length });
+    createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds: parsedStoreIds, areaManagerId: amId } }).catch(() => {});
+    res.json({ assigned: parsedStoreIds.length });
   } catch (error) { next(error); }
 }
 

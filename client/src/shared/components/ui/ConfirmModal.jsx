@@ -79,7 +79,7 @@ export default function ConfirmModal({
           <button
             type="button"
             className={`btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}`}
-            onClick={() => { onConfirm(); onClose(); }}
+            onClick={() => { try { onConfirm(); } finally { onClose(); } }}
           >
             {confirmText}
           </button>

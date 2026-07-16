@@ -1,7 +1,7 @@
 import app from './app.js';
 import { env } from './config/env.js';
 import prisma from './config/prisma.js';
-import { startReminderScheduler } from './services/reminderScheduler.js';
+import { startReminderScheduler, stopReminderScheduler } from './services/reminderScheduler.js';
 import { exec } from 'child_process';
 import { platform } from 'os';
 
@@ -89,6 +89,7 @@ async function startServer() {
 
     async function shutdown(signal) {
       console.log(`\n[server] ${signal} received — shutting down gracefully`);
+      stopReminderScheduler();
       // Cancel the force-exit timer if graceful shutdown succeeds first
       const forceTimer = setTimeout(() => {
         console.error('[server] Forced shutdown after timeout');

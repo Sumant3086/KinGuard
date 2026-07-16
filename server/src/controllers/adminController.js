@@ -1004,11 +1004,18 @@ export async function getUploads(req, res, next) {
 export async function getInventory(req, res, next) {
   const startTime = Date.now();
   try {
-    const { status, search, discrepancy } = req.query;
+    const { search } = req.query;
+    const status      = req.query.status      || undefined;
+    const discrepancy = req.query.discrepancy || undefined;
     const storeId     = parseId(req.query.storeId, 'storeId');
     const batchId     = parseId(req.query.batchId, 'batchId');
     const pageNum     = parsePage(req.query.page, 1);
     const pageSizeNum = parsePageSize(req.query.pageSize, 50, 200);
+
+    const VALID_STATUSES = new Set(['PENDING', 'SUBMITTED']);
+    if (status && !VALID_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
+    const VALID_DISC = new Set(['shortage', 'excess', 'matched']);
+    if (discrepancy && !VALID_DISC.has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
 
     const where = {};
 
@@ -1372,7 +1379,7 @@ export async function downloadInventoryExport(req, res, next) {
 export async function getAuditLogs(req, res, next) {
   try {
     const { action } = req.query;
-    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const limit = parseIntParam(req.query.limit, 'limit', 100, 1, 500);
 
     const where = action ? { action } : {};
 
