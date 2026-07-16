@@ -56,28 +56,45 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      await attemptLogin();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function attemptLogin(isRetry = false) {
+    try {
       await login(employeeId, password, from);
+      // AuthContext handles redirect on success — nothing to do here
     } catch (err) {
+      const status = err.response?.status;
+
+      // 401 / 403 — real auth errors, show immediately, do NOT retry
+      if (status === 401) {
+        setError('Employee ID or password is incorrect.');
+        return;
+      }
+      if (status === 403) {
+        setError(err.response.data?.error || 'Access denied. Contact your administrator.');
+        return;
+      }
+
+      // Network error, 500, or 503 — likely a cold-start transient failure.
+      // Silently retry once with a short delay before showing any error.
+      if (!isRetry) {
+        const delay = status === 503 ? 1800 : 1000;
+        await new Promise(r => setTimeout(r, delay));
+        return attemptLogin(true); // tail-call retry — still inside setLoading(true)
+      }
+
+      // Second failure — show an appropriate message
       if (!err.response) {
         setError('Unable to connect to the server. Check your network and try again.');
-      } else if (err.response.status === 503) {
-        // Server cold-start — auto-retry once after 2s so the user doesn't have to
-        try {
-          await new Promise(r => setTimeout(r, 2000));
-          await login(employeeId, password, from);
-          return; // success on retry — AuthContext handles redirect
-        } catch (retryErr) {
-          setError(retryErr.response?.data?.error || 'The service is starting up. Please wait a moment and try again.');
-        }
-      } else if (err.response.status === 401) {
-        setError('Employee ID or password is incorrect.');
-      } else if (err.response.status === 403) {
-        setError(err.response.data?.error || 'Access denied. Contact your administrator.');
+      } else if (status === 503) {
+        setError('Server is starting up. Please wait a moment and try again.');
       } else {
         setError('Login failed. Please try again.');
       }
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -220,12 +237,14 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                      style={{ animation: 'spin .8s linear infinite' }}>
+                      style={{ animation: 'spin .8s linear infinite', flexShrink: 0 }}>
                       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                     </svg>
                     Signing in…
                   </>
-                ) : 'Sign In →'}
+                ) : (
+                  <>Sign In →</>
+                )}
               </button>
             </form>
 

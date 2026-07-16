@@ -8,6 +8,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import prisma from './config/prisma.js';
 
 const app = express();
 const IS_PROD = env.server.nodeEnv === 'production';
@@ -57,10 +58,17 @@ if (IS_PROD) {
   console.warn  = () => {};
 }
 
-// ── Health check — also used as keep-alive ping by UptimeRobot / cron ─────
-app.get('/api/health', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// ── Health check — verifies DB connectivity so wait-on (dev) and
+//    UptimeRobot (prod) only see OK when the server is fully ready ──────────
+app.get('/api/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(503).json({ status: 'starting', timestamp: new Date().toISOString() });
+  }
 });
 
 // ── Request logging (development only) ────────────────────────────────────

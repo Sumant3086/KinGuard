@@ -82,25 +82,30 @@ export async function login(req, res, next) {
     }
     if (password.length > 128) throw new AppError('Invalid credentials', 401);
 
-    // Look up user — single retry on connection failure (Supabase pooler cold-start)
+    // Look up user — up to 3 attempts with growing delays for Supabase pooler cold-start.
+    // Delays: immediate → 500 ms → 1200 ms (total max wait ~1.7 s before 503).
     let user;
-    try {
-      user = await prisma.user.findUnique({
-        where: { employeeId: employeeId.trim() },
-        include: { store: true },
-      });
-    } catch (firstErr) {
-      console.warn('[auth] Login DB query failed, retrying:', firstErr.message);
+    const delays = [0, 500, 1200];
+    let lastErr;
+    for (const delay of delays) {
+      if (delay > 0) {
+        console.warn(`[auth] Login DB query failed, retrying in ${delay}ms:`, lastErr?.message);
+        await new Promise(r => setTimeout(r, delay));
+      }
       try {
-        await new Promise(r => setTimeout(r, 600));
         user = await prisma.user.findUnique({
           where: { employeeId: employeeId.trim() },
           include: { store: true },
         });
-      } catch (retryErr) {
-        console.error('[auth] DB unavailable after retry:', retryErr.message);
-        throw new AppError('The service is temporarily unavailable. Please try again in a moment.', 503);
+        lastErr = null;
+        break; // success — stop retrying
+      } catch (err) {
+        lastErr = err;
       }
+    }
+    if (lastErr) {
+      console.error('[auth] DB unavailable after all retries:', lastErr.message);
+      throw new AppError('The service is temporarily unavailable. Please try again in a moment.', 503);
     }
 
     // Always run bcrypt (or dummy) before revealing any account state — prevents timing attacks
