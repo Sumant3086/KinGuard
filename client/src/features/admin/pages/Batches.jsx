@@ -135,8 +135,8 @@ export default function Batches() {
     if (!unlockStoreId) { toast.warning('Select a store first'); return; }
     setUnlocking(true);
     try {
-      const res = await adminApi.unlockStoreForBatch(unlockModal.batchId, parseInt(unlockStoreId));
-      toast.success(`Done — manager can now re-count and submit again`);
+      await adminApi.unlockStoreForBatch(unlockModal.batchId, parseInt(unlockStoreId));
+      toast.success('Done — manager can now re-count and submit again');
       setUnlockModal(null);
       setUnlockStoreId('');
       load(); // background sync
@@ -289,7 +289,7 @@ export default function Batches() {
                   <div className="batch-card-actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDeadline(b.id); setDeadlineInput(b.submissionDeadline ? toLocalInputValue(b.submissionDeadline) : ''); }}>Set Deadline</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => { setExtendModal({ batchId: b.id }); setExtStoreId(''); setExtDeadline(''); setExtNote(''); }}>Extend</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setUnlockModal({ batchId: b.id })}>Unlock</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setUnlockModal({ batchId: b.id }); setUnlockStoreId(''); }}>Unlock</button>
                     <button className="btn btn-success btn-sm" onClick={() => handleBatchExport(b.id, b.inventoryDate)}>Excel</button>
                     <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>
                     <button className="btn btn-sm" onClick={() => handleSendEmailReminders(b.id)} disabled={emailReminding === b.id} style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)' }}>{emailReminding === b.id ? '…' : 'Email'}</button>
@@ -364,7 +364,7 @@ export default function Batches() {
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => { setEditingDeadline(b.id); setDeadlineInput(b.submissionDeadline ? toLocalInputValue(b.submissionDeadline) : ''); }}>Deadline</button>
                           <button className="btn btn-ghost btn-sm" onClick={() => { setExtendModal({ batchId: b.id }); setExtStoreId(''); setExtDeadline(''); setExtNote(''); }}>Extend Store</button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setUnlockModal({ batchId: b.id })} title="Reset a store's submission so they can re-count">Unlock Store</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => { setUnlockModal({ batchId: b.id }); setUnlockStoreId(''); }} title="Reset a store's submission so they can re-count">Unlock Store</button>
                           <button className="btn btn-success btn-sm" onClick={() => handleBatchExport(b.id, b.inventoryDate)}>Excel</button>
                           <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>
                           <button className="btn btn-sm" onClick={() => handleSendEmailReminders(b.id)} disabled={emailReminding === b.id} title="Send email reminder to all pending store managers" style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)' }}>{emailReminding === b.id ? '…' : 'Email'}</button>

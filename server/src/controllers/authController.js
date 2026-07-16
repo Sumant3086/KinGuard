@@ -116,7 +116,7 @@ export async function login(req, res, next) {
       throw new AppError('This account is pending administrator approval. Please contact your admin.', 403);
     }
     if (!user.isActive) {
-      throw new AppError('This account is inactive. Contact your administrator', 401);
+      throw new AppError('This account has been deactivated. Contact your administrator.', 403);
     }
 
     // Issue access token as HttpOnly cookie

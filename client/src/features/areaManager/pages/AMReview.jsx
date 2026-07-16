@@ -46,11 +46,13 @@ export default function AMReview() {
 
   const openStore = useCallback(async (store) => {
     setSelected(store);
-    setLoadingRecs(true);
+    setRecords([]);        // clear stale records immediately so old store's data never shows
+    setReview(null);
     setEditedRecs({});
     setRemarks(store.reviewRemarks || '');
     setShowReturn(false);
     setReturnReason('');
+    setLoadingRecs(true);
     try {
       const { records: recs, review: rev } = await amApi.getStoreRecords(batchId, store.id);
       setRecords(recs);
@@ -102,6 +104,7 @@ export default function AMReview() {
       await amApi.returnStore(batchId, selected.id, { remarks: returnReason });
       toast.success(`${selected.storeName} sent back for recount`);
       setStores(prev => prev.map(s => s.id === selected.id ? { ...s, reviewStatus: 'RETURNED', reviewRemarks: returnReason } : s));
+      setSelected(prev => ({ ...prev, reviewStatus: 'RETURNED', allSubmitted: false }));
       setReview({ status: 'RETURNED', remarks: returnReason });
       setEditedRecs({});
       setRecords([]);
