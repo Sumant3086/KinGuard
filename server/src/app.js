@@ -120,8 +120,24 @@ if (IS_PROD) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const distPath = path.join(__dirname, '..', '..', 'client', 'dist');
   if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath, { maxAge: '1y', etag: true }));
+    // Serve hashed assets (JS/CSS/images) with 1-year cache — safe because
+    // Vite embeds content hashes in filenames so stale files are never loaded.
+    // index.html itself must NEVER be cached: it references the hashed filenames,
+    // and a stale index.html after a redeploy causes "MIME type text/html" errors
+    // when the browser tries to load old hashes that no longer exist on the server.
+    app.use(express.static(distPath, {
+      maxAge: '1y',
+      etag: true,
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        }
+      },
+    }));
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
