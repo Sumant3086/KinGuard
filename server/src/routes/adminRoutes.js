@@ -16,19 +16,14 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const ext = (file.originalname || '').toLowerCase().split('.').pop();
     const allowedExtensions = ['xlsx', 'xls', 'csv'];
-    // Only accept known spreadsheet/CSV MIME types.
-    // octet-stream and zip are intentionally excluded — too broad.
     const allowedMimes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'text/csv',
       'application/csv',
+      'application/octet-stream', // some browsers/OS combos send this for .xlsx
     ];
-    if (allowedExtensions.includes(ext) && (allowedMimes.includes(file.mimetype) || file.mimetype === 'application/octet-stream')) {
-      // Accept octet-stream only when the extension is already validated above.
-      // Some browsers/OS combos send octet-stream for .xlsx files.
-      cb(null, true);
-    } else if (allowedExtensions.includes(ext) || allowedMimes.includes(file.mimetype)) {
+    if (allowedExtensions.includes(ext) || allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new AppError(`Only .xlsx, .xls, and .csv files are allowed (got: ${file.mimetype})`, 400));
