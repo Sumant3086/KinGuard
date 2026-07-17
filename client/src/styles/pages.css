@@ -435,45 +435,81 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.15) !important;
-  border: 2px solid rgba(255,255,255,0.30) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 13px 18px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.10) !important;
+  border: 1.5px solid rgba(255,255,255,0.25) !important;
+  transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
+  cursor: default;
 }
 
+/* Shimmer sweep on hover */
 .lr-role::before {
   content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255,255,255,0.08);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  transform: translateX(-100%);
+  transition: transform 0.55s ease;
 }
+.lr-role:hover::before { transform: translateX(100%); }
 
-.lr-role:hover::before {
-  opacity: 1;
+.lr-role:hover { transform: translateX(6px); }
+
+/* ── Admin — deep orange ── */
+.lr-role-admin {
+  background: rgba(234,88,12,0.28) !important;
+  border: 1.5px solid rgba(249,115,22,0.60) !important;
+  border-left: 4px solid #f97316 !important;
+  box-shadow:
+    -4px 0 16px rgba(249,115,22,0.55),
+    0 4px 18px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,200,150,0.20) !important;
 }
-
-.lr-role:hover {
-  background: rgba(255,255,255,0.22) !important;
-  border-color: rgba(255,255,255,0.50) !important;
-  transform: translateX(4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+.lr-role-admin:hover {
+  background: rgba(234,88,12,0.40) !important;
+  box-shadow: -4px 0 22px rgba(249,115,22,0.70), 0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,200,150,0.25) !important;
 }
+.lr-role-admin svg { color: #fed7aa; }
 
-/* Per-role left-border color accents — must come after .lr-role to win the !important cascade */
-.lr-role-admin { border-left-color: rgba(255, 150, 150, 0.90) !important; border-left-width: 3px !important; }
-.lr-role-am    { border-left-color: rgba(147, 197, 253, 0.90) !important; border-left-width: 3px !important; }
-.lr-role-store { border-left-color: rgba(134, 239, 172, 0.90) !important; border-left-width: 3px !important; }
+/* ── Area Manager — amber ── */
+.lr-role-am {
+  background: rgba(180,110,0,0.26) !important;
+  border: 1.5px solid rgba(245,158,11,0.58) !important;
+  border-left: 4px solid #f59e0b !important;
+  box-shadow:
+    -4px 0 16px rgba(245,158,11,0.50),
+    0 4px 18px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,220,100,0.18) !important;
+}
+.lr-role-am:hover {
+  background: rgba(180,110,0,0.38) !important;
+  box-shadow: -4px 0 22px rgba(245,158,11,0.65), 0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,220,100,0.22) !important;
+}
+.lr-role-am svg { color: #fde68a; }
+
+/* ── Store Manager — warm gold ── */
+.lr-role-store {
+  background: rgba(161,120,0,0.24) !important;
+  border: 1.5px solid rgba(234,179,8,0.55) !important;
+  border-left: 4px solid #eab308 !important;
+  box-shadow:
+    -4px 0 16px rgba(234,179,8,0.45),
+    0 4px 18px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(254,240,138,0.18) !important;
+}
+.lr-role-store:hover {
+  background: rgba(161,120,0,0.36) !important;
+  box-shadow: -4px 0 22px rgba(234,179,8,0.60), 0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(254,240,138,0.22) !important;
+}
+.lr-role-store svg { color: #fef08a; }
 
 .lr-role-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: #ffffff !important;
-  font-weight: 700;
-  letter-spacing: 0.2px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
   text-align: center;
   text-shadow: 0 1px 6px rgba(0,0,0,0.30);
 }
