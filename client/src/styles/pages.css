@@ -463,44 +463,44 @@
 }
 .lr-role:hover::before { transform: translateX(100%); }
 
-/* ── Admin — orange ── */
+/* ── Admin — pure white (authority, clarity) ── */
 .lr-role-admin {
-  border-left: 5px solid #f97316 !important;
-  border-color: rgba(249,115,22,0.45) !important;
-  box-shadow: -4px 0 22px rgba(249,115,22,0.65), 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,200,150,0.12) !important;
+  border-left: 5px solid #ffffff !important;
+  border-color: rgba(255,255,255,0.30) !important;
+  box-shadow: -4px 0 22px rgba(255,255,255,0.55), 0 4px 16px rgba(0,0,0,0.28) !important;
 }
 .lr-role-admin:hover {
-  border-left-color: #fb923c !important;
-  box-shadow: -5px 0 30px rgba(249,115,22,0.85), 0 6px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,200,150,0.18) !important;
+  background: rgba(255,255,255,0.18) !important;
+  box-shadow: -5px 0 30px rgba(255,255,255,0.75), 0 6px 20px rgba(0,0,0,0.32) !important;
 }
-.lr-role-admin svg { color: #f97316 !important; width: 20px !important; height: 20px !important; }
-.lr-role-admin .lr-role-desc { color: #fed7aa !important; }
+.lr-role-admin svg { color: #ffffff !important; width: 20px !important; height: 20px !important; }
+.lr-role-admin .lr-role-desc { color: #ffffff !important; }
 
-/* ── Area Manager — amber ── */
+/* ── Area Manager — vivid rose pink, warm identity ── */
 .lr-role-am {
-  border-left: 5px solid #f59e0b !important;
-  border-color: rgba(245,158,11,0.42) !important;
-  box-shadow: -4px 0 22px rgba(245,158,11,0.60), 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,220,100,0.10) !important;
+  border-left: 5px solid #fb7185 !important;
+  border-color: rgba(251,113,133,0.38) !important;
+  box-shadow: -4px 0 22px rgba(251,113,133,0.60), 0 4px 16px rgba(0,0,0,0.28) !important;
 }
 .lr-role-am:hover {
-  border-left-color: #fbbf24 !important;
-  box-shadow: -5px 0 30px rgba(245,158,11,0.80), 0 6px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,220,100,0.16) !important;
+  background: rgba(251,113,133,0.18) !important;
+  box-shadow: -5px 0 30px rgba(251,113,133,0.80), 0 6px 20px rgba(0,0,0,0.32) !important;
 }
-.lr-role-am svg { color: #f59e0b !important; width: 20px !important; height: 20px !important; }
-.lr-role-am .lr-role-desc { color: #fde68a !important; }
+.lr-role-am svg { color: #fda4af !important; width: 20px !important; height: 20px !important; }
+.lr-role-am .lr-role-desc { color: #fecdd3 !important; }
 
-/* ── Store Manager — gold ── */
+/* ── Store Manager — fresh green, connects with store produce ── */
 .lr-role-store {
-  border-left: 5px solid #eab308 !important;
-  border-color: rgba(234,179,8,0.38) !important;
-  box-shadow: -4px 0 22px rgba(234,179,8,0.55), 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,240,100,0.10) !important;
+  border-left: 5px solid #4ade80 !important;
+  border-color: rgba(74,222,128,0.36) !important;
+  box-shadow: -4px 0 22px rgba(74,222,128,0.50), 0 4px 16px rgba(0,0,0,0.28) !important;
 }
 .lr-role-store:hover {
-  border-left-color: #facc15 !important;
-  box-shadow: -5px 0 30px rgba(234,179,8,0.75), 0 6px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,240,100,0.15) !important;
+  background: rgba(74,222,128,0.16) !important;
+  box-shadow: -5px 0 30px rgba(74,222,128,0.70), 0 6px 20px rgba(0,0,0,0.32) !important;
 }
-.lr-role-store svg { color: #eab308 !important; width: 20px !important; height: 20px !important; }
-.lr-role-store .lr-role-desc { color: #fef08a !important; }
+.lr-role-store svg { color: #86efac !important; width: 20px !important; height: 20px !important; }
+.lr-role-store .lr-role-desc { color: #bbf7d0 !important; }
 
 /* Role label — bright white, larger */
 .lr-role-desc {
