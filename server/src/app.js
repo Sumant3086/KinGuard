@@ -30,10 +30,12 @@ app.use(
     origin: (origin, callback) => {
       // Dev: allow all origins (Vite proxy, curl, Postman, etc.)
       if (!IS_PROD) return callback(null, true);
-      // Prod: deny no-origin requests and restrict to configured origins
-      if (!origin) return callback(null, false);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error('Not allowed by CORS'));
+      // Same-origin requests from the browser carry no Origin header — allow them.
+      if (!origin) return callback(null, true);
+      // Prod: only configured CLIENT_URL origins get CORS headers.
+      // callback(null, false) means no CORS headers set; the browser enforces
+      // the rejection client-side. Using new Error() here would cause a 500.
+      callback(null, allowedOrigins.includes(origin));
     },
     credentials: true,
   })

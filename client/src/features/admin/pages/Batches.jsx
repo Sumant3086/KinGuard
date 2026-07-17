@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
@@ -28,9 +28,6 @@ const CycleIcon = (
 export default function Batches() {
   const toast = useToast();
   const { download: downloadFile } = useDownload();
-  const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
-
   const [batches, setBatches]   = useState([]);
   const [stores, setStores]     = useState([]);
   const [loading, setLoading]   = useState(true);

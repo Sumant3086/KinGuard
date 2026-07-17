@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
@@ -18,9 +18,6 @@ const MAX_STORES_PER_AM = 5;
 
 export default function Stores() {
   const toast = useToast();
-  const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
-
   const [tab, setTab]            = useState('stores'); // 'stores' | 'assignments'
   const [stores, setStores]      = useState([]);
   const [loading, setLoading]    = useState(true);
