@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import logoImg from '../../../assets/img/logo 32px32px.png';
 import NotificationBell from '../../../shared/components/NotificationBell';
@@ -20,7 +20,8 @@ const NAV = [
 
 export default function AMLayout({ children }) {
   const { user, logout } = useAuth();
-  const location = useLocation();
+  const location  = useLocation();
+  const navigate  = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = p => location.pathname === p || location.pathname.startsWith(p + '/');
@@ -54,7 +55,7 @@ export default function AMLayout({ children }) {
 
         <div className="hl-right">
           <NotificationBell fetcher={getNotifications} role="AREA_MANAGER" />
-          <div className="hl-avatar">{initials}</div>
+          <button className="hl-avatar" onClick={() => navigate('/profile')} title="My Profile" style={{ cursor: 'pointer', border: 'none', background: 'none', padding: 0 }}>{initials}</button>
           <div className="hl-user-info">
             <span className="hl-emp">{user?.employeeId}</span>
             <span className="hl-role">Area Manager</span>

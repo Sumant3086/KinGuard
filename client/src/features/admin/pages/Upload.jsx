@@ -502,6 +502,19 @@ export default function Upload() {
         cancelText="Cancel"
         type="info"
       />
+
+      {/* ── Quick link to full cycle management ── */}
+      <div style={{ marginTop: 32, padding: '16px 20px', background: 'var(--surface-2)', borderRadius: 'var(--r)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--tx1)' }}>Manage All Cycles</div>
+          <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
+            Set deadlines, extend submissions, unlock stores, export data, or delete a cycle.
+          </div>
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/admin/batches')}>
+          Go to Cycles →
+        </button>
+      </div>
     </AdminLayout>
   );
 }

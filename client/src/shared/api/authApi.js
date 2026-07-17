@@ -20,3 +20,8 @@ export async function changePassword(currentPassword, newPassword) {
   const { data } = await client.post('/auth/change-password', { currentPassword, newPassword });
   return data;
 }
+
+export async function updateProfile(fields) {
+  const { data } = await client.patch('/auth/profile', fields);
+  return data;
+}

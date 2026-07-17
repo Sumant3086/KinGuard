@@ -62,10 +62,12 @@ const EmptyIcon = (
 export default function AuditLogs() {
   const toast = useToast();
   const { downloading, download } = useDownload();
-  const [limit,    setLimit]    = useState(100);
-  const [logs,     setLogs]     = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [expanded, setExpanded] = useState(new Set());
+  const [limit,       setLimit]      = useState(100);
+  const [logs,        setLogs]       = useState([]);
+  const [loading,     setLoading]    = useState(true);
+  const [expanded,    setExpanded]   = useState(new Set());
+  const [searchUser,  setSearchUser] = useState('');
+  const [searchStore, setSearchStore] = useState('');
 
   useEffect(() => {
     let live = true;
@@ -110,17 +112,54 @@ export default function AuditLogs() {
         actions={<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>{limitSelect}<button onClick={handleExport} disabled={downloading} className="btn btn-success">↓ Export Excel</button></div>}
       />
 
+      {/* ── Search filters ── */}
+      {!loading && logs.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div className="search-wrap" style={{ flex: '1 1 180px', maxWidth: 240 }}>
+            <svg className="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" className="search-input" placeholder="Filter by employee ID or name…" value={searchUser} onChange={e => setSearchUser(e.target.value)} />
+          </div>
+          <div className="search-wrap" style={{ flex: '1 1 160px', maxWidth: 200 }}>
+            <svg className="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" className="search-input" placeholder="Filter by entity / store…" value={searchStore} onChange={e => setSearchStore(e.target.value)} />
+          </div>
+          {(searchUser || searchStore) && (
+            <button className="btn btn-ghost btn-sm" onClick={() => { setSearchUser(''); setSearchStore(''); }}>Clear</button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <SkeletonTable rows={8} cols={5} />
       ) : logs.length === 0 ? (
         <div className="card">
           <EmptyState icon={EmptyIcon} title="No Activity Found" description="No log entries found for the selected limit." />
         </div>
-      ) : (
+      ) : (() => {
+        const uq = searchUser.trim().toLowerCase();
+        const sq = searchStore.trim().toLowerCase();
+        const filteredLogs = logs.filter(log => {
+          if (uq) {
+            const byUser = log.user?.employeeId?.toLowerCase().includes(uq) || log.user?.name?.toLowerCase().includes(uq);
+            if (!byUser) return false;
+          }
+          if (sq) {
+            const meta = JSON.stringify(log.metadata ?? '').toLowerCase();
+            const entity = (log.entityType ?? '').toLowerCase();
+            if (!meta.includes(sq) && !entity.includes(sq)) return false;
+          }
+          return true;
+        });
+        return (
         <div className="card" style={{ padding: 0 }}>
+          {(uq || sq) && <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--tx3)', borderBottom: '1px solid var(--red-border)' }}>{filteredLogs.length} result{filteredLogs.length !== 1 ? 's' : ''}</div>}
           {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
           <div className="audit-cards" style={{ padding: 12 }}>
-            {logs.map(log => {
+            {filteredLogs.map(log => {
               const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
               const isExpanded  = expanded.has(log.id);
               return (
@@ -169,7 +208,7 @@ export default function AuditLogs() {
                 </tr>
               </thead>
               <tbody>
-                {logs.map(log => {
+                {filteredLogs.map(log => {
                   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
                   const isExpanded  = expanded.has(log.id);
                   return (
@@ -212,10 +251,11 @@ export default function AuditLogs() {
             </table>
           </div>
           <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--t3)', background: 'var(--surface-2)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Showing {logs.length} entries{logs.some(l => l.metadata && Object.keys(l.metadata).length > 0) ? ' · Click ▶ to expand details' : ''}</span>
+            <span>Showing {filteredLogs.length} of {logs.length} entries{logs.some(l => l.metadata && Object.keys(l.metadata).length > 0) ? ' · Click ▶ to expand details' : ''}</span>
           </div>
         </div>
-      )}
+        );
+      })()}
     </AdminLayout>
   );
 }

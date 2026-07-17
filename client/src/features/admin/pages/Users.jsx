@@ -218,6 +218,7 @@ export default function AdminUsers() {
   const [loading, setLoading]   = useState(true);
   const [loadError, setLoadError] = useState('');
   const [tab, setTab]           = useState('all'); // all | pending | active | inactive
+  const [userSearch, setUserSearch] = useState('');
 
   // Single-user CRUD
   const [showModal, setShowModal]   = useState(false);
@@ -300,15 +301,25 @@ export default function AdminUsers() {
     }
   }
 
-  // ── Tab filtering — memoised so re-renders from modal/checkbox don't recompute ──
+  // ── Tab + search filtering — memoised so re-renders from modal/checkbox don't recompute ──
   const { pendingUsers, activeUsers, inactiveUsers, visibleUsers, adminCount } = useMemo(() => {
     const pending  = users.filter(u => u.pendingApproval);
     const active   = users.filter(u => u.isActive);
     const inactive = users.filter(u => !u.isActive && !u.pendingApproval);
-    const visible  = tab === 'pending' ? pending : tab === 'active' ? active : tab === 'inactive' ? inactive : users;
+    const tabList  = tab === 'pending' ? pending : tab === 'active' ? active : tab === 'inactive' ? inactive : users;
+    const q = userSearch.trim().toLowerCase();
+    const visible  = q
+      ? tabList.filter(u =>
+          u.name.toLowerCase().includes(q) ||
+          u.employeeId.toLowerCase().includes(q) ||
+          (u.store?.storeCode?.toLowerCase().includes(q)) ||
+          (u.store?.storeName?.toLowerCase().includes(q)) ||
+          (u.email?.toLowerCase().includes(q))
+        )
+      : tabList;
     const admins   = users.filter(u => u.role === 'ADMIN' && u.isActive).length;
     return { pendingUsers: pending, activeUsers: active, inactiveUsers: inactive, visibleUsers: visible, adminCount: admins };
-  }, [users, tab]);
+  }, [users, tab, userSearch]);
 
   // ── Selection helpers ────────────────────────────────────────────
   const toggleSelect = useCallback((id, checked) => {
@@ -642,22 +653,41 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {/* ── Tabs ── */}
-      <div className="tab-bar">
-        {[
-          { key: 'all',      label: `All (${users.length})` },
-          { key: 'pending',  label: `Pending (${pendingUsers.length})`, warn: pendingUsers.length > 0 },
-          { key: 'active',   label: `Active (${activeUsers.length})` },
-          { key: 'inactive', label: `Inactive (${inactiveUsers.length})` },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`tab-btn${tab === t.key ? ' active' : ''}${t.warn ? ' warn' : ''}`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* ── Tabs + Search ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div className="tab-bar" style={{ margin: 0, flex: '0 0 auto' }}>
+          {[
+            { key: 'all',      label: `All (${users.length})` },
+            { key: 'pending',  label: `Pending (${pendingUsers.length})`, warn: pendingUsers.length > 0 },
+            { key: 'active',   label: `Active (${activeUsers.length})` },
+            { key: 'inactive', label: `Inactive (${inactiveUsers.length})` },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`tab-btn${tab === t.key ? ' active' : ''}${t.warn ? ' warn' : ''}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="search-wrap" style={{ flex: '1 1 200px', maxWidth: 280 }}>
+          <svg className="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search by name, ID, store…"
+            value={userSearch}
+            onChange={e => setUserSearch(e.target.value)}
+          />
+        </div>
+        {userSearch && (
+          <span style={{ fontSize: 12, color: 'var(--tx3)' }}>
+            {visibleUsers.length} result{visibleUsers.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
       {/* ── Bulk action bar (shows whenever any users are selected) ── */}

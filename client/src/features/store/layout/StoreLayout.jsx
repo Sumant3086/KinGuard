@@ -50,7 +50,9 @@ export default function StoreLayout({ children }) {
             <Link to="/store/inventory" className={`store-nav-link ${isActive('/store/inventory') ? 'active' : ''}`}>
               Inventory Count
             </Link>
-            <span className="store-nav-user">{user?.name}</span>
+            <Link to="/profile" className="store-nav-user" style={{ textDecoration: 'none' }} title="My Profile">
+              {user?.name}
+            </Link>
             <NotificationBell fetcher={getNotifications} role="STORE_MANAGER" />
             <button className="btn-signout" onClick={logout}>Sign Out</button>
           </nav>

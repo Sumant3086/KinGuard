@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
 import { LoadingText } from '../../../shared/components/ui/LoadingCard';
@@ -169,6 +169,65 @@ const NetworkBar = memo(function NetworkBar({ submitted, total, overdueCount }) 
     </div>
   );
 });
+
+/* ── Setup checklist shown when the database is completely empty ── */
+function SetupChecklist({ totalStores }) {
+  const steps = [
+    {
+      n: 1,
+      done: totalStores > 0,
+      title: 'Create Stores',
+      desc: 'Add your plant/store locations so inventory cycles can be assigned to them.',
+      link: '/admin/stores',
+      cta: 'Go to Stores',
+    },
+    {
+      n: 2,
+      done: false,
+      title: 'Upload a Master File',
+      desc: 'Upload an Excel or CSV file with your item list to create the first inventory cycle.',
+      link: '/admin/upload',
+      cta: 'Upload File',
+    },
+    {
+      n: 3,
+      done: false,
+      title: 'Approve Store Managers',
+      desc: 'Auto-created manager accounts appear in Users → Pending. Approve them so they can log in and count.',
+      link: '/admin/users',
+      cta: 'Review Users',
+    },
+  ];
+  return (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Getting Started
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 500 }}>Complete these steps to set up your network</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {steps.map(s => (
+          <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', borderRadius: 'var(--r)', border: `1px solid ${s.done ? 'rgba(22,163,74,0.25)' : 'var(--red-border)'}`, background: s.done ? 'rgba(22,163,74,0.04)' : 'rgba(255,248,245,0.7)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: s.done ? 'rgba(22,163,74,0.15)' : 'rgba(185,28,28,0.10)', color: s.done ? '#16a34a' : 'var(--red)', fontWeight: 800, fontSize: 13 }}>
+              {s.done ? '✓' : s.n}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: s.done ? '#15803d' : 'var(--tx1)', marginBottom: 2 }}>{s.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', lineHeight: 1.5 }}>{s.desc}</div>
+            </div>
+            {!s.done && (
+              <Link to={s.link} className="btn btn-sm btn-primary" style={{ flexShrink: 0, whiteSpace: 'nowrap', alignSelf: 'center' }}>
+                {s.cta} →
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const LOAD_TIMEOUT_MS = 20_000; // show error state after 20 s — never hang forever
 
@@ -484,6 +543,9 @@ function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
         </div>
       </div>
 
+      {/* ── Setup checklist (only when no batch data yet) ── */}
+      {!cb && <SetupChecklist totalStores={totalStores} />}
+
       {/* ── AM Review Pipeline ── */}
       <AMPipelineCard pipeline={amReviewPipeline} />
 
@@ -502,15 +564,7 @@ function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
         </div>
 
         {storeScorecard.length === 0 ? (
-          <div className="empty-state" style={{ minHeight: 160 }}>
-            <div className="empty-state-illustration">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="3" width="7" height="7"/>
-                <rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/>
-                <rect x="3" y="14" width="7" height="7"/>
-              </svg>
-            </div>
+          <div className="empty-state" style={{ minHeight: 120 }}>
             <h4 className="empty-state-title">No Active Inventory Cycle</h4>
             <p className="empty-state-description">Upload a master file to create an inventory cycle for this network.</p>
           </div>
@@ -560,6 +614,7 @@ function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
                 <thead>
                   <tr>
                     <th scope="col">Store</th>
+                    <th scope="col">Area Manager</th>
                     <th scope="col">Risk</th>
                     <th scope="col">Shortage Rate</th>
                     <th scope="col">Shortages</th>
@@ -576,6 +631,9 @@ function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
                       <td>
                         <div className="score-store-name">{store.storeName}</div>
                         <div className="score-store-code">{store.storeCode || store.storeId}</div>
+                      </td>
+                      <td style={{ fontSize: 12, color: store.areaManagerName ? 'var(--tx2)' : 'var(--tx4)', fontStyle: store.areaManagerName ? 'normal' : 'italic' }}>
+                        {store.areaManagerName ?? '—'}
                       </td>
                       <td><RiskTag level={store.riskLevel} /></td>
                       <td style={{ minWidth: 130 }}><ShortageBar rate={store.shortageRate} /></td>
