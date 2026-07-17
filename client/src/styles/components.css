@@ -2405,7 +2405,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
    Dominant tones: deep mahogany red · warm amber gold · crisp white
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── AM cards — warm ivory glass with mahogany borders ─────────── */
+/* ─── AM cards — clean white glass with crimson accents ─────────── */
 .am-shell .card,
 .am-shell .page-header,
 .am-shell .page-header-root,
@@ -2413,23 +2413,21 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .am-shell .filter-card,
 .am-shell .table-wrap,
 .am-shell .table-container {
-  background: linear-gradient(135deg,
-    rgba(255, 250, 244, 0.95) 0%,
-    rgba(255, 245, 235, 0.93) 100%) !important;
-  backdrop-filter: blur(32px) saturate(185%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(185%) !important;
-  border: 1.5px solid rgba(107, 21, 3, 0.18) !important;
-  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+  border: 1.5px solid rgba(185, 28, 28, 0.15) !important;
+  border-radius: 16px !important;
   box-shadow:
-    0 8px 32px rgba(59, 15, 2, 0.16),
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+    0 6px 28px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
   position: relative;
   overflow: hidden;
-  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.24s ease;
 }
 
-/* Gold accent top-line on each card */
+/* Crimson accent top-line — ties each card to the brand */
 .am-shell .card::before,
 .am-shell .page-header::before,
 .am-shell .page-header-root::before,
@@ -2438,20 +2436,16 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 3px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(245, 158, 11, 0.80) 30%,
-    rgba(220, 38, 38, 0.70) 60%,
-    transparent 100%);
-  border-radius: 18px 18px 0 0;
+  background: linear-gradient(90deg, transparent 0%, #b91c1c 30%, #dc2626 60%, transparent 100%);
+  border-radius: 16px 16px 0 0;
 }
 
 .am-shell .card:hover {
-  border-color: rgba(107, 21, 3, 0.30) !important;
+  border-color: rgba(185, 28, 28, 0.28) !important;
   box-shadow:
-    0 12px 48px rgba(59, 15, 2, 0.22),
-    0 4px 14px rgba(0, 0, 0, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+    0 10px 40px rgba(0, 0, 0, 0.16),
+    0 3px 12px rgba(185, 28, 28, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
   transform: translateY(-2px);
 }
 
@@ -2461,129 +2455,128 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .am-shell .card-title,
 .am-shell .card h3,
 .am-shell .dash-cmd-title {
-  color: #6b1503 !important;
-  -webkit-text-fill-color: #6b1503 !important;
+  color: #991b1b !important;
+  -webkit-text-fill-color: #991b1b !important;
   background: none !important;
   font-weight: 900 !important;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important;
+  text-shadow: none !important;
 }
 
 .am-shell .page-header p,
 .am-shell .page-header-text p,
 .am-shell .dash-cmd-sub {
-  color: #92400e !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 1px rgba(255,255,255,0.6) !important;
+  color: #6b7280 !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
 }
 
-/* ─── AM KPI cards — amber glass ────────────────────────────────── */
+/* ─── AM KPI cards — clean white with crimson left bar ──────────── */
 .am-shell .kpi-card,
 .am-shell .stat-card {
-  background: linear-gradient(135deg,
-    rgba(255, 248, 230, 0.92) 0%,
-    rgba(255, 243, 215, 0.90) 100%) !important;
-  backdrop-filter: blur(28px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
-  border: 2px solid rgba(107, 21, 3, 0.18) !important;
-  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1.5px solid rgba(185, 28, 28, 0.14) !important;
+  border-radius: 16px !important;
   box-shadow:
-    0 6px 24px rgba(59, 15, 2, 0.14),
-    0 2px 8px rgba(0, 0, 0, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
-  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    0 4px 20px rgba(0, 0, 0, 0.10),
+    0 1px 6px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+  transition: all 0.24s ease;
   position: relative;
   overflow: hidden;
 }
 
-/* Amber-to-mahogany left accent bar */
+/* Crimson left accent bar */
 .am-shell .kpi-card::after {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 4px;
-  background: linear-gradient(180deg, #f59e0b 0%, #dc2626 60%, #6b1503 100%);
-  border-radius: 18px 0 0 18px;
+  background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%);
+  border-radius: 16px 0 0 16px;
 }
 
 .am-shell .kpi-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(107, 21, 3, 0.30) !important;
+  border-color: rgba(185, 28, 28, 0.28) !important;
   box-shadow:
-    0 10px 40px rgba(59, 15, 2, 0.20),
-    0 4px 12px rgba(0, 0, 0, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+    0 8px 32px rgba(0, 0, 0, 0.14),
+    0 3px 10px rgba(185, 28, 28, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
 }
 
-.am-shell .kpi-label { color: #6b1503 !important; font-weight: 900 !important; text-shadow: none !important; }
-.am-shell .kpi-value { color: #3b0f02 !important; text-shadow: none !important; }
-.am-shell .kpi-sub   { color: #92400e !important; font-weight: 600 !important; text-shadow: none !important; }
+.am-shell .kpi-label { color: #374151 !important; font-weight: 800 !important; text-shadow: none !important; }
+.am-shell .kpi-value { color: #111827 !important; text-shadow: none !important; }
+.am-shell .kpi-sub   { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
 
-/* KPI icon — amber ring */
+/* KPI icon — light red ring */
 .am-shell .kpi-icon {
-  background: linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(220,38,38,0.10) 100%) !important;
-  border: 1.5px solid rgba(245,158,11,0.30) !important;
+  background: rgba(254, 242, 242, 0.90) !important;
+  border: 1.5px solid rgba(220, 38, 38, 0.22) !important;
   border-radius: 12px !important;
   width: 46px !important; height: 46px !important;
   margin-bottom: 14px;
   transition: transform 0.22s, box-shadow 0.22s;
 }
 .am-shell .kpi-card:hover .kpi-icon {
-  transform: scale(1.10) rotate(4deg);
-  box-shadow: 0 4px 14px rgba(245,158,11,0.25) !important;
+  transform: scale(1.08) rotate(4deg);
+  box-shadow: 0 4px 14px rgba(220,38,38,0.20) !important;
 }
-.am-shell .kpi-icon svg { color: #b45309 !important; }
+.am-shell .kpi-icon svg { color: #dc2626 !important; }
 
 /* ─── AM tables ──────────────────────────────────────────────────── */
 .am-shell th {
-  background: rgba(255, 244, 220, 0.95) !important;
-  color: #3b0f02 !important;
-  border-bottom: 1.5px solid rgba(107, 21, 3, 0.20) !important;
-  font-weight: 900 !important;
+  background: rgba(254, 242, 242, 0.90) !important;
+  color: #7f1d1d !important;
+  border-bottom: 1.5px solid rgba(185, 28, 28, 0.18) !important;
+  font-weight: 800 !important;
 }
 .am-shell td {
-  color: #2d0a06 !important;
-  font-weight: 600 !important;
-  border-bottom: 1px solid rgba(107, 21, 3, 0.08) !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid rgba(185, 28, 28, 0.07) !important;
 }
-.am-shell tbody tr:hover td { background: rgba(255, 243, 205, 0.80) !important; }
+.am-shell tbody tr:hover td { background: rgba(254, 242, 242, 0.60) !important; }
 
 /* ─── AM buttons ─────────────────────────────────────────────────── */
 .am-shell .btn-primary {
-  background: linear-gradient(135deg, #dc2626 0%, #6b1503 100%) !important;
-  box-shadow: 0 4px 16px rgba(107,21,3,0.38) !important;
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
+  box-shadow: 0 4px 16px rgba(220,38,38,0.35) !important;
 }
 .am-shell .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #b91c1c 0%, #3b0f02 100%) !important;
-  box-shadow: 0 6px 22px rgba(107,21,3,0.48) !important;
+  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%) !important;
+  box-shadow: 0 6px 22px rgba(185,28,28,0.45) !important;
 }
 .am-shell .btn-secondary, .am-shell .btn-ghost {
-  background: rgba(255, 250, 244, 0.88) !important;
-  border: 1.5px solid rgba(107, 21, 3, 0.22) !important;
-  color: #3b0f02 !important;
+  background: rgba(255, 255, 255, 0.90) !important;
+  border: 1.5px solid rgba(185, 28, 28, 0.20) !important;
+  color: #7f1d1d !important;
   font-weight: 700 !important;
 }
 .am-shell .btn-secondary:hover:not(:disabled), .am-shell .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 248, 235, 0.98) !important;
-  border-color: rgba(107, 21, 3, 0.38) !important;
+  background: #ffffff !important;
+  border-color: rgba(185, 28, 28, 0.36) !important;
+  color: #991b1b !important;
 }
 .am-shell .btn-success {
   background: linear-gradient(135deg, #15803d 0%, #14532d 100%) !important;
-  box-shadow: 0 4px 16px rgba(22,163,74,0.32) !important;
+  box-shadow: 0 4px 16px rgba(22,163,74,0.30) !important;
 }
 
-/* ─── AM mobile cards ────────────────────────────────────────────── */
+/* ─── AM mobile cards (batch list) ──────────────────────────────── */
 .am-shell .batch-card {
-  background: linear-gradient(135deg, rgba(255,250,244,0.97) 0%, rgba(255,245,235,0.95) 100%) !important;
-  border: 1.5px solid rgba(107,21,3,0.18) !important;
-  box-shadow: 0 3px 16px rgba(59,15,2,0.10), inset 0 1px 0 rgba(255,255,255,0.80) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1.5px solid rgba(185,28,28,0.16) !important;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.85) !important;
 }
 
 /* ─── AM empty state ─────────────────────────────────────────────── */
 .am-shell .empty-state {
-  background: rgba(255, 250, 244, 0.97) !important;
-  border: 1px solid rgba(107,21,3,0.14) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(185,28,28,0.14) !important;
   border-radius: 16px !important;
-  box-shadow: 0 4px 24px rgba(59,15,2,0.10) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
 }
 
 /* ─── AM review grid responsive layout ──────────────────────────── */
@@ -2593,19 +2586,10 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   align-items: start;
 }
 @media (max-width: 768px) {
-  .am-review-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .am-review-store-panel {
-    max-height: 240px;
-    overflow-y: auto;
-  }
+  .am-review-grid { grid-template-columns: 1fr !important; }
+  .am-review-store-panel { max-height: 220px; overflow-y: auto; }
 }
 @media (min-width: 769px) {
-  .am-review-grid.has-selection {
-    grid-template-columns: min(280px, 30%) 1fr;
-  }
-  .am-review-grid.no-selection {
-    grid-template-columns: 1fr;
-  }
+  .am-review-grid.has-selection  { grid-template-columns: min(260px, 28%) 1fr; }
+  .am-review-grid.no-selection   { grid-template-columns: 1fr; }
 }

@@ -100,6 +100,26 @@ export default function AMLayout({ children }) {
         {children}
         <div className="dev-credit"><span>Developed by Sumant Yadav</span></div>
       </main>
+
+      {/* ── Mobile bottom nav (phones ≤768px) ── */}
+      <nav className="am-bottom-nav" aria-label="Mobile navigation">
+        <div className="am-bottom-nav-inner">
+          {NAV.map(item => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`am-mob-item${isActive(item.to) ? ' active' : ''}`}
+            >
+              <span style={{ lineHeight: 0 }}>{Icons[item.icon]}</span>
+              {item.label === 'Dashboard' ? 'Dashboard' : 'Review'}
+            </Link>
+          ))}
+          <button className="am-mob-logout" onClick={logout}>
+            {Icons.logout}
+            Sign Out
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
