@@ -509,21 +509,32 @@
   color: #991b1b !important;
 }
 
-/* ── Developer credit — small subtle footnote ────────────────────── */
+/* ── Developer credit — crimson shimmer, consistent across all layouts ── */
+@keyframes dev-credit-shine {
+  0%   { background-position: 200% center; }
+  100% { background-position:   0% center; }
+}
 .dev-credit,
 .dev-credit-store {
   text-align: center;
-  padding: 8px 0 12px;
+  padding: 10px 0 14px;
   margin-top: 32px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: rgba(100, 50, 40, 0.45);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
   user-select: none;
 }
 .dev-credit span,
 .dev-credit-store span {
-  color: inherit;
+  background: linear-gradient(90deg,
+    #b91c1c 0%, #ef4444 25%, #fca5a5 50%, #ef4444 75%, #b91c1c 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: dev-credit-shine 4s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(220,38,38,0.45)) drop-shadow(0 0 14px rgba(220,38,38,0.22));
 }
 
 /* ── Store mobile bottom nav ─────────────────────────────────────── */
