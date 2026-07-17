@@ -426,86 +426,89 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 10px;
   margin-top: 0;
   width: 100%;
 }
 
+/* Base button — dark glass, clearly visible on the red panel */
 .lr-role {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 13px 18px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.10) !important;
-  border: 1.5px solid rgba(255,255,255,0.25) !important;
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-  cursor: default;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 13px 16px !important;
+  border-radius: 14px !important;
+  background: rgba(0,0,0,0.28) !important;
+  border: 1.5px solid rgba(255,255,255,0.18) !important;
+  transition: all 0.22s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+  cursor: default !important;
+  gap: 12px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+}
+.lr-role:hover {
+  background: rgba(0,0,0,0.38) !important;
+  transform: translateX(5px) !important;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.14) !important;
 }
 
-/* Shimmer sweep on hover */
+/* Shimmer on hover */
 .lr-role::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
   transform: translateX(-100%);
   transition: transform 0.55s ease;
 }
 .lr-role:hover::before { transform: translateX(100%); }
 
-.lr-role:hover { transform: translateX(6px); }
-
-/* ── Admin — vivid orange left bar, clean glass ── */
+/* ── Admin — orange ── */
 .lr-role-admin {
-  background: rgba(255,255,255,0.12) !important;
-  border: 1px solid rgba(249,115,22,0.45) !important;
-  border-left: 4px solid #f97316 !important;
-  box-shadow: -3px 0 18px rgba(249,115,22,0.60), 0 3px 14px rgba(0,0,0,0.18) !important;
+  border-left: 5px solid #f97316 !important;
+  border-color: rgba(249,115,22,0.45) !important;
+  box-shadow: -4px 0 22px rgba(249,115,22,0.65), 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,200,150,0.12) !important;
 }
 .lr-role-admin:hover {
-  background: rgba(249,115,22,0.20) !important;
-  box-shadow: -4px 0 26px rgba(249,115,22,0.80), 0 6px 20px rgba(0,0,0,0.22) !important;
+  border-left-color: #fb923c !important;
+  box-shadow: -5px 0 30px rgba(249,115,22,0.85), 0 6px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,200,150,0.18) !important;
 }
-.lr-role-admin svg { color: #fdba74; }
+.lr-role-admin svg { color: #f97316 !important; width: 20px !important; height: 20px !important; }
 .lr-role-admin .lr-role-desc { color: #fed7aa !important; }
 
-/* ── Area Manager — vivid amber left bar ── */
+/* ── Area Manager — amber ── */
 .lr-role-am {
-  background: rgba(255,255,255,0.10) !important;
-  border: 1px solid rgba(245,158,11,0.42) !important;
-  border-left: 4px solid #f59e0b !important;
-  box-shadow: -3px 0 18px rgba(245,158,11,0.55), 0 3px 14px rgba(0,0,0,0.18) !important;
+  border-left: 5px solid #f59e0b !important;
+  border-color: rgba(245,158,11,0.42) !important;
+  box-shadow: -4px 0 22px rgba(245,158,11,0.60), 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,220,100,0.10) !important;
 }
 .lr-role-am:hover {
-  background: rgba(245,158,11,0.18) !important;
-  box-shadow: -4px 0 26px rgba(245,158,11,0.75), 0 6px 20px rgba(0,0,0,0.22) !important;
+  border-left-color: #fbbf24 !important;
+  box-shadow: -5px 0 30px rgba(245,158,11,0.80), 0 6px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,220,100,0.16) !important;
 }
-.lr-role-am svg { color: #fcd34d; }
+.lr-role-am svg { color: #f59e0b !important; width: 20px !important; height: 20px !important; }
 .lr-role-am .lr-role-desc { color: #fde68a !important; }
 
-/* ── Store Manager — vivid gold left bar ── */
+/* ── Store Manager — gold ── */
 .lr-role-store {
-  background: rgba(255,255,255,0.08) !important;
-  border: 1px solid rgba(234,179,8,0.40) !important;
-  border-left: 4px solid #eab308 !important;
-  box-shadow: -3px 0 18px rgba(234,179,8,0.50), 0 3px 14px rgba(0,0,0,0.18) !important;
+  border-left: 5px solid #eab308 !important;
+  border-color: rgba(234,179,8,0.38) !important;
+  box-shadow: -4px 0 22px rgba(234,179,8,0.55), 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,240,100,0.10) !important;
 }
 .lr-role-store:hover {
-  background: rgba(234,179,8,0.16) !important;
-  box-shadow: -4px 0 26px rgba(234,179,8,0.70), 0 6px 20px rgba(0,0,0,0.22) !important;
+  border-left-color: #facc15 !important;
+  box-shadow: -5px 0 30px rgba(234,179,8,0.75), 0 6px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,240,100,0.15) !important;
 }
-.lr-role-store svg { color: #fef08a; }
-.lr-role-store .lr-role-desc { color: #fef9c3 !important; }
+.lr-role-store svg { color: #eab308 !important; width: 20px !important; height: 20px !important; }
+.lr-role-store .lr-role-desc { color: #fef08a !important; }
 
+/* Role label — bright white, larger */
 .lr-role-desc {
-  font-size: 14px;
+  font-size: 15px !important;
   color: #ffffff !important;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-  text-align: center;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.30);
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.50) !important;
 }
 
 /* ─── Developer credit (login page — bottom right corner) ─── */
