@@ -175,6 +175,8 @@ export default function Batches() {
       const res = await adminApi.sendBatchReminders(batchId);
       if (res.sent > 0) {
         toast.success(res.message || `Reminder sent to ${res.sent} manager(s)`);
+      } else if (!res.smtpConfigured || res.message?.includes('No email') || res.message?.includes('not set up')) {
+        toast.warning(res.message || 'Email is not configured on this server.');
       } else {
         toast.error(res.message || 'Could not send email reminders');
       }

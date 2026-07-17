@@ -112,7 +112,7 @@ export default function NotificationBell({ fetcher, role }) {
           ) : (
             data.items.map((item, i) => (
               <button
-                key={i}
+                key={`${item.type}-${item.batchId ?? ''}-${i}`}
                 className={`notif-item${item.urgent ? ' notif-item-urgent' : ''}`}
                 onClick={() => handleItem(item)}
               >

@@ -2024,12 +2024,13 @@ export async function overrideInventoryRecord(req, res, next) {
         updateData.submittedBy = req.user.id;
         updateData.submittedAt = new Date();
       } else {
-        // Resetting to PENDING clears all count data so the store re-enters it
-        updateData.physicalQuantity = null;
-        updateData.difference       = null;
-        updateData.submittedBy      = null;
-        updateData.submittedAt      = null;
+        // Resetting to PENDING clears all count data so the store re-enters fresh
+        updateData.physicalQuantity  = null;
+        updateData.difference        = null;
+        updateData.submittedBy       = null;
+        updateData.submittedAt       = null;
         updateData.shrinkageCategory = null;
+        updateData.remarks           = null;
       }
       updateData.status = status;
     }

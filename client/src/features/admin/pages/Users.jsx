@@ -284,11 +284,13 @@ export default function AdminUsers() {
           setTimeout(() => reject(new Error('Request timed out after 10 seconds')), 10000)
         ),
       ]);
+      if (!mountedRef.current) return;
       setUsers(u);
       setStores(s);
       setSelected(new Set());
       setLoading(false);
     } catch (err) {
+      if (!mountedRef.current) return;
       console.error('Load users:', err);
       setLoadError('Could not load users. Please refresh.');
       setLoading(false);
@@ -375,7 +377,10 @@ export default function AdminUsers() {
   function openBulkConfirm(action) { setBulkAction(action); setBulkRejectReason(''); setShowBulkConfirm(true); }
 
   async function confirmBulkAction() {
-    const actionIds = Array.from(selected);
+    // Approve/reject only operates on the pending subset of the selection,
+    // even if active users are also checked. Send only pendingIds to avoid
+    // the server trying to re-approve already-active accounts.
+    const actionIds = selectedPendingIds;
     setBulkWorking(true);
     setShowBulkConfirm(false);
     try {

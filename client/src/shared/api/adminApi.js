@@ -152,7 +152,7 @@ export async function uploadInventory(file, inventoryDate, submissionDeadline) {
   form.append('inventoryDate', inventoryDate);
   if (submissionDeadline) form.append('submissionDeadline', submissionDeadline);
   const { data } = await client.post('/admin/uploads', form, { timeout: FILE_TIMEOUT });
-  cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches', 'admin:stores', 'admin:trends:8');
+  cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches-client', 'admin:stores', 'admin:trends:8');
   return data;
 }
 
@@ -162,7 +162,7 @@ export async function uploadInventoryForce(file, inventoryDate, submissionDeadli
   form.append('inventoryDate', inventoryDate);
   if (submissionDeadline) form.append('submissionDeadline', submissionDeadline);
   const { data } = await client.post('/admin/uploads?force=true', form, { timeout: FILE_TIMEOUT });
-  cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches', 'admin:stores', 'admin:trends:8');
+  cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches-client', 'admin:stores', 'admin:trends:8');
   return data;
 }
 
