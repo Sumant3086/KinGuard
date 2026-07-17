@@ -111,7 +111,6 @@ export default function LoginPage() {
               <span style={{ display: 'block', fontSize: 20, fontWeight: 900, color: '#ffffff', letterSpacing: '0.6px', marginTop: 8, marginBottom: 6, textShadow: '0 2px 12px rgba(0,0,0,0.35)' }}>
                 KinMarché
               </span>
-              <h2>Sign In</h2>
               <p>Access your KinMarché account</p>
             </div>
 
