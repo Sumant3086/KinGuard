@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import StoreLayout from '../layout/StoreLayout';
 import * as storeApi from '../../../shared/api/storeApi';
@@ -26,16 +26,25 @@ export default function StoreDashboard() {
   const [dashboard, setDashboard] = useState(() => cache.get(CACHE_KEY) ?? null);
   const [loading, setLoading]     = useState(!cache.get(CACHE_KEY));
   const [error, setError]         = useState('');
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (cache.get(CACHE_KEY)) return;
-    let live = true;
     storeApi.getDashboard()
-      .then(data => { if (live) { cache.set(CACHE_KEY, data, CACHE_TTL); setDashboard(data); } })
-      .catch(err  => { console.error('Store dashboard:', err); if (live) setError('Could not load your dashboard. Please refresh.'); })
-      .finally(()  => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, []);
+      .then(data => {
+        if (!mountedRef.current) return;
+        cache.set(CACHE_KEY, data, CACHE_TTL);
+        setDashboard(data);
+      })
+      .catch(err => {
+        if (!mountedRef.current) return;
+        console.error('Store dashboard:', err);
+        setError('Could not load your dashboard. Please refresh.');
+      })
+      .finally(() => { if (mountedRef.current) setLoading(false); });
+    return () => { mountedRef.current = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

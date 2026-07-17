@@ -187,6 +187,7 @@ export default function StoreInventory() {
   async function loadInventory() {
     try {
       setLoading(true);
+      setError('');
       const res = await storeApi.getInventory(search, statusFilter, selectedBatch);
       const { records: recs, isLocked: locked, returnedByAM } = res;
       setRecords(recs);
