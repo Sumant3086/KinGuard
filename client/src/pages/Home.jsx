@@ -77,7 +77,7 @@ export default function Home() {
         <div className="home-section-header">
           <div className="home-section-eyebrow home-section-eyebrow-green">For Store Managers</div>
           <h2 className="home-section-heading home-section-heading-skyblue">How It Works</h2>
-          <p style={{ color: 'rgba(255,255,255,0.82)', fontSize: '14px', marginTop: 8, fontWeight: 500 }}>
+          <p className="home-section-sub">
             A structured 6-step process from cycle open to reconciliation.
           </p>
         </div>
