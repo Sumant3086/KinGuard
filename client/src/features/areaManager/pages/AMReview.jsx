@@ -62,7 +62,6 @@ export default function AMReview() {
     } finally {
       if (live) setLoadingRecs(false);
     }
-    return () => { live = false; };
   }, [batchId, toast]);
 
   function editField(id, field, value) {
