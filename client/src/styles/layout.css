@@ -54,21 +54,60 @@
   filter: blur(3px) brightness(0.88) saturate(1.1) !important;
 }
 
-/* ─── Area Manager nav — deep mahogany from shelving tones ──────── */
+/* ─── Area Manager nav — light crimson, brand-aligned ───────────── */
 .am-nav {
-  background: linear-gradient(90deg, #3b0f02 0%, #6b1503 50%, #3b0f02 100%) !important;
-  border-bottom-color: rgba(255, 200, 100, 0.18) !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.30), 0 2px 8px rgba(107,21,3,0.22) !important;
+  background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #991b1b 100%) !important;
+  border-bottom-color: rgba(255,255,255,0.16) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.24), 0 2px 8px rgba(185,28,28,0.30) !important;
 }
 .am-nav .hl-link.active,
 .am-nav .hl-mob-link.active {
-  color: #fbbf24 !important;
-  border-bottom-color: #fbbf24 !important;
-  background: rgba(251,191,36,0.15) !important;
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.22) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18), inset 0 -3px 0 rgba(255,255,255,0.90) !important;
 }
 .am-nav .hl-link:hover,
-.am-nav .hl-mob-link:hover { color: #fde68a !important; background: rgba(251,191,36,0.10) !important; }
-.am-mobile-menu { background: linear-gradient(180deg, #3b0f02 0%, #6b1503 100%) !important; }
+.am-nav .hl-mob-link:hover {
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.16) !important;
+}
+.am-mobile-menu { background: linear-gradient(180deg, #991b1b 0%, #b91c1c 100%) !important; }
+
+/* ─── AM mobile bottom nav (mirrors store bottom nav) ────────────── */
+.am-bottom-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--mob-nav-h, 60px);
+  background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #991b1b 100%);
+  border-top: 2px solid rgba(255,255,255,0.18);
+  z-index: 200; padding: 0 8px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.18);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.am-bottom-nav-inner {
+  height: 100%; display: flex; align-items: center; justify-content: space-around;
+}
+.am-mob-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 16px; border-radius: var(--r);
+  color: rgba(255,255,255,0.65); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  transition: color var(--fast); flex: 1; max-width: 80px;
+  min-height: 44px; justify-content: center; text-decoration: none;
+}
+.am-mob-item svg { width: 19px; height: 19px; }
+.am-mob-item.active { color: #fff; }
+.am-mob-item:hover  { color: #fecaca; }
+.am-mob-logout {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 16px; border-radius: var(--r);
+  color: rgba(255,255,255,0.60); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.4px; background: none; border: none;
+  flex: 1; max-width: 80px; min-height: 44px; justify-content: center; cursor: pointer;
+  font-family: inherit; transition: color var(--fast);
+}
+.am-mob-logout svg { width: 19px; height: 19px; }
+.am-mob-logout:hover { color: #fecaca; }
 
 /* ─── Admin top nav ───────────────────────────────────────────────── */
 .hl-nav {
@@ -523,6 +562,9 @@
   .store-bottom-nav  { display:flex; }
   /* Extra bottom space = nav height + safe-area-inset-bottom */
   .store-content     { padding:14px 14px calc(76px + env(safe-area-inset-bottom)); }
+  /* AM bottom nav — show on mobile */
+  .am-bottom-nav     { display:flex; }
+  .am-shell .hl-content { padding:16px 14px calc(76px + env(safe-area-inset-bottom)); }
   .store-chip        { display:none; }
   /* Mobile menu: scrollable if many links + safe-area at bottom */
   .hl-mobile-menu    { overflow-y: auto; max-height: calc(100vh - 54px); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
