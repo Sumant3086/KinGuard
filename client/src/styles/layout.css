@@ -522,23 +522,100 @@
   color: #1f2937 !important;
 }
 .store-shell .stat-card h4 {
-  color: #7f1d1d !important;
-  font-weight: 800 !important;
-  font-size: 12px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.6px !important;
-  text-shadow: none !important;
+  color: #7f1d1d !important; font-weight: 800 !important;
+  font-size: 12px !important; text-transform: uppercase !important;
+  letter-spacing: 0.6px !important; text-shadow: none !important;
 }
-.store-shell .stat-card .value {
-  color: #111827 !important;
-  font-weight: 900 !important;
-  text-shadow: none !important;
+.store-shell .stat-card .value { color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
+.store-shell .stat-card p     { color: #6b7280 !important; font-weight: 500 !important; text-shadow: none !important; }
+
+/* ── AM stat card modifier overrides — same fix applied to area manager ── */
+.am-shell .stat-card.info,
+.am-shell .stat-card.warning,
+.am-shell .stat-card.success,
+.am-shell .stat-card.danger,
+.am-shell .stat-card.accent,
+.am-shell .stat-card {
+  background: rgba(255,255,255,0.97) !important;
+  border: 1.5px solid rgba(185,28,28,0.14) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 6px rgba(185,28,28,0.06) !important;
+  color: #1f2937 !important;
 }
-.store-shell .stat-card p {
-  color: #6b7280 !important;
-  font-weight: 500 !important;
-  text-shadow: none !important;
+.am-shell .stat-card h4    { color: #991b1b !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
+.am-shell .stat-card .value{ color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
+.am-shell .stat-card p     { color: #6b7280 !important; font-weight: 500 !important; text-shadow: none !important; }
+
+/* ── Admin shell — white cards + red accents (matches store + AM treatment) ── */
+.admin-shell .card,
+.admin-shell .kpi-card,
+.admin-shell .metric-card,
+.admin-shell .stat-card,
+.admin-shell .page-header,
+.admin-shell .page-header-root,
+.admin-shell .dash-command,
+.admin-shell .table-wrap,
+.admin-shell .table-container,
+.admin-shell .filter-card {
+  background: rgba(255,255,255,0.96) !important;
+  border: 1.5px solid rgba(220,38,38,0.13) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(220,38,38,0.06), inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  position: relative; overflow: hidden;
 }
+/* Crimson top stripe on admin cards */
+.admin-shell .card::before,
+.admin-shell .page-header::before,
+.admin-shell .dash-command::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, #dc2626 30%, #ef4444 60%, transparent);
+  border-radius: inherit;
+}
+.admin-shell .card:hover,
+.admin-shell .kpi-card:hover {
+  border-color: rgba(220,38,38,0.24) !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.16), 0 3px 10px rgba(220,38,38,0.10), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+  transform: translateY(-2px);
+}
+/* Admin headings */
+.admin-shell .page-header h2,
+.admin-shell .card-title,
+.admin-shell .card h3,
+.admin-shell .dash-cmd-title { color: #991b1b !important; font-weight: 900 !important; text-shadow: none !important; }
+.admin-shell .page-header p,
+.admin-shell .card-sub,
+.admin-shell .dash-cmd-sub   { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
+/* Admin table */
+.admin-shell th { background: rgba(254,242,242,0.92) !important; color: #7f1d1d !important; border-bottom: 1.5px solid rgba(220,38,38,0.18) !important; font-weight: 800 !important; }
+.admin-shell td { color: #1f2937 !important; font-weight: 500 !important; border-bottom: 1px solid rgba(220,38,38,0.07) !important; }
+.admin-shell tbody tr:hover td { background: rgba(254,242,242,0.60) !important; }
+/* Admin stat card modifiers */
+.admin-shell .stat-card.info,
+.admin-shell .stat-card.warning,
+.admin-shell .stat-card.success,
+.admin-shell .stat-card.danger,
+.admin-shell .stat-card.accent,
+.admin-shell .stat-card {
+  background: rgba(255,255,255,0.97) !important;
+  border: 1.5px solid rgba(220,38,38,0.13) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 6px rgba(220,38,38,0.06) !important;
+}
+.admin-shell .stat-card h4    { color: #7f1d1d !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
+.admin-shell .stat-card .value{ color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
+.admin-shell .stat-card p     { color: #6b7280 !important; font-weight: 500 !important; text-shadow: none !important; }
+/* Admin KPI cards */
+.admin-shell .kpi-card::after {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  border-radius: 16px 0 0 16px;
+}
+.admin-shell .kpi-label { color: #374151 !important; font-weight: 800 !important; text-shadow: none !important; }
+.admin-shell .kpi-value { color: #111827 !important; text-shadow: none !important; }
+.admin-shell .kpi-sub   { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
+/* Admin buttons */
+.admin-shell .btn-primary  { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important; box-shadow: 0 4px 16px rgba(220,38,38,0.35) !important; font-weight: 700 !important; }
+.admin-shell .btn-secondary,
+.admin-shell .btn-ghost    { background: rgba(255,255,255,0.92) !important; border: 1.5px solid rgba(220,38,38,0.20) !important; color: #7f1d1d !important; font-weight: 700 !important; }
 
 /* ── Developer credit — crimson shimmer, consistent across all layouts ── */
 @keyframes dev-credit-shine {
