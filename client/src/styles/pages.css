@@ -698,10 +698,17 @@
   text-align: center;
   width: 100%;
   animation: hero-enter 0.55s var(--ease-out) both;
-  /* No dark box — text reads directly on the photo */
-  background: none;
-  border: none;
-  box-shadow: none;
+  /* Deep crimson glass — brand red, not black. Connects with store's red signage */
+  background: rgba(100, 5, 5, 0.62);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-radius: 28px;
+  border: 1.5px solid rgba(220,38,38,0.50);
+  box-shadow:
+    0 16px 56px rgba(0,0,0,0.45),
+    0 4px 20px rgba(220,38,38,0.35),
+    inset 0 1px 0 rgba(255,150,150,0.18),
+    inset 0 -1px 0 rgba(0,0,0,0.20);
 }
 .home-eyebrow {
   display: inline-flex;
@@ -737,14 +744,14 @@
 }
 .home-hero h1 em {
   font-style: normal;
-  /* Bright lime green — animated shimmer flows across the text */
-  background: linear-gradient(135deg, #f0fff4 0%, #b2ff59 35%, #76ff03 55%, #b2ff59 75%, #f0fff4 100%) !important;
+  /* Warm rose-gold shimmer — connected to the brand red, no clashing green */
+  background: linear-gradient(135deg, #ffd6d6 0%, #ff8080 30%, #ff3b3b 52%, #ff8080 75%, #ffd6d6 100%) !important;
   background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   color: transparent !important;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.60)) drop-shadow(0 0 40px rgba(100,255,50,0.80));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.70)) drop-shadow(0 0 32px rgba(220,38,38,0.80));
 }
 .home-hero p {
   font-size: 18px;
@@ -1162,7 +1169,7 @@
   /* Ken Burns on background pseudo — 30s so it's barely perceptible */
   .home-hero-bg::before    { animation: home-bg-zoom 30s ease-in-out infinite alternate; }
 
-  /* Lime green text shimmer */
+  /* Rose-red text shimmer on em */
   .home-hero h1 em         { animation: home-text-shimmer 3.5s linear infinite; }
 
   /* Crimson-white heading shimmer */
@@ -1287,30 +1294,30 @@
   text-align: center;
   padding: 18px 12px;
   border-radius: 14px;
-  background: #ffffff;
-  border: 1.5px solid rgba(220,38,38,0.18);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s;
+  /* Light rose — connected to the red brand, warmer than white */
+  background: rgba(255, 241, 241, 0.97);
+  border: 1.5px solid rgba(220,38,38,0.22);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s;
   gap: 8px;
   min-height: 156px;
   justify-content: flex-start;
-  box-shadow: 0 2px 14px rgba(0,0,0,0.18), 0 1px 4px rgba(220,38,38,0.08);
+  box-shadow: 0 3px 16px rgba(0,0,0,0.20), 0 1px 6px rgba(220,38,38,0.12);
   position: relative;
   overflow: hidden;
 }
-/* Thin red top line on each step */
 .wf-step::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent, #dc2626 40%, #ef4444 60%, transparent);
+  background: linear-gradient(90deg, transparent, #dc2626 35%, #ef4444 65%, transparent);
   border-radius: 14px 14px 0 0;
 }
 .wf-step:hover {
-  background: #fff8f8;
-  border-color: rgba(220,38,38,0.35);
+  background: rgba(255, 228, 228, 0.98);
+  border-color: rgba(220,38,38,0.40);
   transform: translateY(-5px);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.22), 0 4px 12px rgba(220,38,38,0.18);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.22), 0 4px 14px rgba(220,38,38,0.22);
 }
 
 .wf-step-num {
@@ -1332,20 +1339,20 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(254,242,242,1);
-  border: 1.5px solid rgba(220,38,38,0.22);
+  background: rgba(220,38,38,0.14);
+  border: 1.5px solid rgba(220,38,38,0.28);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #dc2626;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(220,38,38,0.14);
+  box-shadow: 0 2px 8px rgba(220,38,38,0.18);
   transition: all 0.22s ease;
 }
 .wf-step:hover .wf-step-icon {
-  background: rgba(254,226,226,1);
-  border-color: rgba(220,38,38,0.40);
-  box-shadow: 0 4px 14px rgba(220,38,38,0.24);
+  background: rgba(220,38,38,0.22);
+  border-color: rgba(220,38,38,0.50);
+  box-shadow: 0 4px 14px rgba(220,38,38,0.30);
   transform: scale(1.08) rotate(4deg);
 }
 
@@ -1457,13 +1464,12 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    padding-bottom: 20px;
     flex: 1;
-    background: #ffffff;
+    background: rgba(255,241,241,0.97);
     border-radius: 12px;
-    border: 1.5px solid rgba(220,38,38,0.16);
+    border: 1.5px solid rgba(220,38,38,0.20);
     padding: 12px 14px 14px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.16);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
   }
 
   .wf-tl-icon {
