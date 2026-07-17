@@ -478,23 +478,25 @@
   text-shadow: 0 1px 6px rgba(0,0,0,0.30);
 }
 
-/* ─── Developer credit (bottom right corner) ─── */
+/* ─── Developer credit (login page — bottom right corner) ─── */
 .lr-developer-credit {
   position: absolute;
-  bottom: 14px;
-  right: 16px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #8b7e73;
-  letter-spacing: 0.3px;
-  z-index: 2;
-  user-select: none;
-  opacity: 0.75;
-  transition: opacity 0.2s ease;
-}
-
-.lr-developer-credit:hover {
+  bottom: 14px; right: 16px;
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  z-index: 2; user-select: none;
+  background: linear-gradient(90deg,
+    #b91c1c 0%, #ef4444 25%, #fca5a5 50%, #ef4444 75%, #b91c1c 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: dev-credit-shine 4s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(220,38,38,0.35));
   opacity: 1;
+}
+.lr-developer-credit:hover {
+  filter: drop-shadow(0 0 8px rgba(220,38,38,0.55));
 }
 
 /* ─── Responsive ─── */
@@ -679,12 +681,12 @@
   padding: 48px 56px 52px;
   text-align: center;
   animation: hero-enter 0.6s var(--ease-out) both;
-  background: rgba(185, 28, 28, 0.45);
-  backdrop-filter: blur(14px) saturate(130%);
-  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  background: rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 24px;
-  border: 1.5px solid rgba(255,255,255,0.20);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.30), 0 4px 16px rgba(185,28,28,0.35);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
   overflow: hidden;
 }
 /* Subtle inner highlight at top */
@@ -694,21 +696,22 @@
   top: 0; left: 0; right: 0; height: 1px;
   background: rgba(255,255,255,0.22);
 }
-/* Eyebrow — white glass pill on crimson, same as login labels */
+/* Eyebrow — solid red pill, vivid and readable on any bg */
 .home-eyebrow {
   display: inline-flex;
   align-items: center;
-  padding: 7px 20px;
+  padding: 8px 22px;
   border-radius: 99px;
-  background: rgba(255,255,255,0.18);
-  border: 1.5px solid rgba(255,255,255,0.40);
+  background: #dc2626;
+  border: none;
   color: #ffffff;
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 800;
   letter-spacing: 1.8px; text-transform: uppercase;
   margin-bottom: 24px;
   animation: fade-in-up 0.4s var(--ease-out) 0.1s both;
+  box-shadow: 0 4px 16px rgba(220,38,38,0.55);
 }
-/* Main heading — pure white on crimson */
+/* Main heading — bold white with strong shadow for contrast on photo */
 .home-hero h1 {
   font-size: 58px; font-weight: 900;
   color: #ffffff !important;
@@ -716,39 +719,44 @@
   line-height: 1.08; letter-spacing: -2.5px;
   margin-bottom: 20px;
   animation: fade-in-up 0.5s var(--ease-out) 0.18s both;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  text-shadow:
+    0 2px 4px rgba(0,0,0,0.70),
+    0 4px 16px rgba(0,0,0,0.45),
+    0 0 60px rgba(0,0,0,0.20);
 }
-/* Accent line — light pink shimmer, stays in the red family */
+/* Accent line — orange shimmer. text-shadow: none kills the inherited black from h1 */
 .home-hero h1 em {
   font-style: normal;
   background: linear-gradient(135deg,
-    #fecaca 0%, #fca5a5 35%, #f87171 52%, #fca5a5 75%, #fecaca 100%) !important;
+    #fed7aa 0%, #fb923c 28%, #f97316 52%, #fb923c 76%, #fed7aa 100%) !important;
   background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   color: transparent !important;
-  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.25));
+  text-shadow: none !important;
+  filter: drop-shadow(0 0 18px rgba(249,115,22,0.50));
 }
-/* Subheading — soft white */
+/* Subheading — bright white, strong shadow */
 .home-hero p {
   font-size: 16px; font-weight: 500;
-  color: rgba(255,255,255,0.88);
+  color: #ffffff;
   line-height: 1.70; max-width: 520px;
   margin: 0 auto 36px;
   animation: fade-in-up 0.5s var(--ease-out) 0.28s both;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.20);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.60), 0 2px 12px rgba(0,0,0,0.35);
+  opacity: 0.95;
 }
-/* CTA — white button with crimson text, same as login role buttons */
+/* CTA — solid crimson button, matches eyebrow pill */
 .home-cta-btn {
   display: inline-flex; align-items: center; gap: 10px;
-  padding: 15px 44px; font-size: 16px; font-weight: 700;
-  color: #dc2626;
-  background: #ffffff;
+  padding: 15px 44px; font-size: 16px; font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   border-radius: 12px; text-decoration: none;
-  border: 2px solid rgba(255,255,255,0.90);
-  box-shadow: 0 4px 18px rgba(0,0,0,0.20);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  border: 2px solid rgba(255,255,255,0.25);
+  box-shadow: 0 6px 24px rgba(220,38,38,0.55), 0 2px 8px rgba(0,0,0,0.20);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
   letter-spacing: 0.3px;
   animation: fade-in-up 0.5s var(--ease-out) 0.38s both;
   position: relative; overflow: hidden;
@@ -771,9 +779,9 @@
   animation: home-glow-ring 3s ease-in-out 1.5s infinite;
 }
 .home-cta-btn:hover {
-  background: #fff1f1;
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
   transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 10px 32px rgba(0,0,0,0.25);
+  box-shadow: 0 12px 36px rgba(220,38,38,0.65), 0 4px 12px rgba(0,0,0,0.25);
 }
 .home-cta-btn:active { transform: translateY(-1px); transition-duration: 0.08s; }
 
@@ -811,24 +819,26 @@
   margin-top: 10px !important;
   text-shadow: 0 1px 4px rgba(0,0,0,0.50) !important;
 }
-/* Eyebrow pill */
+/* Eyebrow pill — solid red, matches hero eyebrow exactly */
 .home-section-eyebrow {
   display: inline-flex;
   align-items: center;
   padding: 8px 22px;
   border-radius: 99px;
-  background: rgba(255,255,255,0.16);
-  border: 1.5px solid rgba(255,255,255,0.38);
+  background: #dc2626;
+  border: none;
   color: #ffffff;
-  font-size: 11.5px; font-weight: 700;
+  font-size: 11.5px; font-weight: 800;
   letter-spacing: 2px; text-transform: uppercase;
   margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(220,38,38,0.55);
 }
 .home-section-eyebrow-green {
-  background: rgba(255,255,255,0.16) !important;
-  border: 1.5px solid rgba(255,255,255,0.38) !important;
+  background: #dc2626 !important;
+  border: none !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(220,38,38,0.55) !important;
 }
 .home-feat-title-row {
   display: flex;
@@ -1066,31 +1076,37 @@
 }
 
 .home-footer-developer {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 2.2px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
   text-transform: uppercase;
+  /* White-to-pink shimmer — visible on the crimson footer */
   background: linear-gradient(
     90deg,
-    #14b8a6    0%,
-    #0d9488   25%,
-    #14b8a6   50%,
-    #0d9488   75%,
-    #14b8a6  100%
+    #ffffff   0%,
+    #fecaca  25%,
+    #fca5a5  50%,
+    #fecaca  75%,
+    #ffffff  100%
   ) !important;
   background-size: 200% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
-  animation: dev-shine 3s linear infinite;
+  animation: dev-credit-shine 4s linear infinite;
   filter:
-    drop-shadow(0 0 8px rgba(20,184,166,0.60))
-    drop-shadow(0 0 16px rgba(13,148,136,0.40));
+    drop-shadow(0 0 8px rgba(255,255,255,0.50))
+    drop-shadow(0 0 16px rgba(255,180,180,0.35));
   padding: 2px 0;
   position: relative;
 }
 
 @keyframes dev-shine {
+  0%   { background-position: 200% center; }
+  100% { background-position:   0% center; }
+}
+/* Alias used by home footer + login dev credit */
+@keyframes dev-credit-shine {
   0%   { background-position: 200% center; }
   100% { background-position:   0% center; }
 }
@@ -1230,9 +1246,11 @@
   align-items: center; text-align: center;
   padding: 18px 12px;
   border-radius: 14px;
-  /* Clean white — matching login page right panel */
-  background: #ffffff;
-  border: 1.5px solid rgba(220,38,38,0.16);
+  /* Warm sandy semi-transparent — connected to store's warm background */
+  background: rgba(248, 228, 196, 0.88);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1.5px solid rgba(180,90,20,0.22);
   transition: transform 0.22s ease, box-shadow 0.22s ease;
   gap: 8px; min-height: 156px;
   justify-content: flex-start;
@@ -1248,8 +1266,8 @@
   border-radius: 14px 14px 0 0;
 }
 .wf-step:hover {
-  background: #fff5f5;
-  border-color: rgba(220,38,38,0.32);
+  background: rgba(240, 215, 175, 0.92);
+  border-color: rgba(180,90,20,0.38);
   transform: translateY(-5px);
   box-shadow: 0 14px 36px rgba(0,0,0,0.24), 0 4px 14px rgba(245,158,11,0.22);
 }
@@ -1368,9 +1386,9 @@
   .wf-tl-right {
     display: flex; align-items: flex-start; gap: 10px;
     flex: 1;
-    background: #ffffff;
+    background: rgba(248, 228, 196, 0.88);
     border-radius: 12px;
-    border: 1.5px solid rgba(220,38,38,0.16);
+    border: 1.5px solid rgba(180,90,20,0.22);
     padding: 12px 14px 14px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.20);
   }
