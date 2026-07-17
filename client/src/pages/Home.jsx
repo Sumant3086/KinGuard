@@ -9,13 +9,13 @@ const IcoBarChart = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 const IcoRepeat   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>;
 const IcoDownload = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 
-const MANAGER_FEATURES = [
-  { icon: <IcoUpload />,   n: '1', title: 'Review Assigned Items',           desc: 'Receive your assigned item list at the start of each inventory cycle.' },
-  { icon: <IcoBarChart />, n: '2', title: 'Record Physical Counts',          desc: 'Enter the physically counted quantity for each assigned item.' },
-  { icon: <IcoPulse />,   n: '3', title: 'Automatic Variance Calculation',  desc: 'Variances against system stock are calculated automatically.' },
-  { icon: <IcoRepeat />,  n: '4', title: 'Identify Discrepancies',          desc: 'Review shortage and excess items before submitting your count.' },
-  { icon: <IcoDownload />, n: '5', title: 'Download Reconciliation Report',  desc: 'Export your store\'s reconciliation data at any time.' },
-  { icon: <IcoLock />,    n: '6', title: 'Store-Isolated Access',           desc: 'Access is limited to your store\'s inventory records only.' },
+const WORKFLOW_STEPS = [
+  { icon: <IcoUpload />,   n: 1, title: 'Review Assigned Items',          desc: 'Receive your item list at the start of each inventory cycle.' },
+  { icon: <IcoBarChart />, n: 2, title: 'Record Physical Counts',         desc: 'Enter the physically counted quantity for each item.' },
+  { icon: <IcoPulse />,   n: 3, title: 'Variance Calculated Instantly',  desc: 'Gaps against system stock are computed as you type.' },
+  { icon: <IcoRepeat />,  n: 4, title: 'Identify Discrepancies',         desc: 'Review shortage and excess items before submitting.' },
+  { icon: <IcoDownload />, n: 5, title: 'Download Report',                desc: 'Export your reconciliation data at any time.' },
+  { icon: <IcoLock />,    n: 6, title: 'Store-Isolated Access',          desc: 'You only see your own store\'s inventory records.' },
 ];
 
 export default function Home() {
@@ -72,28 +72,76 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Store Manager Workflow & Features ── */}
+      {/* ── Store Manager Workflow ── */}
       <section className="home-dark-section home-features-section">
         <div className="home-section-header">
-          <div className="home-section-eyebrow home-section-eyebrow-green">
-            For Store Managers
-          </div>
+          <div className="home-section-eyebrow home-section-eyebrow-green">For Store Managers</div>
           <h2 className="home-section-heading home-section-heading-skyblue">How It Works</h2>
-          <p style={{ color: 'rgba(255,255,255,0.88)', fontSize: '15px', marginTop: '10px', textShadow: 'none', fontWeight: 500 }}>
-            A structured process from upload to reconciliation.
+          <p style={{ color: 'rgba(255,255,255,0.82)', fontSize: '14px', marginTop: 8, fontWeight: 500 }}>
+            A structured 6-step process from cycle open to reconciliation.
           </p>
         </div>
-        <div className="home-features">
-          {MANAGER_FEATURES.map((f) => (
-            <div key={f.title} className="home-feat">
-              <div className="home-feat-icon">{f.icon}</div>
-              <div className="home-feat-title-row">
-                <span className="home-feat-step-num">{f.n}</span>
-                <h3>{f.title}</h3>
+
+        {/* Single workflow box */}
+        <div className="wf-box">
+          {/* Row 1 — steps 1–3 */}
+          <div className="wf-row">
+            {WORKFLOW_STEPS.slice(0, 3).map((s, i) => (
+              <div key={s.n} className="wf-row-inner">
+                <div className="wf-step">
+                  <div className="wf-step-num">{s.n}</div>
+                  <div className="wf-step-icon">{s.icon}</div>
+                  <div className="wf-step-body">
+                    <div className="wf-step-title">{s.title}</div>
+                    <div className="wf-step-desc">{s.desc}</div>
+                  </div>
+                </div>
+                {i < 2 && <div className="wf-arrow wf-arrow-right" aria-hidden="true">›</div>}
               </div>
-              <p>{f.desc}</p>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Mid connector — desktop only */}
+          <div className="wf-mid-connector" aria-hidden="true">
+            <div className="wf-mid-line" />
+            <div className="wf-mid-arrow">↓</div>
+          </div>
+
+          {/* Row 2 — steps 4–6 (reversed so the flow snakes: 3→4 on the right) */}
+          <div className="wf-row wf-row-reverse">
+            {WORKFLOW_STEPS.slice(3).map((s, i) => (
+              <div key={s.n} className="wf-row-inner">
+                {i < 2 && <div className="wf-arrow wf-arrow-left" aria-hidden="true">‹</div>}
+                <div className="wf-step">
+                  <div className="wf-step-num">{s.n}</div>
+                  <div className="wf-step-icon">{s.icon}</div>
+                  <div className="wf-step-body">
+                    <div className="wf-step-title">{s.title}</div>
+                    <div className="wf-step-desc">{s.desc}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile vertical timeline (hidden on desktop) */}
+          <div className="wf-timeline">
+            {WORKFLOW_STEPS.map((s, i) => (
+              <div key={s.n} className="wf-tl-item">
+                <div className="wf-tl-left">
+                  <div className="wf-tl-num">{s.n}</div>
+                  {i < WORKFLOW_STEPS.length - 1 && <div className="wf-tl-line" />}
+                </div>
+                <div className="wf-tl-right">
+                  <div className="wf-tl-icon">{s.icon}</div>
+                  <div>
+                    <div className="wf-step-title">{s.title}</div>
+                    <div className="wf-step-desc">{s.desc}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
