@@ -10,6 +10,7 @@ const Home           = lazy(() => import('./pages/Home'));
 const NotFound       = lazy(() => import('./pages/NotFound'));
 const LoginPage      = lazy(() => import('./features/auth/LoginPage'));
 const ChangePassword = lazy(() => import('./features/auth/ChangePasswordPage'));
+const ProfilePage    = lazy(() => import('./pages/ProfilePage'));
 
 // Lazy-loaded by feature — each chunk only downloads when needed
 const AdminDashboard = lazy(() => import('./features/admin/pages/Dashboard'));
@@ -92,6 +93,7 @@ function App() {
             <Route path="/"                element={<Home />} />
             <Route path="/login"           element={<LoginPage />} />
             <Route path="/change-password" element={<PrivateRoute><ErrorBoundary><ChangePassword /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/profile"         element={<PrivateRoute><ErrorBoundary><ProfilePage /></ErrorBoundary></PrivateRoute>} />
 
             {/* Admin Routes — each page has its own boundary */}
             <Route path="/admin/dashboard"  element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminDashboard /></ErrorBoundary></PrivateRoute>} />

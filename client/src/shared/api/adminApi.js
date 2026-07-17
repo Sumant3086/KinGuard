@@ -221,6 +221,12 @@ export async function sendBatchReminders(batchId) {
   return data;
 }
 
+export async function closeBatch(id) {
+  const { data } = await client.post(`/admin/batches/${id}/close`);
+  cacheInvalidate('admin:batches-client', 'admin:dashboard');
+  return data;
+}
+
 // ── Area Manager Management ────────────────────────────────────────────────
 export function getAreaManagers() {
   return withCache('admin:area-managers', 120_000,

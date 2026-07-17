@@ -281,6 +281,43 @@ export async function changePassword(req, res, next) {
   }
 }
 
+export async function updateProfile(req, res, next) {
+  try {
+    const { name, email, phone } = req.body;
+    const userId = req.user.id;
+
+    const data = {};
+    if (name  !== undefined) data.name  = name?.trim()  || undefined;
+    if (email !== undefined) data.email = email?.trim() || null;
+    if (phone !== undefined) data.phone = phone?.trim() || null;
+
+    if (Object.keys(data).length === 0) {
+      throw new AppError('No fields to update', 400);
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { id: true, employeeId: true, name: true, email: true, phone: true, role: true, storeId: true, mustChangePassword: true, store: true },
+    });
+
+    invalidateUserCache(userId);
+
+    createAuditLog({
+      userId, action: 'UPDATE_PROFILE', entityType: 'USER', entityId: userId,
+      metadata: { fields: Object.keys(data) },
+    }).catch(() => {});
+
+    res.json(updated);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.includes('email') ? 'Email address' : 'Field';
+      return next(new AppError(`${field} is already in use`, 409));
+    }
+    next(error);
+  }
+}
+
 // ── Shared password validator (also imported by adminController) ───────────
 export function validatePassword(password) {
   if (!password || typeof password !== 'string') {

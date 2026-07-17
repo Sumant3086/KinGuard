@@ -32,9 +32,27 @@ const typeDot = {
   submitted: '#16a34a',
 };
 
+const DISMISS_KEY = 'notif:dismissed';
+
+function getDismissed() {
+  try { return new Set(JSON.parse(localStorage.getItem(DISMISS_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+
+function saveDismissed(set) {
+  try { localStorage.setItem(DISMISS_KEY, JSON.stringify([...set].slice(-50))); }
+  catch {}
+}
+
+// Build a stable key from a notification's identifying fields
+function notifKey(item) {
+  return `${item.type}:${item.batchId ?? ''}:${item.message?.slice(0, 30) ?? ''}`;
+}
+
 export default function NotificationBell({ fetcher, role }) {
-  const [data, setData] = useState({ items: [], count: 0 });
-  const [open, setOpen] = useState(false);
+  const [data,      setData]      = useState({ items: [], count: 0 });
+  const [dismissed, setDismissed] = useState(getDismissed);
+  const [open,      setOpen]      = useState(false);
   const ref     = useRef(null);
   const mounted = useRef(true);
   const navigate = useNavigate();
@@ -76,13 +94,30 @@ export default function NotificationBell({ fetcher, role }) {
   }, []);
 
   function handleItem(item) {
+    dismiss(item);
     setOpen(false);
     const base = resolveNav(item.type, role);
     const path = item.batchId ? `${base}?batchId=${item.batchId}` : base;
     navigate(path);
   }
 
-  const hasUrgent = data.items.some(i => i.urgent);
+  function dismiss(item) {
+    const key  = notifKey(item);
+    const next = new Set(dismissed);
+    next.add(key);
+    setDismissed(next);
+    saveDismissed(next);
+  }
+
+  function dismissAll() {
+    const next = new Set(dismissed);
+    data.items.forEach(i => next.add(notifKey(i)));
+    setDismissed(next);
+    saveDismissed(next);
+  }
+
+  const visibleItems = data.items.filter(i => !dismissed.has(notifKey(i)));
+  const hasUrgent    = visibleItems.some(i => i.urgent);
 
   return (
     <div ref={ref} className="notif-wrap">
@@ -92,8 +127,8 @@ export default function NotificationBell({ fetcher, role }) {
         aria-label={`Notifications${data.count > 0 ? ` (${data.count})` : ''}`}
       >
         <BellIcon />
-        {data.count > 0 && (
-          <span className="notif-badge">{data.count > 9 ? '9+' : data.count}</span>
+        {visibleItems.length > 0 && (
+          <span className="notif-badge">{visibleItems.length > 9 ? '9+' : visibleItems.length}</span>
         )}
       </button>
 
@@ -101,28 +136,45 @@ export default function NotificationBell({ fetcher, role }) {
         <div className="notif-dropdown">
           <div className="notif-header">
             <span>Notifications</span>
-            {data.count > 0 && <span className="notif-header-count">{data.count} new</span>}
+            {visibleItems.length > 0 && (
+              <button
+                onClick={dismissAll}
+                style={{ fontSize: 11, fontWeight: 600, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+              >
+                Clear all
+              </button>
+            )}
           </div>
 
-          {data.items.length === 0 ? (
+          {visibleItems.length === 0 ? (
             <div className="notif-empty">
               <span>✓</span>
               No pending notifications.
             </div>
           ) : (
-            data.items.map((item, i) => (
-              <button
+            visibleItems.map((item, i) => (
+              <div
                 key={`${item.type}-${item.batchId ?? ''}-${i}`}
-                className={`notif-item${item.urgent ? ' notif-item-urgent' : ''}`}
-                onClick={() => handleItem(item)}
+                style={{ display: 'flex', alignItems: 'stretch' }}
               >
-                <span
-                  className="notif-dot"
-                  style={{ background: typeDot[item.type] ?? '#64748b' }}
-                />
-                <span className="notif-msg">{item.message}</span>
-                <span className="notif-arrow">›</span>
-              </button>
+                <button
+                  className={`notif-item${item.urgent ? ' notif-item-urgent' : ''}`}
+                  onClick={() => handleItem(item)}
+                  style={{ flex: 1 }}
+                >
+                  <span
+                    className="notif-dot"
+                    style={{ background: typeDot[item.type] ?? '#64748b' }}
+                  />
+                  <span className="notif-msg">{item.message}</span>
+                  <span className="notif-arrow">›</span>
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); dismiss(item); }}
+                  aria-label="Dismiss"
+                  style={{ padding: '0 10px', fontSize: 16, color: 'var(--tx3)', background: 'none', border: 'none', cursor: 'pointer', borderLeft: '1px solid var(--red-border)', flexShrink: 0 }}
+                >×</button>
+              </div>
             ))
           )}
         </div>

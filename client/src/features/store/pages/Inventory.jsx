@@ -42,7 +42,10 @@ export default function StoreInventory() {
   const [batches, setBatches]           = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(urlBatchId);
   const [isLocked, setIsLocked]         = useState(false);
-  const [returnedReason, setReturnedReason] = useState('');
+  const [returnedReason, setReturnedReason] = useState(() => {
+    // Persist the AM return reason across page navigations within the session
+    return sessionStorage.getItem('store:returnedReason') || '';
+  });
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
   const [pagination, setPagination]     = useState(null);
@@ -151,7 +154,11 @@ export default function StoreInventory() {
       const { records: recs, isLocked: locked, returnedByAM, pagination: pag } = res;
       setRecords(recs);
       setIsLocked(locked);
-      setReturnedReason(returnedByAM || '');
+      const reason = returnedByAM || '';
+      setReturnedReason(reason);
+      // Keep the return reason visible across navigations until a new submission clears it
+      if (reason) sessionStorage.setItem('store:returnedReason', reason);
+      else sessionStorage.removeItem('store:returnedReason');
       setPagination(pag ?? null);
       setCurrentPage(page);
       editedRecordsRef.current = {};
@@ -305,6 +312,8 @@ export default function StoreInventory() {
       setSubmitting(true);
       const res = await storeApi.submitInventory(batchId);
       setSubmitResult(res);
+      setReturnedReason('');
+      sessionStorage.removeItem('store:returnedReason');
       toast.success('Submitted! Your count has been sent.', 5000);
     } catch (err) {
       console.error('Submit inventory:', err);
