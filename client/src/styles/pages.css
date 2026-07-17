@@ -679,10 +679,12 @@
   padding: 48px 56px 52px;
   text-align: center;
   animation: hero-enter 0.6s var(--ease-out) both;
-  background: linear-gradient(160deg, #dc2626 0%, #b91c1c 55%, #991b1b 100%);
+  background: rgba(185, 28, 28, 0.45);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
   border-radius: 24px;
-  border: none;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 6px 20px rgba(185,28,28,0.50);
+  border: 1.5px solid rgba(255,255,255,0.20);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.30), 0 4px 16px rgba(185,28,28,0.35);
   overflow: hidden;
 }
 /* Subtle inner highlight at top */
