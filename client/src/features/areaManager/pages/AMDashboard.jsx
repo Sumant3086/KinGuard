@@ -67,7 +67,7 @@ export default function AMDashboard() {
           <div className="dash-cmd-sub">
             {loading
               ? 'Loading…'
-              : `${stores.length} store${stores.length !== 1 ? 's' : ''} under your supervision`}
+              : `${storeProgress.length} store${storeProgress.length !== 1 ? 's' : ''} under your supervision`}
           </div>
           {!loading && data?.pendingReview > 0 && (
             <div className="dash-cmd-badges" style={{ marginTop: 8 }}>
