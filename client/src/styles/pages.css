@@ -873,27 +873,6 @@
   font-weight: 800 !important;
   box-shadow: 0 4px 16px rgba(220,38,38,0.55) !important;
 }
-.home-feat-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.home-feat-title-row h3 { margin: 0; }
-.home-feat-step-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(220,38,38,0.45);
-}
 .home-section-heading {
   font-size: 42px;
   font-weight: 900;
@@ -932,87 +911,6 @@
   background: url('../assets/img/HomePage2.png') center center / cover no-repeat;
   filter: blur(3px);
   z-index: 0;
-}
-.home-features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 2;
-}
-.home-feat {
-  background: rgba(255,250,240,0.95);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  border: 1.5px solid rgba(220,38,38,0.18);
-  border-radius: 18px;
-  padding: 28px 24px;
-  box-shadow: 0 6px 28px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.90);
-  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-  position: relative;
-  overflow: hidden;
-  z-index: 2;
-}
-/* Red top accent stripe — ties cards to the KinMarché red branding */
-.home-feat::before {
-  content: '';
-  display: block;
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #dc2626 30%, #ef4444 50%, #dc2626 70%, transparent);
-  border-radius: 18px 18px 0 0;
-}
-.home-feat::after { display: none; }
-
-.home-feat:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 50px rgba(0,0,0,0.20), 0 6px 16px rgba(0,0,0,0.10);
-  border-color: rgba(220,38,38,0.35);
-  background: rgba(255,252,244,0.98);
-}
-
-.home-feat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  width: 52px; height: 52px;
-  background: linear-gradient(135deg, #fff0e6 0%, #ffd5b8 100%);
-  border: 1.5px solid rgba(255,100,30,0.30);
-  border-radius: 14px;
-  color: #e64a00;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-  box-shadow: 0 2px 12px rgba(230,74,0,0.22);
-}
-.home-feat:hover .home-feat-icon {
-  background: linear-gradient(135deg, #ffd5b8 0%, #ffab76 100%);
-  border-color: rgba(255,100,30,0.50);
-  box-shadow: 0 4px 18px rgba(230,74,0,0.38);
-  transform: scale(1.08) rotate(4deg);
-  color: #bf360c;
-}
-
-/* Card + icon animations moved inside @media (prefers-reduced-motion: no-preference) below */
-
-.home-feat h3 {
-  font-size: 15px;
-  font-weight: 800;
-  color: #0f0503;
-  margin-bottom: 10px;
-  text-shadow: none;
-  letter-spacing: -0.3px;
-  line-height: 1.35;
-}
-.home-feat p {
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.7;
-  text-shadow: none;
-  font-weight: 500;
 }
 
 /* ── Footer ─────────────────────────────────────────────────────── */
@@ -1172,27 +1070,9 @@
   /* CTA glow ring — expanding red ring around button */
   .home-cta-btn::after     { animation: home-glow-ring 2.8s ease-in-out 1.5s infinite; }
 
-  /* Feature cards staggered entrance */
-  .home-feat:nth-child(1)  { animation: fade-in-up 0.5s var(--ease-out) 0.10s both; }
-  .home-feat:nth-child(2)  { animation: fade-in-up 0.5s var(--ease-out) 0.22s both; }
-  .home-feat:nth-child(3)  { animation: fade-in-up 0.5s var(--ease-out) 0.34s both; }
-  .home-feat:nth-child(4)  { animation: fade-in-up 0.5s var(--ease-out) 0.46s both; }
-  .home-feat:nth-child(5)  { animation: fade-in-up 0.5s var(--ease-out) 0.58s both; }
-  .home-feat:nth-child(6)  { animation: fade-in-up 0.5s var(--ease-out) 0.70s both; }
-
-  /* Icons bounce-in inside each card */
-  .home-feat:nth-child(1) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.22s both; }
-  .home-feat:nth-child(2) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.34s both; }
-  .home-feat:nth-child(3) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.46s both; }
-  .home-feat:nth-child(4) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.58s both; }
-  .home-feat:nth-child(5) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.70s both; }
-  .home-feat:nth-child(6) .home-feat-icon { animation: scale-in 0.4s var(--ease-out) 0.82s both; }
 }
 
 /* ─── Responsive ──────────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .home-features { grid-template-columns: repeat(2, 1fr); }
-}
 @media (max-width: 768px) {
   .home-bar             { padding: 0 20px; height: 58px; position: fixed; }
   .home-logo-sub        { display: none; }
@@ -1206,8 +1086,6 @@
   .home-cta-btn         { padding: 13px 32px; font-size: 14px; }
   .home-section-heading { font-size: 26px; letter-spacing: -0.6px; }
   .home-features-section{ padding: 48px 16px 56px; }
-  .home-features        { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-  .home-feat            { padding: 20px 16px; border-radius: 16px; }
   .home-footer          { padding: 12px 20px 10px; }
   .home-footer-inner    { flex-direction: column; align-items: center; text-align: center; gap: 8px; }
   .home-footer-center   { justify-content: center; }
@@ -1226,9 +1104,6 @@
   .home-section-eyebrow  { font-size: 10px; padding: 5px 13px; }
   .home-cta-btn          { padding: 12px 26px; font-size: 14px; }
   .home-section-heading  { font-size: 22px; }
-  .home-features         { grid-template-columns: 1fr; gap: 12px; }
-  .home-feat             { padding: 18px 16px; }
-  .home-feat-icon        { width: 46px; height: 46px; border-radius: 12px; }
   .home-features-section { padding: 36px 14px 44px; }
   .home-dark-section     { padding-left: 14px; padding-right: 14px; }
   .home-footer           { padding: 10px 14px 8px; }

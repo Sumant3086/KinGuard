@@ -36,6 +36,6 @@ export const env = {
     nodeEnv: process.env.NODE_ENV,
   },
   client: {
-    url: process.env.CLIENT_URL || 'http://localhost:5173',
+    url: process.env.CLIENT_URL,
   },
 };
