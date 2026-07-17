@@ -679,13 +679,13 @@
   filter: brightness(1.22) saturate(1.30) contrast(1.04) blur(2px);
   will-change: transform;
 }
-/* Very light centre vignette — just enough for text, no heavy dark film */
+/* Subtle centre vignette — darkens the image centre just enough for text shadows to pop */
 .home-hero-bg::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.10) 60%, transparent 85%);
+    radial-gradient(ellipse 80% 70% at 50% 50%, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.16) 55%, transparent 80%);
   z-index: 0;
   pointer-events: none;
 }
@@ -698,16 +698,10 @@
   text-align: center;
   width: 100%;
   animation: hero-enter 0.55s var(--ease-out) both;
-  background: rgba(6, 1, 1, 0.78);
-  backdrop-filter: blur(24px) saturate(130%);
-  -webkit-backdrop-filter: blur(24px) saturate(130%);
-  border-radius: 28px;
-  border: 1.5px solid rgba(220, 38, 38, 0.40);
-  box-shadow:
-    0 20px 64px rgba(0,0,0,0.60),
-    0 4px 20px rgba(220,38,38,0.28),
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -1px 0 rgba(220,38,38,0.15);
+  /* No dark box — text reads directly on the photo */
+  background: none;
+  border: none;
+  box-shadow: none;
 }
 .home-eyebrow {
   display: inline-flex;
@@ -730,12 +724,16 @@
   font-size: 64px;
   font-weight: 900;
   color: #ffffff !important;
-  /* Do NOT set -webkit-text-fill-color here — em child overrides it for the gradient */
   line-height: 1.08;
   letter-spacing: -2.8px;
   margin-bottom: 26px;
   animation: fade-in-up 0.5s var(--ease-out) 0.18s both;
-  text-shadow: 0 2px 12px rgba(0,0,0,0.70), 0 4px 28px rgba(0,0,0,0.45), 0 0 60px rgba(255,255,255,0.08);
+  /* Strong multi-layer shadow replaces the dark panel */
+  text-shadow:
+    0 2px 4px rgba(0,0,0,0.90),
+    0 4px 16px rgba(0,0,0,0.70),
+    0 8px 40px rgba(0,0,0,0.50),
+    0 0 80px rgba(0,0,0,0.30);
 }
 .home-hero h1 em {
   font-style: normal;
@@ -755,9 +753,8 @@
   max-width: 600px;
   margin: 0 auto 40px;
   animation: fade-in-up 0.5s var(--ease-out) 0.28s both;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.40);
-  font-weight: 500;
-  opacity: 0.92;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.85), 0 2px 16px rgba(0,0,0,0.60);
+  font-weight: 600;
 }
 .home-cta-btn {
   display: inline-flex;
@@ -827,27 +824,22 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.06);
+  /* Very gentle centre dark so step text-shadows get contrast floor */
+  background: radial-gradient(ellipse 90% 80% at 50% 40%, rgba(0,0,0,0.20) 0%, transparent 75%);
   z-index: 1;
   pointer-events: none;
 }
 
-/* ── Section header ─────────────────────────────────────────────── */
+/* ── Section header — no dark box, text reads on the photo ──────── */
 .home-section-header {
   text-align: center;
   margin-bottom: 40px;
   position: relative;
   z-index: 2;
-  background: rgba(6, 1, 1, 0.82);
-  backdrop-filter: blur(22px) saturate(130%);
-  -webkit-backdrop-filter: blur(22px) saturate(130%);
-  border-radius: 22px;
-  border: 1.5px solid rgba(220,38,38,0.35);
-  box-shadow:
-    0 12px 48px rgba(0,0,0,0.55),
-    0 3px 16px rgba(220,38,38,0.22),
-    inset 0 1px 0 rgba(255,255,255,0.10);
-  padding: 36px 48px 32px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0 24px 0;
   max-width: 680px;
   margin-left: auto;
   margin-right: auto;
@@ -908,15 +900,19 @@
   color: transparent !important;
   letter-spacing: -1.2px;
   line-height: 1.12;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.80)) drop-shadow(0 0 32px rgba(220,38,38,0.55));
+  /* Heavier shadow so gradient text pops on any photo without a dark box */
+  filter:
+    drop-shadow(0 2px 4px rgba(0,0,0,1))
+    drop-shadow(0 4px 16px rgba(0,0,0,0.80))
+    drop-shadow(0 0 28px rgba(220,38,38,0.45));
 }
 
-/* Override for the subtitle paragraph inside the section header glass panel */
+/* Subtitle under heading — white with strong shadow on photo */
 .home-section-header > p {
-  color: rgba(255,255,255,0.88) !important;
-  font-weight: 500 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
   font-size: 15px !important;
-  text-shadow: none !important;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.90), 0 2px 14px rgba(0,0,0,0.70) !important;
   margin-top: 10px !important;
 }
 
@@ -1258,16 +1254,14 @@
   z-index: 2;
   max-width: 900px;
   margin: 0 auto;
-  background: rgba(6, 1, 1, 0.84);
-  border: 1.5px solid rgba(220,38,38,0.38);
+  /* Transparent — the white step cards create their own visual container */
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 20px;
   padding: 28px 24px 24px;
-  backdrop-filter: blur(24px) saturate(130%);
-  -webkit-backdrop-filter: blur(24px) saturate(130%);
-  box-shadow:
-    0 16px 56px rgba(0,0,0,0.60),
-    0 4px 18px rgba(220,38,38,0.24),
-    inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.28);
 }
 
 /* ── Desktop flow rows ── */
