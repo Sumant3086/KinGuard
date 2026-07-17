@@ -457,53 +457,47 @@
 
 .lr-role:hover { transform: translateX(6px); }
 
-/* ── Admin — deep orange ── */
+/* ── Admin — vivid orange left bar, clean glass ── */
 .lr-role-admin {
-  background: rgba(234,88,12,0.28) !important;
-  border: 1.5px solid rgba(249,115,22,0.60) !important;
+  background: rgba(255,255,255,0.12) !important;
+  border: 1px solid rgba(249,115,22,0.45) !important;
   border-left: 4px solid #f97316 !important;
-  box-shadow:
-    -4px 0 16px rgba(249,115,22,0.55),
-    0 4px 18px rgba(0,0,0,0.22),
-    inset 0 1px 0 rgba(255,200,150,0.20) !important;
+  box-shadow: -3px 0 18px rgba(249,115,22,0.60), 0 3px 14px rgba(0,0,0,0.18) !important;
 }
 .lr-role-admin:hover {
-  background: rgba(234,88,12,0.40) !important;
-  box-shadow: -4px 0 22px rgba(249,115,22,0.70), 0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,200,150,0.25) !important;
+  background: rgba(249,115,22,0.20) !important;
+  box-shadow: -4px 0 26px rgba(249,115,22,0.80), 0 6px 20px rgba(0,0,0,0.22) !important;
 }
-.lr-role-admin svg { color: #fed7aa; }
+.lr-role-admin svg { color: #fdba74; }
+.lr-role-admin .lr-role-desc { color: #fed7aa !important; }
 
-/* ── Area Manager — amber ── */
+/* ── Area Manager — vivid amber left bar ── */
 .lr-role-am {
-  background: rgba(180,110,0,0.26) !important;
-  border: 1.5px solid rgba(245,158,11,0.58) !important;
+  background: rgba(255,255,255,0.10) !important;
+  border: 1px solid rgba(245,158,11,0.42) !important;
   border-left: 4px solid #f59e0b !important;
-  box-shadow:
-    -4px 0 16px rgba(245,158,11,0.50),
-    0 4px 18px rgba(0,0,0,0.22),
-    inset 0 1px 0 rgba(255,220,100,0.18) !important;
+  box-shadow: -3px 0 18px rgba(245,158,11,0.55), 0 3px 14px rgba(0,0,0,0.18) !important;
 }
 .lr-role-am:hover {
-  background: rgba(180,110,0,0.38) !important;
-  box-shadow: -4px 0 22px rgba(245,158,11,0.65), 0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,220,100,0.22) !important;
+  background: rgba(245,158,11,0.18) !important;
+  box-shadow: -4px 0 26px rgba(245,158,11,0.75), 0 6px 20px rgba(0,0,0,0.22) !important;
 }
-.lr-role-am svg { color: #fde68a; }
+.lr-role-am svg { color: #fcd34d; }
+.lr-role-am .lr-role-desc { color: #fde68a !important; }
 
-/* ── Store Manager — warm gold ── */
+/* ── Store Manager — vivid gold left bar ── */
 .lr-role-store {
-  background: rgba(161,120,0,0.24) !important;
-  border: 1.5px solid rgba(234,179,8,0.55) !important;
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(234,179,8,0.40) !important;
   border-left: 4px solid #eab308 !important;
-  box-shadow:
-    -4px 0 16px rgba(234,179,8,0.45),
-    0 4px 18px rgba(0,0,0,0.22),
-    inset 0 1px 0 rgba(254,240,138,0.18) !important;
+  box-shadow: -3px 0 18px rgba(234,179,8,0.50), 0 3px 14px rgba(0,0,0,0.18) !important;
 }
 .lr-role-store:hover {
-  background: rgba(161,120,0,0.36) !important;
-  box-shadow: -4px 0 22px rgba(234,179,8,0.60), 0 8px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(254,240,138,0.22) !important;
+  background: rgba(234,179,8,0.16) !important;
+  box-shadow: -4px 0 26px rgba(234,179,8,0.70), 0 6px 20px rgba(0,0,0,0.22) !important;
 }
 .lr-role-store svg { color: #fef08a; }
+.lr-role-store .lr-role-desc { color: #fef9c3 !important; }
 
 .lr-role-desc {
   font-size: 14px;
