@@ -679,8 +679,8 @@
   padding: 48px 56px 52px;
   text-align: center;
   animation: hero-enter 0.6s var(--ease-out) both;
-  /* Same beige as step cards */
-  background: rgba(245, 225, 195, 0.96);
+  /* Warm beige, slightly transparent so background shows through */
+  background: rgba(245, 225, 195, 0.82);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 24px;
@@ -1158,15 +1158,16 @@
 @media (max-width: 768px) {
   .home-bar             { padding: 0 20px; height: 58px; position: fixed; }
   .home-logo-sub        { display: none; }
-  .home-hero            { padding: 40px 28px 44px; border-radius: 20px; max-width: calc(100% - 32px); }
-  .home-section-header  { padding: 28px 24px 24px; max-width: calc(100% - 32px); }
-  .home-hero h1         { font-size: 34px; letter-spacing: -1.2px; }
-  .home-hero p          { font-size: 15px; max-width: 100%; }
-  .home-eyebrow         { font-size: 10.5px; padding: 7px 16px; }
-  .home-section-eyebrow { font-size: 10.5px; padding: 6px 15px; }
-  .home-cta-btn         { padding: 14px 36px; font-size: 15px; }
+  /* Hero card — compact, leaves background visible around it */
+  .home-hero            { padding: 28px 22px 32px; border-radius: 18px; max-width: calc(100% - 40px); }
+  .home-hero h1         { font-size: 30px; letter-spacing: -1px; margin-bottom: 14px; }
+  .home-hero p          { font-size: 13.5px; max-width: 100%; margin-bottom: 24px; }
+  .home-eyebrow         { font-size: 10px; padding: 6px 14px; letter-spacing: 1.4px; margin-bottom: 18px; }
+  .home-section-header  { padding: 0 20px; max-width: calc(100% - 32px); }
+  .home-section-eyebrow { font-size: 10px; padding: 6px 14px; }
+  .home-cta-btn         { padding: 13px 32px; font-size: 14px; }
   .home-section-heading { font-size: 26px; letter-spacing: -0.6px; }
-  .home-features-section{ padding: 56px 20px 64px; }
+  .home-features-section{ padding: 48px 16px 56px; }
   .home-features        { grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .home-feat            { padding: 20px 16px; border-radius: 16px; }
   .home-footer          { padding: 12px 20px 10px; }
@@ -1179,19 +1180,18 @@
   .home-logo-name        { font-size: 14px; }
   .home-logo-img         { width: 28px; height: 28px; }
   .home-signin-btn       { padding: 7px 14px; font-size: 12px; }
-  .home-hero             { padding: 32px 18px 36px; border-radius: 16px; }
-  .home-section-header   { padding: 24px 18px 20px; border-radius: 16px; }
-  .home-hero h1          { font-size: 26px; letter-spacing: -0.8px; }
-  .home-hero p           { font-size: 13.5px; }
-  .home-eyebrow          { font-size: 11px; padding: 6px 14px; letter-spacing: 1.2px; }
-  .home-section-eyebrow  { font-size: 11px; padding: 6px 14px; }
-  .home-cta-btn          { padding: 13px 28px; font-size: 14px; }
+  .home-hero             { padding: 24px 18px 28px; border-radius: 16px; max-width: calc(100% - 32px); }
+  .home-hero h1          { font-size: 26px; letter-spacing: -0.8px; margin-bottom: 12px; }
+  .home-hero p           { font-size: 13px; margin-bottom: 20px; }
+  .home-eyebrow          { font-size: 9.5px; padding: 5px 13px; margin-bottom: 16px; }
+  .home-section-header   { padding: 0 14px; }
+  .home-section-eyebrow  { font-size: 10px; padding: 5px 13px; }
+  .home-cta-btn          { padding: 12px 26px; font-size: 14px; }
   .home-section-heading  { font-size: 22px; }
   .home-features         { grid-template-columns: 1fr; gap: 12px; }
   .home-feat             { padding: 18px 16px; }
   .home-feat-icon        { width: 46px; height: 46px; border-radius: 12px; }
-  .home-feat-step-num    { width: 22px; height: 22px; font-size: 10px; }
-  .home-features-section { padding: 40px 14px 50px; }
+  .home-features-section { padding: 36px 14px 44px; }
   .home-dark-section     { padding-left: 14px; padding-right: 14px; }
   .home-footer           { padding: 10px 14px 8px; }
   .home-footer-developer { font-size: 11px; letter-spacing: 1.8px; }
