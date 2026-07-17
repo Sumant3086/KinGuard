@@ -5,10 +5,11 @@ import { PageHeader } from '../../../shared/components/ui/PageHeader';
 import { useToast } from '../../../shared/context/ToastContext';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
+import { CATEGORY_NAMES } from '../../../shared/utils/shrinkageCategories';
 
 const STATUS_LABEL  = { PENDING_REVIEW: 'Awaiting Review', APPROVED: 'Approved', RETURNED: 'Returned' };
 const STATUS_COLOR  = { PENDING_REVIEW: '#d97706', APPROVED: '#16a34a', RETURNED: '#dc2626' };
-const CATEGORIES    = ['Theft', 'Damage', 'Expiry', 'Miscount', 'Transfer', 'Supplier', 'Other'];
+const CATEGORIES    = CATEGORY_NAMES;
 
 export default function AMReview() {
   const { batchId } = useParams();

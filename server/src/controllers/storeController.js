@@ -2,7 +2,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import ExcelJS from 'exceljs';
 import prisma from '../config/prisma.js';
-import { parseId, requireId } from '../utils/params.js';
+import { parseId, requireId, parsePage, parsePageSize } from '../utils/params.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 
 const EMPTY_STATS = { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 };
@@ -110,9 +110,11 @@ export async function getBatches(req, res, next) {
 export async function getInventory(req, res, next) {
   const startTime = Date.now();
   try {
-    const storeId = req.user.storeId;
+    const storeId    = req.user.storeId;
     const { search, status } = req.query;
-    const batchId = parseId(req.query.batchId, 'batchId');
+    const batchId    = parseId(req.query.batchId, 'batchId');
+    const pageNum    = parsePage(req.query.page, 1);
+    const pageSizeNum = parsePageSize(req.query.pageSize, 100, 500);
 
     const where = { storeId };
 
@@ -131,10 +133,15 @@ export async function getInventory(req, res, next) {
       where.status = status;
     }
 
-    const [records, batchInfo, amReview] = await Promise.all([
+    const skip = (pageNum - 1) * pageSizeNum;
+
+    const [totalRecords, records, batchInfo, amReview] = await Promise.all([
+      prisma.inventoryRecord.count({ where }),
       prisma.inventoryRecord.findMany({
         where,
         orderBy: { materialCode: 'asc' },
+        skip,
+        take: pageSizeNum,
       }),
       batchId
         ? prisma.uploadBatch.findUnique({
@@ -170,6 +177,12 @@ export async function getInventory(req, res, next) {
       records,
       isLocked,
       returnedByAM: amReview?.status === 'RETURNED' ? amReview.remarks || 'Your submission was returned. Please recount and resubmit.' : null,
+      pagination: {
+        page: pageNum,
+        pageSize: pageSizeNum,
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / pageSizeNum),
+      },
     });
   } catch (error) {
     next(error);
@@ -442,30 +455,27 @@ export async function submitInventory(req, res, next) {
 }
 
 async function detectRepeatDiscrepancies(storeId, batchId, userId) {
-  const currentBatch = await prisma.uploadBatch.findUnique({
-    where: { id: batchId },
-    select: { inventoryDate: true },
-  });
-  if (!currentBatch) return;
-
-  // Run priorBatches and currentShortages in parallel — neither depends on the other
-  const [priorBatches, currentShortages] = await Promise.all([
-    prisma.uploadBatch.findMany({
-      where: { inventoryDate: { lt: currentBatch.inventoryDate } },
-      orderBy: { inventoryDate: 'desc' },
-      take: 2,
-      select: { id: true },
-    }),
+  // Fetch currentBatch + currentShortages in parallel — exit early if no shortages
+  const [currentBatch, currentShortages] = await Promise.all([
+    prisma.uploadBatch.findUnique({ where: { id: batchId }, select: { inventoryDate: true } }),
     prisma.inventoryRecord.findMany({
       where: { storeId, batchId, status: 'SUBMITTED', difference: { lt: 0 } },
       select: { materialCode: true },
     }),
   ]);
-  if (priorBatches.length === 0 || currentShortages.length === 0) return;
+  if (!currentBatch || currentShortages.length === 0) return;
 
-  const priorBatchIds = priorBatches.map((b) => b.id);
+  const priorBatches = await prisma.uploadBatch.findMany({
+    where: { inventoryDate: { lt: currentBatch.inventoryDate } },
+    orderBy: { inventoryDate: 'desc' },
+    take: 2,
+    select: { id: true },
+  });
+  if (priorBatches.length === 0) return;
 
+  const priorBatchIds    = priorBatches.map((b) => b.id);
   const currentMaterials = currentShortages.map((r) => r.materialCode);
+
   const priorShortages = await prisma.inventoryRecord.findMany({
     where: {
       storeId,
@@ -475,6 +485,7 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
       materialCode: { in: currentMaterials },
     },
     select: { materialCode: true, batchId: true },
+    distinct: ['materialCode'],
   });
 
   const repeatMaterials = new Set(priorShortages.map((r) => r.materialCode));

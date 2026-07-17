@@ -8,54 +8,10 @@ import { useDownload } from '../../../shared/hooks/useDownload';
 import * as storeApi from '../../../shared/api/storeApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate } from '../../../shared/utils/dateUtils';
+import { SHRINKAGE_CATEGORIES, CATEGORY_NAMES } from '../../../shared/utils/shrinkageCategories';
 
-// Category -> Issue Detail sub-reasons mapping
-const ISSUE_REASONS = {
-  Dented: [
-    'Minor dent to packaging, product is ok',
-    'Moderate dent to packaging, product with lesser impact',
-    'Direct dent to product, product not ok',
-    'Dented due to warehouse handling error',
-    'Dented during transit/shipping',
-  ],
-  Expiry: [
-    'Product has passed the expiry date',
-    'Product has passed the particular date',
-    'Expired stock identified during stock take',
-    'Expired stock designated for return to vendor',
-    'Expired stock designated for disposal',
-  ],
-  Damage: [
-    'Physical breakage of product/component',
-    'Physical scratches/abrasions on product/packaging',
-    'Water exposure damage',
-    'Fire/smoke exposure damage',
-    'Electrical malfunction/damage',
-    'Manufacturing defect identified',
-    'Damage incurred during customer return process',
-    'Unsaleable due to damage',
-  ],
-  'In Transit': [
-    'Overage, Shortage, Damage (OS&D) report for transit damage',
-    'Damage/issue due to cargo shift during transport',
-    'Environmental exposure during transit (e.g., temperature, humidity)',
-    'Pilferage suspected during transit',
-    'Damage incurred due to transport accident',
-    'Discrepancy between physical count and shipping documentation',
-  ],
-  Other: [
-    'Quality control hold, pending further inspection/decision',
-    'Incorrect labeling identified on product/packaging',
-    'Product subject to manufacturer recall',
-    'Product deemed obsolete, no longer marketable',
-    'Inventory adjustment due to system error/discrepancy',
-    'Stock designated for donation',
-    'Stock designated for sampling/testing',
-    'Stock shared to national employees',
-  ],
-};
-
-const CATEGORIES = Object.keys(ISSUE_REASONS);
+const ISSUE_REASONS = SHRINKAGE_CATEGORIES;
+const CATEGORIES    = CATEGORY_NAMES;
 
 const IconSave = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -89,6 +45,8 @@ export default function StoreInventory() {
   const [returnedReason, setReturnedReason] = useState('');
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
+  const [pagination, setPagination]     = useState(null);
+  const [currentPage, setCurrentPage]   = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [editedRecords, setEditedRecords] = useState({});
   const [savingRecords, setSavingRecords] = useState(new Set());
@@ -154,7 +112,8 @@ export default function StoreInventory() {
 
   useEffect(() => {
     if (!batchesReadyRef.current) return;
-    loadInventory();
+    setCurrentPage(1);
+    loadInventory(1);
   }, [search, statusFilter, selectedBatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -184,15 +143,17 @@ export default function StoreInventory() {
     }
   }
 
-  async function loadInventory() {
+  async function loadInventory(page = currentPage) {
     try {
       setLoading(true);
       setError('');
-      const res = await storeApi.getInventory(search, statusFilter, selectedBatch);
-      const { records: recs, isLocked: locked, returnedByAM } = res;
+      const res = await storeApi.getInventory(search, statusFilter, selectedBatch, page);
+      const { records: recs, isLocked: locked, returnedByAM, pagination: pag } = res;
       setRecords(recs);
       setIsLocked(locked);
       setReturnedReason(returnedByAM || '');
+      setPagination(pag ?? null);
+      setCurrentPage(page);
       editedRecordsRef.current = {};
       setEditedRecords({});
       setSavingRecords(new Set());
@@ -1097,7 +1058,27 @@ export default function StoreInventory() {
 
           {/* Table footer */}
           <div className="inv-table-footer">
-            <span>{records.length} record{records.length !== 1 ? 's' : ''}</span>
+            <span>
+              {pagination
+                ? `${pagination.totalRecords} record${pagination.totalRecords !== 1 ? 's' : ''} · page ${pagination.page} of ${pagination.totalPages}`
+                : `${records.length} record${records.length !== 1 ? 's' : ''}`}
+            </span>
+            {pagination && pagination.totalPages > 1 && (
+              <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  disabled={currentPage <= 1}
+                  onClick={() => loadInventory(currentPage - 1)}
+                  style={{ padding: '2px 10px', fontSize: 12 }}
+                >← Prev</button>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  disabled={currentPage >= pagination.totalPages}
+                  onClick={() => loadInventory(currentPage + 1)}
+                  style={{ padding: '2px 10px', fontSize: 12 }}
+                >Next →</button>
+              </span>
+            )}
             {hasUnsavedChanges && (
               <span className="footer-unsaved-count">
                 {Object.keys(editedRecords).length} unsaved

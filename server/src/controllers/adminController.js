@@ -186,7 +186,7 @@ export async function getDashboard(req, res, next) {
         FROM "InventoryRecord"
         WHERE "batchId" = ${latestBatch.id}
       `,
-      prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true } }),
+      prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true, areaManagerId: true, areaManager: { select: { name: true } } } }),
       prisma.uploadBatch.findMany({ orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
       prisma.$queryRaw`
         SELECT "storeId"::int AS "storeId", remarks, COUNT(*)::int AS cnt
@@ -250,9 +250,10 @@ export async function getDashboard(req, res, next) {
       const isPending     = s ? s.pendingCount > 0 : false;
       const riskLevel     = shortageRate >= 20 ? 'RED' : shortageRate >= 5 ? 'YELLOW' : 'GREEN';
       return {
-        storeId: store.id,
-        storeCode: store.storeCode,
-        storeName: store.storeName,
+        storeId:         store.id,
+        storeCode:       store.storeCode,
+        storeName:       store.storeName,
+        areaManagerName: store.areaManager?.name ?? null,
         totalItems,
         shortageCount,
         shortageRate,
@@ -1464,6 +1465,43 @@ export async function updateBatch(req, res, next) {
   } catch (error) { next(error); }
 }
 
+// Close a cycle: set the deadline to right now so all remaining pending stores
+// are immediately locked. Any previously submitted records are unaffected.
+export async function closeBatch(req, res, next) {
+  try {
+    const batchId = requireId(req.params.id, 'batchId');
+    const batch = await prisma.uploadBatch.findUnique({
+      where: { id: batchId },
+      select: { id: true, inventoryDate: true, submissionDeadline: true },
+    });
+    if (!batch) throw new AppError('Cycle not found', 404);
+
+    const now = new Date();
+    // If deadline is already in the past, cycle is already locked — no-op
+    if (batch.submissionDeadline && batch.submissionDeadline <= now) {
+      return res.json({ message: 'Cycle is already locked', alreadyClosed: true });
+    }
+
+    const pendingCount = await prisma.inventoryRecord.count({
+      where: { batchId, status: 'PENDING' },
+    });
+
+    await prisma.uploadBatch.update({
+      where: { id: batchId },
+      data: { submissionDeadline: now },
+    });
+
+    await createAuditLog({
+      userId: req.user.id, action: 'CLOSE_BATCH',
+      entityType: 'UPLOAD_BATCH', entityId: batchId,
+      metadata: { inventoryDate: batch.inventoryDate, lockedPendingStores: pendingCount },
+    });
+
+    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications');
+    res.json({ message: `Cycle locked. ${pendingCount} pending item(s) are now frozen.`, pendingCount });
+  } catch (error) { next(error); }
+}
+
 export async function grantStoreExtension(req, res, next) {
   try {
     const { newDeadline, note } = req.body;
@@ -1496,6 +1534,9 @@ export async function grantStoreExtension(req, res, next) {
 export async function getTrends(req, res, next) {
   try {
     const cycles = parseIntParam(req.query.cycles, 'cycles', 6, 1, 24);
+    const cacheKey = `admin:trends:${cycles}`;
+    const cached = sGet(cacheKey);
+    if (cached) return res.json(cached);
     const batches = (await prisma.uploadBatch.findMany({
       orderBy: { inventoryDate: 'desc' },
       take: cycles,
@@ -1531,7 +1572,9 @@ export async function getTrends(req, res, next) {
       });
     });
 
-    res.json({ batches: batches.map(b => ({ id: b.id, inventoryDate: b.inventoryDate })), series: Array.from(storeMap.values()) });
+    const trendsResult = { batches: batches.map(b => ({ id: b.id, inventoryDate: b.inventoryDate })), series: Array.from(storeMap.values()) };
+    sSet(cacheKey, trendsResult, 300_000); // 5-minute cache
+    res.json(trendsResult);
   } catch (error) { next(error); }
 }
 
@@ -1692,50 +1735,17 @@ export async function downloadSampleTemplate(req, res, next) {
       }
     });
 
-    // Shrinkage Reference sheet — mirrors ISSUE_REASONS in the store UI
+    // Shrinkage Reference sheet — mirrors shrinkageCategories.js in the client UI
     const SHRINKAGE_CATEGORIES = {
-      'Dented': [
-        'Minor dent to packaging, product is ok',
-        'Moderate dent to packaging, product with lesser impact',
-        'Direct dent to product, product not ok',
-        'Dented due to warehouse handling error',
-        'Dented during transit/shipping',
-      ],
-      'Expiry': [
-        'Product has passed the expiry date',
-        'Product has passed the particular date',
-        'Expired stock identified during stock take',
-        'Expired stock designated for return to vendor',
-        'Expired stock designated for disposal',
-      ],
-      'Damage': [
-        'Physical breakage of product/component',
-        'Physical scratches/abrasions on product/packaging',
-        'Water exposure damage',
-        'Fire/smoke exposure damage',
-        'Electrical malfunction/damage',
-        'Manufacturing defect identified',
-        'Damage incurred during customer return process',
-        'Unsaleable due to damage',
-      ],
-      'In Transit': [
-        'Overage, Shortage, Damage (OS&D) report for transit damage',
-        'Damage/issue due to cargo shift during transport',
-        'Environmental exposure during transit (e.g., temperature, humidity)',
-        'Pilferage suspected during transit',
-        'Damage incurred due to transport accident',
-        'Discrepancy between physical count and shipping documentation',
-      ],
-      'Other': [
-        'Quality control hold, pending further inspection/decision',
-        'Incorrect labeling identified on product/packaging',
-        'Product subject to manufacturer recall',
-        'Product deemed obsolete, no longer marketable',
-        'Inventory adjustment due to system error/discrepancy',
-        'Stock designated for donation',
-        'Stock designated for sampling/testing',
-        'Stock shared to national employees',
-      ],
+      'Dented':     ['Minor dent to packaging, product is ok', 'Moderate dent to packaging, product with lesser impact', 'Direct dent to product, product not ok', 'Dented due to warehouse handling error', 'Dented during transit/shipping'],
+      'Expiry':     ['Product has passed the expiry date', 'Product has passed the particular date', 'Expired stock identified during stock take', 'Expired stock designated for return to vendor', 'Expired stock designated for disposal'],
+      'Damage':     ['Physical breakage of product/component', 'Physical scratches/abrasions on product/packaging', 'Water exposure damage', 'Fire/smoke exposure damage', 'Electrical malfunction/damage', 'Manufacturing defect identified', 'Damage incurred during customer return process', 'Unsaleable due to damage'],
+      'In Transit': ['Overage, Shortage, Damage (OS&D) report for transit damage', 'Damage/issue due to cargo shift during transport', 'Environmental exposure during transit (e.g., temperature, humidity)', 'Pilferage suspected during transit', 'Damage incurred due to transport accident', 'Discrepancy between physical count and shipping documentation'],
+      'Theft':      ['Suspected internal theft', 'Suspected external/shoplifting theft', 'CCTV evidence of theft', 'Theft during transit', 'No evidence — stock unaccounted for'],
+      'Miscount':   ['Counting error by store team', 'Counting error — recount confirmed correct', 'System quantity mismatch (ERP error)', 'Stock in transit not yet received'],
+      'Transfer':   ['Stock transferred to another store', 'Stock returned to warehouse', 'Inter-branch transfer in progress'],
+      'Supplier':   ['Short delivery from supplier', 'Wrong quantity delivered by supplier', 'Supplier return in progress', 'Goods received note discrepancy'],
+      'Other':      ['Quality control hold, pending further inspection/decision', 'Incorrect labeling identified on product/packaging', 'Product subject to manufacturer recall', 'Product deemed obsolete, no longer marketable', 'Inventory adjustment due to system error/discrepancy', 'Stock designated for donation', 'Stock designated for sampling/testing', 'Stock shared to national employees'],
     };
 
     const ref = workbook.addWorksheet('Shrinkage Reference');
@@ -1963,7 +1973,7 @@ export async function deleteBatch(req, res, next) {
       metadata: { inventoryDate: batch.inventoryDate, fileName: batch.originalFileName },
     });
 
-    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications');
+    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications', 'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
     res.json({ message: 'Cycle deleted' });
   } catch (error) { next(error); }
 }

@@ -3,11 +3,13 @@ node_modules/
 /.pnp
 .pnp.js
 
-# Environment variables
+# Environment variables — never commit secrets
 .env
 .env.local
 .env.production
 .env.test
+server/.env
+server/.env.*
 
 # Build outputs
 dist/
