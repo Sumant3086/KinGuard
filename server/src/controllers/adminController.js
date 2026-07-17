@@ -128,23 +128,28 @@ export async function getDashboard(req, res, next) {
     const cached = sGet('admin:dashboard');
     if (cached) return res.json(cached);
 
-    const [totalStores, latestBatch] = await Promise.all([
+    // Round 1 — two cheap queries; wrap in withDbRetry so a dropped Supabase
+    // idle-connection is recovered without surfacing a 503 to the user.
+    const [totalStores, latestBatch] = await withDbRetry(() => Promise.all([
       prisma.store.count({ where: { isActive: true } }),
       prisma.uploadBatch.findFirst({
         where: { status: 'COMPLETED' },
         orderBy: { inventoryDate: 'desc' },
         select: { id: true, inventoryDate: true, submissionDeadline: true },
       }),
-    ]);
+    ]));
 
     if (!latestBatch) {
-      return res.json({
+      const emptyResult = {
         totalStores,
         currentBatch: null,
         storeScorecard: [],
         hotspots: [],
+        amReviewPipeline: [],
         networkSummary: { totalRecords: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 },
-      });
+      };
+      sSet('admin:dashboard', emptyResult, 300_000);
+      return res.json(emptyResult);
     }
 
     const now = new Date();
@@ -152,9 +157,13 @@ export async function getDashboard(req, res, next) {
       ? now > new Date(latestBatch.submissionDeadline)
       : false;
 
-    // Round 2 — all stat queries + last-4-batches in one parallel burst
-    // (moved last4Batches here so hotspot SQL can run in round 3, not round 4)
-    const [perStoreStats, networkStats, allStores, last4Batches] = await Promise.all([
+    // Round 2 — all stat queries + last-4-batches + remarks + AM pipeline in one burst.
+    // topRemarkRows and amReviewPipeline only depend on latestBatch.id (round 1),
+    // so they no longer need to wait for last4Batches — saves a full DB round-trip.
+    const [
+      perStoreStats, networkStats, allStores, last4Batches,
+      topRemarkRows, amReviewPipelineRaw,
+    ] = await Promise.all([
       prisma.$queryRaw`
         SELECT
           ir."storeId",
@@ -179,13 +188,6 @@ export async function getDashboard(req, res, next) {
       `,
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true } }),
       prisma.uploadBatch.findMany({ orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
-    ]);
-
-    const batchIds = last4Batches.map((b) => b.id);
-
-    // Round 3 — top remarks + hotspot + AM pipeline all in one parallel burst.
-    // Moving amReviewPipeline here saves an entire Supabase round-trip vs running it sequentially after.
-    const [topRemarkRows, hotspotRows, amReviewPipelineRaw] = await Promise.all([
       prisma.$queryRaw`
         SELECT "storeId"::int AS "storeId", remarks, COUNT(*)::int AS cnt
         FROM "InventoryRecord"
@@ -193,6 +195,20 @@ export async function getDashboard(req, res, next) {
         GROUP BY "storeId", remarks
         ORDER BY "storeId", cnt DESC
       `,
+      // AM pipeline — ::int cast prevents BigInt JSON serialisation errors
+      prisma.$queryRaw`
+        SELECT r.status, r."storeId"::int AS "storeId", s."storeCode", s."storeName"
+        FROM "AreaManagerReview" r
+        JOIN "Store" s ON s.id = r."storeId"
+        WHERE r."batchId" = ${latestBatch.id}
+        ORDER BY r.status, s."storeName"
+      `.catch(() => []), // table may not exist yet — silently return []
+    ]);
+
+    const batchIds = last4Batches.map((b) => b.id);
+
+    // Round 3 — hotspot query only; depends on batchIds from round 2
+    const [hotspotRows] = await Promise.all([
       batchIds.length >= 2
         ? prisma.$queryRaw`
             SELECT
@@ -214,14 +230,6 @@ export async function getDashboard(req, res, next) {
             LIMIT 5
           `
         : Promise.resolve([]),
-      // AM pipeline — ::int casts prevent BigInt JSON serialisation errors
-      prisma.$queryRaw`
-        SELECT r.status, r."storeId"::int AS "storeId", s."storeCode", s."storeName"
-        FROM "AreaManagerReview" r
-        JOIN "Store" s ON s.id = r."storeId"
-        WHERE r."batchId" = ${latestBatch.id}
-        ORDER BY r.status, s."storeName"
-      `.catch(() => []), // table may not exist yet — silently return []
     ]);
 
     const topRemarkMap = new Map();
@@ -272,7 +280,7 @@ export async function getDashboard(req, res, next) {
     const storesPending   = storeScorecard.filter((s) => s.status === 'PENDING').length;
     const storesSubmitted = storeScorecard.filter((s) => s.status === 'SUBMITTED').length;
     const overdueStores   = storeScorecard.filter((s) => s.isOverdue).map((s) => s.storeName);
-    const amReviewPipeline = amReviewPipelineRaw; // already fetched in Round 3
+    const amReviewPipeline = amReviewPipelineRaw;
 
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);

@@ -181,7 +181,6 @@ export default function AdminDashboard() {
   const navigate    = useNavigate();
   const ageLabel    = useRelativeTime(fetchedAt);
   const mountedRef  = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const load = useCallback(async (force = false) => {
     if (!mountedRef.current) return;
@@ -214,10 +213,13 @@ export default function AdminDashboard() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset mountedRef on every (re-)mount so React 18 StrictMode's double-mount
+  // doesn't leave it false and cause load() to silently bail out.
   useEffect(() => {
-    if (cache.get(CACHE_KEY)) return;
-    load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    mountedRef.current = true;
+    if (!cache.get(CACHE_KEY)) load();
+    return () => { mountedRef.current = false; };
+  }, [load]); // load is a stable useCallback — effect runs once
 
   return (
     <AdminLayout>
