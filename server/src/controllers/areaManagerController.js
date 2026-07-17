@@ -420,6 +420,12 @@ export async function assignStoreAM(req, res, next) {
       if (!rows.length || rows[0].role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
     }
 
+    // Fetch old areaManagerId BEFORE the update so we can bust the previous AM's cache.
+    // Reading it from the update result gives the NEW value, not the old one.
+    const oldStore = await prisma.store.findUnique({ where: { id: storeId }, select: { areaManagerId: true } });
+    if (!oldStore) throw new AppError('Store not found', 404);
+    const prevAmId = oldStore.areaManagerId;
+
     const [store, amUser] = await Promise.all([
       prisma.store.update({
         where: { id: storeId },
@@ -432,10 +438,9 @@ export async function assignStoreAM(req, res, next) {
     ]);
     const am = amUser[0] ?? null;
 
-    // Bust the AM stores cache for both old and new AM so getManagedStoreIds stays fresh
+    // Bust new AM's cache so getManagedStoreIds reflects the new assignment immediately
     if (areaManagerId) sInvalidate(`am:stores:${parseInt(areaManagerId)}`);
-    // Also bust previous AM if the store was already assigned to someone else
-    const prevAmId = store.areaManagerId;
+    // Bust old AM's cache — prevAmId is the value BEFORE the update
     if (prevAmId && prevAmId !== parseInt(areaManagerId)) sInvalidate(`am:stores:${prevAmId}`);
 
     createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { storeCode: store.storeCode, storeName: store.storeName, areaManagerId: areaManagerId ?? null, areaManagerName: am?.name ?? null } }).catch(() => {});
