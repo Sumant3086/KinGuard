@@ -652,7 +652,7 @@
   transition-duration: 0.08s;
 }
 
-/* ── Hero - BRIGHT VIBRANT THEME matching "How It Works" section ── */
+/* ── Hero — vibrant, light-embracing ────────────────────────────── */
 .home-hero-bg {
   position: relative;
   overflow: hidden;
@@ -668,24 +668,24 @@
   inset: -6px;
   background:
     linear-gradient(180deg,
-      rgba(8,11,22,0.15) 0%,
-      rgba(8,11,22,0.08) 40%,
-      rgba(8,11,22,0.08) 70%,
-      rgba(4,1,0,0.18) 100%
+      rgba(0,0,0,0.06) 0%,
+      rgba(0,0,0,0.00) 40%,
+      rgba(0,0,0,0.00) 70%,
+      rgba(0,0,0,0.08) 100%
     ),
     url('../assets/img/HomePage.png') center center / cover no-repeat;
   z-index: 0;
-  filter: brightness(1.05) saturate(1.10) contrast(1.03) blur(3px);
+  /* More brightness + saturation — let the background truly shine */
+  filter: brightness(1.22) saturate(1.30) contrast(1.04) blur(2px);
   will-change: transform;
 }
-/* Subtle dark gradient for text contrast - much lighter than before */
+/* Very light centre vignette — just enough for text, no heavy dark film */
 .home-hero-bg::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 72% 68% at 50% 52%, rgba(3,5,12,0.22) 0%, rgba(3,5,12,0.08) 55%, transparent 78%),
-    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(220,38,38,0.06) 0%, transparent 70%);
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.10) 60%, transparent 85%);
   z-index: 0;
   pointer-events: none;
 }
@@ -693,18 +693,18 @@
   position: relative;
   z-index: 1;
   max-width: 760px;
-  padding: 56px 64px 64px;
+  padding: 52px 60px 60px;
   margin: 0 auto;
   text-align: center;
   width: 100%;
   animation: hero-enter 0.55s var(--ease-out) both;
-  /* Glass dark panel — makes all text perfectly readable on any background */
-  background: rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(10px) saturate(80%);
-  -webkit-backdrop-filter: blur(10px) saturate(80%);
+  /* Light frosted glass — luminous, not heavy */
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(18px) saturate(160%) brightness(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(160%) brightness(1.05);
   border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 12px 60px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.28), 0 2px 16px rgba(220,38,38,0.12), inset 0 1px 0 rgba(255,255,255,0.22);
 }
 .home-eyebrow {
   display: inline-flex;
@@ -812,7 +812,7 @@
   transition-duration: 0.08s;
 }
 
-/* ── Shared section base with LIGHTER overlay for better visibility ─────────────────────────── */
+/* ── Shared section base — no heavy dark film, let background breathe ── */
 .home-dark-section {
   background: transparent;
   border-top: none;
@@ -825,24 +825,23 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(10, 8, 6, 0.12);
+  background: rgba(0, 0, 0, 0.06);
   z-index: 1;
   pointer-events: none;
 }
 
-/* ── Section header ─────────────────────────────────────────────── */
+/* ── Section header — light frosted glass, mirrors hero ─────────── */
 .home-section-header {
   text-align: center;
   margin-bottom: 40px;
   position: relative;
   z-index: 2;
-  /* Glass panel behind the section heading — same treatment as hero */
-  background: rgba(0, 0, 0, 0.40);
-  backdrop-filter: blur(10px) saturate(80%);
-  -webkit-backdrop-filter: blur(10px) saturate(80%);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px) saturate(150%) brightness(1.08);
+  -webkit-backdrop-filter: blur(16px) saturate(150%) brightness(1.08);
   border-radius: 22px;
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.26);
+  box-shadow: 0 6px 36px rgba(0,0,0,0.22), 0 2px 10px rgba(220,38,38,0.10), inset 0 1px 0 rgba(255,255,255,0.22);
   padding: 36px 48px 32px;
   max-width: 680px;
   margin-left: auto;
@@ -938,8 +937,7 @@
   inset: -8px;
   background: url('../assets/img/HomePage2.png') center center / cover no-repeat;
   z-index: 0;
-  /* Match hero section blur */
-  filter: brightness(1.05) saturate(1.10) contrast(1.03) blur(3px);
+  filter: brightness(1.20) saturate(1.28) contrast(1.05) blur(2px);
 }
 .home-features {
   display: grid;

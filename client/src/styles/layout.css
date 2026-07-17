@@ -314,11 +314,11 @@
   animation: fade-in-up 0.25s ease both;
 }
 
-/* ─── Store top nav ───────────────────────────────────────────────── */
+/* ─── Store top nav — vivid crimson, brighter than AM ────────────── */
 .store-header {
-  background: linear-gradient(90deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%);
-  border-bottom: 2px solid rgba(220,38,38,0.40);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  background: linear-gradient(90deg, #b91c1c 0%, #dc2626 50%, #b91c1c 100%);
+  border-bottom: 2px solid rgba(255,255,255,0.18);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.20), 0 2px 8px rgba(220,38,38,0.30);
   position: sticky; top: 0; z-index: 200;
 }
 .store-header-inner {
@@ -337,8 +337,8 @@
 .store-brand-name { font-size:16px; font-weight:900; color:#ffffff; letter-spacing:-0.2px; }
 .store-chip {
   padding: 5px 14px; border-radius: 99px;
-  background: rgba(220,38,38,0.20); color: #fecaca;
-  border: 1.5px solid rgba(220,38,38,0.35);
+  background: rgba(255,255,255,0.18); color: #ffffff;
+  border: 1.5px solid rgba(255,255,255,0.45);
   font-size: 11.5px; font-weight: 700; letter-spacing: 0.3px;
 }
 
@@ -349,26 +349,24 @@
   font-size: 13.5px; font-weight: 600;
   transition: all var(--fast); position: relative;
 }
-.store-nav-link:hover  { background:rgba(220,38,38,0.20); color:#ffffff; }
-.store-nav-link.active { background:rgba(220,38,38,0.30); color:#ffffff; font-weight:700; box-shadow:inset 0 -2px 0 #dc2626; }
-.store-nav-user { font-size:13px; color:rgba(255,255,255,0.70); padding:0 12px; font-weight:600; }
+.store-nav-link:hover  { background:rgba(255,255,255,0.18); color:#ffffff; }
+.store-nav-link.active { background:rgba(255,255,255,0.24); color:#ffffff; font-weight:700; box-shadow:inset 0 -2px 0 rgba(255,255,255,0.90); }
+.store-nav-user { font-size:13px; color:rgba(255,255,255,0.80); padding:0 12px; font-weight:600; }
 
 .btn-signout {
   padding: 8px 18px; border-radius: 10px;
-  background: rgba(220,38,38,0.20); border: 1.5px solid rgba(220,38,38,0.35);
-  color: #fecaca; font-size: 13.5px; font-weight: 700; transition: all 0.2s ease;
+  background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.40);
+  color: #ffffff; font-size: 13.5px; font-weight: 700; transition: all 0.2s ease;
   min-height: 44px; display: flex; align-items: center;
 }
 .btn-signout:hover {
-  background: #dc2626; color: #ffffff; border-color: #dc2626;
-  transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220,38,38,0.40);
+  background: rgba(255,255,255,0.30); color: #ffffff; border-color: rgba(255,255,255,0.65);
+  transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.18);
 }
 
 .store-header, .store-bottom-nav { position: relative; z-index: 10; }
 
-/* ── Store Manager Professional Color Scheme ─────────────────────────────── */
-/* Professional cream/beige cards with dark text for excellent readability */
-
+/* ── Store Manager — clean white glass with vivid crimson accents ─── */
 .store-shell .card,
 .store-shell .kpi-card,
 .store-shell .metric-card,
@@ -379,70 +377,104 @@
 .store-shell .table-wrap,
 .store-shell .table-container,
 .store-shell .filter-card {
-  background: rgba(255, 253, 248, 0.96) !important;
-  border: 1.5px solid rgba(120, 53, 15, 0.20) !important;
-  box-shadow: 0 6px 28px rgba(92, 38, 10, 0.14), 0 2px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.85) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1.5px solid rgba(220, 38, 38, 0.14) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(220,38,38,0.06), inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Vivid crimson top stripe */
+.store-shell .card::before,
+.store-shell .page-header::before,
+.store-shell .page-header-root::before,
+.store-shell .dash-command::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #dc2626 30%, #ef4444 60%, transparent 100%);
+  border-radius: inherit;
 }
 
 .store-shell .card:hover,
 .store-shell .kpi-card:hover,
 .store-shell .metric-card:hover {
-  border-color: rgba(120, 53, 15, 0.35) !important;
-  box-shadow: 0 10px 40px rgba(92, 38, 10, 0.20), 0 4px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  border-color: rgba(220, 38, 38, 0.26) !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.16), 0 3px 12px rgba(220,38,38,0.10), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+  transform: translateY(-2px);
 }
 
 .store-shell .page-header h2,
 .store-shell .page-header-text h2,
 .store-shell .card-title,
 .store-shell .card h3 {
-  color: #1a0f0a !important;
+  color: #991b1b !important;
   font-weight: 900 !important;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.7) !important;
+  text-shadow: none !important;
 }
 
 .store-shell .page-header p,
 .store-shell .page-header-text p,
 .store-shell .card-header-meta,
-.store-shell .card-sub,
+.store-shell .card-sub {
+  color: #6b7280 !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+
 .store-shell .kpi-label,
+.store-shell .metric-label {
+  color: #374151 !important;
+  font-weight: 800 !important;
+  text-shadow: none !important;
+}
+
 .store-shell .kpi-sub,
-.store-shell .metric-label,
 .store-shell .metric-sub {
-  color: #3d2817 !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 1px rgba(255,255,255,0.5) !important;
+  color: #6b7280 !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
 }
 
 .store-shell .kpi-value,
 .store-shell .metric-value {
-  color: #1a0f0a !important;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.7) !important;
+  color: #111827 !important;
+  text-shadow: none !important;
+}
+
+/* KPI left bar — vivid red */
+.store-shell .kpi-card::after,
+.store-shell .stat-card::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  border-radius: 16px 0 0 16px;
 }
 
 .store-shell th {
-  background: rgba(248, 240, 230, 0.95) !important;
-  color: #3d2817 !important;
-  border-bottom: 1.5px solid rgba(120, 53, 15, 0.22) !important;
-  font-weight: 900 !important;
+  background: rgba(254, 242, 242, 0.90) !important;
+  color: #7f1d1d !important;
+  border-bottom: 1.5px solid rgba(220, 38, 38, 0.18) !important;
+  font-weight: 800 !important;
 }
 
 .store-shell td {
-  color: #3d2817 !important;
-  font-weight: 600 !important;
-  border-bottom: 1px solid rgba(120, 53, 15, 0.10) !important;
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid rgba(220, 38, 38, 0.07) !important;
 }
 
 .store-shell tbody tr:hover td {
-  background: rgba(251, 243, 230, 0.85) !important;
+  background: rgba(254, 242, 242, 0.60) !important;
 }
 
 .store-shell .banner,
 .store-shell .lock-banner,
 .store-shell .deadline-banner {
-  background: rgba(255, 251, 235, 0.97) !important;
-  border-color: rgba(180, 83, 9, 0.30) !important;
-  border-left-color: #d97706 !important;
-  color: #78350f !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(220, 38, 38, 0.25) !important;
+  color: #7f1d1d !important;
   font-weight: 700 !important;
 }
 
@@ -453,23 +485,28 @@
 
 .store-shell .btn-primary,
 .store-shell .btn-danger {
-  box-shadow: 0 4px 16px rgba(185,28,28,0.35) !important;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  box-shadow: 0 4px 16px rgba(220,38,38,0.35) !important;
   font-weight: 700 !important;
+}
+.store-shell .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  box-shadow: 0 6px 22px rgba(220,38,38,0.48) !important;
 }
 
 .store-shell .btn-secondary,
 .store-shell .btn-ghost {
-  background: rgba(255, 253, 248, 0.85) !important;
-  border: 1.5px solid rgba(120, 53, 15, 0.25) !important;
-  color: #3d2817 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1.5px solid rgba(220, 38, 38, 0.20) !important;
+  color: #7f1d1d !important;
   font-weight: 700 !important;
 }
 
 .store-shell .btn-secondary:hover:not(:disabled),
 .store-shell .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 253, 248, 0.98) !important;
-  border-color: rgba(120, 53, 15, 0.40) !important;
-  color: #1a0f0a !important;
+  background: #ffffff !important;
+  border-color: rgba(220, 38, 38, 0.36) !important;
+  color: #991b1b !important;
 }
 
 /* ── Developer credit — small subtle footnote ────────────────────── */
@@ -493,9 +530,9 @@
 .store-bottom-nav {
   display: none; position: fixed; bottom: 0; left: 0; right: 0;
   height: var(--mob-nav-h);
-  background: linear-gradient(90deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%);
-  border-top: 3px solid #dc2626; z-index: 200; padding: 0 8px;
-  box-shadow: 0 -4px 16px rgba(0,0,0,0.15);
+  background: linear-gradient(90deg, #b91c1c 0%, #dc2626 50%, #b91c1c 100%);
+  border-top: 2px solid rgba(255,255,255,0.22); z-index: 200; padding: 0 8px;
+  box-shadow: 0 -4px 18px rgba(0,0,0,0.20);
 }
 /* Safe-area padding for iPhone notch / Dynamic Island / home indicator */
 .store-bottom-nav {
