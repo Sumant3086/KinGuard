@@ -3,6 +3,9 @@ import { createAuditLog } from '../services/auditService.js';
 import ExcelJS from 'exceljs';
 import prisma from '../config/prisma.js';
 import { parseId, requireId } from '../utils/params.js';
+import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
+
+const EMPTY_STATS = { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 };
 
 export async function getDashboard(req, res, next) {
   const startTime = Date.now();
@@ -12,6 +15,10 @@ export async function getDashboard(req, res, next) {
     if (!req.user.store) {
       throw new AppError('Your store has been removed. Please contact your administrator.', 403);
     }
+
+    const cacheKey = `store:dashboard:${storeId}`;
+    const cached = sGet(cacheKey);
+    if (cached) return res.json(cached);
 
     // Get latest batch WHERE this store has inventory records
     const [latestBatch, allPendingBatches] = await Promise.all([
@@ -34,12 +41,9 @@ export async function getDashboard(req, res, next) {
     ]);
 
     if (!latestBatch) {
-      return res.json({
-        store: req.user.store,
-        batch: null,
-        stats: { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 },
-        olderPendingBatches: [],
-      });
+      const emptyResult = { store: req.user.store, batch: null, stats: EMPTY_STATS, olderPendingBatches: [] };
+      sSet(cacheKey, emptyResult, 60_000);
+      return res.json(emptyResult);
     }
 
     // Aggregate stats for the latest batch
@@ -61,12 +65,14 @@ export async function getDashboard(req, res, next) {
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
 
-    res.json({
+    const result = {
       store: req.user.store,
       batch: latestBatch,
-      stats: stats[0],
+      stats: stats[0] ?? EMPTY_STATS,
       olderPendingBatches,
-    });
+    };
+    sSet(cacheKey, result, 60_000);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -358,6 +364,9 @@ export async function submitInventory(req, res, next) {
 
     const { count, records } = txResult;
 
+    // Bust per-store caches so the next dashboard/notification load reflects the submission
+    sInvalidate(`store:dashboard:${storeId}`, `store:notifications:${storeId}`, 'admin:dashboard', 'admin:notifications');
+
     createAuditLog({
       userId: req.user.id,
       action: 'SUBMIT_INVENTORY',
@@ -488,18 +497,22 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
 export async function getNotifications(req, res, next) {
   try {
     const storeId = req.user.storeId;
+    const cacheKey = `store:notifications:${storeId}`;
+    const cached = sGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const now = new Date();
     const items = [];
 
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    // Check for returned reviews (AM sent back) — high priority — single query with join
+    // Check for returned reviews (AM sent back) — guard with .catch in case table not yet migrated
     const returnedReviews = await prisma.areaManagerReview.findMany({
       where: { storeId, status: 'RETURNED' },
       select: { batchId: true, remarks: true, batch: { select: { inventoryDate: true } } },
       take: 20,
       orderBy: { reviewedAt: 'desc' },
-    });
+    }).catch(() => []);
     for (const r of returnedReviews) {
       if (!r.batch) continue;
       const dateLabel = new Date(r.batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -546,7 +559,9 @@ export async function getNotifications(req, res, next) {
       }
     }
 
-    res.json({ items, count: items.length });
+    const result = { items, count: items.length };
+    sSet(cacheKey, result, 30_000);
+    res.json(result);
   } catch (error) {
     next(error);
   }

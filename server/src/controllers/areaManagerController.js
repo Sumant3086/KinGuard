@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
+import { requireId } from '../utils/params.js';
 
 const AM_STORES_TTL = 60_000; // 60 s — refreshed on assign/unassign
 
@@ -71,8 +72,16 @@ export async function getDashboard(req, res, next) {
 // ── Notifications ─────────────────────────────────────────────────────────────
 export async function getNotifications(req, res, next) {
   try {
+    const cacheKey = `am:notifications:${req.user.id}`;
+    const cached = sGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const storeIds = await getManagedStoreIds(req.user.id);
-    if (!storeIds.length) return res.json({ items: [], count: 0 });
+    if (!storeIds.length) {
+      const empty = { items: [], count: 0 };
+      sSet(cacheKey, empty, 30_000);
+      return res.json(empty);
+    }
 
     const now = new Date();
     const items = [];
@@ -120,7 +129,9 @@ export async function getNotifications(req, res, next) {
       }
     }
 
-    res.json({ items, count: items.length });
+    const result = { items, count: items.length };
+    sSet(cacheKey, result, 30_000);
+    res.json(result);
   } catch (error) { next(error); }
 }
 
@@ -189,8 +200,7 @@ export async function getBatches(req, res, next) {
 // ── Stores summary for one batch ──────────────────────────────────────────────
 export async function getBatchStores(req, res, next) {
   try {
-    const batchId  = parseInt(req.params.batchId);
-    if (isNaN(batchId)) throw new AppError('Invalid batch ID', 400);
+    const batchId = requireId(req.params.batchId, 'batchId');
 
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.length) return res.json([]);
@@ -233,9 +243,8 @@ export async function getBatchStores(req, res, next) {
 // ── Records for a specific store+batch ────────────────────────────────────────
 export async function getStoreRecords(req, res, next) {
   try {
-    const batchId = parseInt(req.params.batchId);
-    const storeId = parseInt(req.params.storeId);
-    if (isNaN(batchId) || isNaN(storeId)) throw new AppError('Invalid parameters', 400);
+    const batchId = requireId(req.params.batchId, 'batchId');
+    const storeId = requireId(req.params.storeId, 'storeId');
 
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.includes(storeId)) throw new AppError('Store not under your management', 403);
@@ -296,9 +305,8 @@ export async function updateRecord(req, res, next) {
 // ── Approve a store's submission ──────────────────────────────────────────────
 export async function approveStore(req, res, next) {
   try {
-    const batchId = parseInt(req.params.batchId);
-    const storeId = parseInt(req.params.storeId);
-    if (isNaN(batchId) || isNaN(storeId)) throw new AppError('Invalid parameters', 400);
+    const batchId = requireId(req.params.batchId, 'batchId');
+    const storeId = requireId(req.params.storeId, 'storeId');
 
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.includes(storeId)) throw new AppError('Store not under your management', 403);
@@ -316,7 +324,7 @@ export async function approveStore(req, res, next) {
     const storeMeta = storeRow[0] ?? {};
 
     createAuditLog({ userId: req.user.id, action: 'AM_APPROVE', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: storeMeta.storeCode, storeName: storeMeta.storeName, remarks } }).catch(() => {});
-    sInvalidate('admin:dashboard', `am:batches:${req.user.id}`);
+    sInvalidate('admin:dashboard', `am:batches:${req.user.id}`, `am:notifications:${req.user.id}`);
 
     // Notify all admins — reuse storeMeta already fetched above, only fetch admins + batch
     const storeMeta_ = { storeName: storeMeta.storeName, storeCode: storeMeta.storeCode };
@@ -339,9 +347,8 @@ export async function approveStore(req, res, next) {
 // ── Return store submission for recount ───────────────────────────────────────
 export async function returnStore(req, res, next) {
   try {
-    const batchId = parseInt(req.params.batchId);
-    const storeId = parseInt(req.params.storeId);
-    if (isNaN(batchId) || isNaN(storeId)) throw new AppError('Invalid parameters', 400);
+    const batchId = requireId(req.params.batchId, 'batchId');
+    const storeId = requireId(req.params.storeId, 'storeId');
 
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.includes(storeId)) throw new AppError('Store not under your management', 403);
@@ -366,7 +373,7 @@ export async function returnStore(req, res, next) {
     const retStoreRow = await prisma.$queryRaw`SELECT "storeCode", "storeName" FROM "Store" WHERE id = ${storeId} LIMIT 1`;
     const retStore = retStoreRow[0] ?? {};
     createAuditLog({ userId: req.user.id, action: 'AM_RETURN', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: retStore.storeCode, storeName: retStore.storeName, reason: remarks } }).catch(() => {});
-    sInvalidate('admin:dashboard', `am:batches:${req.user.id}`);
+    sInvalidate('admin:dashboard', `am:batches:${req.user.id}`, `am:notifications:${req.user.id}`, `store:notifications:${storeId}`);
 
     res.json({ ok: true });
   } catch (error) { next(error); }
