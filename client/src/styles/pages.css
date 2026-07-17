@@ -897,7 +897,7 @@
 .home-section-heading {
   font-size: 38px;
   font-weight: 900;
-  background: linear-gradient(135deg, #ffffff 0%, #ffab40 30%, #ff6d00 55%, #ffab40 75%, #ffffff 100%) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #fca5a5 28%, #ef4444 52%, #fca5a5 76%, #ffffff 100%) !important;
   background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
@@ -905,7 +905,7 @@
   color: transparent !important;
   letter-spacing: -1.2px;
   line-height: 1.12;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.70)) drop-shadow(0 0 35px rgba(255,140,0,0.65));
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.80)) drop-shadow(0 0 32px rgba(220,38,38,0.55));
 }
 
 /* Override for the subtitle paragraph inside the section header glass panel */
@@ -918,7 +918,7 @@
 }
 
 .home-section-heading-skyblue {
-  background: linear-gradient(135deg, #ffffff 0%, #ffab40 30%, #ff6d00 55%, #ffab40 75%, #ffffff 100%) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #fca5a5 28%, #ef4444 52%, #fca5a5 76%, #ffffff 100%) !important;
   background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
@@ -1167,7 +1167,7 @@
   /* Lime green text shimmer */
   .home-hero h1 em         { animation: home-text-shimmer 3.5s linear infinite; }
 
-  /* Orange heading shimmer */
+  /* Crimson-white heading shimmer */
   .home-section-heading,
   .home-section-heading-skyblue { animation: home-text-shimmer 5s linear infinite; }
 
