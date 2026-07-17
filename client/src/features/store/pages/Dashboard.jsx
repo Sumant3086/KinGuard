@@ -34,7 +34,6 @@ export default function StoreDashboard() {
     storeApi.getDashboard()
       .then(data => {
         if (!mountedRef.current) return;
-        cache.set(CACHE_KEY, data, CACHE_TTL);
         setDashboard(data);
       })
       .catch(err => {

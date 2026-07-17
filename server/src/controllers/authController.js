@@ -71,6 +71,45 @@ async function issueRefreshToken(userId, res) {
   return token;
 }
 
+// ── Login attempt lockout ──────────────────────────────────────────────────
+// In-memory per-account lockout (resets on server restart).
+// Protects against credential stuffing without requiring a DB write on every request.
+const LOCKOUT_MAX_ATTEMPTS = 10;
+const LOCKOUT_WINDOW_MS    = 15 * 60 * 1000; // 15 minutes
+
+const loginAttempts = new Map(); // employeeId → { count, lockedUntil }
+
+function checkLockout(id) {
+  const rec = loginAttempts.get(id);
+  if (!rec) return;
+  if (rec.lockedUntil && Date.now() < rec.lockedUntil) {
+    const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+    throw new AppError(`Too many failed attempts. Please try again in ${mins} minute${mins !== 1 ? 's' : ''}.`, 429);
+  }
+}
+
+function recordFailure(id) {
+  const rec = loginAttempts.get(id) ?? { count: 0, lockedUntil: null };
+  rec.count += 1;
+  if (rec.count >= LOCKOUT_MAX_ATTEMPTS) {
+    rec.lockedUntil = Date.now() + LOCKOUT_WINDOW_MS;
+    rec.count = 0; // reset so the window refreshes after lockout expires
+  }
+  loginAttempts.set(id, rec);
+}
+
+function clearFailures(id) {
+  loginAttempts.delete(id);
+}
+
+// Sweep stale lockout entries every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of loginAttempts) {
+    if (!v.lockedUntil || now > v.lockedUntil) loginAttempts.delete(k);
+  }
+}, 30 * 60 * 1000).unref();
+
 // ── Route handlers ─────────────────────────────────────────────────────────
 
 export async function login(req, res, next) {
@@ -81,6 +120,8 @@ export async function login(req, res, next) {
       throw new AppError('Employee ID and password are required', 400);
     }
     if (password.length > 128) throw new AppError('Invalid credentials', 401);
+
+    checkLockout(employeeId.trim().toLowerCase());
 
     // Look up user — up to 3 attempts with growing delays for Supabase pooler cold-start.
     // Delays: immediate → 500 ms → 1200 ms (total max wait ~1.7 s before 503).
@@ -114,8 +155,11 @@ export async function login(req, res, next) {
       : await bcrypt.compare(password, '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234');
 
     if (!user || !isPasswordValid) {
+      recordFailure(employeeId.trim().toLowerCase());
       throw new AppError('Employee ID or password is incorrect', 401);
     }
+
+    clearFailures(employeeId.trim().toLowerCase());
 
     if (user.pendingApproval) {
       throw new AppError('This account is pending administrator approval. Please contact your admin.', 403);

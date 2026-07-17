@@ -19,12 +19,12 @@ export async function getBatches() {
   return data;
 }
 
-export async function getInventory(search, status, batchId) {
+export async function getInventory(search, status, batchId, page = 1, pageSize = 100) {
   // Do not cache inventory — it changes as user types and saves
   const { data } = await client.get('/store/inventory', {
-    params: { search, status, batchId },
+    params: { search, status, batchId, page, pageSize },
   });
-  // Returns { records, isLocked }
+  // Returns { records, isLocked, returnedByAM, pagination }
   return data;
 }
 

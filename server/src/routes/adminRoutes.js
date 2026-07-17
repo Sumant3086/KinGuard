@@ -88,6 +88,7 @@ router.get('/audit-logs/export', adminController.exportAuditLogs);
 // Batches
 router.get('/batches', adminController.getBatches);
 router.patch('/batches/:id', adminController.updateBatch);
+router.post('/batches/:id/close', adminController.closeBatch);
 router.delete('/batches/:id', adminController.deleteBatch);
 router.post('/batches/extend', adminController.grantStoreExtension);
 router.post('/batches/:id/unlock-store', adminController.unlockStoreForBatch);

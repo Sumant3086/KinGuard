@@ -19,8 +19,23 @@ if (IS_PROD) app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: false,  // React uses inline styles/scripts
   crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      // React renders inline styles; allow them. Scripts are served as files (no inline eval).
+      styleSrc:    ["'self'", "'unsafe-inline'"],
+      scriptSrc:   ["'self'"],
+      imgSrc:      ["'self'", 'data:', 'blob:'],
+      connectSrc:  ["'self'"],
+      fontSrc:     ["'self'"],
+      objectSrc:   ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: IS_PROD ? [] : null,
+    },
+    // In dev, report violations to console rather than blocking
+    reportOnly: !IS_PROD,
+  },
 }));
 
 // CORS — allow comma-separated origins in CLIENT_URL

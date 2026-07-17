@@ -47,17 +47,43 @@ export async function getDashboard(req, res, next) {
       return res.json({ storeCount: storeIds.length, pendingReview: 0, approved: 0, returned: 0, latestBatch: null });
     }
 
-    const [reviews, totalSubmitted] = await Promise.all([
+    const [reviews, storeCounts, storeList] = await Promise.all([
       prisma.areaManagerReview.findMany({
         where: { batchId: latestBatch.id, areaManagerId: req.user.id },
-        select: { status: true },
+        select: { storeId: true, status: true },
       }),
-      prisma.inventoryRecord.findMany({
-        where: { batchId: latestBatch.id, storeId: { in: storeIds }, status: 'SUBMITTED' },
-        select: { storeId: true },
-        distinct: ['storeId'],
+      // Per-store submitted/pending counts for the live progress view
+      prisma.$queryRaw`
+        SELECT "storeId"::int AS "storeId",
+               COUNT(*)::int AS "total",
+               COUNT(CASE WHEN status = 'SUBMITTED' THEN 1 END)::int AS "submitted",
+               COUNT(CASE WHEN status = 'PENDING'   THEN 1 END)::int AS "pending"
+        FROM "InventoryRecord"
+        WHERE "batchId" = ${latestBatch.id} AND "storeId" = ANY(${storeIds})
+        GROUP BY "storeId"
+      `,
+      prisma.store.findMany({
+        where: { id: { in: storeIds } },
+        select: { id: true, storeCode: true, storeName: true },
+        orderBy: { storeCode: 'asc' },
       }),
     ]);
+
+    const reviewMap   = new Map(reviews.map(r => [r.storeId, r.status]));
+    const countMap    = new Map(storeCounts.map(r => [r.storeId, r]));
+
+    const storeProgress = storeList.map(s => {
+      const counts = countMap.get(s.id) ?? { total: 0, submitted: 0, pending: 0 };
+      return {
+        storeId:      s.id,
+        storeCode:    s.storeCode,
+        storeName:    s.storeName,
+        total:        counts.total,
+        submitted:    counts.submitted,
+        pending:      counts.pending,
+        reviewStatus: reviewMap.get(s.id) ?? null,
+      };
+    });
 
     res.json({
       storeCount:    storeIds.length,
@@ -65,6 +91,7 @@ export async function getDashboard(req, res, next) {
       approved:      reviews.filter(r => r.status === 'APPROVED').length,
       returned:      reviews.filter(r => r.status === 'RETURNED').length,
       latestBatch,
+      storeProgress,
     });
   } catch (error) { next(error); }
 }
@@ -310,6 +337,18 @@ export async function approveStore(req, res, next) {
 
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.includes(storeId)) throw new AppError('Store not under your management', 403);
+
+    // Server-side guard: all records must be submitted before an AM can approve.
+    // The UI checks allSubmitted, but a direct API call could bypass that.
+    const pendingCount = await prisma.inventoryRecord.count({
+      where: { batchId, storeId, status: 'PENDING' },
+    });
+    if (pendingCount > 0) {
+      throw new AppError(
+        `Cannot approve: ${pendingCount} item(s) are still pending submission by the store manager.`,
+        400
+      );
+    }
 
     const { remarks } = req.body;
 
