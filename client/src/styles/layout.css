@@ -509,6 +509,37 @@
   color: #991b1b !important;
 }
 
+/* ── Store stat card modifier overrides — higher specificity than components.css ── */
+.store-shell .stat-card.info,
+.store-shell .stat-card.warning,
+.store-shell .stat-card.success,
+.store-shell .stat-card.danger,
+.store-shell .stat-card.accent,
+.store-shell .stat-card {
+  background: rgba(255,255,255,0.97) !important;
+  border: 1.5px solid rgba(220,38,38,0.14) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 6px rgba(220,38,38,0.06) !important;
+  color: #1f2937 !important;
+}
+.store-shell .stat-card h4 {
+  color: #7f1d1d !important;
+  font-weight: 800 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+  text-shadow: none !important;
+}
+.store-shell .stat-card .value {
+  color: #111827 !important;
+  font-weight: 900 !important;
+  text-shadow: none !important;
+}
+.store-shell .stat-card p {
+  color: #6b7280 !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
+}
+
 /* ── Developer credit — crimson shimmer, consistent across all layouts ── */
 @keyframes dev-credit-shine {
   0%   { background-position: 200% center; }
@@ -541,36 +572,41 @@
 .store-bottom-nav {
   display: none; position: fixed; bottom: 0; left: 0; right: 0;
   height: var(--mob-nav-h);
-  background: linear-gradient(90deg, #b91c1c 0%, #dc2626 50%, #b91c1c 100%);
-  border-top: 2px solid rgba(255,255,255,0.22); z-index: 200; padding: 0 8px;
-  box-shadow: 0 -4px 18px rgba(0,0,0,0.20);
-}
-/* Safe-area padding for iPhone notch / Dynamic Island / home indicator */
-.store-bottom-nav {
+  background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #991b1b 100%);
+  border-top: 1.5px solid rgba(255,255,255,0.20);
+  z-index: 200; padding: 0 8px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.28);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .store-bottom-nav-inner { height:100%; display:flex; align-items:center; justify-content:space-around; }
 .mob-nav-item {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 20px; border-radius: var(--r);
-  color: rgba(255,255,255,0.65); font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.4px; transition: color var(--fast);
-  flex: 1; max-width: 80px; min-height: 44px; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 16px; border-radius: var(--r);
+  color: rgba(255,255,255,0.60); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  transition: color 0.15s ease, background 0.15s ease;
+  flex: 1; max-width: 90px; min-height: 44px; justify-content: center;
+  text-decoration: none;
 }
-.mob-nav-item svg { width:19px; height:19px; }
-.mob-nav-item.active { color:#dc2626; }
-.mob-nav-item:hover  { color:#dc2626; }
+.mob-nav-item svg { width: 20px; height: 20px; }
+/* Active: WHITE — never use brand-red on a red navbar (invisible) */
+.mob-nav-item.active {
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.14);
+  border-radius: 10px;
+}
+.mob-nav-item:hover { color: rgba(255,255,255,0.90); }
 .mob-logout {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 20px; border-radius: var(--r);
-  color: rgba(148,163,184,0.80); font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.4px;
-  background: none; border: none; flex: 1; max-width: 80px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 16px; border-radius: var(--r);
+  color: rgba(255,255,255,0.60); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  background: none; border: none; flex: 1; max-width: 90px;
   min-height: 44px; justify-content: center;
-  transition: color var(--fast);
+  transition: color 0.15s ease; cursor: pointer; font-family: inherit;
 }
-.mob-logout svg { width:19px; height:19px; }
-.mob-logout:hover { color:var(--vi); }
+.mob-logout svg { width: 20px; height: 20px; }
+.mob-logout:hover { color: #ffffff; }
 
 /* ─── Responsive ──────────────────────────────────────────────────── */
 @media (min-width:1440px) {
