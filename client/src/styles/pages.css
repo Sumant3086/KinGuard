@@ -671,90 +671,82 @@
     rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.12) 60%, transparent 85%);
   z-index: 0; pointer-events: none;
 }
-/* Hero content — warm beige card matching step card style */
+/* Hero card — solid crimson, matching login page left panel */
 .home-hero {
   position: relative; z-index: 1;
-  max-width: 700px; width: 100%;
+  max-width: 680px; width: 100%;
   margin: 0 auto;
   padding: 48px 56px 52px;
   text-align: center;
   animation: hero-enter 0.6s var(--ease-out) both;
-  /* Warm beige, slightly transparent so background shows through */
-  background: rgba(245, 225, 195, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: linear-gradient(160deg, #dc2626 0%, #b91c1c 55%, #991b1b 100%);
   border-radius: 24px;
-  border: 2px solid rgba(245,158,11,0.35);
-  box-shadow:
-    0 16px 56px rgba(0,0,0,0.28),
-    0 4px 16px rgba(245,158,11,0.22),
-    inset 0 1px 0 rgba(255,255,255,0.60);
-  position: relative; overflow: hidden;
+  border: none;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 6px 20px rgba(185,28,28,0.50);
+  overflow: hidden;
 }
-/* Amber top stripe — mirrors step cards */
+/* Subtle inner highlight at top */
 .home-hero::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; height: 4px;
-  background: linear-gradient(90deg, transparent, #f59e0b 30%, #fbbf24 70%, transparent);
-  border-radius: 24px 24px 0 0;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: rgba(255,255,255,0.22);
 }
-/* Eyebrow pill */
+/* Eyebrow — white glass pill on crimson, same as login labels */
 .home-eyebrow {
   display: inline-flex;
   align-items: center;
   padding: 7px 20px;
   border-radius: 99px;
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-  border: none;
+  background: rgba(255,255,255,0.18);
+  border: 1.5px solid rgba(255,255,255,0.40);
   color: #ffffff;
   font-size: 11px; font-weight: 700;
   letter-spacing: 1.8px; text-transform: uppercase;
   margin-bottom: 24px;
   animation: fade-in-up 0.4s var(--ease-out) 0.1s both;
-  box-shadow: 0 3px 12px rgba(220,38,38,0.40);
 }
-/* Main heading — dark crimson on beige */
+/* Main heading — pure white on crimson */
 .home-hero h1 {
   font-size: 58px; font-weight: 900;
-  color: #7f1d1d !important;
-  -webkit-text-fill-color: #7f1d1d !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
   line-height: 1.08; letter-spacing: -2.5px;
   margin-bottom: 20px;
   animation: fade-in-up 0.5s var(--ease-out) 0.18s both;
-  text-shadow: none;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
-/* Accent line — amber shimmer */
+/* Accent line — light pink shimmer, stays in the red family */
 .home-hero h1 em {
   font-style: normal;
   background: linear-gradient(135deg,
-    #d97706 0%, #f59e0b 35%, #fbbf24 52%, #f59e0b 75%, #d97706 100%) !important;
+    #fecaca 0%, #fca5a5 35%, #f87171 52%, #fca5a5 75%, #fecaca 100%) !important;
   background-size: 250% auto !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   color: transparent !important;
-  filter: drop-shadow(0 1px 3px rgba(180,83,9,0.30));
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.25));
 }
-/* Subheading */
+/* Subheading — soft white */
 .home-hero p {
   font-size: 16px; font-weight: 500;
-  color: #5c3a1e;
+  color: rgba(255,255,255,0.88);
   line-height: 1.70; max-width: 520px;
   margin: 0 auto 36px;
   animation: fade-in-up 0.5s var(--ease-out) 0.28s both;
-  text-shadow: none;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.20);
 }
-/* CTA — amber-gold, contrasts with crimson background */
+/* CTA — white button with crimson text, same as login role buttons */
 .home-cta-btn {
   display: inline-flex; align-items: center; gap: 10px;
-  padding: 17px 46px; font-size: 16px; font-weight: 800;
-  color: #7f1d1d;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  padding: 15px 44px; font-size: 16px; font-weight: 700;
+  color: #dc2626;
+  background: #ffffff;
   border-radius: 12px; text-decoration: none;
-  border: 2px solid rgba(255,255,255,0.25);
-  box-shadow: 0 6px 28px rgba(245,158,11,0.55), 0 3px 10px rgba(0,0,0,0.20);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: 2px solid rgba(255,255,255,0.90);
+  box-shadow: 0 4px 18px rgba(0,0,0,0.20);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   letter-spacing: 0.3px;
   animation: fade-in-up 0.5s var(--ease-out) 0.38s both;
   position: relative; overflow: hidden;
@@ -771,14 +763,15 @@
   content: '';
   position: absolute; inset: -4px;
   border-radius: 16px;
-  border: 2px solid rgba(251,191,36,0.55);
+  border: 2px solid rgba(255,255,255,0.45);
   opacity: 0;
   pointer-events: none;
   animation: home-glow-ring 3s ease-in-out 1.5s infinite;
 }
 .home-cta-btn:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 14px 44px rgba(245,158,11,0.65), 0 6px 16px rgba(0,0,0,0.25);
+  background: #fff1f1;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.25);
 }
 .home-cta-btn:active { transform: translateY(-1px); transition-duration: 0.08s; }
 
@@ -859,30 +852,26 @@
 .home-section-heading {
   font-size: 42px;
   font-weight: 900;
-  /* Amber-gold shimmer — pops on crimson overlay, connects with CTA button */
-  background: linear-gradient(135deg,
-    #fde68a 0%, #f59e0b 30%, #d97706 52%, #f59e0b 75%, #fde68a 100%) !important;
-  background-size: 250% auto !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-  color: transparent !important;
+  /* White — clean and crisp on the dark section overlay */
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
   letter-spacing: -1.4px;
   line-height: 1.10;
-  filter:
-    drop-shadow(0 2px 6px rgba(0,0,0,0.70))
-    drop-shadow(0 0 24px rgba(245,158,11,0.50));
+  text-shadow: 0 2px 8px rgba(0,0,0,0.50), 0 4px 20px rgba(0,0,0,0.30);
+  filter: none;
 }
 
 .home-section-heading-skyblue {
-  /* Same amber-gold as .home-section-heading */
-  background: linear-gradient(135deg,
-    #fde68a 0%, #f59e0b 30%, #d97706 52%, #f59e0b 75%, #fde68a 100%) !important;
-  background-size: 250% auto !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-  color: transparent !important;
+  /* White, same as .home-section-heading */
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  filter: none !important;
 }
 
 /* ── Features section ────────────── */
@@ -1122,10 +1111,8 @@
   /* Ken Burns on background pseudo — 30s so it's barely perceptible */
   .home-hero-bg::before    { animation: home-bg-zoom 30s ease-in-out infinite alternate; }
 
-  /* Amber-gold shimmer on em and section headings */
-  .home-hero h1 em         { animation: home-text-shimmer 3.5s linear infinite; }
-  .home-section-heading,
-  .home-section-heading-skyblue { animation: home-text-shimmer 5s linear infinite; }
+  /* Pink shimmer on hero em only — headings are now plain white */
+  .home-hero h1 em { animation: home-text-shimmer 3.5s linear infinite; }
 
   /* Eyebrow gentle breathe — stacked after entrance */
   .home-eyebrow            { animation: fade-in-up 0.4s var(--ease-out) 0.1s both,
@@ -1241,26 +1228,26 @@
   align-items: center; text-align: center;
   padding: 18px 12px;
   border-radius: 14px;
-  /* Warm beige — clearly not white, connected to hero card */
-  background: #f5e1c0;
-  border: 1.5px solid rgba(245,158,11,0.40);
+  /* Clean white — matching login page right panel */
+  background: #ffffff;
+  border: 1.5px solid rgba(220,38,38,0.16);
   transition: transform 0.22s ease, box-shadow 0.22s ease;
   gap: 8px; min-height: 156px;
   justify-content: flex-start;
-  box-shadow: 0 3px 18px rgba(0,0,0,0.22), 0 1px 6px rgba(245,158,11,0.14);
+  box-shadow: 0 3px 18px rgba(0,0,0,0.18), 0 1px 6px rgba(220,38,38,0.08);
   position: relative; overflow: hidden;
 }
-/* Amber top stripe */
+/* Red top stripe — matches login left panel colour */
 .wf-step::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, transparent, #f59e0b 35%, #fbbf24 65%, transparent);
+  background: linear-gradient(90deg, transparent, #dc2626 35%, #ef4444 65%, transparent);
   border-radius: 14px 14px 0 0;
 }
 .wf-step:hover {
-  background: #f0d4a8;
-  border-color: rgba(245,158,11,0.65);
+  background: #fff5f5;
+  border-color: rgba(220,38,38,0.32);
   transform: translateY(-5px);
   box-shadow: 0 14px 36px rgba(0,0,0,0.24), 0 4px 14px rgba(245,158,11,0.22);
 }
@@ -1268,30 +1255,30 @@
 .wf-step-num {
   width: 28px; height: 28px;
   border-radius: 50%;
-  /* Amber pill — connected to CTA and em text */
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: #7f1d1d;
-  font-size: 12px; font-weight: 900;
+  /* Solid red — matches login's Sign In button */
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 12px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(245,158,11,0.55);
+  box-shadow: 0 2px 10px rgba(220,38,38,0.50);
 }
 .wf-step-icon {
   width: 44px; height: 44px;
   border-radius: 12px;
-  background: rgba(245,158,11,0.12);
-  border: 1.5px solid rgba(245,158,11,0.32);
+  background: rgba(220,38,38,0.08);
+  border: 1.5px solid rgba(220,38,38,0.20);
   display: flex; align-items: center; justify-content: center;
-  color: #b45309;
+  color: #dc2626;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(245,158,11,0.20);
+  box-shadow: 0 2px 8px rgba(220,38,38,0.12);
   transition: all 0.22s ease;
 }
 .wf-step:hover .wf-step-icon {
-  background: rgba(245,158,11,0.20);
-  border-color: rgba(245,158,11,0.50);
+  background: rgba(220,38,38,0.14);
+  border-color: rgba(220,38,38,0.35);
   transform: scale(1.08) rotate(4deg);
-  box-shadow: 0 4px 14px rgba(245,158,11,0.32);
+  box-shadow: 0 4px 14px rgba(220,38,38,0.22);
 }
 .wf-step-body { width: 100%; }
 .wf-step-title {
@@ -1302,10 +1289,10 @@
 .wf-step-desc {
   font-size: 11.5px; color: #6b7280; line-height: 1.5;
 }
-/* Arrows — white against the crimson section */
+/* Arrows — white against the dark section overlay */
 .wf-arrow {
   font-size: 24px;
-  color: rgba(255,255,255,0.70);
+  color: rgba(255,255,255,0.75);
   font-weight: 900; padding: 0 6px;
   flex-shrink: 0; user-select: none; line-height: 1;
 }
@@ -1363,8 +1350,8 @@
   .wf-tl-num {
     width: 30px; height: 30px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    color: #7f1d1d; font-size: 13px; font-weight: 900;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff; font-size: 13px; font-weight: 800;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     box-shadow: 0 2px 10px rgba(245,158,11,0.60), 0 0 0 2px rgba(255,255,255,0.20);
@@ -1379,20 +1366,20 @@
   .wf-tl-right {
     display: flex; align-items: flex-start; gap: 10px;
     flex: 1;
-    background: #f5e1c0;
+    background: #ffffff;
     border-radius: 12px;
-    border: 1.5px solid rgba(245,158,11,0.40);
+    border: 1.5px solid rgba(220,38,38,0.16);
     padding: 12px 14px 14px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.20);
   }
 
   .wf-tl-icon {
     width: 38px; height: 38px; border-radius: 10px;
-    background: rgba(245,158,11,0.12);
-    border: 1.5px solid rgba(245,158,11,0.32);
+    background: rgba(220,38,38,0.08);
+    border: 1.5px solid rgba(220,38,38,0.20);
     display: flex; align-items: center; justify-content: center;
-    color: #b45309; flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(245,158,11,0.18);
+    color: #dc2626; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.12);
   }
 
   .wf-box {
