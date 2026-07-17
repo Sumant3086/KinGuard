@@ -653,12 +653,13 @@
   align-items: center;
   background: #7f1d1d;
 }
-/* Background photo — shown naturally, no filters */
+/* Background photo — 3px blur only */
 .home-hero-bg::before {
   content: '';
   position: absolute;
   inset: -6px;
   background: url('../assets/img/HomePage.png') center / cover no-repeat;
+  filter: blur(3px);
   z-index: 0;
   will-change: transform;
 }
@@ -876,8 +877,8 @@
   position: absolute;
   inset: -8px;
   background: url('../assets/img/HomePage2.png') center center / cover no-repeat;
+  filter: blur(3px);
   z-index: 0;
-  /* No filter — image shows naturally */
 }
 .home-features {
   display: grid;
