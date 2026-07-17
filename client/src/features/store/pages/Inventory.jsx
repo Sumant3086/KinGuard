@@ -253,7 +253,8 @@ export default function StoreInventory() {
         setEditedRecords(cleared);
       }
 
-      setTimeout(() => setSavedRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; }), 2000);
+      const clearTimer = setTimeout(() => setSavedRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; }), 2000);
+      debounceTimers.current[`clear_${recordId}`] = clearTimer;
     } catch (err) {
       setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
       console.error('Save record:', err);

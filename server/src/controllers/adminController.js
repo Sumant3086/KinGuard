@@ -1808,6 +1808,12 @@ export async function deleteUser(req, res, next) {
       // Null out nullable FK references
       await tx.inventoryRecord.updateMany({ where: { submittedBy: userId }, data: { submittedBy: null } });
       await tx.auditLog.updateMany({ where: { userId }, data: { userId: null } });
+      // AreaManagerReview.areaManagerId is NOT nullable and has no onDelete rule.
+      // Deleting an AM with existing reviews would throw P2003 (FK constraint violation).
+      // Remove their reviews inside the transaction before deleting the user.
+      if (user.role === 'AREA_MANAGER') {
+        await tx.areaManagerReview.deleteMany({ where: { areaManagerId: userId } });
+      }
       await tx.user.delete({ where: { id: userId } });
     });
 

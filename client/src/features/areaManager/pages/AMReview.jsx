@@ -53,16 +53,16 @@ export default function AMReview() {
     setShowReturn(false);
     setReturnReason('');
     setLoadingRecs(true);
+    let live = true;
     try {
       const { records: recs, review: rev } = await amApi.getStoreRecords(batchId, store.id);
-      setRecords(recs);
-      setReview(rev);
+      if (live) { setRecords(recs); setReview(rev); }
     } catch (e) {
-      console.error('AM store records:', e);
-      toast.error('Could not load records.');
+      if (live) { console.error('AM store records:', e); toast.error('Could not load records.'); }
     } finally {
-      setLoadingRecs(false);
+      if (live) setLoadingRecs(false);
     }
+    return () => { live = false; };
   }, [batchId, toast]);
 
   function editField(id, field, value) {
@@ -134,6 +134,10 @@ export default function AMReview() {
           </div>
           {loading ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--tx3)' }}>Loading…</div>
+          ) : stores.length === 0 ? (
+            <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tx3)', fontSize: 13 }}>
+              No stores have submitted for this cycle yet.
+            </div>
           ) : stores.map(store => (
             <button
               key={store.id}
