@@ -24,9 +24,9 @@ export function clear() {
 // Sweep expired entries every 2 minutes so the Map doesn't grow unbounded
 // on long-running admin sessions. Entry expiry on read already prevents
 // stale data being served, but unreachable entries would otherwise leak.
-export const _sweepInterval = setInterval(() => {
+setInterval(() => {
   const now = Date.now();
   for (const [k, v] of store) {
     if (now > v.expires) store.delete(k);
   }
-}, 120_000).unref?.() ?? undefined; // .unref() so it doesn't keep Node alive in tests
+}, 120_000);

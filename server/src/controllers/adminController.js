@@ -187,7 +187,7 @@ export async function getDashboard(req, res, next) {
     // Moving amReviewPipeline here saves an entire Supabase round-trip vs running it sequentially after.
     const [topRemarkRows, hotspotRows, amReviewPipelineRaw] = await Promise.all([
       prisma.$queryRaw`
-        SELECT "storeId", remarks, COUNT(*)::int AS cnt
+        SELECT "storeId"::int AS "storeId", remarks, COUNT(*)::int AS cnt
         FROM "InventoryRecord"
         WHERE "batchId" = ${latestBatch.id} AND status = 'SUBMITTED' AND remarks IS NOT NULL AND remarks <> ''
         GROUP BY "storeId", remarks
@@ -196,7 +196,7 @@ export async function getDashboard(req, res, next) {
       batchIds.length >= 2
         ? prisma.$queryRaw`
             SELECT
-              ir."storeId",
+              ir."storeId"::int AS "storeId",
               s."storeCode",
               s."storeName",
               ir."materialCode",
@@ -214,9 +214,9 @@ export async function getDashboard(req, res, next) {
             LIMIT 5
           `
         : Promise.resolve([]),
-      // AM pipeline — runs in parallel with hotspot, no longer a 4th sequential round trip
+      // AM pipeline — ::int casts prevent BigInt JSON serialisation errors
       prisma.$queryRaw`
-        SELECT r.status, r."storeId", s."storeCode", s."storeName"
+        SELECT r.status, r."storeId"::int AS "storeId", s."storeCode", s."storeName"
         FROM "AreaManagerReview" r
         JOIN "Store" s ON s.id = r."storeId"
         WHERE r."batchId" = ${latestBatch.id}
@@ -810,7 +810,7 @@ export async function uploadInventory(req, res, next) {
       },
     });
 
-    sInvalidate('admin:batches');
+    sInvalidate('admin:batches', 'admin:uploads', 'admin:notifications');
 
     await createAuditLog({
       userId: req.user.id,
@@ -978,6 +978,9 @@ export async function previewUpload(req, res, next) {
 
 export async function getUploads(req, res, next) {
   try {
+    const cached = sGet('admin:uploads');
+    if (cached) return res.json(cached);
+
     const uploads = await prisma.uploadBatch.findMany({
       orderBy: { uploadedAt: 'desc' },
       include: {
@@ -990,6 +993,7 @@ export async function getUploads(req, res, next) {
       },
     });
 
+    sSet('admin:uploads', uploads, 30_000);
     res.json(uploads);
   } catch (error) {
     next(error);
@@ -1447,7 +1451,7 @@ export async function updateBatch(req, res, next) {
       entityType: 'UPLOAD_BATCH', entityId: batch.id,
       metadata: { submissionDeadline },
     });
-    sInvalidate('admin:batches');
+    sInvalidate('admin:batches', 'admin:uploads');
     res.json(batch);
   } catch (error) { next(error); }
 }
@@ -1951,7 +1955,7 @@ export async function deleteBatch(req, res, next) {
       metadata: { inventoryDate: batch.inventoryDate, fileName: batch.originalFileName },
     });
 
-    sInvalidate('admin:dashboard', 'admin:batches');
+    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications');
     res.json({ message: 'Cycle deleted' });
   } catch (error) { next(error); }
 }
@@ -2381,6 +2385,9 @@ export async function downloadBatchExportPDF(req, res, next) {
 // ── Admin notification feed — parallel queries for minimum latency ─────────────
 export async function getNotifications(req, res, next) {
   try {
+    const cached = sGet('admin:notifications');
+    if (cached) return res.json(cached);
+
     const now     = new Date();
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -2390,7 +2397,10 @@ export async function getNotifications(req, res, next) {
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });
 
-    if (!latestBatch) return res.json({ items: [], count: 0 });
+    if (!latestBatch) {
+      sSet('admin:notifications', { items: [], count: 0 }, 30_000);
+      return res.json({ items: [], count: 0 });
+    }
 
     // Run both record queries in parallel instead of sequentially
     const [recentSubmits, pendingStores] = await Promise.all([
@@ -2453,7 +2463,9 @@ export async function getNotifications(req, res, next) {
       }
     }
 
-    res.json({ items, count: items.length });
+    const result = { items, count: items.length };
+    sSet('admin:notifications', result, 30_000);
+    res.json(result);
   } catch (error) {
     next(error);
   }

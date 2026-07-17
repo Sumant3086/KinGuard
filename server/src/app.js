@@ -84,17 +84,6 @@ if (!IS_PROD) {
   });
 }
 
-// ── Cache helper — stamp cacheable GET responses ───────────────────────────
-app.use((req, res, next) => {
-  const originalJson = res.json.bind(res);
-  res.cacheFor = (seconds) => {
-    res.setHeader('Cache-Control', `private, max-age=${seconds}`);
-    res.json = (body) => { res.json = originalJson; return originalJson(body); };
-    return res;
-  };
-  next();
-});
-
 // ── Routes ─────────────────────────────────────────────────────────────────
 import authRoutes      from './routes/authRoutes.js';
 import storeRoutes     from './routes/storeRoutes.js';
