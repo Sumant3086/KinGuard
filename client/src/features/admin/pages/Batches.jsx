@@ -57,6 +57,9 @@ export default function Batches() {
 
   const [emailReminding, setEmailReminding] = useState(null);
 
+  // Close cycle
+  const [closingBatch, setClosingBatch] = useState(null);
+
   // Delete modal
   const [deleteTarget, setDeleteTarget]         = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -158,6 +161,22 @@ export default function Batches() {
       toast.error('Could not delete cycle. Try again.');
       load();
     } finally { setDeletingBatch(false); }
+  }
+
+  async function handleCloseCycle(batchId) {
+    setClosingBatch(batchId);
+    try {
+      const res = await adminApi.closeBatch(batchId);
+      if (res.alreadyClosed) {
+        toast.info('This cycle is already locked.');
+      } else {
+        toast.success(res.message || 'Cycle locked. All pending submissions are now frozen.');
+      }
+      load();
+    } catch (e) {
+      console.error('Close cycle:', e);
+      toast.error('Could not close cycle. Try again.');
+    } finally { setClosingBatch(null); }
   }
 
   const handleBatchExport = (batchId, inventoryDate) =>
@@ -293,6 +312,7 @@ export default function Batches() {
                     <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>
                     <button className="btn btn-sm" onClick={() => handleSendEmailReminders(b.id)} disabled={emailReminding === b.id} style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)' }}>{emailReminding === b.id ? '…' : 'Email'}</button>
                     <button className="btn btn-sm" onClick={() => { loadUsersIfNeeded(); setWhatsAppModal({ batchId: b.id, inventoryDate: b.inventoryDate, deadline: b.submissionDeadline }); }} style={{ background: 'rgba(37,211,102,0.09)', color: '#16a34a', border: '1px solid rgba(37,211,102,0.22)' }}>WhatsApp</button>
+                    {!passed && <button className="btn btn-sm" onClick={() => handleCloseCycle(b.id)} disabled={closingBatch === b.id} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)', fontSize: 11 }}>{closingBatch === b.id ? '…' : 'Lock Cycle'}</button>}
                     <button className="btn btn-sm btn-wide" onClick={() => { setDeleteTarget(b); setDeleteConfirmText(''); }} style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }}>Delete Cycle</button>
                   </div>
                 </div>
@@ -368,6 +388,7 @@ export default function Batches() {
                           <button className="btn btn-sm" onClick={() => handleBatchExportPDF(b.id, b.inventoryDate)} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)' }}>PDF</button>
                           <button className="btn btn-sm" onClick={() => handleSendEmailReminders(b.id)} disabled={emailReminding === b.id} title="Send email reminder to all pending store managers" style={{ background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', border: '1px solid rgba(29,78,216,0.22)' }}>{emailReminding === b.id ? '…' : 'Email'}</button>
                           <button className="btn btn-sm" onClick={() => { loadUsersIfNeeded(); setWhatsAppModal({ batchId: b.id, inventoryDate: b.inventoryDate, deadline: b.submissionDeadline }); }} style={{ background: 'rgba(37,211,102,0.09)', color: '#16a34a', border: '1px solid rgba(37,211,102,0.22)' }}>WhatsApp</button>
+                          {!passed && <button className="btn btn-sm" onClick={() => handleCloseCycle(b.id)} disabled={closingBatch === b.id} style={{ background: 'rgba(185,28,28,0.10)', color: '#991b1b', border: '1px solid rgba(185,28,28,0.28)', fontSize: 11 }} title="Lock cycle immediately — freeze all pending submissions">{closingBatch === b.id ? '…' : 'Lock'}</button>}
                           <button className="btn btn-sm" onClick={() => { setDeleteTarget(b); setDeleteConfirmText(''); }} style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.18)', fontSize: 11 }} title="Permanently delete this cycle and all its records">Delete</button>
                         </div>
                       </td>
