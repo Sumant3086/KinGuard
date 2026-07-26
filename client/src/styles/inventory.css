@@ -400,9 +400,6 @@
   .inv-filters        { padding:8px 10px; gap:6px; }
   .filter-group label { font-size:10px; }
   .search-input       { font-size:13px; }
-  .sic-count-input    { font-size:17px !important; min-height:48px !important; }
-  .sic-metric-val     { font-size:17px !important; }
-  .sic-metric-label   { font-size:8.5px !important; }
   .btn-row-save       { padding:8px 14px !important; font-size:11px !important; }
 }
 
@@ -562,11 +559,11 @@
     font-weight: 400;
   }
 
-  /* Selects inside sic-field */
+  /* Selects inside sic-field — 16px minimum so iOS doesn't auto-zoom on focus */
   .sic-field .remark-select {
     width: 100% !important;
     min-height: 46px !important;
-    font-size: 13px !important;
+    font-size: 16px !important;
     border-radius: 10px !important;
     padding: 10px 12px !important;
     border: 1.5px solid rgba(185,28,28,0.28) !important;
@@ -581,7 +578,7 @@
   .sic-field .inline-input.remark-input {
     width: 100% !important;
     min-height: 44px !important;
-    font-size: 13px !important;
+    font-size: 16px !important;
     border-radius: 10px !important;
     padding: 10px 12px !important;
     margin-top: 4px;
@@ -659,4 +656,12 @@
     gap: 8px;
     align-items: center;
   }
+}
+
+/* Ultra-small phones — sic-* overrides must come AFTER the ≤768px block
+   so these narrower rules win (same specificity, last-write wins). */
+@media (max-width:380px) {
+  .sic-count-input { font-size:17px !important; min-height:48px !important; }
+  .sic-metric-val  { font-size:17px !important; }
+  .sic-metric-label { font-size:8.5px !important; }
 }

@@ -2615,9 +2615,11 @@ select, label { -webkit-tap-highlight-color: transparent; }
    by enforcing 16px on all form fields at mobile sizes. The visual size
    is controlled via padding/height, not font-size, so this is safe. */
 @media (max-width: 768px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  select,
-  textarea {
+  /* Bare element selectors (0,0,1) on purpose: any class-based !important
+     rule (e.g. .sic-count-input at 20px) has higher specificity and wins,
+     so intentionally-larger inputs are preserved. This rule only lifts
+     fields that would otherwise be below 16px. */
+  input, select, textarea {
     font-size: 16px !important;
   }
   /* Page header actions should wrap rather than overflow */
