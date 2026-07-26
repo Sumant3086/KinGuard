@@ -13,7 +13,7 @@ export async function getDashboard(req, res, next) {
     const storeId = req.user.storeId;
 
     if (!req.user.store) {
-      throw new AppError('Your store has been removed. Please contact your administrator.', 403);
+      throw new AppError('Your account is not linked to a store. Please contact your administrator', 403);
     }
 
     const cacheKey = `store:dashboard:${storeId}`;
@@ -204,11 +204,11 @@ export async function updateInventoryRecord(req, res, next) {
 
     if (physicalProvided && physicalQuantity !== null) {
       const qty = parseFloat(physicalQuantity);
-      if (isNaN(qty) || qty < 0) throw new AppError('Physical stock must be a non-negative number', 400);
+      if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be zero or a positive number', 400);
     }
     if (systemProvided && systemQuantityIn !== null) {
       const qty = parseFloat(systemQuantityIn);
-      if (isNaN(qty) || qty < 0) throw new AppError('System stock must be a non-negative number', 400);
+      if (isNaN(qty) || qty < 0) throw new AppError('System quantity must be zero or a positive number', 400);
     }
 
     // Single query: ownership + current values + deadline + extension — no second round-trip
@@ -233,14 +233,14 @@ export async function updateInventoryRecord(req, res, next) {
       },
     });
 
-    if (!record) throw new AppError('Record not found', 404);
-    if (record.status === 'SUBMITTED') throw new AppError('Cannot edit submitted records', 403);
+    if (!record) throw new AppError('This inventory item was not found', 404);
+    if (record.status === 'SUBMITTED') throw new AppError('This item has already been submitted and cannot be edited', 403);
 
     if (record.batch?.submissionDeadline) {
       const extension = record.batch.deadlineExtensions?.[0] ?? null;
       const effectiveDeadline = extension ? extension.newDeadline : record.batch.submissionDeadline;
       if (new Date() > new Date(effectiveDeadline)) {
-        throw new AppError('This batch is locked. The submission deadline has passed. Contact your administrator.', 403);
+        throw new AppError('This cycle is now closed — the submission deadline has passed. Contact your administrator if you need an extension', 403);
       }
     }
 
@@ -311,12 +311,12 @@ export async function submitInventory(req, res, next) {
         },
       },
     });
-    if (!batchForDeadline) throw new AppError('Batch not found', 404);
+    if (!batchForDeadline) throw new AppError('This inventory cycle was not found', 404);
     if (batchForDeadline.submissionDeadline) {
       const extension = batchForDeadline.deadlineExtensions?.[0] ?? null;
       const effectiveDeadline = extension ? extension.newDeadline : batchForDeadline.submissionDeadline;
       if (new Date() > new Date(effectiveDeadline)) {
-        throw new AppError('This batch is locked. The submission deadline has passed. Contact your administrator.', 403);
+        throw new AppError('This cycle is now closed — the submission deadline has passed. Contact your administrator if you need an extension', 403);
       }
     }
 
@@ -330,12 +330,12 @@ export async function submitInventory(req, res, next) {
           where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
         });
 
-        if (pending.length === 0) throw new AppError('No pending records found', 400);
+        if (pending.length === 0) throw new AppError('No items are waiting for submission in this cycle', 400);
 
         const missingPhysical = pending.filter(r => r.physicalQuantity === null);
         if (missingPhysical.length > 0) {
           throw new AppError(
-            `${missingPhysical.length} item(s) are missing Physical Stock. Please fill in all quantities before submitting.`,
+            `${missingPhysical.length} item${missingPhysical.length > 1 ? 's are' : ' is'} missing a physical count. Please enter a count for every item before submitting`,
             400
           );
         }
@@ -344,14 +344,14 @@ export async function submitInventory(req, res, next) {
         const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
         if (missingCategory.length > 0) {
           throw new AppError(
-            `${missingCategory.length} item(s) with discrepancies are missing a Category. Please select a category for each.`,
+            `${missingCategory.length} item${missingCategory.length > 1 ? 's have' : ' has'} a discrepancy but no category selected. Please choose a category for each discrepancy`,
             400
           );
         }
         const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
         if (missingDetail.length > 0) {
           throw new AppError(
-            `${missingDetail.length} item(s) with discrepancies are missing Issue Details. Please provide details for each discrepancy.`,
+            `${missingDetail.length} item${missingDetail.length > 1 ? 's have' : ' has'} a discrepancy but no issue detail entered. Please describe each discrepancy before submitting`,
             400
           );
         }
@@ -370,7 +370,7 @@ export async function submitInventory(req, res, next) {
       }, { isolationLevel: 'Serializable' });
     } catch (txErr) {
       if (txErr?.code === 'P2034') {
-        throw new AppError('This inventory has already been submitted. Please refresh the page.', 409);
+        throw new AppError('This inventory has already been submitted. Refresh the page to see the latest status', 409);
       }
       throw txErr;
     }
@@ -602,14 +602,14 @@ export async function downloadInventory(req, res, next) {
         where: { inventoryRecords: { some: { storeId } } },
         orderBy: { inventoryDate: 'desc' },
       });
-      if (!latestBatch) throw new AppError('No inventory records found for your store', 404);
+      if (!latestBatch) throw new AppError('No inventory records found for your store in this cycle', 404);
       targetBatchId = latestBatch.id;
     }
 
     const STORE_EXPORT_LIMIT = 10_000;
     const exportCount = await prisma.inventoryRecord.count({ where: { storeId, batchId: targetBatchId } });
     if (exportCount > STORE_EXPORT_LIMIT) {
-      throw new AppError(`Too many records to export (${exportCount.toLocaleString()}). Contact your administrator.`, 413);
+      throw new AppError(`This cycle has ${exportCount.toLocaleString()} records which is too large to export directly. Please contact your administrator`, 413);
     }
 
     // Get records for this store in the selected batch
@@ -634,7 +634,7 @@ export async function downloadInventory(req, res, next) {
     });
 
     if (records.length === 0) {
-      throw new AppError('No inventory records found for your store', 404);
+      throw new AppError('No inventory records found for your store in this cycle', 404);
     }
 
     // Create Excel workbook

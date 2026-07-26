@@ -130,9 +130,9 @@ export async function login(req, res, next) {
     const employeeId = typeof req.body.employeeId === 'string' ? req.body.employeeId : '';
     const password   = typeof req.body.password   === 'string' ? req.body.password   : '';
     if (!employeeId || !password) {
-      throw new AppError('Employee ID and password are required', 400);
+      throw new AppError('Please enter your Employee ID and password', 400);
     }
-    if (password.length > 128) throw new AppError('Invalid credentials', 401);
+    if (password.length > 128) throw new AppError('Incorrect Employee ID or password', 401);
 
     // Look up user — up to 3 attempts with growing delays for Supabase pooler cold-start.
     // Delays: immediate → 500 ms → 1200 ms (total max wait ~1.7 s before 503).
@@ -157,7 +157,7 @@ export async function login(req, res, next) {
     }
     if (lastErr) {
       console.error('[auth] DB unavailable after all retries:', lastErr.message);
-      throw new AppError('The service is temporarily unavailable. Please try again in a moment.', 503);
+      throw new AppError('We are having trouble connecting right now. Please try again in a moment', 503);
     }
 
     // Check DB-backed lockout before running bcrypt (avoids wasting CPU on locked accounts)
@@ -172,16 +172,16 @@ export async function login(req, res, next) {
 
     if (!user || !isPasswordValid) {
       if (user) await recordDbFailure(user.id);
-      throw new AppError('Employee ID or password is incorrect', 401);
+      throw new AppError('Incorrect Employee ID or password', 401);
     }
 
     await clearDbFailures(user.id);
 
     if (user.pendingApproval) {
-      throw new AppError('This account is pending administrator approval. Please contact your admin.', 403);
+      throw new AppError('Your account is awaiting administrator approval. Please contact your admin', 403);
     }
     if (!user.isActive) {
-      throw new AppError('This account has been deactivated. Contact your administrator.', 403);
+      throw new AppError('Your account has been deactivated. Contact your administrator to regain access', 403);
     }
 
     // Issue access token as HttpOnly cookie
@@ -206,7 +206,7 @@ export async function refresh(req, res, next) {
   try {
     const incomingToken = req.cookies?.[REFRESH_COOKIE];
     if (!incomingToken) {
-      throw new AppError('No refresh token', 401);
+      throw new AppError('Session not found. Please sign in again', 401);
     }
 
     // Look up the stored token
@@ -217,14 +217,14 @@ export async function refresh(req, res, next) {
 
     if (!stored || stored.expiresAt < new Date()) {
       clearCookies(res);
-      throw new AppError('Refresh token expired or invalid', 401);
+      throw new AppError('Your session has expired. Please sign in again', 401);
     }
 
     const { user } = stored;
     if (!user.isActive) {
       await prisma.refreshToken.delete({ where: { id: stored.id } }).catch(() => {});
       clearCookies(res);
-      throw new AppError('Account is inactive', 401);
+      throw new AppError('Your account has been deactivated. Contact your administrator', 401);
     }
 
     // Rotate: delete old token, issue new one (one-time use)
@@ -266,16 +266,15 @@ export async function changePassword(req, res, next) {
     const currentPassword = typeof req.body.currentPassword === 'string' ? req.body.currentPassword : '';
     const newPassword     = typeof req.body.newPassword     === 'string' ? req.body.newPassword     : '';
     if (!currentPassword || !newPassword) {
-      throw new AppError('currentPassword and newPassword are required', 400);
+      throw new AppError('Both your current and new password are required', 400);
     }
-    // Cap before bcrypt to prevent DoS via oversized input (bcrypt truncates at 72 bytes)
-    if (currentPassword.length > 128) throw new AppError('Current password is incorrect', 401);
+    if (currentPassword.length > 128) throw new AppError('The current password you entered is incorrect', 401);
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    if (!user) throw new AppError('User not found', 404);
+    if (!user) throw new AppError('Account not found', 404);
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!valid) throw new AppError('Current password is incorrect', 401);
+    if (!valid) throw new AppError('The current password you entered is incorrect', 401);
 
     validatePassword(newPassword);
 
@@ -309,14 +308,14 @@ export async function updateProfile(req, res, next) {
     if (email !== undefined) {
       const trimmed = email?.trim() || null;
       if (trimmed && !EMAIL_REGEX.test(trimmed)) {
-        throw new AppError('Invalid email address format', 400);
+        throw new AppError('Please enter a valid email address', 400);
       }
       data.email = trimmed;
     }
     if (phone !== undefined) data.phone = phone?.trim() || null;
 
     if (Object.keys(data).length === 0) {
-      throw new AppError('No fields to update', 400);
+      throw new AppError('No changes were submitted', 400);
     }
 
     const updated = await prisma.user.update({
@@ -345,22 +344,21 @@ export async function updateProfile(req, res, next) {
 // ── Shared password validator (also imported by adminController) ───────────
 export function validatePassword(password) {
   if (!password || typeof password !== 'string') {
-    throw new AppError('Password must be at least 8 characters', 400);
+    throw new AppError('Password must be at least 8 characters long', 400);
   }
   if (password.length < 8) {
-    throw new AppError('Password must be at least 8 characters', 400);
+    throw new AppError('Password must be at least 8 characters long', 400);
   }
-  // bcrypt silently truncates at 72 bytes — cap early to prevent DoS
   if (password.length > 128) {
-    throw new AppError('Password must be 128 characters or fewer', 400);
+    throw new AppError('Password cannot be longer than 128 characters', 400);
   }
   if (!/[A-Z]/.test(password)) {
-    throw new AppError('Password must contain at least one uppercase letter', 400);
+    throw new AppError('Password must include at least one uppercase letter (A–Z)', 400);
   }
   if (!/[a-z]/.test(password)) {
-    throw new AppError('Password must contain at least one lowercase letter', 400);
+    throw new AppError('Password must include at least one lowercase letter (a–z)', 400);
   }
   if (!/[0-9]/.test(password)) {
-    throw new AppError('Password must contain at least one number', 400);
+    throw new AppError('Password must include at least one number (0–9)', 400);
   }
 }

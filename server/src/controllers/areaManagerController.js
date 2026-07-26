@@ -275,7 +275,7 @@ export async function getStoreRecords(req, res, next) {
     const storeId = requireId(req.params.storeId, 'storeId');
 
     const storeIds = await getManagedStoreIds(req.user.id);
-    if (!storeIds.includes(storeId)) throw new AppError('Store not under your management', 403);
+    if (!storeIds.includes(storeId)) throw new AppError('This store is not assigned to you', 403);
 
     const [records, review, store] = await Promise.all([
       prisma.inventoryRecord.findMany({
@@ -308,17 +308,17 @@ export async function updateRecord(req, res, next) {
       where: { id },
       select: { storeId: true, batchId: true, status: true, systemQuantity: true },
     });
-    if (!record) throw new AppError('Record not found', 404);
-    if (record.status !== 'SUBMITTED') throw new AppError('Only submitted records can be edited', 400);
+    if (!record) throw new AppError('This inventory record was not found', 404);
+    if (record.status !== 'SUBMITTED') throw new AppError('Only records that have been submitted by the store can be edited at this stage', 400);
 
     const storeIds = await getManagedStoreIds(req.user.id);
-    if (!storeIds.includes(record.storeId)) throw new AppError('Store not under your management', 403);
+    if (!storeIds.includes(record.storeId)) throw new AppError('This store is not assigned to you', 403);
 
     const { physicalQuantity, remarks, shrinkageCategory } = req.body;
     const updateData = {};
     if (physicalQuantity !== undefined) {
       const qty = parseFloat(physicalQuantity);
-      if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be 0 or more', 400);
+      if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be zero or a positive number', 400);
       updateData.physicalQuantity = qty;
       updateData.difference = parseFloat((qty - record.systemQuantity).toFixed(4));
     }
@@ -346,7 +346,7 @@ export async function approveStore(req, res, next) {
     const storeId = requireId(req.params.storeId, 'storeId');
 
     const storeIds = await getManagedStoreIds(req.user.id);
-    if (!storeIds.includes(storeId)) throw new AppError('Store not under your management', 403);
+    if (!storeIds.includes(storeId)) throw new AppError('This store is not assigned to you', 403);
 
     // Server-side guard: all records must be submitted before an AM can approve.
     // The UI checks allSubmitted, but a direct API call could bypass that.
@@ -355,7 +355,7 @@ export async function approveStore(req, res, next) {
     });
     if (pendingCount > 0) {
       throw new AppError(
-        `Cannot approve: ${pendingCount} item(s) are still pending submission by the store manager.`,
+        `${pendingCount} item${pendingCount > 1 ? 's are' : ' is'} still pending submission from the store manager. All items must be submitted before you can approve`,
         400
       );
     }
@@ -400,10 +400,10 @@ export async function returnStore(req, res, next) {
     const storeId = requireId(req.params.storeId, 'storeId');
 
     const storeIds = await getManagedStoreIds(req.user.id);
-    if (!storeIds.includes(storeId)) throw new AppError('Store not under your management', 403);
+    if (!storeIds.includes(storeId)) throw new AppError('This store is not assigned to you', 403);
 
     const { remarks } = req.body;
-    if (!remarks?.trim()) throw new AppError('A reason is required when returning to the store manager', 400);
+    if (!remarks?.trim()) throw new AppError('Please provide a reason so the store manager knows what to correct', 400);
 
     await prisma.$transaction([
       // Reset submitted records fully — clears all count data so store must re-enter

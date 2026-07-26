@@ -2,23 +2,24 @@ import { env } from '../config/env.js';
 
 export function errorHandler(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
-  // Check both instanceof and name — instanceof can fail after ESM hot-reload
   const isOperational = err instanceof AppError || err.name === 'AppError';
 
-  // Log unexpected server errors (not intentional 4xx or AppError 5xx)
+  // Log all 5xx errors to console with full context — never shown to the user
   if (statusCode >= 500) {
-    console.error(`[error] ${req.method} ${req.path} → ${statusCode}:`, err);
+    console.error(
+      `[error] ${req.method} ${req.path} → ${statusCode} | ${err.message}`,
+      env.server.nodeEnv !== 'production' ? err.stack : ''
+    );
   }
 
-  // In production, hide internal error details from non-operational errors
-  // to prevent accidental leakage of stack traces, DB messages, etc.
-  const message = (statusCode >= 500 && !isOperational && env.server.nodeEnv === 'production')
-    ? 'An unexpected error occurred. Please try again later.'
-    : (err.message || 'An unexpected error occurred');
+  // User-facing message: operational errors keep their message, unexpected errors get a generic one
+  const userMessage = (statusCode >= 500 && !isOperational)
+    ? 'Something went wrong on our end. Please try again in a moment'
+    : (err.message || 'Something went wrong. Please try again');
 
-  const response = { error: message };
+  const response = { error: userMessage };
 
-  // Include stack trace only in development
+  // Stack trace only in development (never in production)
   if (env.server.nodeEnv === 'development') {
     response.stack = err.stack;
   }

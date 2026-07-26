@@ -44,7 +44,7 @@ export async function authenticate(req, res, next) {
   }
 
   if (!token) {
-    return next(new AppError('Authentication required', 401));
+    return next(new AppError('Please sign in to continue', 401));
   }
 
   // Verify JWT — any JWT error returns 401, never 500
@@ -52,11 +52,11 @@ export async function authenticate(req, res, next) {
   try {
     decoded = jwt.verify(token, env.jwt.secret);
   } catch {
-    return next(new AppError('Invalid or expired token', 401));
+    return next(new AppError('Your session has expired. Please sign in again', 401));
   }
 
   if (!decoded?.userId || typeof decoded.userId !== 'number') {
-    return next(new AppError('Invalid authentication token', 401));
+    return next(new AppError('Your session has expired. Please sign in again', 401));
   }
 
   // Serve from cache or DB
@@ -70,7 +70,7 @@ export async function authenticate(req, res, next) {
       });
 
       if (!user || !user.isActive) {
-        return next(new AppError('Invalid or inactive account', 401));
+        return next(new AppError('Your account is not active. Contact your administrator', 401));
       }
 
       cached = {
@@ -87,34 +87,34 @@ export async function authenticate(req, res, next) {
       setCachedUser(decoded.userId, cached);
     } else if (!cached.isActive) {
       userCache.delete(decoded.userId);
-      return next(new AppError('Invalid or inactive account', 401));
+      return next(new AppError('Your account has been deactivated. Contact your administrator', 401));
     }
 
     req.user = cached;
     next();
   } catch (dbError) {
     console.error('[auth] DB error during token validation:', dbError.message);
-    next(new AppError('Authentication service temporarily unavailable. Please try again.', 503));
+    next(new AppError('We could not verify your session right now. Please try again in a moment', 503));
   }
 }
 
 export function requireRole(...allowedRoles) {
   return (req, res, next) => {
-    if (!req.user) return next(new AppError('Authentication required', 401));
-    if (!allowedRoles.includes(req.user.role)) return next(new AppError('Access forbidden', 403));
+    if (!req.user) return next(new AppError('Please sign in to continue', 401));
+    if (!allowedRoles.includes(req.user.role)) return next(new AppError('You do not have permission to access this', 403));
     next();
   };
 }
 
 export function requireStoreManager(req, res, next) {
-  if (!req.user)                          return next(new AppError('Authentication required', 401));
-  if (req.user.role !== 'STORE_MANAGER')  return next(new AppError('Access forbidden', 403));
-  if (!req.user.storeId)                  return next(new AppError('Store assignment required', 403));
+  if (!req.user)                         return next(new AppError('Please sign in to continue', 401));
+  if (req.user.role !== 'STORE_MANAGER') return next(new AppError('You do not have permission to access this', 403));
+  if (!req.user.storeId)                 return next(new AppError('Your account is not assigned to a store. Contact your administrator', 403));
   next();
 }
 
 export function requireAreaManager(req, res, next) {
-  if (!req.user)                           return next(new AppError('Authentication required', 401));
-  if (req.user.role !== 'AREA_MANAGER')    return next(new AppError('Access forbidden', 403));
+  if (!req.user)                          return next(new AppError('Please sign in to continue', 401));
+  if (req.user.role !== 'AREA_MANAGER')   return next(new AppError('You do not have permission to access this', 403));
   next();
 }

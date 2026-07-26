@@ -89,7 +89,7 @@ async function withDbRetry(fn) {
       return await fn();
     } catch (retryErr) {
       console.error('[db-retry] Retry also failed:', retryErr.message);
-      throw new AppError('Unable to reach the database. Please wait a moment and try again.', 503);
+      throw new AppError('We are having trouble connecting to the database. Please wait a moment and try again', 503);
     }
   }
 }
@@ -377,12 +377,12 @@ export async function createStore(req, res, next) {
     const { storeCode, storeName, isActive } = req.body;
 
     if (!storeCode || !storeName) {
-      throw new AppError('Plant code and name are required', 400);
+      throw new AppError('Both a plant code and plant name are required', 400);
     }
 
     const normalizedCode = storeCode.toString().trim().toUpperCase();
     if (!normalizedCode) throw new AppError('Plant code cannot be blank', 400);
-    if (normalizedCode.length > 50) throw new AppError('Plant code must be 50 characters or fewer', 400);
+    if (normalizedCode.length > 50) throw new AppError('Plant code cannot be longer than 50 characters', 400);
 
     const normalizedName = storeName?.toString().trim();
     if (!normalizedName) throw new AppError('Plant name cannot be blank', 400);
@@ -427,7 +427,7 @@ export async function deleteStore(req, res, next) {
 
     if (store._count.inventoryRecords > 0) {
       throw new AppError(
-        `Cannot delete store -- it has ${store._count.inventoryRecords} inventory record(s). Deactivate it instead.`,
+        `This store has ${store._count.inventoryRecords} inventory record${store._count.inventoryRecords > 1 ? 's' : ''} and cannot be deleted. Deactivate it instead to hide it from reports`,
         409
       );
     }
@@ -514,18 +514,18 @@ export async function createUser(req, res, next) {
     const { employeeId, name, password, role, storeId, isActive, email, phone } = req.body;
 
     if (!employeeId || !name || !password || !role) {
-      throw new AppError('Employee ID, name, password, and role are required', 400);
+      throw new AppError('Employee ID, full name, password, and role are all required', 400);
     }
 
     const VALID_ROLES = new Set(['ADMIN', 'AREA_MANAGER', 'STORE_MANAGER']);
-    if (!VALID_ROLES.has(role)) throw new AppError('Invalid role', 400);
+    if (!VALID_ROLES.has(role)) throw new AppError('Please select a valid role: Admin, Area Manager, or Store Manager', 400);
 
     if (role === 'STORE_MANAGER' && !storeId) {
-      throw new AppError('Store assignment is required for Store Managers', 400);
+      throw new AppError('Store Managers must be assigned to a store', 400);
     }
 
     if ((role === 'ADMIN' || role === 'AREA_MANAGER') && storeId) {
-      throw new AppError('Admins and Area Managers cannot be assigned to a store', 400);
+      throw new AppError('Admins and Area Managers are not assigned to individual stores', 400);
     }
 
     validatePassword(password);
@@ -619,7 +619,7 @@ export async function updateUser(req, res, next) {
     if (storeId !== undefined) {
       const parsedStoreId = storeId ? requireId(storeId, 'storeId') : null;
       if (parsedStoreId && (currentUser.role === 'ADMIN' || currentUser.role === 'AREA_MANAGER')) {
-        throw new AppError('Admins and Area Managers cannot be assigned to a store', 400);
+        throw new AppError('Admins and Area Managers are not assigned to individual stores', 400);
       }
       if (parsedStoreId) {
         data.store = { connect: { id: parsedStoreId } };
@@ -666,12 +666,12 @@ export async function updateUser(req, res, next) {
 export async function uploadInventory(req, res, next) {
   try {
     if (!req.file) {
-      throw new AppError('File is required', 400);
+      throw new AppError('Please select a file to upload', 400);
     }
 
     const { inventoryDate, submissionDeadline } = req.body;
     if (!inventoryDate) {
-      throw new AppError('Inventory date is required', 400);
+      throw new AppError('Please select an inventory date for this cycle', 400);
     }
 
     const targetDate     = parseUserDate(inventoryDate, 'inventoryDate');
@@ -920,19 +920,19 @@ export async function uploadInventory(req, res, next) {
 export async function previewUpload(req, res, next) {
   try {
     if (!req.file) {
-      throw new AppError('File is required', 400);
+      throw new AppError('Please select a file to upload', 400);
     }
 
     const { inventoryDate } = req.body;
     if (!inventoryDate) {
-      throw new AppError('Inventory date is required', 400);
+      throw new AppError('Please select an inventory date for this cycle', 400);
     }
 
     const file = req.file;
     const rows = await parseFileToRows(file);
 
     if (rows.length === 0) {
-      throw new AppError('No data rows found in file', 400);
+      throw new AppError('The file appears to be empty — no data rows were found', 400);
     }
 
     // Fetch all plant codes for validation — retry once on cold-start connection failure
@@ -1179,7 +1179,7 @@ export async function getReconciliationReport(req, res, next) {
     const count = await prisma.inventoryRecord.count({ where });
     if (count > EXPORT_ROW_LIMIT) {
       throw new AppError(
-        `This filter matches ${count.toLocaleString()} records. Apply more specific filters (e.g. select a single cycle or store) to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer.`,
+        `Your current filters return ${count.toLocaleString()} records. Narrow the results to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer by selecting a specific cycle or store`,
         413
       );
     }
@@ -1222,7 +1222,7 @@ export async function downloadReconciliationReport(req, res, next) {
     const dlCount = await prisma.inventoryRecord.count({ where });
     if (dlCount > EXPORT_ROW_LIMIT) {
       throw new AppError(
-        `This filter matches ${dlCount.toLocaleString()} records. Apply more specific filters to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer before downloading.`,
+        `Your current filters return ${dlCount.toLocaleString()} records. Narrow the results to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer by selecting a specific cycle or store before downloading`,
         413
       );
     }
@@ -1330,7 +1330,7 @@ export async function downloadInventoryExport(req, res, next) {
     const exportCount = await prisma.inventoryRecord.count({ where });
     if (exportCount > EXPORT_ROW_LIMIT) {
       throw new AppError(
-        `This filter matches ${exportCount.toLocaleString()} records. Apply more specific filters to reduce to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer before exporting.`,
+        `Your current filters return ${exportCount.toLocaleString()} records. Narrow the results to ${EXPORT_ROW_LIMIT.toLocaleString()} or fewer by selecting a specific cycle or store before exporting`,
         413
       );
     }
@@ -1803,7 +1803,7 @@ export async function deleteUser(req, res, next) {
     const userId = requireId(req.params.id, 'userId');
 
     if (userId === req.user.id) {
-      throw new AppError('You cannot delete your own account', 400);
+      throw new AppError('You cannot delete your own account while logged in', 400);
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -1816,7 +1816,7 @@ export async function deleteUser(req, res, next) {
       if (user.role === 'ADMIN') {
         const adminCount = await tx.user.count({ where: { role: 'ADMIN', isActive: true } });
         if (adminCount <= 1) {
-          throw new AppError('Cannot delete the last active administrator account', 400);
+          throw new AppError('At least one active administrator account must remain. Assign another admin before deleting this one', 400);
         }
       }
       // Reassign non-nullable FK references to the deleting admin so data isn't orphaned
