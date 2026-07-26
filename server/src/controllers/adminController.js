@@ -689,8 +689,10 @@ export async function uploadInventory(req, res, next) {
     const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
     const windowStart = new Date(targetDate); windowStart.setDate(windowStart.getDate() - 3);
     const windowEnd   = new Date(targetDate); windowEnd.setDate(windowEnd.getDate() + 3);
+    // Only warn about COMPLETED batches — PENDING ones are placeholder entries
+    // created by the cycle scheduler and should not block a real file upload.
     const existingBatch = await withDbRetry(() => prisma.uploadBatch.findFirst({
-      where: { inventoryDate: { gte: windowStart, lte: windowEnd } },
+      where: { inventoryDate: { gte: windowStart, lte: windowEnd }, status: 'COMPLETED', isDeleted: false },
       select: { id: true, inventoryDate: true, originalFileName: true },
     }));
     if (existingBatch) {
@@ -1104,7 +1106,9 @@ export async function getInventory(req, res, next) {
       prisma.inventoryRecord.count({ where }),
       prisma.inventoryRecord.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        // materialCode as secondary sort ensures stable pagination when many records
+        // share the same createdAt (e.g. bulk-uploaded in a single createMany call)
+        orderBy: [{ createdAt: 'desc' }, { materialCode: 'asc' }],
         skip,
         take: pageSizeNum,
         include: {

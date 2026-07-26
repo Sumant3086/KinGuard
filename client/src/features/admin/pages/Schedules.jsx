@@ -168,8 +168,13 @@ export default function Schedules() {
       )}
 
       {modal && (
-        <Modal title={modal === 'create' ? 'New Schedule' : 'Edit Schedule'} onClose={() => setModal(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Modal onClose={() => setModal(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0 }}>{modal === 'create' ? 'New Schedule' : 'Edit Schedule'}</h3>
+              <button className="close-btn" onClick={() => setModal(null)} aria-label="Close">&times;</button>
+            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px 0 4px' }}>
             <div className="form-group">
               <label>Schedule Name</label>
               <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Monthly Cycle" />
@@ -214,6 +219,7 @@ export default function Schedules() {
                 {saving ? 'Saving…' : modal === 'create' ? 'Create Schedule' : 'Save Changes'}
               </button>
             </div>
+          </div>
           </div>
         </Modal>
       )}

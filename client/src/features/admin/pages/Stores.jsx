@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
 import { PageHeader } from '../../../shared/components/ui/PageHeader';
@@ -53,8 +53,11 @@ export default function Stores() {
     adminApi.getAreaManagers().then(setAreaManagers).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Build lookup: amId → AM object (for displaying AM name in stores list)
-  const amById = Object.fromEntries(areaManagers.map(am => [String(am.id), am]));
+  // Build lookup: amId → AM object — memoized so it doesn't rebuild on every render
+  const amById = useMemo(
+    () => Object.fromEntries(areaManagers.map(am => [String(am.id), am])),
+    [areaManagers]
+  );
 
   async function loadStores() {
     setLoadError('');

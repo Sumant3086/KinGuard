@@ -66,32 +66,17 @@ async function runScheduleCheck() {
         deadline.setDate(deadline.getDate() + schedule.submissionWindowDays);
         deadline.setHours(23, 59, 59, 0);
 
-        // Check for an existing batch within 3 days of this date (avoid exact duplicate runs)
-        const windowStart = new Date(inventoryDate); windowStart.setDate(windowStart.getDate() - 3);
-        const windowEnd   = new Date(inventoryDate); windowEnd.setDate(windowEnd.getDate() + 3);
-        const existing = await prisma.uploadBatch.findFirst({
-          where: { inventoryDate: { gte: windowStart, lte: windowEnd }, isDeleted: false },
-        });
+        // The scheduler does NOT create inventory batches — that requires an admin
+        // to upload an actual inventory file with real item data. A batch created
+        // here with status PENDING and 0 rows would block real uploads (duplicate
+        // window check) and show as empty cycles for store managers.
+        //
+        // Instead, the scheduler just logs a reminder that a cycle is due and
+        // advances nextRunAt. The admin sees the schedule in Admin → Schedules
+        // and knows to upload the inventory file for this period.
+        console.warn(`[cycle-scheduler] Schedule "${schedule.name}" is due — inventory date ${inventoryDate.toISOString().split('T')[0]}, deadline ${deadline.toISOString().split('T')[0]}. Admin should upload the inventory file.`);
 
-        if (!existing) {
-          await prisma.uploadBatch.create({
-            data: {
-              originalFileName: `[Auto] ${schedule.name}`,
-              uploadedBy:       schedule.createdBy,
-              inventoryDate,
-              submissionDeadline: deadline,
-              totalRows:    0,
-              successfulRows: 0,
-              rejectedRows:   0,
-              status: 'PENDING',
-            },
-          });
-          console.warn(`[cycle-scheduler] Created batch for schedule "${schedule.name}" (${inventoryDate.toISOString().split('T')[0]})`);
-        } else {
-          console.warn(`[cycle-scheduler] Skipped schedule "${schedule.name}" — batch already exists near ${inventoryDate.toISOString().split('T')[0]}`);
-        }
-
-        // Advance nextRunAt regardless of whether we created a batch
+        // Advance nextRunAt regardless
         const next = computeNextRun(schedule.frequency, schedule.dayOfMonth, schedule.dayOfWeek, now);
         await prisma.cycleSchedule.update({
           where: { id: schedule.id },
