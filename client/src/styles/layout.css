@@ -384,7 +384,7 @@
   overflow: hidden;
 }
 
-/* Vivid crimson top stripe */
+/* Store tier accent — teal stripe (echoes the refrigerator cases in the background image) */
 .store-shell .card::before,
 .store-shell .page-header::before,
 .store-shell .page-header-root::before,
@@ -392,7 +392,7 @@
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, transparent 0%, #dc2626 30%, #ef4444 60%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, #dc2626 30%, #0891b2 70%, transparent 100%);
   border-radius: inherit;
 }
 
@@ -442,31 +442,31 @@
   text-shadow: none !important;
 }
 
-/* KPI left bar — vivid red */
+/* KPI left bar — teal (cold-chain / refrigerator accent) */
 .store-shell .kpi-card::after,
 .store-shell .stat-card::after {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0; width: 4px;
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(180deg, #0891b2 0%, #0e7490 100%);
   border-radius: 16px 0 0 16px;
 }
 
 .store-shell th {
-  background: rgba(254, 242, 242, 0.90) !important;
-  color: #7f1d1d !important;
-  border-bottom: 1.5px solid rgba(220, 38, 38, 0.18) !important;
+  background: rgba(236, 254, 255, 0.92) !important;
+  color: #164e63 !important;
+  border-bottom: 1.5px solid rgba(8, 145, 178, 0.20) !important;
   font-weight: 800 !important;
 }
 
 .store-shell td {
   color: #1f2937 !important;
   font-weight: 500 !important;
-  border-bottom: 1px solid rgba(220, 38, 38, 0.07) !important;
+  border-bottom: 1px solid rgba(8, 145, 178, 0.08) !important;
 }
 
 .store-shell tbody tr:hover td {
-  background: rgba(254, 242, 242, 0.60) !important;
+  background: rgba(236, 254, 255, 0.50) !important;
 }
 
 .store-shell .banner,
@@ -522,14 +522,90 @@
   color: #1f2937 !important;
 }
 .store-shell .stat-card h4 {
-  color: #7f1d1d !important; font-weight: 800 !important;
+  color: #0e7490 !important; font-weight: 800 !important;
   font-size: 12px !important; text-transform: uppercase !important;
   letter-spacing: 0.6px !important; text-shadow: none !important;
 }
 .store-shell .stat-card .value { color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
 .store-shell .stat-card p     { color: #6b7280 !important; font-weight: 500 !important; text-shadow: none !important; }
 
-/* ── AM stat card modifier overrides — same fix applied to area manager ── */
+/* ── Area Manager tier — white-glass cards + navy accent ─────────────
+   Navy echoes the deep dark shelving units visible in AreaManagerPage.jpg.
+   Crimson stays in nav + headings as shared brand identity.
+   ─────────────────────────────────────────────────────────────────── */
+.am-shell .card,
+.am-shell .kpi-card,
+.am-shell .metric-card,
+.am-shell .page-header,
+.am-shell .page-header-root,
+.am-shell .dash-command,
+.am-shell .table-wrap,
+.am-shell .table-container,
+.am-shell .filter-card {
+  background: rgba(255,255,255,0.96) !important;
+  border: 1.5px solid rgba(29,78,216,0.13) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(29,78,216,0.06), inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  position: relative; overflow: hidden;
+}
+
+/* Navy-to-crimson top stripe */
+.am-shell .card::before,
+.am-shell .page-header::before,
+.am-shell .page-header-root::before,
+.am-shell .dash-command::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #1d4ed8 30%, #dc2626 70%, transparent 100%);
+  border-radius: inherit;
+}
+
+.am-shell .card:hover,
+.am-shell .kpi-card:hover,
+.am-shell .metric-card:hover {
+  border-color: rgba(29,78,216,0.26) !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.16), 0 3px 12px rgba(29,78,216,0.10), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+  transform: translateY(-2px);
+}
+
+/* KPI left bar — navy (deep shelving depth) */
+.am-shell .kpi-card::after,
+.am-shell .stat-card::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, #1d4ed8 0%, #1e3a8a 100%);
+  border-radius: 16px 0 0 16px;
+}
+
+.am-shell th {
+  background: rgba(239,246,255,0.92) !important;
+  color: #1e3a8a !important;
+  border-bottom: 1.5px solid rgba(29,78,216,0.20) !important;
+  font-weight: 800 !important;
+}
+
+.am-shell td {
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid rgba(29,78,216,0.07) !important;
+}
+
+.am-shell tbody tr:hover td {
+  background: rgba(239,246,255,0.55) !important;
+}
+
+/* AM headings — keep crimson as brand identity */
+.am-shell .page-header h2,
+.am-shell .page-header-text h2,
+.am-shell .card-title,
+.am-shell .card h3,
+.am-shell .dash-cmd-title { color: #991b1b !important; font-weight: 900 !important; text-shadow: none !important; }
+.am-shell .page-header p,
+.am-shell .card-sub,
+.am-shell .dash-cmd-sub   { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
+
+/* AM stat card modifier overrides */
 .am-shell .stat-card.info,
 .am-shell .stat-card.warning,
 .am-shell .stat-card.success,
@@ -537,13 +613,21 @@
 .am-shell .stat-card.accent,
 .am-shell .stat-card {
   background: rgba(255,255,255,0.97) !important;
-  border: 1.5px solid rgba(185,28,28,0.14) !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 6px rgba(185,28,28,0.06) !important;
+  border: 1.5px solid rgba(29,78,216,0.13) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 6px rgba(29,78,216,0.06) !important;
   color: #1f2937 !important;
 }
-.am-shell .stat-card h4    { color: #991b1b !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
+.am-shell .stat-card h4    { color: #1e3a8a !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
 .am-shell .stat-card .value{ color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
 .am-shell .stat-card p     { color: #6b7280 !important; font-weight: 500 !important; text-shadow: none !important; }
+.am-shell .kpi-label       { color: #374151 !important; font-weight: 800 !important; text-shadow: none !important; }
+.am-shell .kpi-value       { color: #111827 !important; text-shadow: none !important; }
+.am-shell .kpi-sub         { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
+
+/* AM buttons — keep crimson */
+.am-shell .btn-primary  { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important; box-shadow: 0 4px 16px rgba(220,38,38,0.35) !important; font-weight: 700 !important; }
+.am-shell .btn-secondary,
+.am-shell .btn-ghost    { background: rgba(255,255,255,0.92) !important; border: 1.5px solid rgba(29,78,216,0.20) !important; color: #1e3a8a !important; font-weight: 700 !important; }
 
 /* ── Admin shell — white cards + red accents (matches store + AM treatment) ── */
 .admin-shell .card,
@@ -561,13 +645,13 @@
   box-shadow: 0 6px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(220,38,38,0.06), inset 0 1px 0 rgba(255,255,255,0.90) !important;
   position: relative; overflow: hidden;
 }
-/* Crimson top stripe on admin cards */
+/* Admin tier accent — emerald stripe (echoes the lush green produce/plants in AdminPage.jpg) */
 .admin-shell .card::before,
 .admin-shell .page-header::before,
 .admin-shell .dash-command::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, transparent, #dc2626 30%, #ef4444 60%, transparent);
+  background: linear-gradient(90deg, transparent, #dc2626 30%, #16a34a 70%, transparent);
   border-radius: inherit;
 }
 .admin-shell .card:hover,
@@ -584,10 +668,10 @@
 .admin-shell .page-header p,
 .admin-shell .card-sub,
 .admin-shell .dash-cmd-sub   { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
-/* Admin table */
-.admin-shell th { background: rgba(254,242,242,0.92) !important; color: #7f1d1d !important; border-bottom: 1.5px solid rgba(220,38,38,0.18) !important; font-weight: 800 !important; }
-.admin-shell td { color: #1f2937 !important; font-weight: 500 !important; border-bottom: 1px solid rgba(220,38,38,0.07) !important; }
-.admin-shell tbody tr:hover td { background: rgba(254,242,242,0.60) !important; }
+/* Admin table — faint green tint on headers */
+.admin-shell th { background: rgba(240,253,244,0.92) !important; color: #14532d !important; border-bottom: 1.5px solid rgba(22,163,74,0.20) !important; font-weight: 800 !important; }
+.admin-shell td { color: #1f2937 !important; font-weight: 500 !important; border-bottom: 1px solid rgba(22,163,74,0.07) !important; }
+.admin-shell tbody tr:hover td { background: rgba(240,253,244,0.55) !important; }
 /* Admin stat card modifiers */
 .admin-shell .stat-card.info,
 .admin-shell .stat-card.warning,
@@ -599,14 +683,14 @@
   border: 1.5px solid rgba(220,38,38,0.13) !important;
   box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 6px rgba(220,38,38,0.06) !important;
 }
-.admin-shell .stat-card h4    { color: #7f1d1d !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
+.admin-shell .stat-card h4    { color: #15803d !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
 .admin-shell .stat-card .value{ color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
 .admin-shell .stat-card p     { color: #6b7280 !important; font-weight: 500 !important; text-shadow: none !important; }
-/* Admin KPI cards */
+/* Admin KPI cards — emerald left bar (growth / quality oversight) */
 .admin-shell .kpi-card::after {
   content: '';
   position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
   border-radius: 16px 0 0 16px;
 }
 .admin-shell .kpi-label { color: #374151 !important; font-weight: 800 !important; text-shadow: none !important; }
