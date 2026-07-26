@@ -7,6 +7,11 @@ import { createAuditLog } from '../services/auditService.js';
 import { invalidateUserCache } from '../middleware/auth.js';
 import prisma from '../config/prisma.js';
 
+// Generated once at startup for timing-safe dummy comparison when the employee ID
+// does not exist in the database. Prevents user-enumeration via response time.
+// A fresh random hash is used each restart so it never appears in source or logs.
+const DUMMY_HASH = bcrypt.hashSync(randomBytes(16).toString('hex'), 10);
+
 // ── Cookie configuration ───────────────────────────────────────────────────
 const IS_PROD = env.server.nodeEnv === 'production';
 
@@ -158,10 +163,12 @@ export async function login(req, res, next) {
     // Check DB-backed lockout before running bcrypt (avoids wasting CPU on locked accounts)
     if (user) await checkDbLockout(user);
 
-    // Always run bcrypt (or dummy) before revealing any account state — prevents timing attacks
+    // Always run bcrypt before revealing any account state — prevents user enumeration via timing.
+    // For non-existent accounts, compare against DUMMY_HASH (a random hash generated at startup)
+    // so the response time matches a real failed login and attackers cannot enumerate valid IDs.
     const isPasswordValid = user
       ? await bcrypt.compare(password, user.passwordHash)
-      : await bcrypt.compare(password, '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234');
+      : await bcrypt.compare(password, DUMMY_HASH);
 
     if (!user || !isPasswordValid) {
       if (user) await recordDbFailure(user.id);
