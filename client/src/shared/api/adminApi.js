@@ -267,6 +267,39 @@ export async function getStoreDrilldown(storeId, batchId) {
   return data;
 }
 
+// ── Risk scores + YoY analytics ───────────────────────────────────────────────
+export async function getRiskScores(cycles = 6) {
+  const { data } = await client.get('/admin/analytics/risk', { params: { cycles } });
+  return data;
+}
+
+export async function getTrendsYoY(compareYear, cycles = 6) {
+  const { data } = await client.get('/admin/analytics/trends-yoy', { params: { compareYear, cycles } });
+  return data;
+}
+
+// ── Executive summary ─────────────────────────────────────────────────────────
+export const downloadExecutiveSummary = () =>
+  client.get('/admin/reports/executive-summary', { responseType: 'blob', timeout: FILE_TIMEOUT }).then(r => r.data);
+
+// ── Scheduled cycles ──────────────────────────────────────────────────────────
+export async function getSchedules() {
+  const { data } = await client.get('/admin/schedules');
+  return data;
+}
+export async function createSchedule(payload) {
+  const { data } = await client.post('/admin/schedules', payload);
+  return data;
+}
+export async function updateSchedule(id, payload) {
+  const { data } = await client.patch(`/admin/schedules/${id}`, payload);
+  return data;
+}
+export async function deleteSchedule(id) {
+  const { data } = await client.delete(`/admin/schedules/${id}`);
+  return data;
+}
+
 // ── Notifications ──────────────────────────────────────────────────────────
 export async function getNotifications() {
   const { data } = await client.get('/admin/notifications');

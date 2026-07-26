@@ -105,12 +105,14 @@ import storeRoutes     from './routes/storeRoutes.js';
 import adminRoutes     from './routes/adminRoutes.js';
 import amRoutes        from './routes/areaManagerRoutes.js';
 import adminAmRoutes   from './routes/adminAmRoutes.js';
+import scheduleRoutes  from './routes/scheduleRoutes.js';
 
-app.use('/api/auth',       authRoutes);
-app.use('/api/store',      storeRoutes);
-app.use('/api/admin',      adminRoutes);
-app.use('/api/am',         amRoutes);
-app.use('/api/admin',      adminAmRoutes);
+app.use('/api/auth',          authRoutes);
+app.use('/api/store',         storeRoutes);
+app.use('/api/admin',         adminRoutes);
+app.use('/api/am',            amRoutes);
+app.use('/api/admin',         adminAmRoutes);
+app.use('/api/admin/schedules', scheduleRoutes);
 
 // ── 404 for unknown /api routes ────────────────────────────────────────────
 app.all('/api/*', (_req, res) => {

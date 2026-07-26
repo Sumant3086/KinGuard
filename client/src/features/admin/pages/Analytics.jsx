@@ -65,6 +65,14 @@ const NoTrendIcon = (
   </svg>
 );
 
+const RISK_COLOR = score =>
+  score >= 60 ? { bg: 'rgba(239,68,68,0.12)',  fg: '#dc2626' } :
+  score >= 30 ? { bg: 'rgba(245,158,11,0.12)', fg: '#d97706' } :
+               { bg: 'rgba(16,185,129,0.12)',  fg: '#059669' };
+
+const TREND_ICON = { up: '↑', down: '↓', flat: '→' };
+const TREND_COL  = { up: '#dc2626', down: '#16a34a', flat: '#64748b' };
+
 export default function Analytics() {
   const [trendsData, setTrendsData] = useState(null);
   const [batches, setBatches]       = useState([]);
@@ -73,6 +81,16 @@ export default function Analytics() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [retryKey, setRetryKey]     = useState(0);
+
+  // Risk scores (features 11, 13, 14)
+  const [riskData, setRiskData]     = useState(null);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [showRisk, setShowRisk]     = useState(false);
+
+  // Year-over-year (feature 12)
+  const [yoyYear, setYoyYear]       = useState('');
+  const [yoyData, setYoyData]       = useState(null);
+  const [yoyLoading, setYoyLoading] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -101,6 +119,33 @@ export default function Analytics() {
     })();
     return () => { live = false; };
   }, [retryKey]);
+
+  async function loadRiskScores() {
+    if (riskData) { setShowRisk(v => !v); return; }
+    setRiskLoading(true);
+    setShowRisk(true);
+    try {
+      setRiskData(await adminApi.getRiskScores(6));
+    } catch (e) {
+      console.error('Risk scores:', e);
+    } finally {
+      setRiskLoading(false);
+    }
+  }
+
+  async function loadYoY() {
+    const year = parseInt(yoyYear);
+    if (!year || isNaN(year)) return;
+    setYoyLoading(true);
+    setYoyData(null);
+    try {
+      setYoyData(await adminApi.getTrendsYoY(year, 8));
+    } catch (e) {
+      console.error('YoY trends:', e);
+    } finally {
+      setYoyLoading(false);
+    }
+  }
 
   if (loading) return (
     <AdminLayout>
@@ -327,6 +372,195 @@ export default function Analytics() {
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'rgba(245,158,11,0.3)', marginRight: 4 }} />≥5% Watch</span>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'rgba(16,185,129,0.25)',marginRight: 4 }} />&lt;5% On Track</span>
         </div>
+      </div>
+
+      {/* ── Risk Intelligence (features 11, 13, 14) ───────────────────── */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <span className="card-title">Risk Intelligence</span>
+          <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={loadRiskScores}>
+            {showRisk ? 'Hide' : 'Load Risk Scores'}
+          </button>
+        </div>
+
+        {showRisk && (
+          riskLoading ? (
+            <p style={{ fontSize: 13, color: 'var(--t3)', padding: '16px 0' }}>Computing risk scores…</p>
+          ) : riskData ? (
+            <>
+              {/* Store risk table */}
+              <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 12 }}>
+                Scoring based on shortage rate (40%), repeat rate (25%), category severity (25%), trend direction (10%).
+                Percentile = position relative to all stores (100 = highest risk).
+              </p>
+              <div className="table-wrap" style={{ marginBottom: 24 }}>
+                <table className="scorecard">
+                  <thead>
+                    <tr>
+                      <th>Store</th>
+                      <th style={{ textAlign: 'center' }}>Risk Score</th>
+                      <th style={{ textAlign: 'center' }}>Percentile</th>
+                      <th style={{ textAlign: 'center' }}>Shortage Rate</th>
+                      <th style={{ textAlign: 'center' }}>Repeat Rate</th>
+                      <th>Top Category</th>
+                      <th style={{ textAlign: 'center' }}>Trend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {riskData.stores.map(s => {
+                      const rc = RISK_COLOR(s.riskScore);
+                      return (
+                        <tr key={s.storeId}>
+                          <td style={{ fontWeight: 600 }}>{s.storeName}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 4, background: rc.bg, color: rc.fg, fontWeight: 700, fontSize: 13 }}>
+                              {s.riskScore}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center', fontSize: 12, color: 'var(--t2)' }}>
+                            {s.percentile}th
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ ...rateColor(s.shortageRate), padding: '1px 7px', borderRadius: 4, fontSize: 12 }}>
+                              {s.shortageRate}%
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center', fontSize: 12, color: s.repeatRate > 50 ? 'var(--red)' : 'var(--t2)' }}>
+                            {s.repeatRate}%
+                          </td>
+                          <td style={{ fontSize: 12, color: 'var(--t2)' }}>{s.topCategory ?? '—'}</td>
+                          <td style={{ textAlign: 'center', fontSize: 14, color: TREND_COL[s.trend] }}>
+                            {TREND_ICON[s.trend]}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {riskData.stores.length === 0 && (
+                      <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--t3)', padding: 20 }}>No data available</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Top risky SKUs */}
+              {riskData.skus.length > 0 && (
+                <>
+                  <p className="card-title" style={{ marginBottom: 8 }}>Top 10 At-Risk Items</p>
+                  <div className="table-wrap">
+                    <table className="scorecard">
+                      <thead>
+                        <tr>
+                          <th>Material Code</th>
+                          <th>Description</th>
+                          <th style={{ textAlign: 'center' }}>SKU Risk</th>
+                          <th style={{ textAlign: 'center' }}>Cycles Affected</th>
+                          <th style={{ textAlign: 'center' }}>Stores Affected</th>
+                          <th style={{ textAlign: 'center' }}>Units Lost</th>
+                          <th>Category</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {riskData.skus.map((s, i) => {
+                          const rc = RISK_COLOR(s.riskScore);
+                          return (
+                            <tr key={i}>
+                              <td style={{ fontWeight: 600, fontSize: 12 }}>{s.materialCode}</td>
+                              <td style={{ fontSize: 12, color: 'var(--t2)' }}>{s.materialName}</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: rc.bg, color: rc.fg, fontWeight: 700, fontSize: 12 }}>
+                                  {s.riskScore}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center', fontSize: 12 }}>{s.cyclesWithShortage} / {s.totalCycles}</td>
+                              <td style={{ textAlign: 'center', fontSize: 12 }}>{s.affectedStores}</td>
+                              <td style={{ textAlign: 'center', fontSize: 12, color: 'var(--red)', fontWeight: 600 }}>
+                                −{s.totalUnitsLost}
+                              </td>
+                              <td style={{ fontSize: 12, color: 'var(--t2)' }}>{s.category ?? '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          ) : null
+        )}
+      </div>
+
+      {/* ── Year-over-Year Comparison (feature 12) ────────────────────── */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <span className="card-title">Year-over-Year Comparison</span>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap' }}>
+          <div className="filter-group">
+            <span className="filter-label">Compare against year</span>
+            <input
+              type="number"
+              value={yoyYear}
+              onChange={e => setYoyYear(e.target.value)}
+              placeholder="e.g. 2025"
+              min={2020} max={2099}
+              style={{ width: 120 }}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={loadYoY} disabled={!yoyYear || yoyLoading} style={{ fontSize: 12 }}>
+            {yoyLoading ? 'Loading…' : 'Compare'}
+          </button>
+        </div>
+
+        {yoyData && (
+          <>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 600, marginBottom: 6 }}>CURRENT PERIOD</p>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {yoyData.current.rates.map(r => (
+                    <div key={r.batchId} style={{ textAlign: 'center' }}>
+                      <span style={{ display: 'block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(r.rate ?? 0) }}>
+                        {r.rate !== null ? `${r.rate}%` : '—'}
+                      </span>
+                      <span style={{ fontSize: 10, color: 'var(--t4)', marginTop: 3, display: 'block' }}>
+                        {fmtDate(r.inventoryDate, 'monthDay')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 600, marginBottom: 6 }}>{yoyData.comparison.batches.length > 0 ? `${yoyData.compareYear ?? yoyYear}` : `NO DATA FOR ${yoyYear}`}</p>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {yoyData.comparison.rates.length > 0 ? yoyData.comparison.rates.map(r => (
+                    <div key={r.batchId} style={{ textAlign: 'center' }}>
+                      <span style={{ display: 'block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(r.rate ?? 0), opacity: 0.75 }}>
+                        {r.rate !== null ? `${r.rate}%` : '—'}
+                      </span>
+                      <span style={{ fontSize: 10, color: 'var(--t4)', marginTop: 3, display: 'block' }}>
+                        {fmtDate(r.inventoryDate, 'monthDay')}
+                      </span>
+                    </div>
+                  )) : (
+                    <p style={{ fontSize: 12, color: 'var(--t3)' }}>No inventory cycles found for {yoyYear}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            {yoyData.current.rates.length > 0 && yoyData.comparison.rates.length > 0 && (() => {
+              const currAvg = yoyData.current.rates.filter(r => r.rate !== null).reduce((s, r) => s + r.rate, 0) / (yoyData.current.rates.filter(r => r.rate !== null).length || 1);
+              const compAvg = yoyData.comparison.rates.filter(r => r.rate !== null).reduce((s, r) => s + r.rate, 0) / (yoyData.comparison.rates.filter(r => r.rate !== null).length || 1);
+              const delta = Math.round((currAvg - compAvg) * 10) / 10;
+              return (
+                <p style={{ fontSize: 13, fontWeight: 600, color: delta > 0 ? '#dc2626' : delta < 0 ? '#16a34a' : '#64748b' }}>
+                  Average: {Math.round(currAvg * 10) / 10}% (current) vs {Math.round(compAvg * 10) / 10}% ({yoyYear})
+                  {' — '}{delta > 0 ? `+${delta}pp worse` : delta < 0 ? `${Math.abs(delta)}pp better` : 'no change'}
+                </p>
+              );
+            })()}
+          </>
+        )}
       </div>
 
       {/* Cycle-over-cycle comparison */}

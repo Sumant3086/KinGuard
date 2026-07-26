@@ -248,3 +248,33 @@ export async function sendNewCycleEmailAM({ managers, inventoryDate, deadline })
   console.warn(`[email] AM new-cycle: sent=${sent}, failed=${failed}`);
   return { configured: true, sent, failed };
 }
+
+// ── Post-deadline escalation email ────────────────────────────────────────────
+// tier 1 → sent to Area Manager
+// tier 2 → sent to Admin (urgent)
+export async function sendEscalationEmail({ to, toName, tier, inventoryDate, pendingStores, hoursOverdue }) {
+  if (!isConfigured()) return;
+  const storeList = pendingStores
+    .map(s => `<li style="padding:4px 0;font-size:13px;color:#1e293b">${s.storeCode} — ${s.storeName}</li>`)
+    .join('');
+  const urgency = tier === 2 ? '🚨 URGENT — ' : '';
+  const audience = tier === 2 ? 'Admin Action Required' : 'Area Manager Alert';
+  await sendOne({
+    to,
+    toName,
+    subject: `${urgency}${pendingStores.length} store${pendingStores.length > 1 ? 's have' : ' has'} not submitted — ${inventoryDate}`,
+    htmlContent: html(`
+      <p style="font-size:17px;font-weight:800;color:${tier === 2 ? '#dc2626' : '#1e293b'};margin:0 0 6px">${audience}</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 16px">
+        Hi ${toName}, the following store${pendingStores.length > 1 ? 's have' : ' has'} not submitted their inventory for the
+        <strong>${inventoryDate}</strong> cycle — now <strong>${hoursOverdue} hour${hoursOverdue !== 1 ? 's' : ''}</strong> past the deadline.
+      </p>
+      <ul style="margin:0 0 20px;padding-left:20px">${storeList}</ul>
+      <p style="color:#64748b;font-size:13px;margin:0">
+        ${tier === 2
+          ? 'Please take immediate action: contact the stores or their area managers and consider granting a deadline extension in the admin panel.'
+          : 'Please contact your store managers and ensure they submit their counts as soon as possible.'}
+      </p>
+    `),
+  }).catch(e => console.error('[escalation] Email send error:', e.message));
+}

@@ -2,6 +2,8 @@ import app from './app.js';
 import { env } from './config/env.js';
 import prisma from './config/prisma.js';
 import { startReminderScheduler, stopReminderScheduler } from './services/reminderScheduler.js';
+import { startEscalationScheduler, stopEscalationScheduler } from './services/escalationScheduler.js';
+import { startCycleScheduler, stopCycleScheduler } from './services/cycleScheduleService.js';
 import { exec } from 'child_process';
 import { platform } from 'os';
 
@@ -75,6 +77,10 @@ async function startServer() {
 
     // Start the automated 1-hour deadline reminder scheduler
     startReminderScheduler();
+    // Start post-deadline escalation (notifies AM at T+0h, Admin at T+24h)
+    startEscalationScheduler();
+    // Start scheduled recurring cycle creator
+    startCycleScheduler();
 
     // Only kill the port in development — never do this in production
     if (env.server.nodeEnv === 'development') await freePort(env.server.port);
@@ -92,6 +98,8 @@ async function startServer() {
     async function shutdown(signal) {
       console.log(`\n[server] ${signal} received — shutting down gracefully`);
       stopReminderScheduler();
+      stopEscalationScheduler();
+      stopCycleScheduler();
       // Cancel the force-exit timer if graceful shutdown succeeds first
       const forceTimer = setTimeout(() => {
         console.error('[server] Forced shutdown after timeout');

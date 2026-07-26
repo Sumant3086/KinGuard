@@ -2,7 +2,8 @@ import express from 'express';
 import multer from 'multer';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
-import * as adminController from '../controllers/adminController.js';
+import * as adminController    from '../controllers/adminController.js';
+import * as analyticsController from '../controllers/analyticsController.js';
 
 const router = express.Router();
 
@@ -97,7 +98,12 @@ router.get('/batches/:batchId/export-pdf', adminController.downloadBatchExportPD
 router.post('/batches/:id/send-reminders', adminController.sendBatchReminders);
 
 // Analytics
-router.get('/analytics/trends', adminController.getTrends);
+router.get('/analytics/trends',        adminController.getTrends);
+router.get('/analytics/risk',          analyticsController.getRiskScores);
+router.get('/analytics/trends-yoy',    analyticsController.getTrendsYoY);
+
+// Reports
+router.get('/reports/executive-summary', analyticsController.downloadExecutiveSummary);
 
 // Store drilldown
 router.get('/stores/:storeId/drilldown', adminController.getStoreDrilldown);

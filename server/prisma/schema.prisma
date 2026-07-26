@@ -76,6 +76,7 @@ model User {
   deadlineExtensions BatchDeadlineExtension[] @relation("DeadlineExtensions")
   refreshTokens      RefreshToken[]
   amReviews          AreaManagerReview[] @relation("AMReviews")
+  createdSchedules   CycleSchedule[]    @relation("ScheduleCreator")
 
   @@index([employeeId])
   @@index([storeId])
@@ -103,6 +104,7 @@ model UploadBatch {
   inventoryDate      DateTime
   submissionDeadline DateTime?
   autoReminderSentAt DateTime?
+  escalationLevel    Int          @default(0)
   totalRows          Int          @default(0)
   successfulRows     Int          @default(0)
   rejectedRows       Int          @default(0)
@@ -193,6 +195,25 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@index([entityType, entityId])
+}
+
+model CycleSchedule {
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  frequency            String   // 'weekly' | 'monthly' | 'quarterly'
+  dayOfMonth           Int?     // 1–28 (for monthly / quarterly)
+  dayOfWeek            Int?     // 0–6 (for weekly; 0 = Sunday)
+  submissionWindowDays Int      @default(7)
+  isActive             Boolean  @default(true)
+  lastRunAt            DateTime?
+  nextRunAt            DateTime?
+  createdBy            Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  creator User @relation("ScheduleCreator", fields: [createdBy], references: [id])
+
+  @@index([isActive, nextRunAt])
 }
 
 model BatchDeadlineExtension {

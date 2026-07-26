@@ -20,8 +20,9 @@ const ReportIcon = (
 
 export default function Reports() {
   const toast = useToast();
-  const { downloading: dlExcel, download: downloadExcel } = useDownload();
-  const { downloading: dlPdf,   download: downloadPdf   } = useDownload();
+  const { downloading: dlExcel,    download: downloadExcel   } = useDownload();
+  const { downloading: dlPdf,      download: downloadPdf     } = useDownload();
+  const { downloading: dlSummary,  download: downloadSummary } = useDownload();
 
   const [records, setRecords]   = useState([]);
   const [stores, setStores]     = useState([]);
@@ -66,6 +67,9 @@ export default function Reports() {
   const handleDownloadPdf = () =>
     downloadPdf(adminApi.downloadReconciliationReportPDF, `KinGuard_Reconciliation_${today}.pdf`, activeParams);
 
+  const handleDownloadSummary = () =>
+    downloadSummary(adminApi.downloadExecutiveSummary, `KinGuard_Executive_Summary_${today}.pdf`);
+
   return (
     <AdminLayout>
       <PageHeader
@@ -73,6 +77,9 @@ export default function Reports() {
         subtitle="Filter and export submitted inventory reconciliation data"
         actions={
           <>
+            <button onClick={handleDownloadSummary} className="btn btn-secondary" disabled={dlSummary} title="Download 1-page executive summary PDF for the latest cycle">
+              {dlSummary ? '…' : '↓'} Executive Summary
+            </button>
             <button onClick={handleDownloadExcel} className="btn btn-success" disabled={dlExcel || records.length === 0}>
               {dlExcel ? '…' : '↓'} Excel
             </button>

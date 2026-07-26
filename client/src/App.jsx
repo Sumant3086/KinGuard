@@ -20,8 +20,9 @@ const AdminUpload    = lazy(() => import('./features/admin/pages/Upload'));
 const AdminInventory = lazy(() => import('./features/admin/pages/Inventory'));
 const AdminAuditLogs = lazy(() => import('./features/admin/pages/AuditLogs'));
 const AdminAnalytics = lazy(() => import('./features/admin/pages/Analytics'));
-const AdminBatches   = lazy(() => import('./features/admin/pages/Batches'));
-const AdminReports   = lazy(() => import('./features/admin/pages/Reports'));
+const AdminBatches    = lazy(() => import('./features/admin/pages/Batches'));
+const AdminReports    = lazy(() => import('./features/admin/pages/Reports'));
+const AdminSchedules  = lazy(() => import('./features/admin/pages/Schedules'));
 const StoreDashboard   = lazy(() => import('./features/store/pages/Dashboard'));
 const StoreInventory   = lazy(() => import('./features/store/pages/Inventory'));
 const AMDashboard      = lazy(() => import('./features/areaManager/pages/AMDashboard'));
@@ -105,6 +106,7 @@ function App() {
             <Route path="/admin/audit-logs" element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminAuditLogs /></ErrorBoundary></PrivateRoute>} />
             <Route path="/admin/analytics"  element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminAnalytics /></ErrorBoundary></PrivateRoute>} />
             <Route path="/admin/batches"    element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminBatches /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/admin/schedules"  element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminSchedules /></ErrorBoundary></PrivateRoute>} />
 
             {/* Store Manager Routes */}
             <Route path="/store/dashboard" element={<PrivateRoute role="STORE_MANAGER"><ErrorBoundary><StoreDashboard /></ErrorBoundary></PrivateRoute>} />

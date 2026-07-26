@@ -14,6 +14,15 @@ import './styles/utilities.css';
 import { ToastProvider } from './shared/context/ToastContext';
 import { AuthProvider } from './features/auth/AuthContext';
 
+// Register service worker for PWA support (offline shell + static asset caching)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => {
+      console.warn('[sw] Registration failed:', err);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
