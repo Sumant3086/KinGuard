@@ -110,58 +110,104 @@ export default function Schedules() {
           </div>
         ) : (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Frequency</th>
-                    <th>Submission Window</th>
-                    <th>Next Run</th>
-                    <th>Last Run</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schedules.map(s => (
-                    <tr key={s.id}>
-                      <td style={{ fontWeight: 600 }}>{s.name}</td>
-                      <td style={{ fontSize: 13, color: 'var(--t2)' }}>{describeSchedule(s)}</td>
-                      <td style={{ fontSize: 13 }}>{s.submissionWindowDays} days</td>
-                      <td style={{ fontSize: 13 }}>{s.nextRunAt ? fmtDate(s.nextRunAt) : '—'}</td>
-                      <td style={{ fontSize: 13, color: 'var(--t3)' }}>{s.lastRunAt ? fmtDate(s.lastRunAt) : 'Never'}</td>
-                      <td>
-                        <button
-                          onClick={() => toggleActive(s)}
-                          style={{
-                            fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
-                            background: s.isActive ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.12)',
-                            color: s.isActive ? '#059669' : '#64748b',
-                          }}
-                        >
-                          {s.isActive ? 'Active' : 'Paused'}
-                        </button>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px', marginRight: 6 }} onClick={() => openEdit(s)}>Edit</button>
-                        <button
-                          onClick={() => handleDelete(s)}
-                          style={{
-                            fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid',
-                            cursor: 'pointer', fontWeight: 600,
-                            background: deleting === s.id ? '#dc2626' : 'transparent',
-                            color: deleting === s.id ? '#fff' : '#dc2626',
-                            borderColor: '#dc2626',
-                          }}
-                        >
-                          {deleting === s.id ? 'Confirm?' : 'Delete'}
-                        </button>
-                      </td>
+            {/* ── Mobile cards (≤768px) ─────────────────────────── */}
+            <div className="schedules-cards" style={{ padding: 12 }}>
+              {schedules.map(s => (
+                <div key={s.id} className="schedule-card">
+                  <div className="schedule-card-top">
+                    <div>
+                      <div className="schedule-card-name">{s.name}</div>
+                      <div className="schedule-card-freq">{describeSchedule(s)} · {s.submissionWindowDays}-day window</div>
+                    </div>
+                    <button
+                      onClick={() => toggleActive(s)}
+                      style={{
+                        fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 999, border: 'none', cursor: 'pointer', flexShrink: 0,
+                        background: s.isActive ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.12)',
+                        color: s.isActive ? '#059669' : '#64748b',
+                      }}
+                    >
+                      {s.isActive ? 'Active' : 'Paused'}
+                    </button>
+                  </div>
+                  <div className="schedule-card-meta">
+                    <span>Next: <strong>{s.nextRunAt ? fmtDate(s.nextRunAt) : '—'}</strong></span>
+                    <span>Last run: {s.lastRunAt ? fmtDate(s.lastRunAt) : 'Never'}</span>
+                  </div>
+                  <div className="schedule-card-actions">
+                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => openEdit(s)}>Edit</button>
+                    <button
+                      onClick={() => handleDelete(s)}
+                      className="btn btn-sm"
+                      style={{
+                        flex: 1, border: '1px solid', fontWeight: 600,
+                        background: deleting === s.id ? '#dc2626' : 'transparent',
+                        color: deleting === s.id ? '#fff' : '#dc2626',
+                        borderColor: '#dc2626',
+                      }}
+                    >
+                      {deleting === s.id ? 'Confirm?' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop table (>768px) ────────────────────────── */}
+            <div className="schedules-table-desktop">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Frequency</th>
+                      <th>Submission Window</th>
+                      <th>Next Run</th>
+                      <th>Last Run</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {schedules.map(s => (
+                      <tr key={s.id}>
+                        <td style={{ fontWeight: 600 }}>{s.name}</td>
+                        <td style={{ fontSize: 13, color: 'var(--t2)' }}>{describeSchedule(s)}</td>
+                        <td style={{ fontSize: 13 }}>{s.submissionWindowDays} days</td>
+                        <td style={{ fontSize: 13 }}>{s.nextRunAt ? fmtDate(s.nextRunAt) : '—'}</td>
+                        <td style={{ fontSize: 13, color: 'var(--t3)' }}>{s.lastRunAt ? fmtDate(s.lastRunAt) : 'Never'}</td>
+                        <td>
+                          <button
+                            onClick={() => toggleActive(s)}
+                            style={{
+                              fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                              background: s.isActive ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.12)',
+                              color: s.isActive ? '#059669' : '#64748b',
+                            }}
+                          >
+                            {s.isActive ? 'Active' : 'Paused'}
+                          </button>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px', marginRight: 6 }} onClick={() => openEdit(s)}>Edit</button>
+                          <button
+                            onClick={() => handleDelete(s)}
+                            style={{
+                              fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid',
+                              cursor: 'pointer', fontWeight: 600,
+                              background: deleting === s.id ? '#dc2626' : 'transparent',
+                              color: deleting === s.id ? '#fff' : '#dc2626',
+                              borderColor: '#dc2626',
+                            }}
+                          >
+                            {deleting === s.id ? 'Confirm?' : 'Delete'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )

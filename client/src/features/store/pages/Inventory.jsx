@@ -644,6 +644,7 @@ export default function StoreInventory() {
                       {isEditable ? (
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.01"
                           min="0"
                           value={getFieldValue(record, 'systemQuantity')}
@@ -680,6 +681,7 @@ export default function StoreInventory() {
                       <input
                         ref={el => { blankRowRefs.current[record.id] = el; }}
                         type="number"
+                        inputMode="decimal"
                         step="0.01"
                         min="0"
                         value={getFieldValue(record, 'physicalQuantity')}
@@ -866,6 +868,7 @@ export default function StoreInventory() {
                         {isEditable ? (
                           <input
                             type="number"
+                            inputMode="decimal"
                             step="0.01"
                             min="0"
                             value={getFieldValue(record, 'systemQuantity')}
@@ -884,6 +887,7 @@ export default function StoreInventory() {
                           <input
                             ref={el => { blankRowRefs.current[record.id] = el; }}
                             type="number"
+                            inputMode="decimal"
                             step="0.01"
                             min="0"
                             value={getFieldValue(record, 'physicalQuantity')}

@@ -388,12 +388,52 @@ export default function Analytics() {
             <p style={{ fontSize: 13, color: 'var(--t3)', padding: '16px 0' }}>Computing risk scores…</p>
           ) : riskData ? (
             <>
-              {/* Store risk table */}
+              {/* Store risk score — mobile cards + desktop table */}
               <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 12 }}>
-                Scoring based on shortage rate (40%), repeat rate (25%), category severity (25%), trend direction (10%).
-                Percentile = position relative to all stores (100 = highest risk).
+                Score = shortage rate (40%) + repeat rate (25%) + category severity (25%) + trend (10%). Percentile = relative to all active stores.
               </p>
-              <div className="table-wrap" style={{ marginBottom: 24 }}>
+
+              {/* Mobile cards */}
+              <div className="risk-cards" style={{ marginBottom: 24 }}>
+                {riskData.stores.map(s => {
+                  const rc = RISK_COLOR(s.riskScore);
+                  return (
+                    <div key={s.storeId} className="risk-card">
+                      <div className="risk-card-top">
+                        <div className="risk-card-name">{s.storeName}</div>
+                        <div className="risk-card-score">
+                          <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 6, background: rc.bg, color: rc.fg, fontWeight: 800, fontSize: 16 }}>
+                            {s.riskScore}
+                          </span>
+                          <span style={{ fontSize: 10, color: 'var(--t3)', textAlign: 'right' }}>{s.percentile}th pctile</span>
+                        </div>
+                      </div>
+                      <div className="risk-card-metrics">
+                        <div className="risk-card-stat">
+                          <span className="risk-card-stat-label">Shortage</span>
+                          <span className="risk-card-stat-value" style={rateColor(s.shortageRate)}>{s.shortageRate}%</span>
+                        </div>
+                        <div className="risk-card-stat">
+                          <span className="risk-card-stat-label">Repeat</span>
+                          <span className="risk-card-stat-value" style={{ color: s.repeatRate > 50 ? 'var(--red)' : 'var(--t1)' }}>{s.repeatRate}%</span>
+                        </div>
+                        <div className="risk-card-stat">
+                          <span className="risk-card-stat-label">Category</span>
+                          <span className="risk-card-stat-value" style={{ fontSize: 12 }}>{s.topCategory ?? '—'}</span>
+                        </div>
+                        <div className="risk-card-stat">
+                          <span className="risk-card-stat-label">Trend</span>
+                          <span className="risk-card-stat-value" style={{ color: TREND_COL[s.trend] }}>{TREND_ICON[s.trend]}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {riskData.stores.length === 0 && <p style={{ fontSize: 13, color: 'var(--t3)', padding: '12px 0' }}>No data available</p>}
+              </div>
+
+              {/* Desktop table */}
+              <div className="risk-table-desktop table-wrap" style={{ marginBottom: 24 }}>
                 <table className="scorecard">
                   <thead>
                     <tr>
@@ -417,21 +457,15 @@ export default function Analytics() {
                               {s.riskScore}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'center', fontSize: 12, color: 'var(--t2)' }}>
-                            {s.percentile}th
-                          </td>
+                          <td style={{ textAlign: 'center', fontSize: 12, color: 'var(--t2)' }}>{s.percentile}th</td>
                           <td style={{ textAlign: 'center' }}>
                             <span style={{ ...rateColor(s.shortageRate), padding: '1px 7px', borderRadius: 4, fontSize: 12 }}>
                               {s.shortageRate}%
                             </span>
                           </td>
-                          <td style={{ textAlign: 'center', fontSize: 12, color: s.repeatRate > 50 ? 'var(--red)' : 'var(--t2)' }}>
-                            {s.repeatRate}%
-                          </td>
+                          <td style={{ textAlign: 'center', fontSize: 12, color: s.repeatRate > 50 ? 'var(--red)' : 'var(--t2)' }}>{s.repeatRate}%</td>
                           <td style={{ fontSize: 12, color: 'var(--t2)' }}>{s.topCategory ?? '—'}</td>
-                          <td style={{ textAlign: 'center', fontSize: 14, color: TREND_COL[s.trend] }}>
-                            {TREND_ICON[s.trend]}
-                          </td>
+                          <td style={{ textAlign: 'center', fontSize: 14, color: TREND_COL[s.trend] }}>{TREND_ICON[s.trend]}</td>
                         </tr>
                       );
                     })}

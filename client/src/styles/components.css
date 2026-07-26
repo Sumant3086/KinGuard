@@ -2593,3 +2593,140 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   .am-review-grid.has-selection  { grid-template-columns: min(260px, 28%) 1fr; }
   .am-review-grid.no-selection   { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   GLOBAL MOBILE IMPROVEMENTS
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Remove tap highlight flash on interactive elements ───────────── */
+a, button, [role="button"], input[type="checkbox"], input[type="radio"],
+select, label { -webkit-tap-highlight-color: transparent; }
+
+/* ── Table scroll affordance — shadow on right edge when scrollable ─ */
+.table-wrap, .table-container, .inv-table-card {
+  position: relative;
+}
+
+/* ── iOS auto-zoom prevention ─────────────────────────────────────── */
+/* iOS Safari zooms in when focused input font-size < 16px. Prevent it
+   by enforcing 16px on all form fields at mobile sizes. The visual size
+   is controlled via padding/height, not font-size, so this is safe. */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  /* Page header actions should wrap rather than overflow */
+  .page-actions { flex-wrap: wrap; gap: 8px; }
+}
+
+/* ── Schedules page ──────────────────────────────────────────────── */
+.schedules-table-desktop { display: block; }
+.schedules-cards         { display: none; }
+
+/* ── Risk Intelligence table ─────────────────────────────────────── */
+.risk-table-desktop { display: block; }
+.risk-cards         { display: none; }
+
+/* ── Bulk override action bar ─────────────────────────────────────── */
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: var(--r);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.bulk-action-bar-count { font-size: 13px; font-weight: 600; color: var(--violet); flex-shrink: 0; }
+.bulk-action-bar-spacer { flex: 1; }
+
+@media (max-width: 768px) {
+  /* ── Schedules ─────────────────────────────────────────────────── */
+  .schedules-table-desktop { display: none; }
+  .schedules-cards         { display: flex; flex-direction: column; gap: 10px; }
+  .schedule-card {
+    background: rgba(255,252,250,0.88);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(185,28,28,0.18);
+    border-radius: 13px; padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: 0 3px 16px rgba(100,20,10,0.09), inset 0 1px 0 rgba(255,255,255,0.72);
+  }
+  .schedule-card-top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+  }
+  .schedule-card-name { font-weight: 700; font-size: 14px; color: var(--t1); }
+  .schedule-card-freq { font-size: 12px; color: var(--t3); margin-top: 2px; }
+  .schedule-card-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--t2); }
+  .schedule-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Risk Intelligence ─────────────────────────────────────────── */
+  .risk-table-desktop { display: none; }
+  .risk-cards         { display: flex; flex-direction: column; gap: 10px; }
+  .risk-card {
+    background: rgba(255,252,250,0.88);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(185,28,28,0.18);
+    border-radius: 13px; padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: 0 3px 16px rgba(100,20,10,0.09), inset 0 1px 0 rgba(255,255,255,0.72);
+  }
+  .risk-card-top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+  }
+  .risk-card-name { font-weight: 700; font-size: 14px; color: var(--t1); flex: 1; min-width: 0; }
+  .risk-card-score {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0;
+  }
+  .risk-card-metrics {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .risk-card-stat {
+    background: var(--surface-2); border-radius: 8px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .risk-card-stat-label { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--t3); }
+  .risk-card-stat-value { font-size: 15px; font-weight: 700; color: var(--t1); }
+
+  /* ── Store inventory card — upgrade to glass effect ────────────── */
+  .store-inv-card {
+    background: rgba(255,252,250,0.88) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    border: 1px solid rgba(185,28,28,0.18) !important;
+    border-radius: 14px !important;
+    padding: 14px !important;
+    box-shadow: 0 4px 20px rgba(100,20,10,0.10), inset 0 1px 0 rgba(255,255,255,0.75) !important;
+  }
+
+  /* ── Bulk override bar on mobile ───────────────────────────────── */
+  .bulk-action-bar { padding: 10px 12px; gap: 8px; }
+  .bulk-action-bar-spacer { display: none; }
+
+  /* ── Batch card actions — allow wrapping on small screens ─────── */
+  .batch-card-actions { grid-template-columns: 1fr 1fr !important; }
+
+  /* ── Active state feedback for touch (replaces hover) ──────────── */
+  .btn:active     { transform: scale(0.97) !important; opacity: 0.88; }
+  .btn-sm:active  { transform: scale(0.97) !important; opacity: 0.88; }
+  .mob-nav-item:active,
+  .am-mob-item:active { background: rgba(255,255,255,0.20) !important; }
+}
+
+@media (max-width: 480px) {
+  /* ── Batch card actions — single column on very small screens ──── */
+  .batch-card-actions { grid-template-columns: 1fr 1fr !important; gap: 5px; }
+  .batch-card-actions .btn-sm { font-size: 11px !important; padding: 6px 6px !important; }
+}
+
+@media (max-width: 380px) {
+  /* ── Schedule cards ─────────────────────────────────────────────── */
+  .schedule-card-meta { flex-direction: column; gap: 4px; }
+}
+
