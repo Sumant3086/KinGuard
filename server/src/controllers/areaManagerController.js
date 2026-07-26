@@ -249,7 +249,7 @@ export async function getBatchStores(req, res, next) {
     const storeIds = await getManagedStoreIds(req.user.id);
     if (!storeIds.length) return res.json([]);
 
-    const [stores, reviewMap, recordCounts] = await Promise.all([
+    const [stores, reviewList, recordCounts] = await Promise.all([
       prisma.store.findMany({
         where: { id: { in: storeIds } },
         select: { id: true, storeCode: true, storeName: true },
@@ -265,18 +265,27 @@ export async function getBatchStores(req, res, next) {
       }),
     ]);
 
+    // O(1) lookup maps instead of O(n) .find() per store
+    const reviewByStore = new Map(reviewList.map(r => [r.storeId, r]));
+    const countsByStore = new Map();
+    for (const r of recordCounts) {
+      if (!countsByStore.has(r.storeId)) countsByStore.set(r.storeId, { PENDING: 0, SUBMITTED: 0 });
+      countsByStore.get(r.storeId)[r.status] = r._count;
+    }
+
     const result = stores.map(store => {
-      const review   = reviewMap.find(r => r.storeId === store.id);
-      const pending  = recordCounts.find(r => r.storeId === store.id && r.status === 'PENDING')?._count  || 0;
-      const submitted= recordCounts.find(r => r.storeId === store.id && r.status === 'SUBMITTED')?._count || 0;
-      const total    = pending + submitted;
+      const review   = reviewByStore.get(store.id);
+      const counts   = countsByStore.get(store.id) ?? { PENDING: 0, SUBMITTED: 0 };
+      const pending   = counts.PENDING;
+      const submitted = counts.SUBMITTED;
+      const total     = pending + submitted;
       return {
         ...store,
         total, pending, submitted,
         allSubmitted: total > 0 && submitted === total,
-        reviewStatus: review?.status || null,
-        reviewRemarks: review?.remarks || null,
-        reviewedAt: review?.reviewedAt || null,
+        reviewStatus:  review?.status   || null,
+        reviewRemarks: review?.remarks  || null,
+        reviewedAt:    review?.reviewedAt || null,
       };
     });
 

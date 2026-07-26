@@ -2421,15 +2421,13 @@ export async function getNotifications(req, res, next) {
     const items = [];
     const dateLabel = new Date(latestBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-    // AM review status for admin — use raw SQL so this works even if
-    // the Prisma client DLL hasn't been regenerated after the AM migration.
-    let amApproved = 0, amPending = 0;
+    // AM review status — how many stores are AM-approved and ready for admin's final review
+    let amApproved = 0;
     try {
       const amReviews = await prisma.$queryRaw`
         SELECT status FROM "AreaManagerReview" WHERE "batchId" = ${latestBatch.id}
       `;
       amApproved = amReviews.filter(r => r.status === 'APPROVED').length;
-      amPending  = amReviews.filter(r => r.status === 'PENDING_REVIEW').length;
     } catch { /* AreaManagerReview table not yet available — skip AM stats */ }
 
     // Only notify admin about stores they can act on: AM-approved = ready for admin's final review

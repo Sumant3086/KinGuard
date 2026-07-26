@@ -137,29 +137,31 @@ export async function getRiskScores(req, res, next) {
       percentile: total > 1 ? Math.round(((total - i - 1) / (total - 1)) * 100) : 50,
     }));
 
-    // Top risky SKUs across all cycles — feature 14
+    // Top risky SKUs across all cycles — group only by materialCode so the same
+    // item doesn't appear multiple times in the results with different categories.
+    // Pick the highest-risk category for each SKU.
     const skuRaw = await prisma.$queryRaw`
       SELECT
         ir."materialCode",
         ir."materialName",
-        COUNT(DISTINCT ir."storeId")::int   AS "affectedStores",
-        COUNT(DISTINCT ir."batchId")::int   AS "cyclesWithShortage",
-        ir."shrinkageCategory"              AS "category",
-        ROUND(SUM(ABS(ir.difference))::numeric, 1)::float AS "totalUnitsLost"
+        COUNT(DISTINCT ir."storeId")::int                                    AS "affectedStores",
+        COUNT(DISTINCT ir."batchId")::int                                    AS "cyclesWithShortage",
+        ROUND(SUM(ABS(ir.difference))::numeric, 1)::float                   AS "totalUnitsLost",
+        MODE() WITHIN GROUP (ORDER BY ir."shrinkageCategory")                AS "topCategory"
       FROM "InventoryRecord" ir
       WHERE ir."batchId" = ANY(${batchIds})
         AND ir.status = 'SUBMITTED'
         AND ir.difference < 0
-      GROUP BY ir."materialCode", ir."materialName", ir."shrinkageCategory"
+      GROUP BY ir."materialCode", ir."materialName"
       ORDER BY COUNT(DISTINCT ir."batchId") DESC, COUNT(DISTINCT ir."storeId") DESC
       LIMIT 20
     `;
 
     const topSkus = skuRaw
       .map(r => {
-        const cw       = CATEGORY_RISK[r.category] ?? 1;
-        const freq     = cycles > 0 ? r.cyclesWithShortage / cycles : 0;
-        const spread   = total > 0 ? r.affectedStores / total : 0;
+        const cw        = CATEGORY_RISK[r.topCategory] ?? 1;
+        const freq      = cycles > 0 ? r.cyclesWithShortage / cycles : 0;
+        const spread    = total > 0 ? r.affectedStores / total : 0;
         const riskScore = Math.min(Math.round(freq * cw * spread * 100), 100);
         return {
           materialCode:       r.materialCode,
@@ -167,7 +169,7 @@ export async function getRiskScores(req, res, next) {
           affectedStores:     r.affectedStores,
           cyclesWithShortage: Number(r.cyclesWithShortage),
           totalCycles:        cycles,
-          category:           r.category,
+          category:           r.topCategory,
           totalUnitsLost:     Number(r.totalUnitsLost),
           riskScore,
         };
