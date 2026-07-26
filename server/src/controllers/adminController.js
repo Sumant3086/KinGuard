@@ -75,14 +75,25 @@ function generateTempPassword() {
   return pw.join('');
 }
 
+// Prisma error codes that indicate a dropped or timed-out connection.
+// Only these warrant a reconnect attempt — query/validation errors should not be retried.
+const RETRYABLE_PRISMA_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017']);
+
+function isConnectionError(err) {
+  if (RETRYABLE_PRISMA_CODES.has(err.code)) return true;
+  const msg = (err.message ?? '').toLowerCase();
+  return msg.includes('connect') || msg.includes('econnreset') || msg.includes('socket');
+}
+
 // Supabase / PgBouncer drops idle connections after ~5 min.
-// This wrapper retries the first DB call once after a forced reconnect,
-// covering cold-start failures on upload and batch-list endpoints.
+// This wrapper retries once after reconnect, but only for connection-level failures.
+// Query errors, validation errors, and constraint violations are re-thrown immediately.
 async function withDbRetry(fn) {
   try {
     return await fn();
   } catch (firstErr) {
-    console.warn('[db-retry] First query failed, reconnecting:', firstErr.message);
+    if (!isConnectionError(firstErr)) throw firstErr;
+    console.warn('[db-retry] Connection lost, reconnecting:', firstErr.message);
     try {
       await new Promise(r => setTimeout(r, 400));
       await prisma.$connect();

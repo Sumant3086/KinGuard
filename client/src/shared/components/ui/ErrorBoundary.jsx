@@ -30,18 +30,30 @@ export default class ErrorBoundary extends Component {
           </svg>
           <div style={{ fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Something went wrong</div>
           <div style={{ fontSize: 14, color: '#64748b', maxWidth: 340 }}>
-            An unexpected error occurred on this page. Please refresh to continue.
+            An unexpected error occurred on this page.
           </div>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              marginTop: 8, padding: '10px 24px', background: '#dc2626',
-              color: '#fff', border: 'none', borderRadius: 8,
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            Refresh page
-          </button>
+          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+            <button
+              onClick={() => this.setState({ crashed: false })}
+              style={{
+                padding: '10px 24px', background: '#dc2626',
+                color: '#fff', border: 'none', borderRadius: 8,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '10px 24px', background: 'transparent',
+                color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 8,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Refresh page
+            </button>
+          </div>
         </div>
       );
     }

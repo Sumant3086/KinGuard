@@ -48,9 +48,10 @@ export default function ChangePasswordPage() {
       console.error('Change password:', err);
       const code = err?.response?.status;
       setError(
-        code === 401 ? 'Current password is incorrect.' :
-        code === 400 ? (err.response?.data?.error || 'Please check your password requirements.') :
-        'Could not change password. Please try again.'
+        err.response?.data?.error ||
+        (code === 401 ? 'The current password you entered is incorrect' :
+         code === 400 ? 'Please check your password requirements' :
+         'Could not change password. Please try again')
       );
     } finally {
       setSaving(false);

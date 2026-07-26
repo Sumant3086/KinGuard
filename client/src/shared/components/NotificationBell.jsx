@@ -32,15 +32,16 @@ const typeDot = {
   submitted: '#16a34a',
 };
 
-const DISMISS_KEY = 'notif:dismissed';
+// Namespaced by role so dismissed state is not shared across different users on the same device
+function dismissKey(role) { return `notif:dismissed:${role ?? 'unknown'}`; }
 
-function getDismissed() {
-  try { return new Set(JSON.parse(localStorage.getItem(DISMISS_KEY) || '[]')); }
+function getDismissed(role) {
+  try { return new Set(JSON.parse(localStorage.getItem(dismissKey(role)) || '[]')); }
   catch { return new Set(); }
 }
 
-function saveDismissed(set) {
-  try { localStorage.setItem(DISMISS_KEY, JSON.stringify([...set].slice(-50))); }
+function saveDismissed(set, role) {
+  try { localStorage.setItem(dismissKey(role), JSON.stringify([...set].slice(-50))); }
   catch {}
 }
 
@@ -51,7 +52,7 @@ function notifKey(item) {
 
 export default function NotificationBell({ fetcher, role }) {
   const [data,      setData]      = useState({ items: [], count: 0 });
-  const [dismissed, setDismissed] = useState(getDismissed);
+  const [dismissed, setDismissed] = useState(() => getDismissed(role));
   const [open,      setOpen]      = useState(false);
   const ref     = useRef(null);
   const mounted = useRef(true);
@@ -102,18 +103,17 @@ export default function NotificationBell({ fetcher, role }) {
   }
 
   function dismiss(item) {
-    const key  = notifKey(item);
     const next = new Set(dismissed);
-    next.add(key);
+    next.add(notifKey(item));
     setDismissed(next);
-    saveDismissed(next);
+    saveDismissed(next, role);
   }
 
   function dismissAll() {
     const next = new Set(dismissed);
     data.items.forEach(i => next.add(notifKey(i)));
     setDismissed(next);
-    saveDismissed(next);
+    saveDismissed(next, role);
   }
 
   const visibleItems = data.items.filter(i => !dismissed.has(notifKey(i)));

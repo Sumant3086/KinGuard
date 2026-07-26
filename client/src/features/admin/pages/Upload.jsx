@@ -151,7 +151,7 @@ export default function Upload() {
     setShowDuplicateConfirm(false);
     setUploading(true);
     try {
-      setResult(await adminApi.uploadInventoryForce(file, inventoryDate, submissionDeadline));
+      setResult(await adminApi.uploadInventory(file, inventoryDate, submissionDeadline, { force: true }));
       setPreview(null);
       clearUploadedFile();
     } catch (err) {

@@ -85,7 +85,7 @@ export async function getBatches(req, res, next) {
 
     // Get all batches with aggregated counts using a single optimized query
     const batches = await prisma.$queryRaw`
-      SELECT 
+      SELECT
         b.id,
         b."inventoryDate",
         b."uploadedAt",
@@ -94,6 +94,7 @@ export async function getBatches(req, res, next) {
         COUNT(CASE WHEN ir.status = 'SUBMITTED' THEN 1 END)::int as "submittedCount"
       FROM "UploadBatch" b
       INNER JOIN "InventoryRecord" ir ON ir."batchId" = b.id AND ir."storeId" = ${storeId}
+      WHERE b."isDeleted" = false
       GROUP BY b.id, b."inventoryDate", b."uploadedAt"
       ORDER BY b."inventoryDate" DESC
     `;

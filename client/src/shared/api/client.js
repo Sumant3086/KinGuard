@@ -40,8 +40,9 @@ client.interceptors.response.use(
     const url     = error.config?.url ?? '';
     const originalRequest = error.config;
 
-    // Prevent refresh loops: bail if the failing request is the refresh endpoint
-    if (status === 401 && !url.includes('/auth/refresh') && !originalRequest._retried) {
+    // Prevent refresh loops: bail if the failing request IS the refresh endpoint.
+    // Use endsWith to avoid false matches on routes that contain 'auth/refresh' as a substring.
+    if (status === 401 && !url.endsWith('/auth/refresh') && !originalRequest._retried) {
       if (isRefreshing) {
         // Another refresh is in flight — queue this request to retry after
         return new Promise((resolve, reject) => {

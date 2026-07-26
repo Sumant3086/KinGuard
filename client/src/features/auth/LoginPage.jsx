@@ -78,9 +78,12 @@ export default function LoginPage() {
     } catch (err) {
       const status = err.response?.status;
 
-      // Real credential / access errors — show immediately, never retry
-      if (status === 401) { setError('Employee ID or password is incorrect.'); return; }
-      if (status === 403) { setError(err.response.data?.error || 'Access denied. Contact your administrator.'); return; }
+      // Definitive auth errors — show the server's message directly and never retry.
+      // 429 carries the lockout countdown from the server ("try again in N minutes").
+      if (status === 401 || status === 403 || status === 429) {
+        setError(err.response?.data?.error || 'Incorrect Employee ID or password');
+        return;
+      }
 
       // Transient: network down, server restarting, or cold-start 503/500
       if (attempt < RETRY_DELAYS.length) {

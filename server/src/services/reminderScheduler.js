@@ -19,6 +19,7 @@ async function runReminderCheck() {
     // and haven't had an automated reminder sent yet
     const batches = await prisma.uploadBatch.findMany({
       where: {
+        isDeleted:          false,
         submissionDeadline: { gte: windowStart, lte: windowEnd },
         autoReminderSentAt: null,
       },

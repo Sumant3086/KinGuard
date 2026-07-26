@@ -1,30 +1,33 @@
 import client from './client';
 import { get as cacheGet, set as cacheSet, invalidate as cacheInvalidate } from './cache';
 
-export async function getDashboard() {
-  const key = 'store:dashboard';
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const { data } = await client.get('/store/dashboard');
-  cacheSet(key, data, 120_000); // 2 min
+async function withCache(key, ttlMs, fetcher) {
+  const hit = cacheGet(key);
+  if (hit) return hit;
+  const data = await fetcher();
+  cacheSet(key, data, ttlMs);
   return data;
 }
 
-export async function getBatches() {
-  const key = 'store:batches';
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const { data } = await client.get('/store/batches');
-  cacheSet(key, data, 60_000); // 1 min — batch list is stable within a session
-  return data;
+export function getDashboard() {
+  return withCache('store:dashboard', 120_000, async () => {
+    const { data } = await client.get('/store/dashboard');
+    return data;
+  });
+}
+
+export function getBatches() {
+  return withCache('store:batches', 60_000, async () => {
+    const { data } = await client.get('/store/batches');
+    return data;
+  });
 }
 
 export async function getInventory(search, status, batchId, page = 1, pageSize = 100) {
-  // Do not cache inventory — it changes as user types and saves
+  // Not cached — changes as the user types and saves
   const { data } = await client.get('/store/inventory', {
     params: { search, status, batchId, page, pageSize },
   });
-  // Returns { records, isLocked, returnedByAM, pagination }
   return data;
 }
 

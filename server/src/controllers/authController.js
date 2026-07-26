@@ -279,10 +279,17 @@ export async function changePassword(req, res, next) {
     validatePassword(newPassword);
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash, mustChangePassword: false },
-    });
+
+    // Revoke all existing refresh tokens so any other active sessions are logged out.
+    // This is the correct behavior when a password changes — prevents a compromised
+    // session from staying alive after the user resets their credentials.
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash, mustChangePassword: false },
+      }),
+      prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+    ]);
 
     invalidateUserCache(user.id);
 

@@ -1,6 +1,9 @@
 import client from './client';
 import { get as cacheGet, set as cacheSet, invalidate as cacheInvalidate } from './cache';
 
+// File-processing requests can take up to 2 minutes — matches server fileTimeout
+const FILE_TIMEOUT = 120_000;
+
 // ── Cache TTLs (centralised) ───────────────────────────────────────────────
 const TTL = {
   DASHBOARD:  120_000, // 2 min — reduced from 5 min so data feels fresh
@@ -143,26 +146,17 @@ export function getUploads() {
     async () => { const { data } = await client.get('/admin/uploads'); return data; });
 }
 
-// File-processing requests can take up to 2 minutes — match server fileTimeout
-const FILE_TIMEOUT = 120_000;
+const UPLOAD_CACHE_KEYS = ['admin:dashboard', 'admin:uploads', 'admin:batches-client', 'admin:stores', 'admin:trends:8'];
 
-export async function uploadInventory(file, inventoryDate, submissionDeadline) {
+/** Upload an inventory file. Pass { force: true } to bypass the duplicate-batch check. */
+export async function uploadInventory(file, inventoryDate, submissionDeadline, { force = false } = {}) {
   const form = new FormData();
   form.append('file', file);
   form.append('inventoryDate', inventoryDate);
   if (submissionDeadline) form.append('submissionDeadline', submissionDeadline);
-  const { data } = await client.post('/admin/uploads', form, { timeout: FILE_TIMEOUT });
-  cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches-client', 'admin:stores', 'admin:trends:8');
-  return data;
-}
-
-export async function uploadInventoryForce(file, inventoryDate, submissionDeadline) {
-  const form = new FormData();
-  form.append('file', file);
-  form.append('inventoryDate', inventoryDate);
-  if (submissionDeadline) form.append('submissionDeadline', submissionDeadline);
-  const { data } = await client.post('/admin/uploads?force=true', form, { timeout: FILE_TIMEOUT });
-  cacheInvalidate('admin:dashboard', 'admin:uploads', 'admin:batches-client', 'admin:stores', 'admin:trends:8');
+  const url = force ? '/admin/uploads?force=true' : '/admin/uploads';
+  const { data } = await client.post(url, form, { timeout: FILE_TIMEOUT });
+  cacheInvalidate(...UPLOAD_CACHE_KEYS);
   return data;
 }
 
