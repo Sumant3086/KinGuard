@@ -14,8 +14,9 @@ import './styles/utilities.css';
 import { ToastProvider } from './shared/context/ToastContext';
 import { AuthProvider } from './features/auth/AuthContext';
 
-// Register service worker for PWA support (offline shell + static asset caching)
-if ('serviceWorker' in navigator) {
+// Register service worker only in production.
+// In development, the SW conflicts with Vite's HMR and causes FetchEvent errors.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(err => {
       console.warn('[sw] Registration failed:', err);

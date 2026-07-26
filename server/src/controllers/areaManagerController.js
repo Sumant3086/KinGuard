@@ -4,7 +4,23 @@ import { createAuditLog } from '../services/auditService.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { requireId } from '../utils/params.js';
 
-const AM_STORES_TTL = 60_000; // 60 s — refreshed on assign/unassign
+const AM_STORES_TTL = 60_000;
+
+// Retry once on connection errors — Supabase drops idle connections after ~5 min
+const RETRYABLE = new Set(['P1001', 'P1002', 'P1008', 'P1017']);
+async function withRetry(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    const isConn = RETRYABLE.has(err.code) ||
+      (err.message ?? '').toLowerCase().match(/connect|econnreset|socket/);
+    if (!isConn) throw err;
+    console.warn('[am] DB connection lost, reconnecting:', err.message);
+    await new Promise(r => setTimeout(r, 400));
+    await prisma.$connect();
+    return fn();
+  }
+}
 
 // ── Helper: get all storeIds managed by this AM (cached per user) ─────────────
 async function getManagedStoreIds(areaManagerId) {
@@ -35,13 +51,13 @@ export async function getMyStores(req, res, next) {
 // ── Dashboard overview ────────────────────────────────────────────────────────
 export async function getDashboard(req, res, next) {
   try {
-    const storeIds = await getManagedStoreIds(req.user.id);
+    const storeIds = await withRetry(() => getManagedStoreIds(req.user.id));
 
-    const latestBatch = await prisma.uploadBatch.findFirst({
+    const latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
       where: { status: 'COMPLETED', isDeleted: false },
       orderBy: { inventoryDate: 'desc' },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
-    });
+    }));
 
     if (!storeIds.length || !latestBatch) {
       return res.json({ storeCount: storeIds.length, pendingReview: 0, approved: 0, returned: 0, latestBatch: null });
@@ -103,7 +119,7 @@ export async function getNotifications(req, res, next) {
     const cached = sGet(cacheKey);
     if (cached) return res.json(cached);
 
-    const storeIds = await getManagedStoreIds(req.user.id);
+    const storeIds = await withRetry(() => getManagedStoreIds(req.user.id));
     if (!storeIds.length) {
       const empty = { items: [], count: 0 };
       sSet(cacheKey, empty, 30_000);
@@ -169,7 +185,7 @@ export async function getBatches(req, res, next) {
     const cached = sGet(cacheKey);
     if (cached) return res.json(cached);
 
-    const storeIds = await getManagedStoreIds(req.user.id);
+    const storeIds = await withRetry(() => getManagedStoreIds(req.user.id));
     if (!storeIds.length) return res.json([]);
 
     const batches = await prisma.uploadBatch.findMany({
