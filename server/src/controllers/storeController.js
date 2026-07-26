@@ -23,7 +23,7 @@ export async function getDashboard(req, res, next) {
     // Get latest batch WHERE this store has inventory records
     const [latestBatch, allPendingBatches] = await Promise.all([
       prisma.uploadBatch.findFirst({
-        where: { inventoryRecords: { some: { storeId } } },
+        where: { isDeleted: false, inventoryRecords: { some: { storeId } } },
         orderBy: { inventoryDate: 'desc' },
         select: {
           id: true,
@@ -34,7 +34,7 @@ export async function getDashboard(req, res, next) {
       }),
       // All batches that still have PENDING records — surfaces past-date uploads
       prisma.uploadBatch.findMany({
-        where: { inventoryRecords: { some: { storeId, status: 'PENDING' } } },
+        where: { isDeleted: false, inventoryRecords: { some: { storeId, status: 'PENDING' } } },
         orderBy: { inventoryDate: 'desc' },
         select: { id: true, inventoryDate: true },
       }),
@@ -389,16 +389,26 @@ export async function submitInventory(req, res, next) {
     }).catch(err => console.error('[audit] SUBMIT_INVENTORY log failed:', err.message));
     detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(err => console.error('[detect-repeat] Failed:', err.message));
 
-    // Create or reset AreaManagerReview so AM sees the new submission.
-    // areaManagerId is already on req.user.store (cached by auth middleware) — no extra DB call.
-    const amId = req.user.store?.areaManagerId ?? null;
+    // Fetch a fresh store row to get the current areaManagerId.
+    // req.user.store is populated from the auth cache (30s TTL) and may be stale
+    // if the admin reassigned the store to a different AM between login and submission.
+    const freshStore = await prisma.store.findUnique({
+      where: { id: storeId },
+      select: { areaManagerId: true },
+    }).catch(() => null);
+    const amId = freshStore?.areaManagerId ?? null;
+
     if (amId) {
-      prisma.$executeRaw`
-        INSERT INTO "AreaManagerReview" ("batchId", "storeId", "areaManagerId", status, "createdAt", "updatedAt")
-        VALUES (${parsedBatchId}, ${storeId}, ${amId}, 'PENDING_REVIEW'::"ReviewStatus", NOW(), NOW())
-        ON CONFLICT ("batchId", "storeId")
-        DO UPDATE SET status = 'PENDING_REVIEW'::"ReviewStatus", remarks = NULL, "reviewedAt" = NULL, "updatedAt" = NOW()
-      `.catch(e => console.error('[submit] AM review upsert failed:', e.message));
+      try {
+        await prisma.areaManagerReview.upsert({
+          where:  { batchId_storeId: { batchId: parsedBatchId, storeId } },
+          create: { batchId: parsedBatchId, storeId, areaManagerId: amId, status: 'PENDING_REVIEW', createdAt: new Date(), updatedAt: new Date() },
+          update: { status: 'PENDING_REVIEW', areaManagerId: amId, remarks: null, reviewedAt: null, updatedAt: new Date() },
+        });
+      } catch (amErr) {
+        // Non-fatal: log clearly so it can be investigated without failing the submission
+        console.error('[submit] AM review upsert failed — store submitted but AM review not created:', amErr.message);
+      }
     }
 
     // Fire-and-forget email notifications after successful submission
@@ -466,9 +476,9 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
   if (!currentBatch || currentShortages.length === 0) return;
 
   const priorBatches = await prisma.uploadBatch.findMany({
-    where: { inventoryDate: { lt: currentBatch.inventoryDate } },
+    where: { inventoryDate: { lt: currentBatch.inventoryDate }, isDeleted: false },
     orderBy: { inventoryDate: 'desc' },
-    take: 2,
+    take: 3,
     select: { id: true },
   });
   if (priorBatches.length === 0) return;
@@ -594,6 +604,12 @@ export async function downloadInventory(req, res, next) {
       });
       if (!latestBatch) throw new AppError('No inventory records found for your store', 404);
       targetBatchId = latestBatch.id;
+    }
+
+    const STORE_EXPORT_LIMIT = 10_000;
+    const exportCount = await prisma.inventoryRecord.count({ where: { storeId, batchId: targetBatchId } });
+    if (exportCount > STORE_EXPORT_LIMIT) {
+      throw new AppError(`Too many records to export (${exportCount.toLocaleString()}). Contact your administrator.`, 413);
     }
 
     // Get records for this store in the selected batch

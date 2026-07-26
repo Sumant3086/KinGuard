@@ -48,6 +48,7 @@ function buildUserPayload(user) {
     id:         user.id,
     employeeId: user.employeeId,
     name:       user.name,
+    email:      user.email || null,
     role:       user.role,
     storeId:    user.storeId,
     mustChangePassword: user.mustChangePassword ?? false,
@@ -72,43 +73,50 @@ async function issueRefreshToken(userId, res) {
 }
 
 // ── Login attempt lockout ──────────────────────────────────────────────────
-// In-memory per-account lockout (resets on server restart).
-// Protects against credential stuffing without requiring a DB write on every request.
+// DB-backed per-account lockout so it survives server restarts and deploys.
+// loginAttempts and lockedUntil are stored on the User row itself.
 const LOCKOUT_MAX_ATTEMPTS = 10;
 const LOCKOUT_WINDOW_MS    = 15 * 60 * 1000; // 15 minutes
 
-const loginAttempts = new Map(); // employeeId → { count, lockedUntil }
-
-function checkLockout(id) {
-  const rec = loginAttempts.get(id);
-  if (!rec) return;
-  if (rec.lockedUntil && Date.now() < rec.lockedUntil) {
-    const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+async function checkDbLockout(user) {
+  if (!user?.lockedUntil) return;
+  if (user.lockedUntil > new Date()) {
+    const mins = Math.ceil((user.lockedUntil - Date.now()) / 60000);
     throw new AppError(`Too many failed attempts. Please try again in ${mins} minute${mins !== 1 ? 's' : ''}.`, 429);
   }
 }
 
-function recordFailure(id) {
-  const rec = loginAttempts.get(id) ?? { count: 0, lockedUntil: null };
-  rec.count += 1;
-  if (rec.count >= LOCKOUT_MAX_ATTEMPTS) {
-    rec.lockedUntil = Date.now() + LOCKOUT_WINDOW_MS;
-    rec.count = 0; // reset so the window refreshes after lockout expires
+async function recordDbFailure(userId) {
+  try {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { loginAttempts: { increment: 1 } },
+      select: { loginAttempts: true },
+    });
+    if (updated.loginAttempts >= LOCKOUT_MAX_ATTEMPTS) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          lockedUntil:   new Date(Date.now() + LOCKOUT_WINDOW_MS),
+          loginAttempts: 0,
+        },
+      });
+    }
+  } catch {
+    // Non-fatal — lockout tracking should never block the login response path
   }
-  loginAttempts.set(id, rec);
 }
 
-function clearFailures(id) {
-  loginAttempts.delete(id);
-}
-
-// Sweep stale lockout entries every 30 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of loginAttempts) {
-    if (!v.lockedUntil || now > v.lockedUntil) loginAttempts.delete(k);
+async function clearDbFailures(userId) {
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { loginAttempts: 0, lockedUntil: null },
+    });
+  } catch {
+    // Non-fatal
   }
-}, 30 * 60 * 1000).unref();
+}
 
 // ── Route handlers ─────────────────────────────────────────────────────────
 
@@ -120,8 +128,6 @@ export async function login(req, res, next) {
       throw new AppError('Employee ID and password are required', 400);
     }
     if (password.length > 128) throw new AppError('Invalid credentials', 401);
-
-    checkLockout(employeeId.trim().toLowerCase());
 
     // Look up user — up to 3 attempts with growing delays for Supabase pooler cold-start.
     // Delays: immediate → 500 ms → 1200 ms (total max wait ~1.7 s before 503).
@@ -139,7 +145,7 @@ export async function login(req, res, next) {
           include: { store: true },
         });
         lastErr = null;
-        break; // success — stop retrying
+        break;
       } catch (err) {
         lastErr = err;
       }
@@ -149,17 +155,20 @@ export async function login(req, res, next) {
       throw new AppError('The service is temporarily unavailable. Please try again in a moment.', 503);
     }
 
+    // Check DB-backed lockout before running bcrypt (avoids wasting CPU on locked accounts)
+    if (user) await checkDbLockout(user);
+
     // Always run bcrypt (or dummy) before revealing any account state — prevents timing attacks
     const isPasswordValid = user
       ? await bcrypt.compare(password, user.passwordHash)
       : await bcrypt.compare(password, '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234');
 
     if (!user || !isPasswordValid) {
-      recordFailure(employeeId.trim().toLowerCase());
+      if (user) await recordDbFailure(user.id);
       throw new AppError('Employee ID or password is incorrect', 401);
     }
 
-    clearFailures(employeeId.trim().toLowerCase());
+    await clearDbFailures(user.id);
 
     if (user.pendingApproval) {
       throw new AppError('This account is pending administrator approval. Please contact your admin.', 403);
@@ -281,14 +290,22 @@ export async function changePassword(req, res, next) {
   }
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function updateProfile(req, res, next) {
   try {
     const { name, email, phone } = req.body;
     const userId = req.user.id;
 
     const data = {};
-    if (name  !== undefined) data.name  = name?.trim()  || undefined;
-    if (email !== undefined) data.email = email?.trim() || null;
+    if (name !== undefined) data.name = name?.trim() || undefined;
+    if (email !== undefined) {
+      const trimmed = email?.trim() || null;
+      if (trimmed && !EMAIL_REGEX.test(trimmed)) {
+        throw new AppError('Invalid email address format', 400);
+      }
+      data.email = trimmed;
+    }
     if (phone !== undefined) data.phone = phone?.trim() || null;
 
     if (Object.keys(data).length === 0) {

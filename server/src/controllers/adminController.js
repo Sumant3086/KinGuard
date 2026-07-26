@@ -9,29 +9,67 @@ import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { parseId, requireId, parsePage, parsePageSize, parseIntParam } from '../utils/params.js';
 import { invalidateUserCache } from '../middleware/auth.js';
 import { validatePassword } from '../controllers/authController.js';
+import { buildInventoryWorkbook } from '../utils/excelExport.js';
 
 // Hard cap on rows returned by report/export endpoints.
 const EXPORT_ROW_LIMIT = 10_000;
 
+// Field length limits for uploaded inventory data
+const MAX_MATERIAL_CODE_LEN = 50;
+const MAX_MATERIAL_NAME_LEN = 200;
+const MAX_REMARKS_LEN       = 500;
+const MAX_STORE_CODE_LEN    = 50;
+
+// Prefix cells that start with formula-injection characters to prevent formula execution in Excel.
+function sanitizeCell(value) {
+  if (typeof value !== 'string') return value;
+  if (value.length > 0 && ['=', '+', '-', '@', '\t', '\r'].includes(value[0])) {
+    return "'" + value;
+  }
+  return value;
+}
+
+// Whitelist of valid audit log action values for the filter endpoint
+const VALID_AUDIT_ACTIONS = new Set([
+  'LOGIN', 'FAILED_LOGIN', 'CHANGE_PASSWORD', 'UPDATE_PROFILE',
+  'CREATE_STORE', 'DELETE_STORE', 'UPDATE_STORE', 'FORCE_DELETE_STORE', 'BULK_DELETE_STORES',
+  'CREATE_USER', 'UPDATE_USER', 'DELETE_USER', 'APPROVE_USER', 'REJECT_USER',
+  'BULK_DELETE_USERS', 'BATCH_USER_IMPORT',
+  'UPLOAD_INVENTORY', 'DOWNLOAD_REPORT', 'DOWNLOAD_ADMIN_INVENTORY_EXPORT',
+  'DOWNLOAD_INVENTORY_PDF', 'DOWNLOAD_REPORT_PDF',
+  'GRANT_STORE_EXTENSION', 'SEND_BATCH_REMINDERS',
+  'SUBMIT_INVENTORY', 'UPDATE_INVENTORY', 'DOWNLOAD_INVENTORY', 'REPEAT_DISCREPANCY',
+  'AM_APPROVE', 'AM_RETURN', 'AM_EDIT_RECORD',
+  'BATCH_ASSIGN_AREA_MANAGER', 'ASSIGN_AREA_MANAGER',
+  'OVERRIDE_RECORD', 'UNLOCK_STORE_SUBMISSION',
+  'DOWNLOAD_BATCH_EXPORT', 'DOWNLOAD_BATCH_EXPORT_PDF',
+  'DELETE_BATCH', 'CLOSE_BATCH', 'UPDATE_BATCH_DEADLINE',
+  'BATCH_CREATE_USERS',
+]);
+
 // Generate a secure random temp password that satisfies validatePassword() rules.
 // Uses only unambiguous characters (no I/l/0/O) so it's easy to communicate.
 function generateTempPassword() {
-  const upper   = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-  const lower   = 'abcdefghjkmnpqrstuvwxyz';
-  const digits  = '23456789';
-  const all     = upper + lower + digits;
-  const bytes   = randomBytes(16); // loop below reads up to bytes[10]; extra bytes feed the shuffle
-  // Guarantee at least one of each required class + a special char
+  const upper  = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const lower  = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const all    = upper + lower + digits;
+
+  // Use separate byte pools so character selection and shuffle have independent randomness
+  const charBytes    = randomBytes(8);
+  const shuffleBytes = randomBytes(16);
+
   let pw = [
-    upper[bytes[0]  % upper.length],
-    lower[bytes[1]  % lower.length],
-    digits[bytes[2] % digits.length],
+    upper[charBytes[0]  % upper.length],
+    lower[charBytes[1]  % lower.length],
+    digits[charBytes[2] % digits.length],
     '!',
   ];
-  for (let i = 3; i < 8; i++) pw.push(all[bytes[3 + i] % all.length]);
-  // Fisher-Yates shuffle so requirements aren't always at the front
+  for (let i = 3; i < 8; i++) pw.push(all[charBytes[i] % all.length]);
+
+  // Fisher-Yates shuffle with independent random bytes
   for (let i = pw.length - 1; i > 0; i--) {
-    const j = bytes[i] % (i + 1);
+    const j = shuffleBytes[i] % (i + 1);
     [pw[i], pw[j]] = [pw[j], pw[i]];
   }
   return pw.join('');
@@ -133,7 +171,7 @@ export async function getDashboard(req, res, next) {
     const [totalStores, latestBatch] = await withDbRetry(() => Promise.all([
       prisma.store.count({ where: { isActive: true } }),
       prisma.uploadBatch.findFirst({
-        where: { status: 'COMPLETED' },
+        where: { status: 'COMPLETED', isDeleted: false },
         orderBy: { inventoryDate: 'desc' },
         select: { id: true, inventoryDate: true, submissionDeadline: true },
       }),
@@ -187,7 +225,7 @@ export async function getDashboard(req, res, next) {
         WHERE "batchId" = ${latestBatch.id}
       `,
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true, areaManagerId: true, areaManager: { select: { name: true } } } }),
-      prisma.uploadBatch.findMany({ orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
+      prisma.uploadBatch.findMany({ where: { isDeleted: false }, orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
       prisma.$queryRaw`
         SELECT "storeId"::int AS "storeId", remarks, COUNT(*)::int AS cnt
         FROM "InventoryRecord"
@@ -751,12 +789,24 @@ export async function uploadInventory(req, res, next) {
           errors.push({ row: rowNum, error: 'Missing Plant Code' });
           continue;
         }
+        if (storeCode.length > MAX_STORE_CODE_LEN) {
+          errors.push({ row: rowNum, error: `Plant Code too long (max ${MAX_STORE_CODE_LEN} characters)` });
+          continue;
+        }
         if (!materialCode) {
           errors.push({ row: rowNum, error: 'Missing Material Code' });
           continue;
         }
+        if (materialCode.length > MAX_MATERIAL_CODE_LEN) {
+          errors.push({ row: rowNum, error: `Material Code too long (max ${MAX_MATERIAL_CODE_LEN} characters)` });
+          continue;
+        }
         if (!materialName) {
           errors.push({ row: rowNum, error: 'Missing Material Description' });
+          continue;
+        }
+        if (materialName.length > MAX_MATERIAL_NAME_LEN) {
+          errors.push({ row: rowNum, error: `Material Description too long (max ${MAX_MATERIAL_NAME_LEN} characters)` });
           continue;
         }
 
@@ -775,7 +825,8 @@ export async function uploadInventory(req, res, next) {
           continue;
         }
 
-        const remarks = findColumn(row, COLUMN_MAP.remarks)?.toString().trim() || null;
+        let remarks = findColumn(row, COLUMN_MAP.remarks)?.toString().trim() || null;
+        if (remarks && remarks.length > MAX_REMARKS_LEN) remarks = remarks.slice(0, MAX_REMARKS_LEN);
 
         successfulRecords.push({
           batchId: batch.id,
@@ -896,37 +947,35 @@ export async function previewUpload(req, res, next) {
     let errorCount = 0;
     let warningCount = 0;
 
-    // Process each row for preview (limit to first 100 for performance)
-    const previewLimit = Math.min(rows.length, 100);
-    for (let i = 0; i < previewLimit; i++) {
+    // Validate ALL rows for accurate stats; only include first 100 rows in the preview array
+    for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const rowNum = i + 2; // +2 for header row and 0-index
+      const rowNum = i + 2;
 
-      const storeCode = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim().toUpperCase();
-      const materialCode = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
-      const materialDescription = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
-      const rawQty = findColumn(row, COLUMN_MAP.systemQuantity);
-      const materialName = materialDescription || materialCode;
-      const remarks = findColumn(row, COLUMN_MAP.remarks)?.toString().trim() || '';
+      const storeCode       = findColumn(row, COLUMN_MAP.storeCode)?.toString().trim().toUpperCase();
+      const materialCode    = findColumn(row, COLUMN_MAP.materialCode)?.toString().trim();
+      const materialDesc    = findColumn(row, COLUMN_MAP.materialName)?.toString().trim();
+      const rawQty          = findColumn(row, COLUMN_MAP.systemQuantity);
+      const materialName    = materialDesc || materialCode;
+      const remarks         = findColumn(row, COLUMN_MAP.remarks)?.toString().trim() || '';
 
-      let status = 'valid';
-      let message = '';
-      const errors = [];
+      const errors   = [];
       const warnings = [];
 
-      // Validation
       if (!storeCode) {
         errors.push('Missing Plant Code');
+      } else if (storeCode.length > MAX_STORE_CODE_LEN) {
+        errors.push(`Plant Code too long (max ${MAX_STORE_CODE_LEN} chars)`);
       } else if (!storeMap.has(storeCode)) {
         warnings.push(`New plant will be created: ${storeCode}`);
       }
 
       if (!materialCode) {
         errors.push('Missing Material Code');
+      } else if (materialCode.length > MAX_MATERIAL_CODE_LEN) {
+        errors.push(`Material Code too long (max ${MAX_MATERIAL_CODE_LEN} chars)`);
       }
 
-      // System quantity validation - Optional, defaults to 0 if empty
-      // Store managers will fill the actual counted quantity later
       let systemQty = 0;
       if (rawQty !== null && rawQty !== undefined && rawQty !== '') {
         const qty = parseFloat(rawQty);
@@ -938,43 +987,40 @@ export async function previewUpload(req, res, next) {
           systemQty = qty;
         }
       }
-      // If empty, systemQty stays 0 (no error, no warning)
 
+      let status, message;
       if (errors.length > 0) {
-        status = 'error';
-        message = errors.join('; ');
-        errorCount++;
+        status = 'error'; message = errors.join('; '); errorCount++;
       } else if (warnings.length > 0) {
-        status = 'warning';
-        message = warnings.join('; ');
-        warningCount++;
+        status = 'warning'; message = warnings.join('; '); warningCount++;
       } else {
-        status = 'valid';
-        message = 'OK';
-        validCount++;
+        status = 'valid'; message = 'OK'; validCount++;
       }
 
-      preview.push({
-        row: rowNum,
-        storeCode: storeCode || '',
-        storeName: storeCode ? (storeMap.get(storeCode) || `(new) ${storeCode}`) : '',
-        materialCode: materialCode || '',
-        materialName: materialName || '',
-        systemQuantity: systemQty,
-        remarks,
-        status,
-        message,
-      });
+      // Only include the first 100 rows in the preview payload
+      if (i < 100) {
+        preview.push({
+          row: rowNum,
+          storeCode:      storeCode || '',
+          storeName:      storeCode ? (storeMap.get(storeCode) || `(new) ${storeCode}`) : '',
+          materialCode:   materialCode || '',
+          materialName:   materialName || '',
+          systemQuantity: systemQty,
+          remarks,
+          status,
+          message,
+        });
+      }
     }
 
     res.json({
       fileName: file.originalname,
       inventoryDate,
-      totalRows: rows.length,
+      totalRows:   rows.length,
       previewRows: preview.length,
       statistics: {
-        valid: validCount,
-        errors: errorCount,
+        valid:    validCount,
+        errors:   errorCount,
         warnings: warningCount,
       },
       preview,
@@ -991,6 +1037,7 @@ export async function getUploads(req, res, next) {
     if (cached) return res.json(cached);
 
     const uploads = await prisma.uploadBatch.findMany({
+      where: { isDeleted: false },
       orderBy: { uploadedAt: 'desc' },
       include: {
         uploader: {
@@ -1105,11 +1152,17 @@ export async function getInventory(req, res, next) {
   }
 }
 
+const VALID_INV_STATUSES = new Set(['PENDING', 'SUBMITTED']);
+const VALID_DISCREPANCIES = new Set(['shortage', 'excess', 'matched']);
+
 export async function getReconciliationReport(req, res, next) {
   try {
     const { status, discrepancy, includeInactive } = req.query;
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
+
+    if (status && !VALID_INV_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
+    if (discrepancy && !VALID_DISCREPANCIES.has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
 
     const where = {};
 
@@ -1152,6 +1205,9 @@ export async function downloadReconciliationReport(req, res, next) {
     const { status, discrepancy, includeInactive } = req.query;
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
+
+    if (status && !VALID_INV_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
+    if (discrepancy && !VALID_DISCREPANCIES.has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
 
     const where = {};
 
@@ -1212,18 +1268,18 @@ export async function downloadReconciliationReport(req, res, next) {
     // Add data
     filtered.forEach((record) => {
       worksheet.addRow({
-        storeCode: record.store.storeCode,
-        storeName: record.store.storeName,
-        inventoryDate: record.batch.inventoryDate.toISOString().split('T')[0],
-        materialCode: record.materialCode,
-        materialName: record.materialName,
-        systemQuantity: record.systemQuantity,
+        storeCode:        record.store.storeCode,
+        storeName:        record.store.storeName,
+        inventoryDate:    record.batch.inventoryDate.toISOString().split('T')[0],
+        materialCode:     record.materialCode,
+        materialName:     sanitizeCell(record.materialName),
+        systemQuantity:   record.systemQuantity,
         physicalQuantity: record.physicalQuantity,
-        difference: record.difference,
-        remarks: record.remarks,
-        status: record.status,
-        submittedBy: record.submitter ? record.submitter.name : '',
-        submittedAt: record.submittedAt ? record.submittedAt.toISOString() : '',
+        difference:       record.difference,
+        remarks:          sanitizeCell(record.remarks || ''),
+        status:           record.status,
+        submittedBy:      record.submitter ? record.submitter.name : '',
+        submittedAt:      record.submittedAt ? record.submittedAt.toISOString() : '',
       });
     });
 
@@ -1289,67 +1345,11 @@ export async function downloadInventoryExport(req, res, next) {
       },
     });
 
-    // Create Excel workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Inventory Records');
-
-    // Define columns with business-friendly names
-    worksheet.columns = [
-      { header: 'Plant Code', key: 'storeCode', width: 12 },
-      { header: 'Plant Name', key: 'storeName', width: 25 },
-      { header: 'Date', key: 'inventoryDate', width: 15 },
-      { header: 'Material Name', key: 'materialCode', width: 20 },
-      { header: 'Material Description', key: 'materialName', width: 35 },
-      { header: 'System Stock', key: 'sys', width: 14 },
-      { header: 'Physical Stock', key: 'sold', width: 14 },
-      { header: 'Diff', key: 'diff', width: 12 },
-      { header: 'Remarks', key: 'remarks', width: 30 },
-      { header: 'Status', key: 'status', width: 12 },
-      { header: 'Submitted By', key: 'submittedBy', width: 20 },
-      { header: 'Submitted At', key: 'submittedAt', width: 20 },
-    ];
-
-    // Style header row
-    const headerRow = worksheet.getRow(1);
-    headerRow.font = { bold: true };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' },
-    };
-
-    // Freeze header row
-    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-    // Enable AutoFilter
-    worksheet.autoFilter = {
-      from: { row: 1, column: 1 },
-      to: { row: 1, column: 12 },
-    };
-
-    // Add data rows
-    records.forEach((record) => {
-      worksheet.addRow({
-        storeCode: record.store.storeCode,
-        storeName: record.store.storeName,
-        inventoryDate: record.batch.inventoryDate.toISOString().split('T')[0],
-        materialCode: record.materialCode,
-        materialName: record.materialName,
-        sys: record.systemQuantity,
-        sold: record.physicalQuantity !== null ? record.physicalQuantity : '',
-        diff: record.difference !== null ? record.difference : '',
-        remarks: record.remarks || '',
-        status: record.status,
-        submittedBy: record.submitter ? `${record.submitter.name} (${record.submitter.employeeId})` : '',
-        submittedAt: record.submittedAt ? record.submittedAt.toISOString().replace('T', ' ').substring(0, 19) : '',
-      });
+    const workbook = buildInventoryWorkbook(records, {
+      sheetName:       'Inventory Records',
+      includeDate:     true,
+      includeSubmitter: true,
     });
-
-    // Format Plant Code and Material Code as text to preserve leading zeros
-    const storeCodeCol = worksheet.getColumn('storeCode');
-    storeCodeCol.numFmt = '@';
-    const materialCodeCol = worksheet.getColumn('materialCode');
-    materialCodeCol.numFmt = '@';
 
     await createAuditLog({
       userId: req.user.id,
@@ -1389,6 +1389,9 @@ export async function getAuditLogs(req, res, next) {
     const { action } = req.query;
     const limit = parseIntParam(req.query.limit, 'limit', 100, 1, 500);
 
+    if (action && !VALID_AUDIT_ACTIONS.has(action)) {
+      throw new AppError('Invalid action filter', 400);
+    }
     const where = action ? { action } : {};
 
     const logs = await prisma.auditLog.findMany({
@@ -1419,6 +1422,7 @@ export async function getBatches(req, res, next) {
     if (cached) return res.json(cached);
 
     const batches = await withDbRetry(() => prisma.uploadBatch.findMany({
+      where: { isDeleted: false },
       orderBy: { inventoryDate: 'desc' },
       include: {
         uploader: { select: { name: true, employeeId: true } },
@@ -1482,9 +1486,10 @@ export async function closeBatch(req, res, next) {
       return res.json({ message: 'Cycle is already locked', alreadyClosed: true });
     }
 
-    const pendingCount = await prisma.inventoryRecord.count({
-      where: { batchId, status: 'PENDING' },
-    });
+    const [pendingCount, submittedCount] = await Promise.all([
+      prisma.inventoryRecord.count({ where: { batchId, status: 'PENDING' } }),
+      prisma.inventoryRecord.count({ where: { batchId, status: 'SUBMITTED' } }),
+    ]);
 
     await prisma.uploadBatch.update({
       where: { id: batchId },
@@ -1494,11 +1499,16 @@ export async function closeBatch(req, res, next) {
     await createAuditLog({
       userId: req.user.id, action: 'CLOSE_BATCH',
       entityType: 'UPLOAD_BATCH', entityId: batchId,
-      metadata: { inventoryDate: batch.inventoryDate, lockedPendingStores: pendingCount },
+      metadata: { inventoryDate: batch.inventoryDate, lockedPendingItems: pendingCount, submittedItems: submittedCount },
     });
 
     sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications');
-    res.json({ message: `Cycle locked. ${pendingCount} pending item(s) are now frozen.`, pendingCount });
+    res.json({
+      message:        `Cycle locked. ${pendingCount} pending item(s) frozen, ${submittedCount} already submitted.`,
+      pendingCount,
+      submittedCount,
+      noSubmissions:  submittedCount === 0,
+    });
   } catch (error) { next(error); }
 }
 
@@ -1538,6 +1548,7 @@ export async function getTrends(req, res, next) {
     const cached = sGet(cacheKey);
     if (cached) return res.json(cached);
     const batches = (await prisma.uploadBatch.findMany({
+      where: { isDeleted: false },
       orderBy: { inventoryDate: 'desc' },
       take: cycles,
       select: { id: true, inventoryDate: true },
@@ -1590,8 +1601,15 @@ export async function getStoreDrilldown(req, res, next) {
       targetBatchId = latest.id;
     }
 
+    // type=shortage (default) | excess | all
+    const type = req.query.type;
+    const where = { storeId, batchId: targetBatchId, status: 'SUBMITTED' };
+    if (!type || type === 'shortage') where.difference = { lt: 0 };
+    else if (type === 'excess')       where.difference = { gt: 0 };
+    // type=all: no difference filter
+
     const records = await prisma.inventoryRecord.findMany({
-      where: { storeId, batchId: targetBatchId, status: 'SUBMITTED', difference: { lt: 0 } },
+      where,
       orderBy: { difference: 'asc' },
       select: { id: true, materialCode: true, materialName: true, systemQuantity: true, physicalQuantity: true, difference: true, remarks: true, shrinkageCategory: true },
     });
@@ -1617,34 +1635,11 @@ export async function getBatchExport(req, res, next) {
       },
     });
 
-    const workbook = new ExcelJS.Workbook();
-    const ws = workbook.addWorksheet('Batch Export');
-    ws.columns = [
-      { header: 'Plant Code',    key: 'storeCode',    width: 12 },
-      { header: 'Plant Name',    key: 'storeName',    width: 22 },
-      { header: 'Material Name', key: 'materialCode', width: 20 },
-      { header: 'Description',   key: 'materialName', width: 32 },
-      { header: 'System Stock',   key: 'sys',          width: 14 },
-      { header: 'Physical Stock',key: 'sold',         width: 14 },
-      { header: 'Diff',          key: 'diff',         width: 10 },
-      { header: 'Category',      key: 'category',     width: 18 },
-      { header: 'Remarks',       key: 'remarks',      width: 30 },
-      { header: 'Status',        key: 'status',       width: 12 },
-      { header: 'Submitted By',  key: 'submittedBy',  width: 20 },
-    ];
-    ws.getRow(1).font = { bold: true };
-    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-    ws.views = [{ state: 'frozen', ySplit: 1 }];
-    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 11 } };
-
-    records.forEach(r => ws.addRow({
-      storeCode: r.store.storeCode, storeName: r.store.storeName,
-      materialCode: r.materialCode, materialName: r.materialName,
-      sys: r.systemQuantity, sold: r.physicalQuantity ?? '',
-      diff: r.difference ?? '', category: r.shrinkageCategory || '',
-      remarks: r.remarks || '', status: r.status,
-      submittedBy: r.submitter ? `${r.submitter.name} (${r.submitter.employeeId})` : '',
-    }));
+    const workbook = buildInventoryWorkbook(records, {
+      sheetName:       'Batch Export',
+      includeDate:     false,
+      includeSubmitter: true,
+    });
 
     await createAuditLog({ userId: req.user.id, action: 'DOWNLOAD_BATCH_EXPORT', entityType: 'UPLOAD_BATCH', entityId: batchId, metadata: { recordCount: records.length } });
 
@@ -1956,21 +1951,22 @@ export async function deleteBatch(req, res, next) {
     const batchId = requireId(req.params.id, 'batchId');
 
     const batch = await prisma.uploadBatch.findUnique({
-      where: { id: batchId },
+      where: { id: batchId, isDeleted: false },
       select: { id: true, inventoryDate: true, originalFileName: true },
     });
     if (!batch) throw new AppError('Cycle not found', 404);
 
-    await prisma.$transaction([
-      prisma.batchDeadlineExtension.deleteMany({ where: { batchId } }),
-      prisma.inventoryRecord.deleteMany({ where: { batchId } }),
-      prisma.uploadBatch.delete({ where: { id: batchId } }),
-    ]);
+    // Soft delete: mark the batch as deleted rather than removing data permanently.
+    // This allows recovery of financial reconciliation data if a batch is deleted by mistake.
+    await prisma.uploadBatch.update({
+      where: { id: batchId },
+      data: { isDeleted: true, deletedAt: new Date(), deletedBy: req.user.id },
+    });
 
     await createAuditLog({
       userId: req.user.id, action: 'DELETE_BATCH',
       entityType: 'UPLOAD_BATCH', entityId: batchId,
-      metadata: { inventoryDate: batch.inventoryDate, fileName: batch.originalFileName },
+      metadata: { inventoryDate: batch.inventoryDate, fileName: batch.originalFileName, softDelete: true },
     });
 
     sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications', 'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
@@ -2410,7 +2406,7 @@ export async function getNotifications(req, res, next) {
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
     const latestBatch = await prisma.uploadBatch.findFirst({
-      where: { status: 'COMPLETED' },
+      where: { status: 'COMPLETED', isDeleted: false },
       orderBy: { inventoryDate: 'desc' },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });

@@ -63,6 +63,8 @@ model User {
   source             String   @default("MANUAL")
   email              String?  @unique
   phone              String?
+  loginAttempts      Int      @default(0)
+  lockedUntil        DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -105,6 +107,9 @@ model UploadBatch {
   successfulRows     Int          @default(0)
   rejectedRows       Int          @default(0)
   status             UploadStatus @default(PENDING)
+  isDeleted          Boolean      @default(false)
+  deletedAt          DateTime?
+  deletedBy          Int?
 
   uploader           User                    @relation(fields: [uploadedBy], references: [id])
   inventoryRecords   InventoryRecord[]

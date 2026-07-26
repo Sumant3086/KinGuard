@@ -38,7 +38,7 @@ export async function getDashboard(req, res, next) {
     const storeIds = await getManagedStoreIds(req.user.id);
 
     const latestBatch = await prisma.uploadBatch.findFirst({
-      where: { status: 'COMPLETED' },
+      where: { status: 'COMPLETED', isDeleted: false },
       orderBy: { inventoryDate: 'desc' },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });
@@ -114,7 +114,7 @@ export async function getNotifications(req, res, next) {
     const items = [];
 
     const latestBatch = await prisma.uploadBatch.findFirst({
-      where: { status: 'COMPLETED' },
+      where: { status: 'COMPLETED', isDeleted: false },
       orderBy: { inventoryDate: 'desc' },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });
@@ -175,6 +175,7 @@ export async function getBatches(req, res, next) {
     const batches = await prisma.uploadBatch.findMany({
       where: {
         status: 'COMPLETED',
+        isDeleted: false,
         inventoryRecords: { some: { storeId: { in: storeIds } } },
       },
       orderBy: { inventoryDate: 'desc' },
@@ -319,12 +320,21 @@ export async function updateRecord(req, res, next) {
       const qty = parseFloat(physicalQuantity);
       if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be 0 or more', 400);
       updateData.physicalQuantity = qty;
-      updateData.difference = qty - record.systemQuantity;
+      updateData.difference = parseFloat((qty - record.systemQuantity).toFixed(4));
     }
-    if (remarks !== undefined)          updateData.remarks = remarks || null;
+    if (remarks !== undefined)           updateData.remarks = remarks || null;
     if (shrinkageCategory !== undefined) updateData.shrinkageCategory = shrinkageCategory || null;
 
     const updated = await prisma.inventoryRecord.update({ where: { id }, data: updateData });
+
+    createAuditLog({
+      userId: req.user.id,
+      action: 'AM_EDIT_RECORD',
+      entityType: 'INVENTORY_RECORD',
+      entityId: id,
+      metadata: { batchId: record.batchId, storeId: record.storeId, changes: updateData },
+    }).catch(() => {});
+
     res.json(updated);
   } catch (error) { next(error); }
 }
@@ -396,10 +406,18 @@ export async function returnStore(req, res, next) {
     if (!remarks?.trim()) throw new AppError('A reason is required when returning to the store manager', 400);
 
     await prisma.$transaction([
-      // Reset all submitted records back to pending
+      // Reset submitted records fully — clears all count data so store must re-enter
       prisma.inventoryRecord.updateMany({
         where: { batchId, storeId, status: 'SUBMITTED' },
-        data: { status: 'PENDING', submittedBy: null, submittedAt: null },
+        data: {
+          status:            'PENDING',
+          physicalQuantity:  null,
+          difference:        null,
+          shrinkageCategory: null,
+          remarks:           null,
+          submittedBy:       null,
+          submittedAt:       null,
+        },
       }),
       // Mark the review as returned
       prisma.areaManagerReview.upsert({
@@ -412,7 +430,14 @@ export async function returnStore(req, res, next) {
     const retStoreRow = await prisma.$queryRaw`SELECT "storeCode", "storeName" FROM "Store" WHERE id = ${storeId} LIMIT 1`;
     const retStore = retStoreRow[0] ?? {};
     createAuditLog({ userId: req.user.id, action: 'AM_RETURN', entityType: 'STORE', entityId: storeId, metadata: { batchId, storeCode: retStore.storeCode, storeName: retStore.storeName, reason: remarks } }).catch(() => {});
-    sInvalidate('admin:dashboard', `am:batches:${req.user.id}`, `am:notifications:${req.user.id}`, `store:notifications:${storeId}`);
+    // Invalidate both notification and dashboard caches for the store
+    sInvalidate(
+      'admin:dashboard',
+      `am:batches:${req.user.id}`,
+      `am:notifications:${req.user.id}`,
+      `store:notifications:${storeId}`,
+      `store:dashboard:${storeId}`,
+    );
 
     res.json({ ok: true });
   } catch (error) { next(error); }
@@ -425,7 +450,7 @@ export async function batchAssignAMStores(req, res, next) {
     const storeIds = req.body.storeIds ?? [];
     if (isNaN(amId)) throw new AppError('Invalid area manager ID', 400);
     if (!Array.isArray(storeIds)) throw new AppError('storeIds must be an array', 400);
-    if (storeIds.length > 10) throw new AppError('Cannot assign more than 10 stores at once', 400);
+    if (storeIds.length > 100) throw new AppError('Cannot assign more than 100 stores at once', 400);
 
     // Validate every storeId is a clean positive integer
     const parsedStoreIds = storeIds.map((sid, i) => {
