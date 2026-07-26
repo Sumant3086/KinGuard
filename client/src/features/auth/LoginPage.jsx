@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
+import { setLanguage } from '../../i18n/index.js';
 import logoImg from '../../assets/img/logo 32px32px.png';
 
 const IconAdmin = () => (
@@ -23,6 +25,7 @@ const IconStore = () => (
 );
 
 export default function LoginPage() {
+  const { t, i18n } = useTranslation();
   const [employeeId, setEmployeeId]   = useState('');
   const [password, setPassword]       = useState('');
   const [error, setError]             = useState('');
@@ -94,9 +97,9 @@ export default function LoginPage() {
 
       // All retries exhausted — show a clear message
       if (!err.response) {
-        setError('Cannot reach the server. Please check your connection and try again.');
+        setError(t('auth.cannotReachServer'));
       } else {
-        setError('Server is taking too long to respond. Please try again in a moment.');
+        setError(t('auth.serverSlow'));
       }
     }
   }
@@ -114,44 +117,63 @@ export default function LoginPage() {
               <span style={{ display: 'block', fontSize: 20, fontWeight: 900, color: '#ffffff', letterSpacing: '0.6px', marginTop: 8, marginBottom: 6, textShadow: '0 2px 12px rgba(0,0,0,0.35)' }}>
                 KinMarché
               </span>
-              <p>Access your KinMarché account</p>
+              <p>{t('auth.accessYourAccount')}</p>
             </div>
 
-            <div className="lr-divider"><span>User Roles</span></div>
+            <div className="lr-divider"><span>{t('auth.userRoles')}</span></div>
 
             <div className="lr-roles-inline">
               <div className="lr-role lr-role-admin">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconAdmin />
-                  <span className="lr-role-desc">Admin</span>
+                  <span className="lr-role-desc">{t('auth.admin')}</span>
                 </span>
               </div>
               <div className="lr-role lr-role-am">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconAM />
-                  <span className="lr-role-desc">Area Manager</span>
+                  <span className="lr-role-desc">{t('auth.areaManager')}</span>
                 </span>
               </div>
               <div className="lr-role lr-role-store">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <IconStore />
-                  <span className="lr-role-desc">Store Manager</span>
+                  <span className="lr-role-desc">{t('auth.storeManager')}</span>
                 </span>
               </div>
             </div>
 
-            <div style={{ marginTop: 32, textAlign: 'center' }}>
+            {/* Language switcher */}
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 8 }}>
+              {['en', 'fr'].map(lng => (
+                <button
+                  key={lng}
+                  onClick={() => setLanguage(lng)}
+                  style={{
+                    fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontWeight: 600,
+                    background: i18n.language === lng ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.10)',
+                    color: i18n.language === lng ? '#fff' : 'rgba(255,255,255,0.65)',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  {lng === 'en' ? t('lang.english') : t('lang.french')}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
               <Link
                 to="/"
                 replace
-                style={{ 
-                  fontSize: 13, 
-                  color: 'rgba(255,255,255,0.75)', 
-                  textDecoration: 'none', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: 6, 
-                  transition: 'color 0.15s', 
+                style={{
+                  fontSize: 13,
+                  color: 'rgba(255,255,255,0.75)',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'color 0.15s',
                   fontWeight: 600,
                   padding: '8px 16px',
                   borderRadius: '8px',
@@ -167,7 +189,7 @@ export default function LoginPage() {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
                 }}
               >
-                ← Back to Home
+                {t('auth.backToHome')}
               </Link>
             </div>
           </div>
@@ -186,14 +208,14 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} autoComplete="off" className="lr-form">
               <div className="lr-field">
-                <label className="lr-label" htmlFor="login-employee-id">Employee ID</label>
+                <label className="lr-label" htmlFor="login-employee-id">{t('auth.employeeId')}</label>
                 <input
                   id="login-employee-id"
                   className="lr-input"
                   type="text"
                   value={employeeId}
                   onChange={e => setEmployeeId(e.target.value)}
-                  placeholder="Employee ID"
+                  placeholder={t('auth.employeeId')}
                   required
                   autoFocus
                   autoComplete="username"
@@ -201,7 +223,7 @@ export default function LoginPage() {
               </div>
 
               <div className="lr-field">
-                <label className="lr-label" htmlFor="login-password">Password</label>
+                <label className="lr-label" htmlFor="login-password">{t('auth.password')}</label>
                 <div className="lr-pw-wrap">
                   <input
                     id="login-password"
@@ -217,7 +239,7 @@ export default function LoginPage() {
                     type="button"
                     className="lr-pw-eye"
                     onClick={() => setShowPw(v => !v)}
-                    aria-label={showPw ? 'Hide password' : 'Show password'}
+                    aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
                     tabIndex={-1}
                   >
                     {showPw ? (
@@ -242,17 +264,17 @@ export default function LoginPage() {
                       style={{ animation: 'spin .8s linear infinite', flexShrink: 0 }}>
                       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                     </svg>
-                    {reconnecting ? 'Reconnecting…' : 'Signing in…'}
+                    {reconnecting ? t('auth.reconnecting') : t('auth.signingIn')}
                   </>
                 ) : (
-                  <>Sign In →</>
+                  <>{t('auth.signIn')}</>
                 )}
               </button>
             </form>
 
             {/* Developer Credit */}
             <div className="lr-developer-credit">
-              Developed by Sumant Yadav
+              {t('common.developedBy')}
             </div>
           </div>
         </div>

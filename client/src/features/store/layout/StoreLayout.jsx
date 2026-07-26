@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../auth/AuthContext';
+import { setLanguage } from '../../../i18n/index.js';
 import logoImg from '../../../assets/img/logo 32px32px.png';
 import NotificationBell from '../../../shared/components/NotificationBell';
 import { getNotifications } from '../../../shared/api/storeApi';
@@ -27,6 +29,7 @@ const Icons = {
 };
 
 export default function StoreLayout({ children }) {
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const location = useLocation();
   const isActive = path => location.pathname === path;
@@ -45,16 +48,35 @@ export default function StoreLayout({ children }) {
 
           <nav className="store-nav-desktop">
             <Link to="/store/dashboard" className={`store-nav-link ${isActive('/store/dashboard') ? 'active' : ''}`}>
-              Store Dashboard
+              {t('nav.dashboard')}
             </Link>
             <Link to="/store/inventory" className={`store-nav-link ${isActive('/store/inventory') ? 'active' : ''}`}>
-              Inventory Count
+              {t('nav.inventory')}
             </Link>
-            <Link to="/profile" className="store-nav-user" style={{ textDecoration: 'none' }} title="My Profile">
+
+            {/* Language switcher */}
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {['en', 'fr'].map(lng => (
+                <button
+                  key={lng}
+                  onClick={() => setLanguage(lng)}
+                  style={{
+                    fontSize: 11, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)',
+                    cursor: 'pointer', fontWeight: 600,
+                    background: i18n.language === lng ? 'var(--red)' : 'transparent',
+                    color: i18n.language === lng ? '#fff' : 'var(--tx3)',
+                  }}
+                >
+                  {lng.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <Link to="/profile" className="store-nav-user" style={{ textDecoration: 'none' }} title={t('nav.myProfile')}>
               {user?.name}
             </Link>
             <NotificationBell fetcher={getNotifications} role="STORE_MANAGER" />
-            <button className="btn-signout" onClick={logout}>Sign Out</button>
+            <button className="btn-signout" onClick={logout}>{t('nav.signOut')}</button>
           </nav>
         </div>
       </header>
@@ -62,7 +84,7 @@ export default function StoreLayout({ children }) {
       <div className="store-content">
         {children}
         <div className="dev-credit-store">
-          <span>Developed by Sumant Yadav</span>
+          <span>{t('common.developedBy')}</span>
         </div>
       </div>
 
@@ -70,15 +92,15 @@ export default function StoreLayout({ children }) {
         <div className="store-bottom-nav-inner">
           <Link to="/store/dashboard" className={`mob-nav-item ${isActive('/store/dashboard') ? 'active' : ''}`}>
             {Icons.dashboard}
-            Dashboard
+            {t('nav.dashboard')}
           </Link>
           <Link to="/store/inventory" className={`mob-nav-item ${isActive('/store/inventory') ? 'active' : ''}`}>
             {Icons.inventory}
-            Inventory Count
+            {t('nav.inventory')}
           </Link>
           <button className="mob-logout" onClick={logout}>
             {Icons.logout}
-            Sign Out
+            {t('nav.signOut')}
           </button>
         </div>
       </nav>

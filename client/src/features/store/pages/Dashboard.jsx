@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import StoreLayout from '../layout/StoreLayout';
 import * as storeApi from '../../../shared/api/storeApi';
 import * as cache from '../../../shared/api/cache';
@@ -23,6 +24,7 @@ const CACHE_KEY = 'store:dashboard';
 const CACHE_TTL = 120_000;
 
 export default function StoreDashboard() {
+  const { t } = useTranslation();
   const [dashboard, setDashboard] = useState(() => cache.get(CACHE_KEY) ?? null);
   const [loading, setLoading]     = useState(!cache.get(CACHE_KEY));
   const [error, setError]         = useState('');
@@ -94,13 +96,8 @@ export default function StoreDashboard() {
               <line x1="17" y1="6" x2="17" y2="3"/>
             </svg>
           </div>
-          <h3 className="empty-state-title">No Active Inventory Cycle</h3>
-          <p className="empty-state-description">
-            No inventory cycle is currently active for your store. You will be notified when a cycle is uploaded.
-          </p>
-          <div className="empty-state-help">
-            Contact your administrator if you believe this is an error.
-          </div>
+          <h3 className="empty-state-title">{t('storeDash.noCycleTitle')}</h3>
+          <p className="empty-state-description">{t('storeDash.noCycleDesc')}</p>
         </div>
       </StoreLayout>
     );
@@ -122,12 +119,12 @@ export default function StoreDashboard() {
     <StoreLayout>
       <div className="page-header">
         <div>
-          <h2>Inventory Count Dashboard</h2>
+          <h2>{t('storeDash.title')}</h2>
           <p>{store?.storeName} &mdash; {fmt(batch.inventoryDate)}</p>
         </div>
         {stats.pendingItems > 0 && (
           <Link to="/store/inventory" className="btn btn-primary">
-            Begin Count →
+            {t('storeDash.beginCount')}
           </Link>
         )}
       </div>
@@ -177,12 +174,12 @@ export default function StoreDashboard() {
             <span>{store?.storeName}</span>
           </div>
           <div className="info-item">
-            <span className="info-label">Inventory Date</span>
+            <span className="info-label">{t('storeDash.inventoryDate')}</span>
             <span>{fmt(batch.inventoryDate)}</span>
           </div>
           {deadline && (
             <div className="info-item">
-              <span className="info-label">Submission Deadline</span>
+              <span className="info-label">{t('storeDash.deadline')}</span>
               <span style={{ color: isPastDue ? 'var(--red)' : 'inherit' }}>
                 {deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                 {isPastDue && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: 'var(--red)' }}>LOCKED</span>}
@@ -190,7 +187,7 @@ export default function StoreDashboard() {
             </div>
           )}
           <div className="info-item">
-            <span className="info-label">Progress</span>
+            <span className="info-label">{t('storeDash.progress')}</span>
             <span>
               {completionPct}% complete
               {completionPct === 100 && <span style={{ color: 'var(--green)', marginLeft: 6, display: 'inline-flex', verticalAlign: 'middle' }}><IcoCheck /></span>}
@@ -220,39 +217,33 @@ export default function StoreDashboard() {
       <div className="stats-grid">
         <div className="stat-card info">
           <StatIcon><IcoList /></StatIcon>
-          <h4>Total Items</h4>
+          <h4>{t('storeDash.totalItems')}</h4>
           <div className="value">{stats.totalItems}</div>
-          <p>assigned to this store</p>
         </div>
         <div className="stat-card warning">
           <StatIcon><IcoPending /></StatIcon>
-          <h4>Pending Count</h4>
+          <h4>{t('storeDash.pendingCount')}</h4>
           <div className="value">{stats.pendingItems}</div>
-          <p>awaiting physical count</p>
         </div>
         <div className="stat-card success">
           <StatIcon><IcoSubmit /></StatIcon>
-          <h4>Submitted</h4>
+          <h4>{t('storeDash.submitted')}</h4>
           <div className="value">{stats.submittedItems}</div>
-          <p>submitted and saved</p>
         </div>
         <div className="stat-card">
           <StatIcon><IcoMatch /></StatIcon>
-          <h4>Matched</h4>
+          <h4>{t('storeDash.matched')}</h4>
           <div className="value">{stats.matchedItems}</div>
-          <p>physical = system stock</p>
         </div>
         <div className="stat-card danger">
           <StatIcon><IcoShort /></StatIcon>
-          <h4>Shortage Items</h4>
+          <h4>{t('storeDash.shortageItems')}</h4>
           <div className="value">{stats.shortageItems}</div>
-          <p>physical &lt; system stock</p>
         </div>
         <div className="stat-card accent">
           <StatIcon><IcoExcess /></StatIcon>
-          <h4>Excess Items</h4>
+          <h4>{t('storeDash.excessItems')}</h4>
           <div className="value">{stats.excessItems}</div>
-          <p>physical &gt; system stock</p>
         </div>
       </div>
 

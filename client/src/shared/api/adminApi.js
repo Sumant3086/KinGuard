@@ -180,6 +180,12 @@ export async function overrideRecord(id, payload) {
   return data;
 }
 
+export async function bulkOverrideRecords(recordIds, action) {
+  const { data } = await client.post('/admin/inventory/bulk-override', { recordIds, action });
+  cacheInvalidate('admin:dashboard');
+  return data;
+}
+
 // ── Batches ────────────────────────────────────────────────────────────────
 export function getBatches() {
   return withCache('admin:batches-client', 60_000,

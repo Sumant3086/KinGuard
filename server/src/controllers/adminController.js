@@ -14,6 +14,9 @@ import { buildInventoryWorkbook } from '../utils/excelExport.js';
 // Hard cap on rows returned by report/export endpoints.
 const EXPORT_ROW_LIMIT = 10_000;
 
+// Max records per bulk override operation
+const BULK_OVERRIDE_LIMIT = 500;
+
 // Field length limits for uploaded inventory data
 const MAX_MATERIAL_CODE_LEN = 50;
 const MAX_MATERIAL_NAME_LEN = 200;
@@ -31,6 +34,7 @@ function sanitizeCell(value) {
 
 // Whitelist of valid audit log action values for the filter endpoint
 const VALID_AUDIT_ACTIONS = new Set([
+  'BULK_OVERRIDE_RECORDS',
   'LOGIN', 'FAILED_LOGIN', 'CHANGE_PASSWORD', 'UPDATE_PROFILE',
   'CREATE_STORE', 'DELETE_STORE', 'UPDATE_STORE', 'FORCE_DELETE_STORE', 'BULK_DELETE_STORES',
   'CREATE_USER', 'UPDATE_USER', 'DELETE_USER', 'APPROVE_USER', 'REJECT_USER',
@@ -2065,6 +2069,91 @@ export async function overrideInventoryRecord(req, res, next) {
 
     sInvalidate('admin:dashboard');
     res.json(updated);
+  } catch (error) { next(error); }
+}
+
+// ── Bulk admin override of multiple inventory records ─────────────────────────
+// action = 'reset'  → clears all count data, returns records to PENDING
+// action = 'match'  → sets physicalQuantity = systemQuantity (exact match), marks SUBMITTED
+
+export async function bulkOverrideInventory(req, res, next) {
+  try {
+    const { recordIds, action } = req.body;
+
+    if (!Array.isArray(recordIds) || recordIds.length === 0) {
+      throw new AppError('recordIds must be a non-empty array', 400);
+    }
+    if (!['reset', 'match'].includes(action)) {
+      throw new AppError('action must be "reset" or "match"', 400);
+    }
+    if (recordIds.length > BULK_OVERRIDE_LIMIT) {
+      throw new AppError(`Cannot override more than ${BULK_OVERRIDE_LIMIT} records at once`, 400);
+    }
+
+    const parsedIds = recordIds.map((id, i) => requireId(id, `recordIds[${i}]`));
+
+    if (action === 'reset') {
+      const result = await prisma.inventoryRecord.updateMany({
+        where: { id: { in: parsedIds } },
+        data: {
+          status:            'PENDING',
+          physicalQuantity:  null,
+          difference:        null,
+          shrinkageCategory: null,
+          remarks:           null,
+          isRepeat:          false,
+          submittedBy:       null,
+          submittedAt:       null,
+        },
+      });
+
+      await createAuditLog({
+        userId: req.user.id,
+        action: 'BULK_OVERRIDE_RECORDS',
+        entityType: 'INVENTORY_RECORD',
+        entityId: null,
+        metadata: { action: 'reset', count: result.count, recordIds: parsedIds.slice(0, 50) },
+      });
+
+      sInvalidate('admin:dashboard');
+      return res.json({ updated: result.count, message: `${result.count} record(s) reset to Pending` });
+    }
+
+    // action === 'match': per-record update so each difference is computed against its own systemQuantity
+    const records = await prisma.inventoryRecord.findMany({
+      where: { id: { in: parsedIds } },
+      select: { id: true, systemQuantity: true },
+    });
+    if (records.length === 0) throw new AppError('No matching records found', 404);
+
+    await prisma.$transaction(
+      records.map(r =>
+        prisma.inventoryRecord.update({
+          where: { id: r.id },
+          data: {
+            status:            'SUBMITTED',
+            physicalQuantity:  r.systemQuantity,
+            difference:        0,
+            shrinkageCategory: null,
+            remarks:           null,
+            isRepeat:          false,
+            submittedBy:       req.user.id,
+            submittedAt:       new Date(),
+          },
+        })
+      )
+    );
+
+    await createAuditLog({
+      userId: req.user.id,
+      action: 'BULK_OVERRIDE_RECORDS',
+      entityType: 'INVENTORY_RECORD',
+      entityId: null,
+      metadata: { action: 'match', count: records.length, recordIds: parsedIds.slice(0, 50) },
+    });
+
+    sInvalidate('admin:dashboard');
+    res.json({ updated: records.length, message: `${records.length} record(s) marked as matched` });
   } catch (error) { next(error); }
 }
 

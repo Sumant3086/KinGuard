@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import StoreLayout from '../layout/StoreLayout';
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal';
 import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
@@ -33,6 +34,7 @@ const IconRetry = () => (
 );
 
 export default function StoreInventory() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { download: downloadFile } = useDownload();
   const [searchParams] = useSearchParams();
@@ -354,8 +356,8 @@ export default function StoreInventory() {
         <div className="submit-summary">
           <div className="submit-summary-header">
             <div className="submit-success-icon">✓</div>
-            <h2>Submission Complete</h2>
-            <p>{submitResult.recordCount} item{submitResult.recordCount !== 1 ? 's' : ''} submitted. Your administrator has been notified.</p>
+            <h2>{t('storeInv.submissionComplete')}</h2>
+            <p>{t('storeInv.itemsSubmitted_other', { count: submitResult.recordCount })}</p>
           </div>
           <div className="summary-metrics">
             <div className="summary-metric matched">
@@ -373,7 +375,7 @@ export default function StoreInventory() {
           </div>
           {nonZero.length > 0 && (
             <div className="card">
-              <h3 className="card-title" style={{ marginBottom: 16 }}>Discrepancy Details</h3>
+              <h3 className="card-title" style={{ marginBottom: 16 }}>{t('storeInv.discrepancyDetails')}</h3>
               <div className="table-container">
                 <table>
                   <thead>
@@ -408,10 +410,10 @@ export default function StoreInventory() {
           )}
           <div className="actions" style={{ justifyContent: 'center', marginTop: 8 }}>
             <button className="btn btn-primary" onClick={() => { setSubmitResult(null); loadInventory(); }}>
-              View Submitted Records
+              {t('storeInv.viewAllRecords')}
             </button>
             <button className="btn btn-secondary" onClick={handleDownload}>
-              Download Reconciliation Report
+              {t('storeInv.download')}
             </button>
           </div>
         </div>
@@ -425,10 +427,10 @@ export default function StoreInventory() {
         isOpen={showSubmitConfirm}
         onClose={() => setShowSubmitConfirm(false)}
         onConfirm={() => { setShowSubmitConfirm(false); executeSubmit(); }}
-        title="Submit Inventory"
-        message="Once submitted, all items become read-only and your administrator will be notified. This action cannot be undone."
-        confirmText="Submit"
-        cancelText="Go Back"
+        title={t('storeInv.confirmSubmitTitle')}
+        message={t('storeInv.confirmSubmitMessage')}
+        confirmText={t('storeInv.confirm')}
+        cancelText={t('storeInv.cancel')}
         type="warning"
       />
       {/* ── Entry progress bar ── */}
@@ -453,7 +455,7 @@ export default function StoreInventory() {
             {blankCount > 0 ? (
               <>
                 <span className="inv-blank-count">{blankCount} blank</span>
-                <button className="btn-jump" onClick={jumpToNextBlank}>Jump to Next Blank</button>
+                <button className="btn-jump" onClick={jumpToNextBlank}>{t('storeInv.jumpToNextBlank')}</button>
               </>
             ) : (
               <span className="inv-all-entered">All Filled</span>
@@ -465,7 +467,7 @@ export default function StoreInventory() {
       {/* ── Page header ── */}
       <div className="page-header" style={{ marginTop: 24 }}>
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-          <h2>Inventory Count</h2>
+          <h2>{t('storeInv.title')}</h2>
           {selectedBatch && batches.length > 0 && (() => {
             const b = batches.find(b => b.id.toString() === selectedBatch);
             return b ? (
@@ -482,14 +484,14 @@ export default function StoreInventory() {
                 className="btn btn-success"
                 title={hasUnsavedChanges || isSaving ? 'Wait for all changes to save first' : ''}
               >
-                {submitting ? 'Submitting…' : `Submit Count (${totalPending} items)`}
+                {submitting ? t('storeInv.submitting') : `${t('storeInv.submitCount')} (${totalPending})`}
               </button>
               <span style={{ fontSize: 11, color: 'var(--t3)' }}>Once submitted, your administrator will be notified.</span>
             </div>
           )}
           {batches.length > 0 && (
             <button onClick={handleDownload} className="btn btn-ghost btn-sm">
-              Download Report
+              {t('storeInv.download')}
             </button>
           )}
         </div>
@@ -503,7 +505,7 @@ export default function StoreInventory() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
           </span>
           <div>
-            <p style={{ fontWeight: 700, color: '#dc2626' }}>Returned for recount by Area Manager</p>
+            <p style={{ fontWeight: 700, color: '#dc2626' }}>{t('storeInv.returnedAlert')}</p>
             <span style={{ color: '#7f1d1d' }}>{returnedReason}</span>
           </div>
         </div>
@@ -515,8 +517,7 @@ export default function StoreInventory() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </span>
           <div>
-            <p>This count cycle is locked — deadline has passed.</p>
-            <span>Contact your administrator to request an extension or unlock this cycle.</span>
+            <p>{t('storeInv.lockedMessage')}</p>
           </div>
         </div>
       )}
@@ -524,7 +525,7 @@ export default function StoreInventory() {
       {(hasUnsavedChanges || isSaving) && (
         <div className="autosave-notice">
           <div className="autosave-dot" />
-          {isSaving ? 'Saving…' : 'Changes pending — saving automatically.'}
+          {isSaving ? t('storeInv.saving') : t('storeInv.saving')}
         </div>
       )}
 
@@ -537,7 +538,7 @@ export default function StoreInventory() {
             onChange={e => setSelectedBatch(e.target.value)}
             style={{ minWidth: 220 }}
           >
-            <option value="">All Cycles</option>
+            <option value="">{t('storeInv.allCycles')}</option>
             {batches.map(b => (
               <option key={b.id} value={b.id}>
                 {new Date(b.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -557,7 +558,7 @@ export default function StoreInventory() {
             </svg>
             <input
               type="text"
-              placeholder="Search by material code or name…"
+              placeholder={t('storeInv.searchPlaceholder')}
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               className="search-input"
@@ -567,9 +568,9 @@ export default function StoreInventory() {
         <div className="filter-group">
           <span className="filter-label">Status</span>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-            <option value="">All</option>
-            <option value="PENDING">Pending</option>
-            <option value="SUBMITTED">Submitted</option>
+            <option value="">{t('storeInv.allStatus')}</option>
+            <option value="PENDING">{t('storeInv.pendingStatus')}</option>
+            <option value="SUBMITTED">{t('storeInv.submittedStatus')}</option>
           </select>
         </div>
       </div>
@@ -704,9 +705,9 @@ export default function StoreInventory() {
                         }}
                         className="remark-select"
                       >
-                        <option value="">Select category…</option>
+                        <option value="">{t('storeInv.selectCategory')}</option>
                         {CATEGORIES.map(c => (
-                          <option key={c} value={c}>{c}</option>
+                          <option key={c} value={c}>{t(`categories.${c}`, c)}</option>
                         ))}
                       </select>
                     </div>
@@ -736,7 +737,7 @@ export default function StoreInventory() {
                             }}
                             className="remark-select"
                           >
-                            <option value="">Select issue detail…</option>
+                            <option value="">{t('storeInv.selectDetail')}</option>
                             {presets.map(reason => <option key={reason} value={reason}>{reason}</option>)}
                             <option disabled>──────────────</option>
                             <option value="__CUSTOM__">Type a custom reason…</option>
@@ -746,7 +747,7 @@ export default function StoreInventory() {
                               type="text"
                               value={!isPreset ? remarks : ''}
                               onChange={e => updateField(record.id, 'remarks', e.target.value)}
-                              placeholder="Type custom reason…"
+                              placeholder={t('storeInv.typeCustomReason')}
                               className="inline-input remark-input"
                             />
                           )}
@@ -761,7 +762,7 @@ export default function StoreInventory() {
                           onChange={e => updateField(record.id, 'remarks', e.target.value)}
                           className="remark-select"
                         >
-                          <option value="">Select issue detail…</option>
+                          <option value="">{t('storeInv.selectDetail')}</option>
                           {presets.map(reason => <option key={reason} value={reason}>{reason}</option>)}
                         </select>
                       </div>
@@ -972,7 +973,7 @@ export default function StoreInventory() {
                                   className="remark-select"
                                   style={{ width: '100%', fontSize: 12 }}
                                 >
-                                  <option value="">Select issue detail…</option>
+                                  <option value="">{t('storeInv.selectDetail')}</option>
                                   {presets.map(reason => (
                                     <option key={reason} value={reason}>{reason}</option>
                                   ))}
@@ -984,7 +985,7 @@ export default function StoreInventory() {
                                     type="text"
                                     value={!isPreset ? remarks : ''}
                                     onChange={e => updateField(record.id, 'remarks', e.target.value)}
-                                    placeholder="Type custom reason…"
+                                    placeholder={t('storeInv.typeCustomReason')}
                                     className="inline-input remark-input"
                                     style={{ width: '100%', fontSize: 12 }}
                                     autoFocus
@@ -1001,7 +1002,7 @@ export default function StoreInventory() {
                               className="remark-select"
                               style={{ width: '100%', minWidth: 160, fontSize: 12 }}
                             >
-                              <option value="">Select issue detail…</option>
+                              <option value="">{t('storeInv.selectDetail')}</option>
                               {presets.map(reason => (
                                 <option key={reason} value={reason}>{reason}</option>
                               ))}
@@ -1079,13 +1080,13 @@ export default function StoreInventory() {
                   disabled={currentPage <= 1}
                   onClick={() => loadInventory(currentPage - 1)}
                   style={{ padding: '2px 10px', fontSize: 12 }}
-                >← Prev</button>
+                >{t('storeInv.prev')}</button>
                 <button
                   className="btn btn-sm btn-ghost"
                   disabled={currentPage >= pagination.totalPages}
                   onClick={() => loadInventory(currentPage + 1)}
                   style={{ padding: '2px 10px', fontSize: 12 }}
-                >Next →</button>
+                >{t('storeInv.next')}</button>
               </span>
             )}
             {hasUnsavedChanges && (

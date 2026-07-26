@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import { changePassword } from '../../shared/api/authApi';
 
 export default function ChangePasswordPage() {
+  const { t } = useTranslation();
   const { user, loading, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
 
@@ -25,8 +27,8 @@ export default function ChangePasswordPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (newPw !== confirmPw)           { setError('New passwords do not match'); return; }
-    if (newPw === currentPw)           { setError('New password must differ from the current password'); return; }
+    if (newPw !== confirmPw)           { setError(t('auth.passwordsMismatch')); return; }
+    if (newPw === currentPw)           { setError(t('auth.passwordSameAsOld')); return; }
     if (newPw.length < 8)             { setError('Password must be at least 8 characters'); return; }
     if (newPw.length > 128)           { setError('Password must be 128 characters or fewer'); return; }
     if (!/[A-Z]/.test(newPw))        { setError('Password must include at least one uppercase letter'); return; }
@@ -62,9 +64,9 @@ export default function ChangePasswordPage() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '16px' }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'clamp(20px, 5vw, 40px) clamp(16px, 5vw, 36px)', width: '100%', maxWidth: 420, boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}>
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontWeight: 800, fontSize: 20, color: 'var(--t1)', marginBottom: 6 }}>Set a new password</h2>
+          <h2 style={{ fontWeight: 800, fontSize: 20, color: 'var(--t1)', marginBottom: 6 }}>{t('auth.setNewPassword')}</h2>
           <p style={{ fontSize: 13, color: 'var(--t3)' }}>
-            Your account requires a password change before you can continue.
+            {t('auth.passwordChangeRequired')}
           </p>
         </div>
 
@@ -74,26 +76,26 @@ export default function ChangePasswordPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="cp-current">Current password</label>
+            <label htmlFor="cp-current">{t('auth.currentPassword')}</label>
             <input id="cp-current" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} required disabled={saving} autoComplete="current-password" />
           </div>
           <div className="form-group">
-            <label htmlFor="cp-new">New password</label>
+            <label htmlFor="cp-new">{t('auth.newPassword')}</label>
             <input id="cp-new" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required disabled={saving} autoComplete="new-password" />
             <small style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4, display: 'block' }}>
-              Min 8 characters — must include uppercase, lowercase, and a number.
+              {t('auth.passwordHint')}
             </small>
           </div>
           <div className="form-group">
-            <label htmlFor="cp-confirm">Confirm new password</label>
+            <label htmlFor="cp-confirm">{t('auth.confirmPassword')}</label>
             <input id="cp-confirm" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required disabled={saving} autoComplete="new-password" />
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
             <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
-              {saving ? 'Saving…' : 'Change Password'}
+              {saving ? t('auth.changingPassword') : t('auth.changePassword')}
             </button>
             <button type="button" className="btn btn-secondary" onClick={logout} disabled={saving}>
-              Sign out
+              {t('auth.signOut')}
             </button>
           </div>
         </form>

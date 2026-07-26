@@ -76,6 +76,7 @@ router.get('/inventory', adminController.getInventory);
 router.get('/inventory/export',     adminController.downloadInventoryExport);
 router.get('/inventory/export-pdf', adminController.downloadInventoryExportPDF);
 router.patch('/inventory/:id/override', adminController.overrideInventoryRecord);
+router.post('/inventory/bulk-override', adminController.bulkOverrideInventory);
 
 // Reports
 router.get('/reports/reconciliation', adminController.getReconciliationReport);

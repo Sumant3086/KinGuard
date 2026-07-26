@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
 import Modal from '../../../shared/components/ui/Modal';
@@ -40,6 +40,34 @@ export default function Inventory() {
     batchId:     searchParams.get('batchId')     || '',
   });
 
+  // Bulk selection
+  const [selected, setSelected]         = useState(new Set());
+  const [bulkWorking, setBulkWorking]   = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(null); // null | 'reset' | 'match'
+
+  const toggleSelect = useCallback((id) => {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+  const allSelected  = records.length > 0 && records.every(r => selected.has(r.id));
+  const someSelected = selected.size > 0;
+  const toggleAll    = () => setSelected(allSelected ? new Set() : new Set(records.map(r => r.id)));
+
+  async function executeBulkOverride(action) {
+    setShowBulkConfirm(null);
+    setBulkWorking(true);
+    try {
+      const res = await adminApi.bulkOverrideRecords([...selected], action);
+      toast.success(res.message);
+      setSelected(new Set());
+      await fetchInventory(activeFilters, pagination.page);
+    } catch (err) {
+      console.error('Bulk override:', err);
+      toast.error(err.response?.data?.error || 'Bulk override failed. Please try again.');
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
   // Override modal
   const [overrideRecord, setOverrideRecord] = useState(null);
   const [overrideForm, setOverrideForm]     = useState({ physicalQuantity: '', remarks: '', shrinkageCategory: '', status: '' });
@@ -79,6 +107,7 @@ export default function Inventory() {
 
   async function fetchInventory(currentFilters, page) {
     setLoading(true);
+    setSelected(new Set()); // clear selection on every reload
     try {
       const data = await adminApi.getInventory({ ...currentFilters, page, pageSize: pagination.pageSize });
       setRecords(data.data);
@@ -239,6 +268,38 @@ export default function Inventory() {
         />
       ) : (
         <>
+          {/* Bulk action bar */}
+          {someSelected && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.22)', borderRadius: 'var(--r)', marginBottom: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--violet)' }}>
+                {selected.size} record{selected.size !== 1 ? 's' : ''} selected
+              </span>
+              <button
+                onClick={() => setShowBulkConfirm('reset')}
+                disabled={bulkWorking}
+                className="btn btn-sm"
+                style={{ background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 600 }}
+              >
+                Reset to Pending
+              </button>
+              <button
+                onClick={() => setShowBulkConfirm('match')}
+                disabled={bulkWorking}
+                className="btn btn-sm"
+                style={{ background: 'rgba(16,185,129,0.12)', color: '#059669', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 600 }}
+              >
+                Mark as Matched
+              </button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="btn btn-ghost btn-sm"
+                style={{ marginLeft: 'auto' }}
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
+
           <div className="card" style={{ padding: 0 }}>
             {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
             <div className="inv-cards" style={{ padding: 12 }}>
@@ -283,6 +344,16 @@ export default function Inventory() {
               <table className="table-sticky table-sortable table-hover">
                 <thead>
                   <tr>
+                    <th scope="col" style={{ width: 36, textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                        onChange={toggleAll}
+                        title="Select all on this page"
+                        style={{ cursor: 'pointer', accentColor: 'var(--violet)' }}
+                      />
+                    </th>
                     <th scope="col" className="th-sortable">Store</th>
                     <th scope="col" className="th-sortable">Material Name</th>
                     <th scope="col">Description</th>
@@ -297,7 +368,15 @@ export default function Inventory() {
                 </thead>
                 <tbody>
                   {records.map(record => (
-                    <tr key={record.id}>
+                    <tr key={record.id} style={selected.has(record.id) ? { background: 'rgba(139,92,246,0.05)' } : {}}>
+                      <td style={{ textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(record.id)}
+                          onChange={() => toggleSelect(record.id)}
+                          style={{ cursor: 'pointer', accentColor: 'var(--violet)' }}
+                        />
+                      </td>
                       <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--vi-light)' }}>{record.store.storeCode}</td>
                       <td style={{ fontWeight: 600 }}>{record.materialCode}</td>
                       <td style={{ color: 'var(--t3)', fontSize: 12 }}>{record.materialName}</td>
@@ -343,6 +422,37 @@ export default function Inventory() {
             <button onClick={() => changePage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages || loading} className="btn btn-secondary btn-sm">Next →</button>
           </div>
         </>
+      )}
+
+      {/* Bulk override confirmation */}
+      {showBulkConfirm && (
+        <Modal onClose={() => !bulkWorking && setShowBulkConfirm(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h3>{showBulkConfirm === 'reset' ? 'Reset to Pending' : 'Mark as Matched'}</h3>
+              <button className="close-btn" onClick={() => setShowBulkConfirm(null)} disabled={bulkWorking}>&times;</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--t2)', margin: '16px 0' }}>
+              {showBulkConfirm === 'reset'
+                ? `This will clear all count data from ${selected.size} record(s) and return them to Pending status. The store manager will need to re-enter the physical count.`
+                : `This will set the physical count equal to the system quantity for ${selected.size} record(s), marking each as Submitted with zero variance.`}
+            </p>
+            <p style={{ fontSize: 11.5, color: 'var(--amber)', marginBottom: 20 }}>
+              ⚠ This will be recorded in the audit trail with your employee ID.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setShowBulkConfirm(null)} disabled={bulkWorking}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                onClick={() => executeBulkOverride(showBulkConfirm)}
+                disabled={bulkWorking}
+                style={showBulkConfirm === 'reset' ? { background: 'rgba(245,158,11,0.85)' } : {}}
+              >
+                {bulkWorking ? 'Applying…' : showBulkConfirm === 'reset' ? 'Reset Records' : 'Mark as Matched'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Override modal */}

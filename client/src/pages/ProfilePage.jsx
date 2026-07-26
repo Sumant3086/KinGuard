@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../features/auth/AuthContext';
 import { updateProfile } from '../shared/api/authApi';
 import { useToast } from '../shared/context/ToastContext';
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const { user, refreshUser } = useAuth();
   const toast = useToast();
 
@@ -20,7 +22,7 @@ export default function ProfilePage() {
     try {
       await updateProfile({ name: name.trim() || undefined, email: email.trim() || null, phone: phone.trim() || null });
       await refreshUser();
-      toast.success('Profile updated.');
+      toast.success(t('profile.saved'));
     } catch (err) {
       const msg = err?.response?.data?.error;
       setError(msg || 'Could not update profile. Please try again.');
@@ -36,7 +38,7 @@ export default function ProfilePage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface-2)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px' }}>
       <div style={{ width: '100%', maxWidth: 480 }}>
-        <h2 style={{ fontWeight: 800, fontSize: 22, color: 'var(--tx1)', marginBottom: 4 }}>My Profile</h2>
+        <h2 style={{ fontWeight: 800, fontSize: 22, color: 'var(--tx1)', marginBottom: 4 }}>{t('profile.title')}</h2>
         <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 28 }}>
           {user?.employeeId} · {roleLabel}{user?.store ? ` · ${user.store.storeName}` : ''}
         </p>
@@ -45,7 +47,7 @@ export default function ProfilePage() {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-group">
-            <label htmlFor="prof-name">Full Name</label>
+            <label htmlFor="prof-name">{t('profile.fullName')}</label>
             <input
               id="prof-name"
               type="text"
@@ -56,7 +58,7 @@ export default function ProfilePage() {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="prof-email">Email Address <span style={{ fontWeight: 400, color: 'var(--tx3)' }}>(optional)</span></label>
+            <label htmlFor="prof-email">{t('profile.email')} <span style={{ fontWeight: 400, color: 'var(--tx3)' }}>{t('profile.emailOptional')}</span></label>
             <input
               id="prof-email"
               type="email"
@@ -67,11 +69,11 @@ export default function ProfilePage() {
               autoComplete="email"
             />
             <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
-              Used for deadline reminders and submission notifications.
+              {t('profile.emailHint')}
             </small>
           </div>
           <div className="form-group">
-            <label htmlFor="prof-phone">Phone <span style={{ fontWeight: 400, color: 'var(--tx3)' }}>(optional)</span></label>
+            <label htmlFor="prof-phone">{t('profile.phone')} <span style={{ fontWeight: 400, color: 'var(--tx3)' }}>{t('profile.phoneOptional')}</span></label>
             <input
               id="prof-phone"
               type="tel"
@@ -83,7 +85,7 @@ export default function ProfilePage() {
             />
           </div>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? t('common.saving') : t('profile.saveChanges')}
           </button>
         </form>
       </div>
