@@ -415,6 +415,7 @@ export async function returnStore(req, res, next) {
           difference:        null,
           shrinkageCategory: null,
           remarks:           null,
+          isRepeat:          false, // re-evaluated when the store re-submits
           submittedBy:       null,
           submittedAt:       null,
         },

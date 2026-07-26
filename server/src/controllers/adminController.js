@@ -1113,38 +1113,10 @@ export async function getInventory(req, res, next) {
       }),
     ]);
 
-    // Attach repeat discrepancy flag " only check shortages in current page (B4)
-    const shortageKeys = new Set(
-      records
-        .filter(r => r.difference !== null && r.difference < 0 && r.status === 'SUBMITTED')
-        .map(r => `${r.storeId}::${r.materialCode}`)
-    );
-
-    let repeatKeys = new Set();
-    if (shortageKeys.size > 0) {
-      const shortageRecords = records.filter(r => r.difference !== null && r.difference < 0);
-      const storeIds = [...new Set(shortageRecords.map(r => r.storeId))];
-      const materialCodes = [...new Set(shortageRecords.map(r => r.materialCode))];
-      const currentBatchIds = records.map(r => r.batchId).filter((v, i, a) => a.indexOf(v) === i);
-
-      const priorShortages = await prisma.inventoryRecord.findMany({
-        where: {
-          storeId: { in: storeIds },
-          materialCode: { in: materialCodes },
-          status: 'SUBMITTED',
-          difference: { lt: 0 },
-          batchId: { notIn: currentBatchIds },
-        },
-        select: { storeId: true, materialCode: true },
-        distinct: ['storeId', 'materialCode'],
-      });
-      repeatKeys = new Set(priorShortages.map(r => `${r.storeId}::${r.materialCode}`));
-    }
-
-    const enrichedRecords = records.map(r => ({
-      ...r,
-      isRepeat: repeatKeys.has(`${r.storeId}::${r.materialCode}`),
-    }));
+    // isRepeat is stored on each record at submission time by detectRepeatDiscrepancies.
+    // No second cross-batch query needed — the flag is read directly from the DB.
+    // Default to false for records created before the flag was introduced.
+    const enrichedRecords = records.map(r => ({ ...r, isRepeat: r.isRepeat ?? false }));
 
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_INVENTORY (${records.length} records, page ${pageNum}): ${duration}ms`);
@@ -1996,13 +1968,14 @@ export async function unlockStoreForBatch(req, res, next) {
       prisma.inventoryRecord.updateMany({
         where: { batchId, storeId, status: 'SUBMITTED' },
         data: {
-          status: 'PENDING',
-          physicalQuantity: null,
-          difference: null,
+          status:            'PENDING',
+          physicalQuantity:  null,
+          difference:        null,
           shrinkageCategory: null,
-          remarks: null,
-          submittedBy: null,
-          submittedAt: null,
+          remarks:           null,
+          isRepeat:          false, // re-evaluated when the store re-submits
+          submittedBy:       null,
+          submittedAt:       null,
         },
       }),
       // Clear any stale AM review so the store goes through review again after resubmission

@@ -132,6 +132,7 @@ model InventoryRecord {
   difference        Float?
   remarks           String?
   shrinkageCategory String?
+  isRepeat          Boolean         @default(false)
   status            InventoryStatus @default(PENDING)
   submittedBy       Int?
   submittedAt       DateTime?

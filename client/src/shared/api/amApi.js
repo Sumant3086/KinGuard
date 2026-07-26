@@ -1,5 +1,5 @@
 import client from './client';
-import { get as cacheGet, set as cacheSet } from './cache';
+import { get as cacheGet, set as cacheSet, invalidate as cacheInvalidate } from './cache';
 
 async function withCache(key, ttlMs, fetcher) {
   const hit = cacheGet(key);
@@ -35,5 +35,14 @@ export const getNotifications = async () => { const { data } = await client.get(
 export const getBatchStores   = async (batchId)                   => { const { data } = await client.get(`/am/batches/${batchId}/stores`);                             return data; };
 export const getStoreRecords  = async (batchId, storeId)          => { const { data } = await client.get(`/am/batches/${batchId}/stores/${storeId}/records`);          return data; };
 export const updateRecord     = async (id, payload)               => { const { data } = await client.patch(`/am/records/${id}`, payload);                              return data; };
-export const approveStore     = async (batchId, storeId, payload) => { const { data } = await client.post(`/am/batches/${batchId}/stores/${storeId}/approve`, payload);return data; };
-export const returnStore      = async (batchId, storeId, payload) => { const { data } = await client.post(`/am/batches/${batchId}/stores/${storeId}/return`,  payload);return data; };
+export const approveStore = async (batchId, storeId, payload) => {
+  const { data } = await client.post(`/am/batches/${batchId}/stores/${storeId}/approve`, payload);
+  cacheInvalidate('am:dashboard', 'am:batches');
+  return data;
+};
+
+export const returnStore = async (batchId, storeId, payload) => {
+  const { data } = await client.post(`/am/batches/${batchId}/stores/${storeId}/return`, payload);
+  cacheInvalidate('am:dashboard', 'am:batches');
+  return data;
+};

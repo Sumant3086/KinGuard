@@ -502,6 +502,18 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
   const repeatMaterials = new Set(priorShortages.map((r) => r.materialCode));
   if (repeatMaterials.size === 0) return;
 
+  // Persist the flag so getInventory reads it directly — no per-page cross-batch query needed
+  await prisma.inventoryRecord.updateMany({
+    where: {
+      storeId,
+      batchId,
+      status:       'SUBMITTED',
+      difference:   { lt: 0 },
+      materialCode: { in: Array.from(repeatMaterials) },
+    },
+    data: { isRepeat: true },
+  });
+
   await createAuditLog({
     userId,
     action: 'REPEAT_DISCREPANCY',

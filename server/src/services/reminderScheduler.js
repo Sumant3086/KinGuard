@@ -30,49 +30,40 @@ async function runReminderCheck() {
 
     const { sendDeadlineReminderEmail } = await import('./emailService.js');
 
-    for (const batch of batches) {
-      // Find store managers for stores that are still pending in this batch
-      const pendingStoreIds = await prisma.inventoryRecord.findMany({
-        where: { batchId: batch.id, status: 'PENDING' },
-        select: { storeId: true },
-        distinct: ['storeId'],
-      });
+    // Process all due batches in parallel — each is independent
+    await Promise.allSettled(batches.map(async (batch) => {
+      try {
+        // Fetch pending store IDs and managers in parallel
+        const [pendingStoreRows, _] = await Promise.all([
+          prisma.inventoryRecord.findMany({
+            where: { batchId: batch.id, status: 'PENDING' },
+            select: { storeId: true },
+            distinct: ['storeId'],
+          }),
+          // Stamp immediately — even if email fails, don't retry (avoids spam)
+          prisma.uploadBatch.update({ where: { id: batch.id }, data: { autoReminderSentAt: now } }),
+        ]);
 
-      if (pendingStoreIds.length === 0) {
-        // All submitted — mark as done so we don't check again
-        await prisma.uploadBatch.update({
-          where: { id: batch.id },
-          data: { autoReminderSentAt: now },
+        if (pendingStoreRows.length === 0) return; // all submitted, already stamped above
+
+        const storeIds = pendingStoreRows.map(r => r.storeId);
+        const managers = await prisma.user.findMany({
+          where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: storeIds }, email: { not: null } },
+          include: { store: true },
         });
-        continue;
+
+        if (managers.length > 0) {
+          const result = await sendDeadlineReminderEmail({
+            managers,
+            inventoryDate: batch.inventoryDate,
+            deadline:      batch.submissionDeadline,
+          });
+          console.warn(`[scheduler] 1h reminder batch ${batch.id}: sent=${result.sent}, failed=${result.failed}`);
+        }
+      } catch (batchErr) {
+        console.error(`[scheduler] Failed to process batch ${batch.id}:`, batchErr.message);
       }
-
-      const storeIds = pendingStoreIds.map(r => r.storeId);
-      const managers = await prisma.user.findMany({
-        where: {
-          role: 'STORE_MANAGER',
-          isActive: true,
-          storeId: { in: storeIds },
-          email: { not: null },
-        },
-        include: { store: true },
-      });
-
-      if (managers.length > 0) {
-        const result = await sendDeadlineReminderEmail({
-          managers,
-          inventoryDate: batch.inventoryDate,
-          deadline: batch.submissionDeadline,
-        });
-        console.warn(`[scheduler] 1h reminder for batch ${batch.id}: sent=${result.sent}, failed=${result.failed}`);
-      }
-
-      // Stamp regardless — even if no emails sent, don't retry
-      await prisma.uploadBatch.update({
-        where: { id: batch.id },
-        data: { autoReminderSentAt: now },
-      });
-    }
+    }));
   } catch (err) {
     console.error('[scheduler] Reminder check failed:', err.message);
   }

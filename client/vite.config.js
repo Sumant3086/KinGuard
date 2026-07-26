@@ -35,10 +35,14 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor:        ['react', 'react-dom', 'react-router-dom', 'axios'],
+          // Core runtime — downloaded by every user on first visit
+          vendor: ['react', 'react-dom', 'react-router-dom', 'axios'],
+
+          // Role-specific chunks — each role only downloads its own code
           'admin-pages': [
             './src/features/admin/pages/Dashboard',
             './src/features/admin/pages/Stores',
@@ -49,10 +53,18 @@ export default defineConfig({
             './src/features/admin/pages/Upload',
             './src/features/admin/pages/Analytics',
             './src/features/admin/pages/Batches',
+            './src/features/admin/layout/AdminLayout',
           ],
           'store-pages': [
             './src/features/store/pages/Dashboard',
             './src/features/store/pages/Inventory',
+            './src/features/store/layout/StoreLayout',
+          ],
+          'am-pages': [
+            './src/features/areaManager/pages/AMDashboard',
+            './src/features/areaManager/pages/AMReviewList',
+            './src/features/areaManager/pages/AMReview',
+            './src/features/areaManager/layout/AMLayout',
           ],
         },
       },
