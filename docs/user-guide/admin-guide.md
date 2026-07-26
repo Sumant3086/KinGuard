@@ -153,17 +153,64 @@ Go to **Admin -> Users**.
 
 **Delete a user:** You cannot delete your own account or the last admin. Deleting a user reassigns their uploaded batches and deadline extensions to you.
 
+## Scheduling Recurring Cycles
+
+Instead of manually uploading a file for each cycle, you can set up a recurring schedule.
+
+Go to **Admin -> Schedules** and click **+ New Schedule**.
+
+Fill in:
+- **Name** — something descriptive, e.g. "Monthly Physical Count"
+- **Frequency** — Weekly, Monthly, or Quarterly
+- **Day** — which day of the month (or week) the cycle should start
+- **Submission Window** — how many days store managers have to submit (sets the deadline automatically)
+
+Once active, the system creates a new inventory cycle automatically at the scheduled time. You still need to upload the master inventory file to that cycle before store managers can start counting.
+
+To pause a schedule without deleting it, click the status badge and toggle it to **Paused**.
+
 ## Viewing Analytics
 
 Go to **Admin -> Analytics**.
 
-The trend chart shows shortage rate over the last 6 cycles per store. Use it to find stores with worsening trends, stores that improved after intervention, and items that consistently appear in shortage.
+### Shortage Rate Trends
+
+The trend chart shows shortage rate over the last 8 cycles per store. Use it to:
+- Find stores with worsening trends
+- Confirm that an intervention worked
+- Identify items that consistently appear in shortage
+
+### Risk Intelligence
+
+Click **Load Risk Scores** to see a composite risk score (0–100) for every store. The score combines:
+- Shortage rate (how many items are short, as a percentage)
+- Repeat rate (what percentage of shortages are recurring from prior cycles)
+- Category severity (Theft counts more than a Miscount)
+- Trend direction (getting worse increases the score)
+
+Each store also shows a **percentile** — if a store is at the 90th percentile, it is riskier than 90% of your other stores.
+
+Below the store table you will see the **Top 10 At-Risk Items** — specific materials that appear in shortage frequently, across many stores, or in high-severity categories.
+
+### Year-over-Year Comparison
+
+Enter a year in the **Compare against year** field and click **Compare**. The system shows current-period shortage rates alongside the same period last year, with an average delta at the bottom.
 
 ## Reports
 
 Go to **Admin -> Reports**.
 
+### Reconciliation Report
+
 Filter by store, status (Pending / Submitted / All), variance type (Shortage / Surplus / Matched / All), and whether to include inactive stores. Click **Load Report**, then **Download Excel** or **Download PDF**.
+
+### Executive Summary
+
+Click **Executive Summary** in the page header to download a one-page PDF summarising the latest cycle for management:
+- Four key numbers: network shortage rate, shortage item count, matched count, stores counted
+- Top 5 risk stores with their rates
+- Top 5 shrinkage categories
+- Comparison with the prior cycle (better / worse / flat)
 
 ## Activity Log
 
@@ -171,15 +218,26 @@ Go to **Admin -> Activity Log**.
 
 Immutable record of every significant action: logins, store and user changes, file uploads, inventory submissions, admin overrides, deadline changes. Filter by action type or view the most recent 100. Click **Export** to download as Excel.
 
+Audit records are protected at the database level — they can never be deleted, even if a cycle is deleted.
+
+## Automatic Escalation Notifications
+
+You do not need to manually chase overdue stores. The system escalates automatically:
+
+1. **When the deadline passes** — Area Managers for overdue stores receive an email listing their pending stores
+2. **24 hours after the deadline** — Administrators receive an urgent email with all still-pending stores
+
+This runs in the background automatically. No action needed.
+
 ## Notifications
 
 The bell icon in the top navigation bar shows alerts. Updates every 60 seconds.
 
 | Alert | What it means |
 |---|---|
-| Green - Stores submitted | N stores sent their counts in the last 24 hours |
-| Yellow - Deadline approaching | N stores are still pending with under 48 hours to go |
-| Red - Overdue | The deadline passed and N stores have not submitted |
+| Green — Stores approved by AM | Area Managers have reviewed and approved these stores — they are ready for your final check |
+| Yellow — Deadline approaching | N stores are still pending with under 48 hours to go |
+| Red — Overdue | The deadline passed and N stores have not submitted |
 
 Clicking an alert navigates to the relevant page.
 

@@ -1,6 +1,7 @@
 // emailService.js — Brevo HTTP API (not SMTP)
-// Render free tier blocks outbound SMTP ports (25/465/587). The Brevo REST API
-// uses HTTPS (port 443) which is never blocked by cloud providers.
+// Render's free tier blocks outbound SMTP (ports 25/465/587).
+// The Brevo REST API uses HTTPS (port 443) which is never blocked.
+// Set BREVO_API_KEY in server/.env to enable email notifications.
 
 const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
 
@@ -8,7 +9,6 @@ function isConfigured() {
   return !!process.env.BREVO_API_KEY;
 }
 
-// Parsed once at module load — env vars don't change at runtime
 const SENDER = (() => {
   const raw = (process.env.SMTP_FROM || '').trim();
   const m = raw.match(/^(.+?)\s*<([^>]+)>$/);
@@ -16,13 +16,12 @@ const SENDER = (() => {
   return { name: 'KinMarché', email: raw || 'noreply@kinmarche.com' };
 })();
 
-const EMAIL_TIMEOUT_MS = 10_000; // abort stalled Brevo requests after 10 s
+const EMAIL_TIMEOUT_MS = 10_000;
 
 async function sendOne({ to, toName, subject, htmlContent }) {
-  const apiKey = process.env.BREVO_API_KEY;
   const res = await fetch(BREVO_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+    headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
     signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
     body: JSON.stringify({
       sender: SENDER,
@@ -37,6 +36,27 @@ async function sendOne({ to, toName, subject, htmlContent }) {
   }
 }
 
+// ── Shared boilerplate for bulk sends ─────────────────────────────────────────
+// Filters out managers with no email, sends all in parallel, returns counts.
+async function sendBulk(managers, buildEmail, tag) {
+  if (!isConfigured()) {
+    console.warn('[email] BREVO_API_KEY not set — email notifications disabled');
+    return { configured: false, sent: 0, failed: 0 };
+  }
+  const notifiable = managers.filter(m => m.email);
+  if (!notifiable.length) return { configured: true, sent: 0, failed: 0 };
+
+  const results = await Promise.allSettled(notifiable.map(m => sendOne(buildEmail(m))));
+  const sent   = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
+  results.filter(r => r.status === 'rejected').forEach(r =>
+    console.error(`[email] ${tag} send failed:`, r.reason?.message)
+  );
+  console.warn(`[email] ${tag}: sent=${sent}, failed=${failed}`);
+  return { configured: true, sent, failed };
+}
+
+// ── HTML email template ───────────────────────────────────────────────────────
 function html(body) {
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:system-ui,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
@@ -59,95 +79,76 @@ function row(label, value, valueColor) {
   </tr>`;
 }
 
-// ── Notify all store managers when a new cycle is uploaded ────────────────────
-export async function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
-  if (!isConfigured()) {
-    console.warn('[email] BREVO_API_KEY not set — email notifications disabled');
-    return { configured: false, sent: 0, failed: 0 };
-  }
-
+// ── Notify store managers when a new cycle is uploaded ────────────────────────
+export function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
   const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr   = deadline
     ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     : 'No deadline set';
+  return sendBulk(managers, m => ({
+    to: m.email, toName: m.name,
+    subject: `New Inventory Cycle — ${dateStr}`,
+    htmlContent: html(`
+      <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Ready</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new cycle has been published. Log in to begin your physical count.</p>
+      <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+        ${row('Inventory Date', dateStr)}
+        ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
+        ${row('Your Store', m.store?.storeName || 'Your store')}
+      </table>
+      <p style="color:#64748b;font-size:13px;margin:20px 0 0">Complete and submit your count before the deadline. Contact your administrator if you need an extension.</p>
+    `),
+  }), 'new-cycle-store');
+}
 
-  const notifiable = managers.filter(m => m.email);
-  if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
-
-  const results = await Promise.allSettled(
-    notifiable.map(m => sendOne({
-      to: m.email,
-      toName: m.name,
-      subject: `New Inventory Cycle — ${dateStr}`,
-      htmlContent: html(`
-        <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Ready</p>
-        <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new cycle has been published. Log in to begin your physical count.</p>
-        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
-          ${row('Inventory Date', dateStr)}
-          ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
-          ${row('Your Store', m.store?.storeName || 'Your store')}
-        </table>
-        <p style="color:#64748b;font-size:13px;margin:20px 0 0">Complete and submit your count before the deadline above. Contact your administrator if you need an extension.</p>
-      `),
-    }))
-  );
-
-  const sent   = results.filter(r => r.status === 'fulfilled').length;
-  const failed = results.filter(r => r.status === 'rejected').length;
-  results.filter(r => r.status === 'rejected').forEach(r =>
-    console.error('[email] New-cycle send failed:', r.reason?.message)
-  );
-  console.warn(`[email] New-cycle: sent=${sent}, failed=${failed}`);
-  return { configured: true, sent, failed };
+// ── Notify area managers when a new cycle is uploaded ────────────────────────
+export function sendNewCycleEmailAM({ managers, inventoryDate, deadline }) {
+  const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dlStr   = deadline
+    ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+    : 'No deadline set';
+  return sendBulk(managers, m => ({
+    to: m.email, toName: m.name,
+    subject: `New Inventory Cycle — ${dateStr}`,
+    htmlContent: html(`
+      <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Uploaded</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new inventory cycle has been published. Your store managers will begin their physical counts.</p>
+      <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+        ${row('Inventory Date', dateStr)}
+        ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
+        ${row('Stores Under You', String(m.storeCount || '—'))}
+      </table>
+      <p style="color:#64748b;font-size:13px;margin:20px 0 0">You will receive submissions from your store managers for review. Log in to monitor progress.</p>
+    `),
+  }), 'new-cycle-am');
 }
 
 // ── Remind pending stores before deadline ─────────────────────────────────────
-export async function sendDeadlineReminderEmail({ managers, inventoryDate, deadline }) {
-  if (!isConfigured()) {
-    console.warn('[email] BREVO_API_KEY not set — email notifications disabled');
-    return { configured: false, sent: 0, failed: 0 };
-  }
-  if (!deadline) return { configured: true, sent: 0, failed: 0 };
-
+export function sendDeadlineReminderEmail({ managers, inventoryDate, deadline }) {
+  if (!deadline) return Promise.resolve({ configured: true, sent: 0, failed: 0 });
   const dateStr   = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const dlStr     = new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
   const hoursLeft = Math.max(0, Math.round((new Date(deadline) - Date.now()) / 3_600_000));
-
-  const notifiable = managers.filter(m => m.email);
-  if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
-
-  const results = await Promise.allSettled(
-    notifiable.map(m => sendOne({
-      to: m.email,
-      toName: m.name,
-      subject: `Reminder — Submit inventory by ${dlStr}`,
-      htmlContent: html(`
-        <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">Submission Deadline Approaching</p>
-        <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
-        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
-          ${row('Deadline', dlStr, '#dc2626')}
-          ${row('Store', m.store?.storeName || '')}
-        </table>
-        <p style="color:#64748b;font-size:13px;margin:20px 0 0">Please log in and complete your count before the deadline. If you cannot meet it, contact your administrator for an extension.</p>
-      `),
-    }))
-  );
-
-  const sent   = results.filter(r => r.status === 'fulfilled').length;
-  const failed = results.filter(r => r.status === 'rejected').length;
-  results.filter(r => r.status === 'rejected').forEach(r =>
-    console.error('[email] Reminder send failed:', r.reason?.message)
-  );
-  console.warn(`[email] Reminder: sent=${sent}, failed=${failed}`);
-  return { configured: true, sent, failed };
+  return sendBulk(managers, m => ({
+    to: m.email, toName: m.name,
+    subject: `Reminder — Submit inventory by ${dlStr}`,
+    htmlContent: html(`
+      <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">Submission Deadline Approaching</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
+      <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+        ${row('Deadline', dlStr, '#dc2626')}
+        ${row('Store', m.store?.storeName || '')}
+      </table>
+      <p style="color:#64748b;font-size:13px;margin:20px 0 0">Please log in and complete your count before the deadline. If you cannot meet it, contact your administrator for an extension.</p>
+    `),
+  }), 'reminder');
 }
 
 // ── Notify admin when a store submits ─────────────────────────────────────────
 export async function sendSubmissionEmail({ adminEmail, adminName, store, batchDate, recordCount, shortages }) {
   if (!isConfigured() || !adminEmail) return;
   await sendOne({
-    to: adminEmail,
-    toName: adminName,
+    to: adminEmail, toName: adminName,
     subject: `${store.storeName} submitted inventory`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Store Submission Received</p>
@@ -165,23 +166,21 @@ export async function sendSubmissionEmail({ adminEmail, adminName, store, batchD
 // ── Confirm to store manager that their submission was received ───────────────
 export async function sendManagerSubmissionConfirmation({ managerEmail, managerName, store, batchDate, recordCount, shortages, matched, excess }) {
   if (!isConfigured() || !managerEmail) return;
-  const shortageColor = shortages > 0 ? '#dc2626' : '#059669';
   await sendOne({
-    to: managerEmail,
-    toName: managerName,
+    to: managerEmail, toName: managerName,
     subject: `Submission confirmed — ${store.storeName} · ${batchDate}`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Inventory Submission Confirmed</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${managerName}, your inventory count for <strong>${store.storeName}</strong> has been successfully submitted. Here is your summary:</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${managerName}, your inventory count for <strong>${store.storeName}</strong> has been successfully submitted.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
         ${row('Store', `${store.storeCode} — ${store.storeName}`)}
         ${row('Cycle Date', batchDate)}
-        ${row('Total Records Submitted', String(recordCount))}
-        ${row('Matched Items', String(matched), '#059669')}
-        ${row('Shortage Items', String(shortages), shortageColor)}
-        ${row('Excess Items', String(excess))}
+        ${row('Total Records', String(recordCount))}
+        ${row('Matched', String(matched), '#059669')}
+        ${row('Shortage', String(shortages), shortages > 0 ? '#dc2626' : '#059669')}
+        ${row('Excess', String(excess))}
       </table>
-      <p style="color:#64748b;font-size:13px;margin:20px 0 0">Your submission has been recorded and your administrator has been notified. No further action is required unless you receive an extension request.</p>
+      <p style="color:#64748b;font-size:13px;margin:20px 0 0">Your submission has been recorded and your administrator has been notified.</p>
     `),
   });
 }
@@ -190,12 +189,11 @@ export async function sendManagerSubmissionConfirmation({ managerEmail, managerN
 export async function sendAMApprovalEmail({ adminEmail, adminName, store, areaManagerName, batchDate, remarks }) {
   if (!isConfigured() || !adminEmail) return;
   await sendOne({
-    to: adminEmail,
-    toName: adminName,
+    to: adminEmail, toName: adminName,
     subject: `${store.storeName} approved by ${areaManagerName}`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Area Manager Approved Submission</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${adminName}, <strong>${areaManagerName}</strong> has reviewed and approved the inventory submission from <strong>${store.storeName}</strong>.</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${adminName}, <strong>${areaManagerName}</strong> has reviewed and approved the submission from <strong>${store.storeName}</strong>.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
         ${row('Store', `${store.storeCode} — ${store.storeName}`)}
         ${row('Cycle Date', batchDate)}
@@ -207,72 +205,28 @@ export async function sendAMApprovalEmail({ adminEmail, adminName, store, areaMa
   });
 }
 
-// ── Notify Area Manager when a new cycle is uploaded ─────────────────────────
-export async function sendNewCycleEmailAM({ managers, inventoryDate, deadline }) {
-  if (!isConfigured()) {
-    console.warn('[email] BREVO_API_KEY not set — AM email notifications disabled');
-    return { configured: false, sent: 0, failed: 0 };
-  }
-
-  const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  const dlStr   = deadline
-    ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
-    : 'No deadline set';
-
-  const notifiable = managers.filter(m => m.email);
-  if (notifiable.length === 0) return { configured: true, sent: 0, failed: 0 };
-
-  const results = await Promise.allSettled(
-    notifiable.map(m => sendOne({
-      to: m.email,
-      toName: m.name,
-      subject: `New Inventory Cycle — ${dateStr}`,
-      htmlContent: html(`
-        <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Uploaded</p>
-        <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new inventory cycle has been published. Your store managers will begin their physical counts.</p>
-        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
-          ${row('Inventory Date', dateStr)}
-          ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
-          ${row('Stores Under You', String(m.storeCount || '—'))}
-        </table>
-        <p style="color:#64748b;font-size:13px;margin:20px 0 0">You will receive submissions from your store managers for review. Log in to monitor progress.</p>
-      `),
-    }))
-  );
-
-  const sent   = results.filter(r => r.status === 'fulfilled').length;
-  const failed = results.filter(r => r.status === 'rejected').length;
-  results.filter(r => r.status === 'rejected').forEach(r =>
-    console.error('[email] AM new-cycle send failed:', r.reason?.message)
-  );
-  console.warn(`[email] AM new-cycle: sent=${sent}, failed=${failed}`);
-  return { configured: true, sent, failed };
-}
-
 // ── Post-deadline escalation email ────────────────────────────────────────────
-// tier 1 → sent to Area Manager
-// tier 2 → sent to Admin (urgent)
+// tier 1 → Area Manager  |  tier 2 → Admin (urgent)
 export async function sendEscalationEmail({ to, toName, tier, inventoryDate, pendingStores, hoursOverdue }) {
   if (!isConfigured()) return;
   const storeList = pendingStores
     .map(s => `<li style="padding:4px 0;font-size:13px;color:#1e293b">${s.storeCode} — ${s.storeName}</li>`)
     .join('');
-  const urgency = tier === 2 ? '🚨 URGENT — ' : '';
+  const urgency  = tier === 2 ? '🚨 URGENT — ' : '';
   const audience = tier === 2 ? 'Admin Action Required' : 'Area Manager Alert';
   await sendOne({
-    to,
-    toName,
+    to, toName,
     subject: `${urgency}${pendingStores.length} store${pendingStores.length > 1 ? 's have' : ' has'} not submitted — ${inventoryDate}`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:${tier === 2 ? '#dc2626' : '#1e293b'};margin:0 0 6px">${audience}</p>
       <p style="color:#64748b;font-size:14px;margin:0 0 16px">
-        Hi ${toName}, the following store${pendingStores.length > 1 ? 's have' : ' has'} not submitted their inventory for the
-        <strong>${inventoryDate}</strong> cycle — now <strong>${hoursOverdue} hour${hoursOverdue !== 1 ? 's' : ''}</strong> past the deadline.
+        Hi ${toName}, the following store${pendingStores.length > 1 ? 's have' : ' has'} not submitted their inventory for
+        <strong>${inventoryDate}</strong> — now <strong>${hoursOverdue}h</strong> past the deadline.
       </p>
       <ul style="margin:0 0 20px;padding-left:20px">${storeList}</ul>
       <p style="color:#64748b;font-size:13px;margin:0">
         ${tier === 2
-          ? 'Please take immediate action: contact the stores or their area managers and consider granting a deadline extension in the admin panel.'
+          ? 'Please take immediate action — contact the stores or their area managers, or grant a deadline extension from the admin panel.'
           : 'Please contact your store managers and ensure they submit their counts as soon as possible.'}
       </p>
     `),

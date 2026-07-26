@@ -87,15 +87,19 @@ When the variance is not zero, you must explain why.
 
 | Category | Use when |
 |---|---|
-| Dented | Packaging is physically damaged |
+| Dented | Packaging is physically damaged but product inside is OK |
 | Expiry | Item has passed or is near its expiry date |
-| Damage | Item itself is damaged or broken |
-| In Transit | Damage or shortage occurred during delivery |
+| Damage | Item itself is damaged, broken, or unsaleable |
+| In Transit | Shortage or damage happened during delivery from supplier or between locations |
+| Theft | Items are missing and theft is suspected (internal or external) |
+| Miscount | You believe there was a counting error — your count may not be the same as book stock but you think the physical stock is actually correct |
+| Transfer | Stock was moved to another store or returned to the warehouse |
+| Supplier | Supplier delivered less than the invoice stated, or wrong quantities were received |
 | Other | None of the above apply |
 
 **Step 2 - Select an Issue Detail:**
 
-After selecting a category, a second dropdown appears with specific reasons. For Other, type a free-text description.
+After selecting a category, a second dropdown appears with specific reasons that match that category. For the **Other** category, you type a free-text description.
 
 Examples:
 
@@ -104,7 +108,11 @@ Examples:
 | Box was dropped and dented | Dented | Direct dent to product, product not ok |
 | Items past use-by date | Expiry | Expired stock identified during stock take |
 | Items received broken | In Transit | OS&D report for transit damage |
-| Items cannot be found | Other | Inventory adjustment due to system error |
+| Items obviously missing, no explanation | Theft | No evidence — stock unaccounted for |
+| You counted 10 but you think you miscounted | Miscount | Counting error by store team |
+| Stock sent to another branch | Transfer | Stock transferred to another store |
+| Supplier invoice says 24 but only 20 arrived | Supplier | Short delivery from supplier |
+| Items cannot be found, other categories don't fit | Other | Inventory adjustment due to system error/discrepancy |
 
 ## Auto-Save
 

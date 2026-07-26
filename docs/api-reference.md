@@ -1,115 +1,135 @@
-﻿# API Reference
+# API Reference
 
 ## Authentication
 
-All protected endpoints require a Bearer token in the `Authorization` header:
+KinMarche uses **HttpOnly cookies** for authentication — not Authorization headers. This means:
 
-```
-Authorization: Bearer <jwt_token>
-```
+- No token is returned in the login response body. The browser receives two cookies automatically: `accessToken` (15 min) and `refreshToken` (7 days).
+- Every subsequent request sends these cookies automatically. No manual header management needed.
+- On 401, the browser client silently exchanges the refresh token for a new access token, then retries the original request.
 
-Tokens are obtained from `POST /auth/login`. They expire after `8h` by default (configurable via `JWT_EXPIRES_IN`).
+API clients that cannot use cookies (e.g. Postman, scripts) can alternatively pass the access token in an `Authorization: Bearer <token>` header.
 
 ## Error Format
 
-All error responses use a consistent JSON body:
+All error responses use this JSON shape:
 
 ```json
-{
-  "error": "Human-readable error message"
-}
+{ "error": "Human-readable error message" }
 ```
 
 In development mode, a `stack` field is also included.
 
-### Common HTTP Status Codes
+### HTTP Status Codes
 
 | Code | Meaning |
 |------|---------|
 | `200` | Success |
 | `201` | Created |
 | `400` | Bad request — missing or invalid fields |
-| `401` | Unauthenticated — missing, expired, or invalid token |
-| `403` | Forbidden — valid token but insufficient role |
+| `401` | Unauthenticated — missing, expired, or invalid session |
+| `403` | Forbidden — valid session but insufficient role |
 | `404` | Resource not found |
-| `409` | Conflict — duplicate record (e.g., duplicate store code) |
-| `413` | Payload too large — export filter matches too many records |
-| `500` | Internal server error |
-| `503` | Service temporarily unavailable (DB cold-start) |
+| `409` | Conflict — duplicate record |
+| `413` | Result set too large — narrow your filters |
+| `429` | Too many failed login attempts — account temporarily locked |
+| `503` | Database temporarily unavailable — retry in a moment |
+
+---
 
 ## Auth Endpoints
 
-### `POST /auth/login`
+### `POST /api/auth/login`
 
-Authenticate a user and receive a JWT token.
+Authenticate a user. Sets `accessToken` and `refreshToken` HttpOnly cookies.
 
 **No authentication required.**
 
 **Request body:**
 ```json
-{
-  "employeeId": "EMP001",
-  "password": "YourPassword"
-}
+{ "employeeId": "EMP001", "password": "YourPassword1" }
 ```
 
-**Success response `200`:**
+**Success `200`:**
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
     "id": 1,
     "employeeId": "EMP001",
     "name": "System Administrator",
+    "email": "admin@example.com",
     "role": "ADMIN",
     "storeId": null,
-    "store": null
+    "store": null,
+    "mustChangePassword": false
   }
 }
 ```
 
-For `STORE_MANAGER` users the `store` field is populated:
+For `STORE_MANAGER` users, `store` is populated:
 ```json
-{
-  "store": {
-    "id": 3,
-    "storeCode": "2003",
-    "storeName": "Kinshasa CBD"
-  }
-}
+{ "store": { "id": 3, "storeCode": "2003", "storeName": "Kinshasa CBD" } }
 ```
 
-### `GET /auth/me`
+**Error `401`:** Incorrect credentials. After 10 failures, the account is locked for 15 minutes (`429`).
 
-Returns the profile of the currently authenticated user.
+### `POST /api/auth/refresh`
 
-**Requires:** Valid Bearer token (any role).
+Exchange the refresh token cookie for a new access token. Called automatically by the browser client — you normally do not need to call this directly.
 
-**Success response `200`:**
+**Success `200`:** Returns the same `user` shape as login, with new cookies set.
+
+### `POST /api/auth/logout`
+
+Revokes the refresh token and clears both cookies.
+
+**Success `200`:** `{ "message": "Logged out" }`
+
+### `GET /api/auth/me`
+
+Returns the currently authenticated user's profile.
+
+**Requires:** Valid session (any role).
+
+**Success `200`:** Same `user` shape as login.
+
+### `POST /api/auth/change-password`
+
+Change the current user's password. Also revokes all existing sessions so other devices are logged out.
+
+**Requires:** Valid session (any role).
+
+**Request body:**
 ```json
-{
-  "id": 1,
-  "employeeId": "EMP001",
-  "name": "System Administrator",
-  "role": "ADMIN",
-  "storeId": null,
-  "store": null
-}
+{ "currentPassword": "OldPassword1", "newPassword": "NewPassword1" }
 ```
+
+**Password rules:** min 8 characters, at least one uppercase, one lowercase, one number.
+
+### `PATCH /api/auth/profile`
+
+Update the current user's name, email, or phone.
+
+**Requires:** Valid session (any role).
+
+**Request body:** (all fields optional)
+```json
+{ "name": "John Smith", "email": "john@example.com", "phone": "+243812345678" }
+```
+
+---
 
 ## Admin Endpoints
 
-All admin endpoints require `Authorization: Bearer <token>` with role `ADMIN`.
+All admin endpoints require a valid session with role `ADMIN`.
 
 ### Dashboard & Notifications
 
-#### `GET /admin/dashboard`
+#### `GET /api/admin/dashboard`
 
-Returns the network overview for the most recent completed inventory cycle.
+Network overview for the most recent completed cycle. Cached server-side for 5 minutes.
 
-Response is cached server-side for 30 seconds.
-
-**Success response `200`:**
+**Success `200`:**
 ```json
 {
   "totalStores": 5,
@@ -119,876 +139,373 @@ Response is cached server-side for 30 seconds.
     "submissionDeadline": "2026-07-10T23:59:00.000Z",
     "storesPending": 2,
     "storesSubmitted": 3,
-    "overdueStores": [],
+    "overdueStores": ["Lubumbashi North"],
     "isDeadlinePassed": false
   },
-  "storeScorecard": [
-    {
-      "storeId": 1,
-      "storeCode": "2001",
-      "storeName": "Kinshasa CBD",
-      "totalItems": 120,
-      "shortageCount": 8,
-      "shortageRate": 7,
-      "matchedCount": 100,
-      "excessCount": 12,
-      "topRemark": "Dented due to warehouse handling error",
-      "status": "SUBMITTED",
-      "isOverdue": false,
-      "riskLevel": "YELLOW"
-    }
-  ],
-  "hotspots": [
-    {
-      "storeCode": "2001",
-      "storeName": "Kinshasa CBD",
-      "materialCode": "1000013986",
-      "materialName": "Whisky Black Label 750Ml",
-      "batchCount": 3,
-      "totalShortage": 42.0,
-      "dominantRemark": "Pilferage suspected during transit"
-    }
-  ],
-  "networkSummary": {
-    "totalRecords": 600,
-    "matchedItems": 510,
-    "shortageItems": 60,
-    "excessItems": 30
-  }
+  "storeScorecard": [{ "storeId": 1, "storeCode": "2001", "storeName": "Kinshasa CBD", "shortageRate": 7, "riskLevel": "YELLOW", "status": "SUBMITTED" }],
+  "hotspots": [{ "storeCode": "2001", "materialCode": "1000013986", "materialName": "Whisky Black Label", "batchCount": 3, "totalShortage": 42 }],
+  "networkSummary": { "totalRecords": 600, "matchedItems": 510, "shortageItems": 60, "excessItems": 30 }
 }
 ```
 
-**`riskLevel` values:** `RED` (≥20% shortage rate) · `YELLOW` (5–19%) · `GREEN` (<5%)  
-**`status` values:** `SUBMITTED` · `PENDING` · `NO_DATA`
+#### `GET /api/admin/notifications`
 
-#### `GET /admin/notifications`
+Up to 5 actionable notifications for the latest cycle (overdue stores, deadline approaching, AM approvals waiting).
 
-Returns real-time notification items computed from current data. Never cached.
-
-**Success response `200`:**
-```json
-{
-  "items": [
-    {
-      "type": "submitted",
-      "message": "3 stores submitted counts in the last 24h",
-      "batchId": 12,
-      "urgent": false
-    },
-    {
-      "type": "deadline",
-      "message": "2 stores pending — 8 Jul deadline in 6h",
-      "batchId": 12,
-      "urgent": true
-    }
-  ],
-  "count": 2
-}
-```
-
-**`type` values:** `submitted` · `deadline` · `overdue`
+---
 
 ### Stores
 
-#### `GET /admin/stores`
+#### `GET /api/admin/stores`
 
-List all stores (active and inactive), ordered by store code.
+All stores with record counts. Cached 3 minutes.
 
-**Success response `200`:** Array of store objects:
-```json
-[
-  {
-    "id": 1,
-    "storeCode": "2001",
-    "storeName": "Kinshasa CBD",
-    "isActive": true,
-    "createdAt": "2026-07-01T10:00:00.000Z",
-    "_count": {
-      "users": 1,
-      "inventoryRecords": 480
-    }
-  }
-]
-```
+#### `POST /api/admin/stores`
 
-#### `POST /admin/stores`
+Create a store. Body: `{ "storeCode": "2006", "storeName": "Mbuji-Mayi" }`
 
-Create a new store.
+#### `PATCH /api/admin/stores/:id`
 
-**Request body:**
-```json
-{
-  "storeCode": "2006",
-  "storeName": "Lubumbashi North",
-  "isActive": true
-}
-```
+Update store name or active status.
 
-**Success response `201`:** The created store object.
+#### `DELETE /api/admin/stores/:id`
 
-**Error `409`:** Store code already exists.
+Delete a store. Blocked if the store has inventory records — deactivate instead.
 
-#### `PATCH /admin/stores/:id`
+#### `DELETE /api/admin/stores/:id/force`
 
-Update a store's name or active status.
+Force-delete a store and cascade-delete all its inventory data.
 
-**Request body** (all fields optional):
-```json
-{
-  "storeName": "Lubumbashi North Branch",
-  "isActive": false
-}
-```
+#### `DELETE /api/admin/stores/bulk`
 
-**Success response `200`:** The updated store object.  
-**Error `404`:** Store not found.
+Bulk delete. Body: `{ "ids": [1, 2, 3], "force": false }`
 
-#### `DELETE /admin/stores/:id`
+#### `PATCH /api/admin/stores/:storeId/assign-am`
 
-Delete a store. Fails if the store has inventory records.
+Assign or remove an area manager. Body: `{ "areaManagerId": 5 }` (null to remove).
 
-**Success response `200`:**
-```json
-{ "message": "Store deleted" }
-```
-
-**Error `409`:** Store has inventory records — deactivate it instead.
-
-#### `DELETE /admin/stores/:id/force`
-
-Force-delete a store and cascade-delete all its inventory records. Use with caution.
-
-**Success response `200`:**
-```json
-{ "message": "Store and all its data permanently deleted" }
-```
-
-#### `DELETE /admin/stores/bulk`
-
-Bulk delete stores.
-
-**Request body:**
-```json
-{
-  "ids": [3, 4, 5],
-  "force": false
-}
-```
-
-With `force: false`, stores with inventory records are skipped.  
-With `force: true`, all records for those stores are cascade-deleted.
-
-**Success response `200`:**
-```json
-{
-  "deleted": 2,
-  "blocked": 1,
-  "message": "Deleted 2 store(s). 1 skipped (have records — use force delete)."
-}
-```
-
-#### `GET /admin/stores/:storeId/drilldown`
-
-Shortage details for one store in a specific batch.
-
-**Query params:**
-
-| Param | Required | Description |
-|-------|----------|-------------|
-| `batchId` | No | Defaults to the most recent batch |
-
-**Success response `200`:** Array of shortage records:
-```json
-[
-  {
-    "id": 101,
-    "materialCode": "1000013986",
-    "materialName": "Whisky Black Label 750Ml",
-    "systemQuantity": 50,
-    "physicalQuantity": 42,
-    "difference": -8,
-    "remarks": "Pilferage suspected during transit",
-    "shrinkageCategory": "In Transit"
-  }
-]
-```
+---
 
 ### Users
 
-#### `GET /admin/users`
+#### `GET /api/admin/users`
 
-List all users ordered by employee ID.
+All users (id, name, role, store, email, phone, status). Cached 2 minutes.
 
-**Success response `200`:** Array of user objects (without `passwordHash`):
-```json
-[
-  {
-    "id": 2,
-    "employeeId": "MGR2001",
-    "name": "John Mwamba",
-    "role": "STORE_MANAGER",
-    "storeId": 1,
-    "isActive": true,
-    "email": "john@kinmarche.com",
-    "phone": "+243812345678",
-    "store": {
-      "id": 1,
-      "storeCode": "2001",
-      "storeName": "Kinshasa CBD"
-    }
-  }
-]
-```
+#### `POST /api/admin/users`
 
-#### `POST /admin/users`
+Create a user. Body: `{ "employeeId": "MGR2001", "name": "Alice", "password": "Pass1234!", "role": "STORE_MANAGER", "storeId": 3 }`
 
-Create a new user.
+Valid roles: `ADMIN`, `AREA_MANAGER`, `STORE_MANAGER`.
 
-**Request body:**
-```json
-{
-  "employeeId": "MGR2006",
-  "name": "Alice Kabongo",
-  "password": "SecurePass@1",
-  "role": "STORE_MANAGER",
-  "storeId": 6,
-  "email": "alice@kinmarche.com",
-  "phone": "+243823456789",
-  "isActive": true
-}
-```
+#### `PATCH /api/admin/users/:id`
 
-**Rules:**
-- `role` must be `ADMIN` or `STORE_MANAGER`
-- `storeId` is required when `role = STORE_MANAGER`
-- `storeId` must be absent (or `null`) when `role = ADMIN`
-- `password` must be at least 8 characters
+Update a user's name, password, store assignment, or active status.
 
-**Success response `201`:** The created user object (without `passwordHash`).  
-**Error `409`:** Employee ID already exists.
+#### `DELETE /api/admin/users/:id`
 
-#### `PATCH /admin/users/:id`
+Delete a user. Cannot delete the last active admin.
 
-Update a user. All fields are optional.
+#### `POST /api/admin/users/:id/approve`
 
-**Request body:**
-```json
-{
-  "name": "Alice Kabongo-Mutombo",
-  "password": "NewSecurePass@2",
-  "storeId": 7,
-  "isActive": true,
-  "email": "alice.new@kinmarche.com",
-  "phone": "+243823456789"
-}
-```
+Activate a pending user account. Generates a temporary password and sets `mustChangePassword: true`.
 
-**Rules:**
-- An `ADMIN` user cannot be assigned a store
-- Omit `password` to leave it unchanged
-- Set `storeId: null` to unassign a store manager from their store
+**Success `200`:** Returns user fields plus `tempPassword` (only returned once — share securely with the user).
 
-**Success response `200`:** The updated user object.
+#### `POST /api/admin/users/:id/reject`
 
-#### `DELETE /admin/users/:id`
+Delete a pending user without activating them.
 
-Delete a user. Cannot delete your own account. Cannot delete the last admin.
+#### `POST /api/admin/users/bulk-review`
 
-Reassigns non-nullable references (upload batches, deadline extensions) to the deleting admin before deletion.
+Approve or reject multiple pending users. Body: `{ "action": "approve", "userIds": [1, 2, 3] }`
 
-**Success response `200`:**
-```json
-{ "message": "User deleted" }
-```
+#### `POST /api/admin/users/bulk-delete`
 
-### File Upload
+Delete multiple users. Body: `{ "userIds": [4, 5] }`
 
-#### `GET /admin/uploads/template`
+#### `POST /api/admin/users/batch-import/preview`
 
-Download a sample Excel template with correct column headers and example rows.
+Upload a file (multipart) and preview what would be imported. No DB writes.
 
-**Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`  
-**Filename:** `KinGuard_InventoryTemplate.xlsx`
+#### `POST /api/admin/users/batch-import/commit`
 
-#### `POST /admin/uploads/preview`
+Upload a file and create pending users for admin approval.
 
-Validate a file without committing any data. Returns a row-by-row preview.
+---
 
-**Content-Type:** `multipart/form-data`
+### Inventory Cycles (Batches)
 
-**Form fields:**
+#### `GET /api/admin/batches`
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `file` | Yes | `.xlsx`, `.xls`, or `.csv` — max 10 MB |
-| `inventoryDate` | Yes | `YYYY-MM-DD` — the date this count is for |
+All cycles with per-cycle statistics. Cached 1 minute.
 
-**Success response `200`:**
-```json
-{
-  "fileName": "inventory_july.xlsx",
-  "inventoryDate": "2026-07-08",
-  "totalRows": 250,
-  "previewRows": 100,
-  "showingPartial": true,
-  "statistics": {
-    "valid": 240,
-    "warnings": 8,
-    "errors": 2
-  },
-  "preview": [
-    {
-      "row": 2,
-      "storeCode": "2001",
-      "storeName": "Kinshasa CBD",
-      "materialCode": "1000013986",
-      "materialName": "Whisky Black Label 750Ml",
-      "systemQuantity": 50,
-      "status": "valid",
-      "message": "OK"
-    },
-    {
-      "row": 3,
-      "storeCode": "2099",
-      "storeName": "(new) 2099",
-      "materialCode": "1000099999",
-      "materialName": "Unknown Item",
-      "systemQuantity": "0",
-      "status": "warning",
-      "message": "New store will be created: 2099"
-    }
-  ]
-}
-```
+#### `POST /api/admin/uploads`
 
-**Row `status` values:** `valid` · `warning` · `error`
+Upload an inventory file to start a new cycle. Multipart form with fields:
+- `file` — Excel (.xlsx/.xls) or CSV
+- `inventoryDate` — ISO date string
+- `submissionDeadline` — ISO datetime (optional)
 
-#### `POST /admin/uploads`
+Returns `409` with `warning: "duplicate_batch"` if a cycle exists within 3 days of the given date. Add `?force=true` to override.
 
-Commit an upload — create the inventory cycle and distribute records to stores.
+#### `POST /api/admin/uploads/preview`
 
-Add `?force=true` to the URL to override the duplicate-date warning.
+Parse and validate a file without creating a cycle. Returns up to 100 preview rows plus full-file error/warning counts.
 
-**Content-Type:** `multipart/form-data`
+#### `GET /api/admin/uploads`
 
-**Form fields:**
+All uploaded batch records. Cached 1 minute.
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `file` | Yes | `.xlsx`, `.xls`, or `.csv` — max 10 MB |
-| `inventoryDate` | Yes | `YYYY-MM-DD` |
-| `submissionDeadline` | No | `YYYY-MM-DD` |
+#### `GET /api/admin/uploads/template`
 
-**Success response `201`:**
-```json
-{
-  "batchId": 13,
-  "totalRows": 250,
-  "successfulRows": 246,
-  "rejectedRows": 4,
-  "errors": [
-    { "row": 45, "error": "Missing Material Code" }
-  ]
-}
-```
+Download a formatted Excel template with sample rows and a shrinkage reference sheet.
 
-**Error `409`** (without `?force=true`):
-```json
-{
-  "warning": "duplicate_batch",
-  "message": "A batch already exists for 08/07/2026. Send with ?force=true to proceed anyway.",
-  "existingBatch": { "id": 12, "inventoryDate": "2026-07-08T00:00:00.000Z", "fileName": "inventory_july.xlsx" }
-}
-```
+#### `PATCH /api/admin/batches/:id`
 
-**Accepted column name aliases:**
+Update the submission deadline. Body: `{ "submissionDeadline": "2026-07-15T23:59:00Z" }`
 
-| Field | Accepted names |
-|-------|---------------|
-| Store Code | `Plant`, `Plant Code`, `Store Code`, `StoreCode`, `store_code`, `STORE CODE`, `PLANT` |
-| Item Code | `Material`, `Material Code`, `MaterialCode`, `material_code`, `SKU`, `MATERIAL` |
-| Item Name | `Material Description`, `Material Name`, `Description`, `material_name` |
-| System Stock | `System Stock`, `System  Stock`, `SYS`, `System Quantity`, `QTY` |
-| Remarks | `Remarks`, `remarks`, `Remark`, `Note` |
+#### `POST /api/admin/batches/:id/close`
 
-#### `GET /admin/uploads`
+Close a cycle immediately (sets deadline to now). Returns pending and submitted counts.
 
-Upload history, ordered by upload date descending.
+#### `DELETE /api/admin/batches/:id`
 
-**Success response `200`:** Array of batch objects with uploader name.
+Soft-delete a cycle. The data is preserved and can be recovered — the cycle is simply hidden from all views.
 
-### Inventory
+#### `POST /api/admin/batches/extend`
 
-#### `GET /admin/inventory`
+Grant a per-store deadline extension. Body: `{ "batchId": 12, "storeId": 3, "newDeadline": "2026-07-12T23:59:00Z", "note": "Manager was on leave" }`
 
-Paginated inventory records across all stores and cycles.
+#### `POST /api/admin/batches/:id/unlock-store`
 
-**Query params:**
+Reset a store's submission back to pending (for recount). Body: `{ "storeId": 3 }`
 
-| Param | Type | Description |
-|-------|------|-------------|
-| `storeId` | int | Filter by store ID |
-| `batchId` | int | Filter by batch/cycle ID |
-| `status` | string | `PENDING` or `SUBMITTED` |
-| `discrepancy` | string | `shortage`, `excess`, or `matched` |
-| `search` | string | Search item code or item name |
-| `page` | int | Page number (default: `1`) |
-| `pageSize` | int | Records per page (default: `50`) |
+#### `POST /api/admin/batches/:id/send-reminders`
 
-**Success response `200`:**
-```json
-{
-  "data": [
-    {
-      "id": 1001,
-      "batchId": 12,
-      "storeId": 1,
-      "materialCode": "1000013986",
-      "materialName": "Whisky Black Label 750Ml",
-      "systemQuantity": 50,
-      "physicalQuantity": 42,
-      "difference": -8,
-      "remarks": "Pilferage suspected during transit",
-      "shrinkageCategory": "In Transit",
-      "status": "SUBMITTED",
-      "submittedAt": "2026-07-09T14:22:00.000Z",
-      "store": { "storeCode": "2001", "storeName": "Kinshasa CBD" },
-      "isRepeat": true
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "pageSize": 50,
-    "totalRecords": 246,
-    "totalPages": 5
-  }
-}
-```
+Send email reminders to all store managers who have not yet submitted.
 
-**`isRepeat: true`** means this (store, item) combination had a shortage in a previous cycle.
+#### `GET /api/admin/batches/:batchId/export`
 
-#### `GET /admin/inventory/export`
+Download a batch as Excel.
 
-Download filtered inventory as Excel. Accepts the same query params as `GET /admin/inventory` (no pagination).
+#### `GET /api/admin/batches/:batchId/export-pdf`
 
-**Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+Download a batch as PDF.
 
-#### `GET /admin/inventory/export-pdf`
+---
 
-Download filtered inventory as PDF.
+### Inventory Records
 
-**Response:** `application/pdf`
+#### `GET /api/admin/inventory`
 
-#### `PATCH /admin/inventory/:id/override`
+Paginated cross-store inventory view.
 
-Admin override for a single inventory record — change physical qty, remarks, category, or status.
+Query params: `storeId`, `batchId`, `status` (PENDING/SUBMITTED), `discrepancy` (shortage/excess/matched), `search`, `page`, `pageSize` (max 200).
 
-**Request body** (all fields optional):
-```json
-{
-  "physicalQuantity": 45,
-  "remarks": "Corrected after recount",
-  "shrinkageCategory": "Damage",
-  "status": "SUBMITTED"
-}
-```
+#### `PATCH /api/admin/inventory/:id/override`
 
-**Rules:**
-- Setting `status: "SUBMITTED"` requires a non-null `physicalQuantity`
-- Setting `status: "PENDING"` resets physical qty, difference, submittedBy, submittedAt, and shrinkage category to null
+Admin override of any record's physical count, remarks, category, or status.
 
-**Success response `200`:** The updated inventory record.
+#### `GET /api/admin/inventory/export`
+
+Download filtered inventory as Excel. Returns `413` if result exceeds 10,000 records.
+
+#### `GET /api/admin/inventory/export-pdf`
+
+Download filtered inventory as PDF. Same 10,000 record limit.
+
+---
 
 ### Reports
 
-#### `GET /admin/reports/reconciliation`
+#### `GET /api/admin/reports/reconciliation`
 
-Full reconciliation report — all inventory records matching the filters.
+Filtered reconciliation data as JSON. Same filters as inventory export.
 
-**Query params:**
+#### `GET /api/admin/reports/reconciliation/download`
 
-| Param | Type | Description |
-|-------|------|-------------|
-| `storeId` | int | Filter by store |
-| `status` | string | `PENDING` or `SUBMITTED` |
-| `discrepancy` | string | `shortage`, `excess`, or `matched` |
-| `includeInactive` | string | `true` to include inactive stores |
+Download as Excel.
 
-**Success response `200`:** Array of inventory records with store, batch, and submitter details.
+#### `GET /api/admin/reports/reconciliation/download-pdf`
 
-#### `GET /admin/reports/reconciliation/download`
+Download as PDF.
 
-Download the reconciliation report as Excel. Accepts the same query params.
+#### `GET /api/admin/reports/executive-summary`
 
-**Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+One-page executive summary PDF for the latest cycle. Includes network KPIs, top 5 risk stores, top 5 shrinkage categories, and comparison with the prior cycle.
 
-#### `GET /admin/reports/reconciliation/download-pdf`
-
-Download the reconciliation report as PDF. Accepts the same query params.
-
-**Response:** `application/pdf`
-
-### Cycles (Batches)
-
-#### `GET /admin/batches`
-
-All inventory cycles with per-store submission statistics.
-
-**Success response `200`:**
-```json
-[
-  {
-    "id": 12,
-    "originalFileName": "inventory_july.xlsx",
-    "inventoryDate": "2026-07-08T00:00:00.000Z",
-    "submissionDeadline": "2026-07-10T23:59:00.000Z",
-    "status": "COMPLETED",
-    "uploader": { "name": "System Administrator", "employeeId": "EMP001" },
-    "_count": { "inventoryRecords": 246 },
-    "deadlineExtensions": [],
-    "stats": {
-      "totalRecords": 246,
-      "submittedCount": 180,
-      "pendingCount": 66,
-      "storeCount": 5
-    }
-  }
-]
-```
-
-#### `PATCH /admin/batches/:id`
-
-Update the submission deadline for a cycle.
-
-**Request body:**
-```json
-{
-  "submissionDeadline": "2026-07-12"
-}
-```
-
-Pass `null` to remove the deadline.
-
-**Success response `200`:** The updated batch object.
-
-#### `POST /admin/batches/extend`
-
-Grant a store-specific deadline extension without changing the global deadline.
-
-**Request body:**
-```json
-{
-  "batchId": 12,
-  "storeId": 3,
-  "newDeadline": "2026-07-14",
-  "note": "Stock count delayed due to public holiday"
-}
-```
-
-**Rules:**
-- `newDeadline` must be in the future
-- Upserts — calling again with a new date updates the existing extension
-
-**Success response `200`:** The extension record.
-
-#### `DELETE /admin/batches/:id`
-
-Delete a cycle and all its inventory records. This is permanent.
-
-**Success response `200`:**
-```json
-{ "message": "Cycle deleted" }
-```
-
-#### `POST /admin/batches/:id/unlock-store`
-
-Reset a store's submitted records back to PENDING, allowing the store manager to recount.
-
-**Request body:**
-```json
-{ "storeId": 3 }
-```
-
-**Success response `200`:**
-```json
-{ "message": "42 record(s) reset to pending", "count": 42 }
-```
-
-#### `GET /admin/batches/:batchId/export`
-
-Download all records for a single cycle as Excel, grouped by store.
-
-**Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
-
-#### `GET /admin/batches/:batchId/export-pdf`
-
-Download all records for a single cycle as PDF.
-
-**Response:** `application/pdf`
-
-#### `POST /admin/batches/:id/send-reminders`
-
-Send email reminders to all store managers with pending submissions for this cycle.
-
-**Success response `200`:**
-```json
-{ "message": "Reminders sent", "count": 2 }
-```
+---
 
 ### Analytics
 
-#### `GET /admin/analytics/trends`
+#### `GET /api/admin/analytics/trends`
 
-Shortage rate trend data across the last N cycles, per store.
+Shortage rate per store per cycle. Query: `?cycles=6` (max 12).
 
-**Query params:**
+#### `GET /api/admin/analytics/trends-yoy`
 
-| Param | Default | Description |
-|-------|---------|-------------|
-| `cycles` | `6` | Number of most recent cycles to include |
+Year-over-year comparison. Query: `?compareYear=2025&cycles=6`
 
-**Success response `200`:**
+Returns current-period rates and comparison-year rates side by side.
+
+#### `GET /api/admin/analytics/risk`
+
+Store risk scores (0–100) with peer percentile ranks, plus top 10 at-risk SKUs. Query: `?cycles=6`
+
+Risk score = shortage rate × 40% + repeat rate × 25% + category severity × 25% + trend direction × 10%.
+
+---
+
+### Audit Logs
+
+#### `GET /api/admin/audit-logs`
+
+Recent audit log entries. Query: `?action=LOGIN&limit=100` (max 500). `action` must be a known action type.
+
+#### `GET /api/admin/audit-logs/export`
+
+Download audit log as Excel. Query: `?limit=2000` (max 5000).
+
+---
+
+### Scheduled Cycles
+
+#### `GET /api/admin/schedules`
+
+All recurring cycle schedules.
+
+#### `POST /api/admin/schedules`
+
+Create a schedule. Body:
 ```json
 {
-  "batches": [
-    { "id": 10, "inventoryDate": "2026-05-01T00:00:00.000Z" },
-    { "id": 11, "inventoryDate": "2026-06-01T00:00:00.000Z" },
-    { "id": 12, "inventoryDate": "2026-07-08T00:00:00.000Z" }
-  ],
-  "series": [
-    {
-      "storeId": 1,
-      "storeName": "Kinshasa CBD",
-      "data": [
-        { "batchId": 10, "totalItems": 120, "shortageCount": 5, "shortageRate": 4.2, "totalUnitsLost": 18.0 },
-        { "batchId": 11, "totalItems": 120, "shortageCount": 8, "shortageRate": 6.7, "totalUnitsLost": 31.5 },
-        { "batchId": 12, "totalItems": 120, "shortageCount": 12, "shortageRate": 10.0, "totalUnitsLost": 47.0 }
-      ]
-    }
-  ]
+  "name": "Monthly Cycle",
+  "frequency": "monthly",
+  "dayOfMonth": 1,
+  "submissionWindowDays": 7
 }
 ```
 
-### Audit Log
+Valid frequencies: `weekly` (use `dayOfWeek` 0–6), `monthly`, `quarterly` (use `dayOfMonth` 1–28).
 
-#### `GET /admin/audit-logs`
+#### `PATCH /api/admin/schedules/:id`
 
-Recent audit log entries, newest first.
+Update a schedule. Same fields as create, plus `isActive: boolean` to pause/resume.
 
-**Query params:**
+#### `DELETE /api/admin/schedules/:id`
 
-| Param | Description |
-|-------|-------------|
-| `action` | Filter by action type (see below) |
-| `limit` | Max records to return (default `100`, max `500`) |
+Delete a schedule.
 
-**Known `action` values:**
-`LOGIN` · `CREATE_STORE` · `UPDATE_STORE` · `DELETE_STORE` · `FORCE_DELETE_STORE` · `BULK_DELETE_STORES` · `CREATE_USER` · `UPDATE_USER` · `DELETE_USER` · `UPLOAD_INVENTORY` · `DOWNLOAD_INVENTORY` · `SUBMIT_INVENTORY` · `UPDATE_INVENTORY` · `OVERRIDE_RECORD` · `UPDATE_BATCH_DEADLINE` · `GRANT_STORE_EXTENSION` · `UNLOCK_STORE_SUBMISSION` · `DELETE_BATCH` · `DOWNLOAD_BATCH_EXPORT` · `DOWNLOAD_REPORT` · `DOWNLOAD_ADMIN_INVENTORY_EXPORT` · `REPEAT_DISCREPANCY` · `DOWNLOAD_ADMIN_INVENTORY_PDF` · `DOWNLOAD_BATCH_PDF` · `DOWNLOAD_RECONCILIATION_PDF`
+---
 
-**Success response `200`:** Array of audit log entries with user details:
-```json
-[
-  {
-    "id": 501,
-    "action": "SUBMIT_INVENTORY",
-    "entityType": "INVENTORY_RECORD",
-    "entityId": 12,
-    "metadata": { "recordCount": 120 },
-    "createdAt": "2026-07-09T14:22:00.000Z",
-    "user": { "employeeId": "MGR2001", "name": "John Mwamba" }
-  }
-]
-```
+### Area Manager Management (Admin)
 
-#### `GET /admin/audit-logs/export`
+#### `GET /api/admin/area-managers`
 
-Download the audit log as Excel.
+All active area managers with their assigned stores.
 
-**Query params:** Same as `GET /admin/audit-logs`.
+#### `PATCH /api/admin/area-managers/:amId/stores`
 
-**Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+Batch-assign multiple stores to one area manager. Body: `{ "storeIds": [1, 2, 3] }` (max 100).
+
+---
+
+## Area Manager Endpoints
+
+All area manager endpoints require a valid session with role `AREA_MANAGER`.
+
+### `GET /api/am/dashboard`
+
+Summary dashboard: count of assigned stores, how many have submitted, how many are pending review, how many have been approved or returned. Includes per-store progress breakdown.
+
+### `GET /api/am/stores`
+
+List of stores assigned to this area manager.
+
+### `GET /api/am/notifications`
+
+Actionable notifications — stores waiting for review, upcoming deadline warnings.
+
+### `GET /api/am/batches`
+
+All inventory cycles that have records for this AM's stores, with per-cycle review status counts.
+
+### `GET /api/am/batches/:batchId/stores`
+
+Summary of each store in a given cycle — submitted count, pending count, review status.
+
+### `GET /api/am/batches/:batchId/stores/:storeId/records`
+
+Full inventory records for one store in one cycle, plus the AM review record.
+
+### `PATCH /api/am/records/:id`
+
+Edit a single inventory record before approving. Only works on submitted records for assigned stores. Creates an audit log entry.
+
+Body (all optional): `{ "physicalQuantity": 10, "remarks": "Corrected after recount", "shrinkageCategory": "Miscount" }`
+
+### `POST /api/am/batches/:batchId/stores/:storeId/approve`
+
+Approve a store's submission. All records must be submitted. Notifies admins by email.
+
+Body (optional): `{ "remarks": "Looks correct" }`
+
+### `POST /api/am/batches/:batchId/stores/:storeId/return`
+
+Return a store's submission for recount. Resets all submitted records back to pending and clears physical counts so the store starts fresh.
+
+Body (required): `{ "remarks": "Please recount whisky aisle — quantities look off" }`
+
+---
 
 ## Store Manager Endpoints
 
-All store manager endpoints require `Authorization: Bearer <token>` with role `STORE_MANAGER`.
+All store manager endpoints require a valid session with role `STORE_MANAGER`.
 
-Store isolation is enforced server-side — every query filters by `req.user.storeId`. A manager cannot read or write another store's data regardless of what they send in the request.
+### `GET /api/store/dashboard`
 
-### `GET /store/dashboard`
+Dashboard summary for the manager's store — latest cycle info, submission stats, older pending cycles.
 
-Stock count progress summary for the active cycle.
+### `GET /api/store/batches`
 
-**Success response `200`:**
-```json
-{
-  "store": {
-    "id": 1,
-    "storeCode": "2001",
-    "storeName": "Kinshasa CBD"
-  },
-  "batch": {
-    "id": 12,
-    "inventoryDate": "2026-07-08T00:00:00.000Z",
-    "submissionDeadline": "2026-07-10T23:59:00.000Z"
-  },
-  "stats": {
-    "totalItems": 120,
-    "pendingItems": 40,
-    "submittedItems": 80,
-    "matchedItems": 65,
-    "shortageItems": 10,
-    "excessItems": 5
-  },
-  "olderPendingBatches": [
-    { "id": 11, "inventoryDate": "2026-06-01T00:00:00.000Z" }
-  ]
-}
-```
+All inventory cycles that contain records for this store.
 
-`olderPendingBatches` is an array of earlier cycles that still have pending items. Non-empty when an admin uploads inventory dated in the past.
+### `GET /api/store/inventory`
 
-### `GET /store/notifications`
+Paginated inventory records for this store. Query: `?batchId=12&search=whisky&status=PENDING&page=1&pageSize=100`
 
-Real-time notification items for the store manager. Never cached.
+Response also includes `isLocked` (deadline passed), and `returnedByAM` (message if AM sent it back).
 
-**Success response `200`:**
-```json
-{
-  "items": [
-    {
-      "type": "pending",
-      "message": "8 Jul 2026 — Items waiting for your count",
-      "batchId": 12,
-      "urgent": false
-    },
-    {
-      "type": "overdue",
-      "message": "1 Jun 2026 — Past deadline, contact your admin",
-      "batchId": 11,
-      "urgent": true
-    }
-  ],
-  "count": 2
-}
-```
+### `PATCH /api/store/inventory/:id`
 
-**`type` values:** `pending` · `deadline` · `overdue`
+Update a single record's physical count, system quantity, remarks, or shrinkage category. Auto-calculates variance. Blocked if the batch deadline has passed or the record is submitted.
 
-### `GET /store/batches`
+### `POST /api/store/inventory/submit`
 
-All cycles that have inventory records for this store, ordered by date descending.
+Submit all pending records for the active cycle. Validates that:
+- All records have a physical count
+- All discrepant records have a category selected
+- All discrepant records have an issue detail entered
 
-**Success response `200`:**
-```json
-[
-  {
-    "id": 12,
-    "inventoryDate": "2026-07-08T00:00:00.000Z",
-    "uploadedAt": "2026-07-08T08:00:00.000Z",
-    "totalRecords": 120,
-    "pendingCount": 40,
-    "submittedCount": 80
-  }
-]
-```
+Body: `{ "batchId": 12 }`
 
-### `GET /store/inventory`
+### `GET /api/store/inventory/download`
 
-Inventory items for this store in a given cycle.
+Download this store's inventory as Excel. Query: `?batchId=12`
 
-**Query params:**
+### `GET /api/store/notifications`
 
-| Param | Description |
-|-------|-------------|
-| `batchId` | Filter by cycle ID (recommended) |
-| `search` | Search item code or name |
-| `status` | `PENDING` or `SUBMITTED` |
+Actionable notifications for this store — new cycles, deadline warnings, AM return messages.
 
-**Success response `200`:**
-```json
-{
-  "records": [
-    {
-      "id": 1001,
-      "materialCode": "1000013986",
-      "materialName": "Whisky Black Label 750Ml",
-      "systemQuantity": 50,
-      "physicalQuantity": null,
-      "difference": null,
-      "remarks": null,
-      "shrinkageCategory": null,
-      "status": "PENDING"
-    }
-  ],
-  "isLocked": false
-}
-```
+---
 
-`isLocked: true` when the submission deadline has passed and the manager can no longer edit records.
+## Health Check
 
-### `PATCH /store/inventory/:id`
+### `GET /api/health`
 
-Save counted quantity and/or remarks for a single item. Called automatically 700 ms after the manager stops typing.
+Returns server and database status.
 
-**Request body** (all fields optional — only send what changed):
-```json
-{
-  "physicalQuantity": 45,
-  "systemQuantity": 50,
-  "remarks": "Water exposure damage",
-  "shrinkageCategory": "Damage"
-}
-```
+**Success `200`:** `{ "status": "ok", "timestamp": "2026-07-27T10:00:00.000Z" }`
 
-**Rules:**
-- Cannot edit a `SUBMITTED` record
-- Cannot edit if the batch deadline has passed (returns `403`)
-- `physicalQuantity: null` or `""` explicitly clears the count
-- Variance (`difference`) is always recalculated server-side
-
-**Success response `200`:** The updated inventory record.
-
-### `POST /store/inventory/submit`
-
-Submit all pending items for this store in a given cycle. Marks all records as `SUBMITTED`.
-
-**Request body:**
-```json
-{ "batchId": 12 }
-```
-
-**Server-side validation (in a transaction):**
-1. All pending items must have a `physicalQuantity`
-2. All items with a non-zero variance must have a `shrinkageCategory`
-3. All items with a non-zero variance must have non-empty `remarks`
-
-**Success response `200`:**
-```json
-{
-  "message": "Inventory submitted successfully",
-  "recordCount": 120,
-  "records": [
-    {
-      "id": 1001,
-      "materialCode": "1000013986",
-      "physicalQuantity": 45,
-      "difference": -5,
-      "status": "SUBMITTED"
-    }
-  ]
-}
-```
-
-### `GET /store/inventory/download`
-
-Download this store's inventory for a given cycle as Excel.
-
-**Query params:**
-
-| Param | Description |
-|-------|-------------|
-| `batchId` | Cycle to download (defaults to the most recent cycle) |
-
-**Response:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`  
-**Filename:** `store_{storeCode}_inventory.xlsx`
-
+**DB unavailable `503`:** `{ "status": "starting", "timestamp": "..." }`

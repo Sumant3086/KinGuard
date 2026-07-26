@@ -3,7 +3,7 @@ services:
     name: kinguard
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build --workspace=client && npm run migrate --workspace=server
+    buildCommand: npm install && npm run build:client && npm run migrate
     startCommand: node server/src/server.js
     healthCheckPath: /api/health
     envVars:
@@ -17,13 +17,9 @@ services:
         generateValue: true
       - key: CLIENT_URL
         sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
+      - key: BREVO_API_KEY
         sync: false
       - key: SMTP_FROM
+        sync: false
+      - key: ADMIN_EMAIL
         sync: false

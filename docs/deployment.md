@@ -2,44 +2,47 @@
 
 ## Render (current setup)
 
-Single web service - backend serves both the API and the built React frontend.
+Single web service — the backend serves both the API and the built React frontend from the same process.
 
 | Field | Value |
 |---|---|
 | Runtime | Node |
-| Root Directory | *(empty)* |
-| Build Command | `npm install --include=dev && npm run build --workspace=client && cd server && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js` |
-| Start Command | `npm start` |
+| Root Directory | *(leave empty)* |
+| Build Command | `npm install && npm run build:client && npm run migrate` |
+| Start Command | `node server/src/server.js` |
+| Health Check Path | `/api/health` |
 
-Environment variables:
+### Environment Variables on Render
 
 | Key | Value |
 |---|---|
 | `NODE_ENV` | `production` |
-| `DATABASE_URL` | Supabase pooled connection URL |
-| `DIRECT_URL` | Supabase direct connection URL |
-| `JWT_SECRET` | 32+ character random string |
-| `CLIENT_URL` | Your Render URL e.g. `https://kinmarchae.onrender.com` |
-| `SMTP_HOST` | `smtp.gmail.com` (optional) |
-| `SMTP_PORT` | `587` (optional) |
-| `SMTP_USER` | Gmail address (optional) |
-| `SMTP_PASS` | Gmail App Password (optional) |
-| `SMTP_FROM` | Display name and address (optional) |
+| `DATABASE_URL` | Supabase pooled connection URL (port 6543, with `?pgbouncer=true`) |
+| `DIRECT_URL` | Supabase direct connection URL (port 5432) |
+| `JWT_SECRET` | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+| `CLIENT_URL` | Your Render URL, e.g. `https://kinmarchae.onrender.com` |
+| `BREVO_API_KEY` | Optional — Brevo API key for email notifications (free at brevo.com) |
+| `SMTP_FROM` | Optional — sender name and email, e.g. `KinMarché <noreply@kinmarche.com>` |
+| `ADMIN_EMAIL` | Optional — fallback email for admin notifications |
 
-`PORT` is set automatically by Render - do not add it manually.
+`PORT` is set automatically by Render — do not add it manually.
 
-Keep-alive: Render free tier sleeps after 15 minutes of inactivity. Use UptimeRobot (free) to ping `/api/health` every 5 minutes.
+### Keep the server awake
 
-Region: Frankfurt (EU Central) for DRC/African users.
+Render's free tier sleeps after 15 minutes of inactivity. Set up [UptimeRobot](https://uptimerobot.com) (free) to ping `/api/health` every 5 minutes to prevent this.
 
-## Database
+### Region
 
-### Supabase
+Frankfurt (EU Central) gives good latency to DRC and Central Africa.
 
-1. Create a project at supabase.com
-2. Go to Settings -> Database
-3. Copy the Connection Pooling URL as `DATABASE_URL` (add `?pgbouncer=true` at the end)
-4. Copy the Direct Connection URL as `DIRECT_URL`
+---
+
+## Database (Supabase)
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Go to **Settings → Database**
+3. Copy the **Connection Pooling** URL as `DATABASE_URL` — append `?pgbouncer=true` if not already there
+4. Copy the **Direct Connection** URL as `DIRECT_URL`
 
 ### Local PostgreSQL
 
@@ -53,20 +56,22 @@ CREATE DATABASE kinmarche OWNER kinmarche;
 
 Set both `DATABASE_URL` and `DIRECT_URL` to `postgresql://kinmarche:yourpassword@localhost:5432/kinmarche`.
 
+---
+
 ## VPS with PM2
 
 ```bash
 git clone https://github.com/Sumant3086/KinGuard.git /opt/kinmarche
 cd /opt/kinmarche
-npm install --include=dev
-npm run build --workspace=client
-cd server && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js && cd ..
+npm install
+npm run build:client
+npm run migrate
 npm install -g pm2
 pm2 start server/src/server.js --name kinmarche --interpreter node
 pm2 save && pm2 startup
 ```
 
-Nginx config:
+### Nginx config
 
 ```nginx
 server {
@@ -94,26 +99,41 @@ server {
 }
 ```
 
-HTTPS: `sudo certbot --nginx -d app.kinmarche.com`
+Add HTTPS: `sudo certbot --nginx -d app.kinmarche.com`
 
-## Checklist
+---
 
-Before first deploy:
-- [ ] Database created and migrations run
+## Email Setup (Brevo)
+
+The system uses the Brevo HTTP API — not SMTP. This works on Render's free tier where outbound SMTP ports (25/465/587) are blocked.
+
+1. Sign up at [brevo.com](https://brevo.com) — the free plan allows 300 emails per day
+2. Go to **SMTP & API → API Keys** and create a key
+3. Add the key as `BREVO_API_KEY` in your environment variables
+4. Set `SMTP_FROM` to your sender name and email address
+
+If `BREVO_API_KEY` is not set, the system runs normally but no email notifications are sent.
+
+---
+
+## Deployment Checklist
+
+**Before first deploy:**
+- [ ] Database created and migrations applied (`npm run migrate`)
 - [ ] `JWT_SECRET` is at least 32 random characters
 - [ ] `CLIENT_URL` matches the exact frontend origin (no trailing slash)
 - [ ] `NODE_ENV=production` is set
-- [ ] Admin account seeded
+- [ ] Admin account seeded and password changed
 
-After deploy:
+**After deploy:**
 - [ ] Login as admin works at the production URL
 - [ ] `/api/health` returns `{ "status": "ok" }`
-- [ ] Upload a test file and verify store managers receive it
-- [ ] Log in as a store manager and confirm store isolation
-- [ ] Default admin password changed
+- [ ] Upload a test file and verify the cycle appears in store manager view
+- [ ] Log in as a store manager and confirm store isolation (only their store visible)
+- [ ] If Brevo is configured, confirm a test email arrives
 
-Ongoing:
-- [ ] Monitor `/api/health` with an uptime service
-- [ ] Review audit logs via Admin -> Activity Log
+**Ongoing:**
+- [ ] Monitor `/api/health` with UptimeRobot or similar
+- [ ] Review audit logs via Admin → Activity Log
 - [ ] Back up the PostgreSQL database regularly
-- [ ] Run `npx prisma migrate deploy` after schema changes
+- [ ] Run `npm run migrate` after pulling schema changes

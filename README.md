@@ -21,9 +21,11 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 
 **For store managers** — receive your assigned item list, enter your physical counts directly in the browser, and submit. No spreadsheets, no emails, no confusion about which file version is correct.
 
+**For area managers** — monitor the stores assigned to you, review their submissions, approve counts that look right, or send them back for recount with a written reason.
+
 **For administrators and L&P managers** — upload one master file to kick off a cycle. Monitor every store's progress in real time, see who is behind, spot recurring shortage patterns, and export reconciliation reports for finance review.
 
-**For senior management** — a live dashboard showing network-wide submission rates, shortage hotspots, and trend data across multiple inventory cycles.
+**For senior management** — a live dashboard with network-wide submission rates, shortage hotspots, trend data, risk scores, and a one-page executive summary PDF.
 
 ## Live Demo
 
@@ -38,14 +40,26 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 | Feature | What it does |
 |---|---|
 | Dashboard | Live network overview — submission rate, shortage counts, per-store risk scorecard, recurring loss items |
-| Upload | Upload an Excel or CSV master file to start a new inventory cycle. Stores and user accounts are auto-created from the file. |
-| Cycles | Set submission deadlines, grant per-store extensions, send email reminders, unlock a store's submission for recount |
+| Upload | Upload an Excel or CSV master file to start a new inventory cycle. Stores and user accounts are auto-created from the file. Preview and validate before publishing. |
+| Cycles | Set submission deadlines, grant per-store extensions, send email reminders, unlock a store's submission for recount, close a cycle early |
 | Inventory | Cross-store inventory view with filters by store, status, and discrepancy type. Override any record directly. |
-| Reports | Reconciliation reports filtered by store, cycle, and discrepancy type. Download as Excel or PDF. |
-| Analytics | Shortage rate trend chart across multiple cycles per store. Identifies worsening stores and recurring items. |
-| Stores | Create, edit, deactivate, or delete store locations |
-| Users | Create store manager and admin accounts, approve pending registrations, bulk import via Excel |
-| Activity Log | Immutable record of every action in the system with timestamps and context |
+| Reports | Reconciliation reports filtered by store, cycle, and discrepancy type. Download as Excel or PDF. One-click executive summary PDF for management. |
+| Analytics | Shortage rate trends across multiple cycles. Year-over-year comparison. Store risk scores (0–100) with peer benchmarking. Top 10 at-risk items. |
+| Schedules | Configure recurring inventory cycles (weekly, monthly, quarterly) so cycles start automatically without manual uploads. |
+| Stores | Create, edit, deactivate, or delete store locations. Assign area managers. |
+| Users | Create store manager, area manager, and admin accounts. Approve pending registrations. Bulk import via Excel. |
+| Activity Log | Immutable record of every action in the system. Database-level protection prevents deletion. |
+| Escalation | Automatic email escalation when stores miss the deadline: area managers at deadline, admins after 24h. |
+
+### For Area Managers
+
+| Feature | What it does |
+|---|---|
+| Dashboard | Progress summary for all assigned stores — submission status per store, pending reviews |
+| Review Submissions | View each store's inventory counts side by side. Edit individual records before approving. |
+| Approve | Mark a store's submission as approved, passing it to admin for final review |
+| Return for Recount | Send a store's submission back with a written reason — store manager recounts from scratch |
+| Notifications | Bell badge shows stores awaiting review and upcoming deadline warnings |
 
 ### For Store Managers
 
@@ -53,8 +67,8 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 |---|---|
 | Dashboard | Progress summary for the active cycle — items counted vs. remaining, deadline countdown |
 | Inventory Count | Enter physical counts row by row. Auto-saves as you type. Variance calculated instantly. |
-| Discrepancy notes | Required category and issue detail for any item that doesn't match book stock |
-| Submit | One-click submission once all items are filled. Triggers email confirmation to admin. |
+| Discrepancy notes | Required category and issue detail for any item that doesn't match book stock. 9 categories with specific sub-reasons. |
+| Submit | One-click submission once all items are filled. Triggers email confirmation. |
 | Download | Export your store's reconciliation report as Excel at any time |
 
 ## Tech Stack
@@ -64,10 +78,11 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 | Frontend | React 18, Vite 5, React Router 6, Axios |
 | Backend | Node.js 22+, Express 4, ESM modules |
 | Database | PostgreSQL 15+ via Prisma ORM |
-| Auth | JWT access + refresh tokens, HttpOnly cookies, bcrypt |
+| Auth | JWT access + refresh tokens in HttpOnly cookies, bcrypt, DB-backed lockout |
 | File Processing | ExcelJS, csv-parse, Multer |
 | PDF | pdfmake |
-| Email | Nodemailer (Gmail / any SMTP) |
+| Email | Brevo HTTP API (no SMTP required — works on all hosting platforms) |
+| PWA | Web App Manifest + Service Worker (installable, offline shell) |
 | Hosting | Render (backend + frontend), Supabase (database) |
 
 ## Local Setup
@@ -79,7 +94,7 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 ```bash
 git clone https://github.com/Sumant3086/KinGuard.git
 cd KinGuard
-npm install --include=dev
+npm install
 ```
 
 ### 2. Configure environment
@@ -140,13 +155,11 @@ Opens the API on port 5000 and the React app on port 5173. Visit [http://localho
 | `NODE_ENV` | Yes | `development` or `production` |
 | `CLIENT_URL` | Yes | Frontend origin for CORS (no trailing slash) |
 | `JWT_EXPIRES_IN` | No | Access token lifetime, default `8h` |
-| `SMTP_HOST` | No | SMTP server for email notifications |
-| `SMTP_PORT` | No | SMTP port, default `587` |
-| `SMTP_USER` | No | SMTP username / sending address |
-| `SMTP_PASS` | No | SMTP password or Gmail App Password |
-| `SMTP_FROM` | No | From display name and address |
+| `BREVO_API_KEY` | No | Brevo API key for email notifications. Free at brevo.com (300 emails/day). Leave blank to disable emails. |
+| `SMTP_FROM` | No | Sender display name and email, e.g. `KinMarché <noreply@kinmarche.com>` |
+| `ADMIN_EMAIL` | No | Fallback admin email if no admin has an email address in the database |
 
-Email is fully optional. Leave all SMTP variables blank to disable notifications.
+Email is fully optional. The system works completely without it.
 
 ## Deployment
 
@@ -159,6 +172,7 @@ See [docs/deployment.md](docs/deployment.md) for the full Render setup, VPS inst
 | Document | Audience |
 |---|---|
 | [Store Manager Guide](docs/user-guide/store-manager-guide.md) | Store managers completing a stock count |
+| [Area Manager Guide](docs/user-guide/area-manager-guide.md) | Area managers reviewing and approving store submissions |
 | [Administrator Guide](docs/user-guide/admin-guide.md) | Admins running cycles, monitoring stores, exporting reports |
 | [Getting Started](docs/getting-started.md) | Developers setting up the project locally |
 | [Deployment](docs/deployment.md) | DevOps — Render, VPS, database setup |
@@ -172,4 +186,4 @@ See [docs/deployment.md](docs/deployment.md) for the full Render setup, VPS inst
 
 ISC — Developed by Sumant Yadav
 
-*KinMarche · Loss & Prevention Platform · Kinshasa, DRC*
+*KinMarché · Loss & Prevention Platform · Kinshasa, DRC*

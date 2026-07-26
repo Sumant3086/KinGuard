@@ -1,26 +1,23 @@
-﻿# Getting Started
+# Getting Started
 
 ## Prerequisites
 
 | Requirement | Minimum Version | Notes |
 |-------------|----------------|-------|
-| Node.js | 18.0+ | LTS recommended |
-| npm | 8.0+ | Comes with Node.js |
-| PostgreSQL | 14.0+ | Or a managed service: Supabase, Neon, Railway |
+| Node.js | 22.0+ | LTS recommended |
+| npm | 9.0+ | Comes with Node.js |
+| PostgreSQL | 15.0+ | Or a managed service: Supabase, Neon, Railway |
 | Git | Any | For cloning the repo |
 
 ## Clone & Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/Sumant3086/KinGuard.git
 cd KinGuard
-
-# Install all workspace dependencies in one command
-npm run install:all
+npm install
 ```
 
-This installs dependencies for the monorepo root, the `client/` workspace, and the `server/` workspace.
+This installs dependencies for the monorepo root, the `client/` workspace, and the `server/` workspace in one step.
 
 ## Environment Variables
 
@@ -30,30 +27,30 @@ All server configuration lives in `server/.env`. Copy the template:
 cp .env.example server/.env
 ```
 
-Then open `server/.env` and fill in each value:
+Then open `server/.env` and fill in each value.
 
 ### Required Variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string. For Supabase, use the **pooled** connection URL. | `postgresql://user:pass@host:5432/KinMarche |
-| `DIRECT_URL` | Non-pooled URL. Required only for Supabase (used by Prisma migrations). For local PostgreSQL, set the same as `DATABASE_URL`. | `postgresql://user:pass@host:5432/KinMarche |
-| `JWT_SECRET` | Secret key for signing JWT tokens. Must be at least 32 characters. | (generate below) |
+| `DATABASE_URL` | PostgreSQL connection string. For Supabase, use the **pooled** URL (port 6543) with `?pgbouncer=true`. | `postgresql://user:pass@host:6543/db?pgbouncer=true` |
+| `DIRECT_URL` | Non-pooled URL. For Supabase, use the direct URL (port 5432). For local PostgreSQL, set the same as `DATABASE_URL`. | `postgresql://user:pass@host:5432/db` |
+| `JWT_SECRET` | Secret key for JWT tokens. Must be at least 32 characters. | (generate below) |
 | `PORT` | Port the Express server listens on. | `5000` |
 | `NODE_ENV` | Runtime environment. | `development` |
-| `CLIENT_URL` | Frontend origin for CORS. Must match the actual URL. | `http://localhost:5173` |
+| `CLIENT_URL` | Frontend origin for CORS. Must match the actual URL exactly — no trailing slash. | `http://localhost:5173` |
 
-### Optional Variables (Email Notifications)
+### Optional Variables — Email Notifications
 
-Leave these blank to disable email notifications entirely. The system works fully without them.
+The system uses the **Brevo HTTP API** for sending emails, not SMTP. This works on all hosting platforms including Render's free tier where SMTP ports are blocked.
+
+Leave `BREVO_API_KEY` blank to disable email notifications entirely. The system works fully without them.
 
 | Variable | Description |
 |----------|-------------|
-| `SMTP_HOST` | SMTP server hostname (e.g. `smtp.gmail.com`) |
-| `SMTP_PORT` | SMTP port (587 for TLS, 465 for SSL) |
-| `SMTP_USER` | SMTP username / email address |
-| `SMTP_PASS` | SMTP password or App Password |
-| `SMTP_FROM` | From address used in outgoing emails |
+| `BREVO_API_KEY` | API key from [brevo.com](https://brevo.com) — free plan gives 300 emails/day |
+| `SMTP_FROM` | Sender display name and email, e.g. `KinMarché <noreply@kinmarche.com>` |
+| `ADMIN_EMAIL` | Fallback admin email if no admin user has an email address set |
 
 ### Generate a Secure JWT Secret
 
@@ -81,11 +78,11 @@ This runs `prisma migrate deploy` which applies all pending migrations in `serve
 npm run seed
 ```
 
-Creates a single administrator account if it does not already exist. The credentials are printed to your console when the seed runs — copy them, then **change the password immediately** after your first login via Admin → Users.
+Creates a single administrator account. The credentials are printed to your console — copy them, then **change the password immediately** after your first login via Admin → Users.
 
-### Verify the Schema
+### Inspect the Database (Optional)
 
-To open Prisma Studio and inspect your database tables:
+To browse your database tables visually:
 
 ```bash
 cd server && npx prisma studio
@@ -93,88 +90,60 @@ cd server && npx prisma studio
 
 ## Running in Development
 
-Start both servers with a single command:
+Start both the API server and the React app with one command:
 
 ```bash
 npm run dev
 ```
 
-This uses `concurrently` to start the API server (port 5000) and the React dev server (port 5173) together, with colour-coded output per process.
+This starts the API server on port 5000 and the React dev server on port 5173 together. The Vite dev server automatically proxies all `/api/*` requests to the backend, so there are no CORS issues in development.
 
-To start them separately (e.g. for isolated debugging):
+To start them separately:
 
 ```bash
-# API server only — restarts automatically on file changes
-npm run dev:server
-
-# React dev server only
-npm run dev:client
+npm run dev:server   # API only — restarts automatically on file changes
+npm run dev:client   # React only
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-The Vite dev server proxies all `/api/*` requests to `localhost:5000`, so there are no CORS issues in development. The backend uses Node.js `--watch` mode for automatic restarts.
-
 ## First Login
 
-1. Navigate to [http://localhost:5173](http://localhost:5173)
+1. Go to [http://localhost:5173](http://localhost:5173)
 2. Click **Sign In**
-3. Enter the admin credentials printed to your console during the seed step
+3. Enter the admin credentials printed during the seed step
 4. You will land on the **Admin Dashboard**
 
-**Immediately change your admin password:**
-- Go to Admin → Users
-- Click **Edit** on the admin account
-- Set a strong password (8+ characters, uppercase, number, special character)
+Change your admin password immediately: go to Admin → Users → Edit → set a new password.
 
 ## Creating Stores and Users
 
-Before uploading inventory data, you need stores and store manager accounts.
+Stores and manager accounts can be created two ways:
 
-### Create a Store
+**Manually:**
+- Go to Admin → Stores → Add Store
+- Go to Admin → Users → Add User (select role: Store Manager, assign a store)
 
-1. Go to **Admin → Stores → + Add Store**
-2. Enter a **Store Code** (must match the code in your Excel files exactly — case-sensitive)
-3. Enter a **Store Name**
-4. Click **Create Store**
-
-Alternatively, stores are created automatically from the Store Code column when you upload an inventory file.
-
-### Create a Store Manager
-
-1. Go to **Admin → Users → + Add User**
-2. Fill in:
-   - **Employee ID** — unique identifier (e.g. `MGR2001`)
-   - **Full Name**
-   - **Password** — share securely with the manager
-   - **Role** — `Store Manager`
-   - **Assigned Store** — select from the dropdown
-3. Click **Create User**
-
-The store manager can now log in at the same URL and will see only their assigned store's data.
+**Automatically from an uploaded file:**
+- When you upload an inventory file, any store codes in the file that don't exist in the system are created automatically
+- A placeholder manager account is also created (inactive, pending your approval)
 
 ## Uploading Your First Inventory File
 
 1. Go to **Admin → Upload**
-2. Click **↓ Download Template** to get a correctly formatted example file
-3. Fill in your inventory data:
-   - **Plant / Store Code** — must match stores in the system
-   - **Material / Item Code** — unique identifier per item
-   - **Material Description / Item Name** — human-readable description
-   - **System Stock** — the quantity the system expects (from your ERP/POS)
-4. Set the **Inventory Date** (the date this count is for)
-5. Optionally set a **Submission Deadline**
-6. Click **Validate & Preview** to see a row-by-row validation summary
-7. Review the preview (valid / warning / error rows are colour-coded)
-8. Click **Confirm & Publish**
+2. Click **↓ Download Template** to get a correctly formatted example
+3. Fill in your inventory data — Plant Code, Material Code, Material Description, System Stock
+4. Set the **Inventory Date** and optionally a **Submission Deadline**
+5. Click **Validate & Preview** to see a row-by-row validation summary
+6. Click **Confirm & Publish**
 
-Store managers will immediately see their assigned items in their **Inventory Count** page.
+Store managers immediately see their assigned items and can begin their physical count.
 
 ## Useful Development Commands
 
 ```bash
 # Apply new migrations during schema changes
-cd server && npx prisma migrate dev --name <short-description>
+cd server && npx prisma migrate dev --name describe-the-change
 
 # Generate Prisma client after schema changes
 cd server && npx prisma generate
@@ -185,7 +154,7 @@ cd server && npx prisma studio
 # Clear all operational data but keep user accounts
 npm run db:clear
 
-# Full reset: drop all tables, re-migrate, re-seed
+# Full reset: drop all tables, re-migrate, re-seed (destructive)
 npm run db:reset
 
 # Build the frontend for production
@@ -194,37 +163,36 @@ npm run build:client
 
 ## Troubleshooting
 
-### `prisma generate` error on fresh install
+### Prisma generate error on fresh install
 
-The Prisma client is generated automatically as part of `npm install` (via the `postinstall` script in `server/package.json`). If you need to regenerate it manually:
+The Prisma client is generated automatically as part of `npm install` (via @prisma/client's postinstall script). If you need to regenerate it manually:
 
 ```bash
 cd server && npx prisma generate
 ```
 
-Prisma generates its client into the root `node_modules` due to workspace hoisting. Always run from the `server/` directory.
+Always run from the `server/` directory — Prisma needs to find the schema at `server/prisma/schema.prisma`.
 
 ### Slow first login after inactivity (Render free tier)
 
-Render's free tier spins the server down after 15 minutes of inactivity. The first request after that can take 30–60 seconds while the server wakes up. The login page automatically retries once — you do not need to do anything. To prevent this entirely, set up [UptimeRobot](https://uptimerobot.com) to ping `/api/health` every 5 minutes.
+Render's free tier spins down after 15 minutes of inactivity. The first request after that can take 30–60 seconds. The login page retries automatically — just wait. To prevent this entirely, set up [UptimeRobot](https://uptimerobot.com) to ping `/api/health` every 5 minutes.
 
 ### Port 5000 already in use
 
+The server kills the port automatically on startup in development (via `server.js`). If it still fails:
+
 ```bash
-# Find and kill the process on macOS/Linux
+# macOS / Linux
 lsof -ti:5000 | xargs kill
 
-# On Windows
+# Windows
 netstat -ano | findstr :5000
 taskkill /PID <pid> /F
 ```
 
-### `CLIENT_URL` CORS error in production
+### CORS error in production
 
-Set `CLIENT_URL` in `server/.env` to the exact origin of your deployed frontend — including the protocol and port if non-standard:
+Set `CLIENT_URL` to the exact origin of your deployed frontend — include the protocol, no trailing slash:
 ```env
 CLIENT_URL=https://your-app.example.com
 ```
-
-No trailing slash.
-
