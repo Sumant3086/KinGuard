@@ -540,11 +540,19 @@ export async function getNotifications(req, res, next) {
 
     const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    // Check for returned reviews (AM sent back) — guard with .catch in case table not yet migrated
+    // Only show RETURNED reviews where the store still has PENDING records in that batch.
+    // If the store has already resubmitted after a return, the records are back to SUBMITTED
+    // and the review has been updated to PENDING_REVIEW — the notification is no longer relevant.
     const returnedReviews = await prisma.areaManagerReview.findMany({
-      where: { storeId, status: 'RETURNED' },
+      where: {
+        storeId,
+        status: 'RETURNED',
+        batch: { isDeleted: false },
+        // Only show if there are still pending records (store hasn't resubmitted yet)
+        store: { inventoryRecords: { some: { storeId, status: 'PENDING' } } },
+      },
       select: { batchId: true, remarks: true, batch: { select: { inventoryDate: true } } },
-      take: 20,
+      take: 5,
       orderBy: { reviewedAt: 'desc' },
     }).catch(() => []);
     for (const r of returnedReviews) {

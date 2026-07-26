@@ -467,7 +467,7 @@ export default function Batches() {
               <button className="close-btn" onClick={() => setDeleteTarget(null)} disabled={deletingBatch}>&times;</button>
             </div>
             <div className="alert alert-error" style={{ marginBottom: 16 }}>
-              This permanently deletes <strong>{deleteTarget.stats?.totalRecords ?? 0}</strong> inventory record(s) from the cycle dated <strong>{fmtDate(deleteTarget.inventoryDate, 'long')}</strong>. This cannot be undone.
+              This will hide the cycle dated <strong>{fmtDate(deleteTarget.inventoryDate, 'long')}</strong> and its <strong>{deleteTarget.stats?.totalRecords ?? 0}</strong> record(s) from all views. The data is soft-deleted and can be restored by a database administrator if needed.
             </div>
             <div className="form-group">
               <label htmlFor="batch-del-confirm" style={{ fontSize: 12 }}>Type <strong>DELETE</strong> to confirm</label>

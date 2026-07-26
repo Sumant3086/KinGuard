@@ -1809,13 +1809,15 @@ export async function deleteUser(req, res, next) {
       // Reassign non-nullable FK references to the deleting admin so data isn't orphaned
       await tx.uploadBatch.updateMany({ where: { uploadedBy: userId }, data: { uploadedBy: req.user.id } });
       await tx.batchDeadlineExtension.updateMany({ where: { grantedBy: userId }, data: { grantedBy: req.user.id } });
+      // CycleSchedule.createdBy is NOT NULL — reassign to the deleting admin
+      await tx.cycleSchedule.updateMany({ where: { createdBy: userId }, data: { createdBy: req.user.id } });
       // Null out nullable FK references
       await tx.inventoryRecord.updateMany({ where: { submittedBy: userId }, data: { submittedBy: null } });
       await tx.auditLog.updateMany({ where: { userId }, data: { userId: null } });
-      // AreaManagerReview.areaManagerId is NOT nullable and has no onDelete rule.
-      // Deleting an AM with existing reviews would throw P2003 (FK constraint violation).
-      // Remove their reviews inside the transaction before deleting the user.
       if (user.role === 'AREA_MANAGER') {
+        // Store.areaManagerId is nullable — unassign stores so the FK doesn't block the delete
+        await tx.store.updateMany({ where: { areaManagerId: userId }, data: { areaManagerId: null } });
+        // AreaManagerReview.areaManagerId is NOT nullable — delete reviews before deleting the user
         await tx.areaManagerReview.deleteMany({ where: { areaManagerId: userId } });
       }
       await tx.user.delete({ where: { id: userId } });
@@ -2072,6 +2074,7 @@ export async function exportAuditLogs(req, res, next) {
   try {
     const { action } = req.query;
     const limit = Math.min(parseInt(req.query.limit) || 2000, 5000);
+    if (action && !VALID_AUDIT_ACTIONS.has(action)) throw new AppError('Invalid action filter', 400);
     const where = action ? { action } : {};
 
     const logs = await prisma.auditLog.findMany({
@@ -3068,12 +3071,21 @@ export async function bulkDeleteUsers(req, res, next) {
 
     const validIds = toDelete.map(u => u.id);
 
-    // Transaction: clean up FK references then hard-delete
+    const amIds = toDelete.filter(u => u.role === 'AREA_MANAGER').map(u => u.id);
+
+    // Transaction: clean up all FK references then hard-delete
     await prisma.$transaction(async (tx) => {
       await tx.uploadBatch.updateMany({ where: { uploadedBy: { in: validIds } }, data: { uploadedBy: req.user.id } });
       await tx.batchDeadlineExtension.updateMany({ where: { grantedBy: { in: validIds } }, data: { grantedBy: req.user.id } });
+      // CycleSchedule.createdBy is NOT NULL — reassign to the acting admin
+      await tx.cycleSchedule.updateMany({ where: { createdBy: { in: validIds } }, data: { createdBy: req.user.id } });
       await tx.inventoryRecord.updateMany({ where: { submittedBy: { in: validIds } }, data: { submittedBy: null } });
       await tx.auditLog.updateMany({ where: { userId: { in: validIds } }, data: { userId: null } });
+      if (amIds.length > 0) {
+        // Unassign stores from deleted AMs so the FK doesn't block the delete
+        await tx.store.updateMany({ where: { areaManagerId: { in: amIds } }, data: { areaManagerId: null } });
+        await tx.areaManagerReview.deleteMany({ where: { areaManagerId: { in: amIds } } });
+      }
       await tx.user.deleteMany({ where: { id: { in: validIds } } });
     });
 
