@@ -646,7 +646,7 @@ export default function Stores() {
               <button className="close-btn" onClick={() => setAmModal(null)} disabled={amAssigning}>&times;</button>
             </div>
             <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 16 }}>
-              Assign an Area Manager to <strong>{amModal.storeName}</strong>. They will review this store's submissions before they reach you.
+              Assign an Area Manager to <strong>{amModal.storeName}</strong>. They will review this store&apos;s submissions before they reach you.
             </p>
             <div className="form-group">
               <label>Area Manager</label>

@@ -225,7 +225,7 @@ export default function AMReview() {
                             <td style={{ textAlign: 'right' }}>
                               {review?.status !== 'APPROVED' ? (
                                 <input
-                                  type="number" min="0" step="0.01"
+                                  type="number" inputMode="decimal" min="0" step="0.01"
                                   value={qty ?? ''}
                                   onChange={e => editField(r.id, 'physicalQuantity', e.target.value === '' ? null : parseFloat(e.target.value))}
                                   style={{ width: 70, textAlign: 'right', padding: '3px 6px', fontSize: 12, border: '1px solid var(--red-border)', borderRadius: 6 }}

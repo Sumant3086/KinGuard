@@ -26,7 +26,7 @@
       rgba(10,8,8,0.18) 70%,
       rgba(6,4,4,0.30) 100%
     ),
-    url('../assets/img/LoginPage.png') center center / cover no-repeat;
+    url('../assets/img/LoginPage.jpg') center center / cover no-repeat;
   z-index: 0;
   filter: brightness(1.00) saturate(1.10) contrast(1.02) blur(3px) !important;
 }
@@ -534,6 +534,14 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
+  /* Mobile perf: skip the 830 KB LoginPage.png — a dark crimson gradient
+     approximates the blurred photo and downloads nothing. */
+  .login-page::before {
+    background:
+      linear-gradient(180deg, rgba(10,8,8,0.25) 0%, rgba(8,6,6,0.15) 40%, rgba(10,8,8,0.18) 70%, rgba(6,4,4,0.30) 100%),
+      linear-gradient(150deg, #5b1210 0%, #7f1d1d 35%, #4a1512 70%, #2b0c0a 100%);
+    filter: none !important;
+  }
   .login-shell { max-width: 100%; padding: 14px; }
   .login-right {
     grid-template-columns: 1fr;
@@ -693,7 +701,7 @@
   content: '';
   position: absolute;
   inset: -6px;
-  background: url('../assets/img/HomePage.png') center / cover no-repeat;
+  background: url('../assets/img/HomePage.jpg') center / cover no-repeat;
   filter: blur(3px);
   z-index: 0;
   will-change: transform;
@@ -908,7 +916,7 @@
   content: '';
   position: absolute;
   inset: -8px;
-  background: url('../assets/img/HomePage2.png') center center / cover no-repeat;
+  background: url('../assets/img/HomePage2.jpg') center center / cover no-repeat;
   filter: blur(3px);
   z-index: 0;
 }
@@ -1074,6 +1082,17 @@
 
 /* ─── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  /* Mobile perf: skip the ~1.6 MB of HomePage.png + HomePage2.png — gradients
+     approximate the blurred store-interior photos with zero download cost. */
+  .home-hero-bg::before {
+    background: linear-gradient(160deg, #7f1d1d 0%, #9a3324 40%, #b45309 75%, #7c2d12 100%);
+    filter: none;
+    will-change: auto;
+  }
+  .home-features-section::before {
+    background: linear-gradient(200deg, #efe6de 0%, #ddc9b8 50%, #c9ad96 100%);
+    filter: none;
+  }
   .home-bar             { padding: 0 20px; height: 58px; position: fixed; }
   .home-logo-sub        { display: none; }
   /* Hero card — compact, leaves background visible around it */

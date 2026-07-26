@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.4",
+    "eslint-formatter-unix": "^9.0.1",
     "wait-on": "^9.0.10"
   },
   "keywords": [

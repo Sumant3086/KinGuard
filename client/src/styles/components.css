@@ -731,7 +731,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 @media (max-width:600px) {
   .notif-dropdown {
     position:fixed;
-    top:62px;
+    top:58px; /* aligns just below the 54px mobile navbar */
     left:8px;
     right:8px;
     width:auto;
@@ -739,6 +739,9 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
     overflow-y:auto;
     border-radius:14px;
   }
+}
+@media (max-width:520px) {
+  .notif-dropdown { top:54px; } /* navbar shrinks to 50px */
 }
 .notif-header { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:rgba(250,236,232,0.70); border-bottom:1px solid rgba(185,28,28,0.10); font-size:12px; font-weight:700; color:var(--tx1); }
 .notif-header-count { font-size:10.5px; font-weight:700; color:#dc2626; background:rgba(185,28,28,0.10); padding:2px 7px; border-radius:99px; border:1px solid rgba(185,28,28,0.18); }

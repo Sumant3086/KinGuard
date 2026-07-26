@@ -6,10 +6,11 @@ export default defineConfig({
   plugins: [
     react(),
     ViteImageOptimizer({
-      png: { quality: 70 },
-      jpg: { quality: 75 },
-      jpeg: { quality: 75 },
-      webp: { quality: 75 },
+      // Background photos are shown behind blur(3px) — aggressive compression is invisible
+      png: { quality: 55 },
+      jpg: { quality: 70 },
+      jpeg: { quality: 70 },
+      webp: { quality: 70 },
     }),
   ],
   server: {

@@ -42,7 +42,7 @@ function getDismissed(role) {
 
 function saveDismissed(set, role) {
   try { localStorage.setItem(dismissKey(role), JSON.stringify([...set].slice(-50))); }
-  catch {}
+  catch { /* localStorage full or blocked — dismiss state just won't persist */ }
 }
 
 // Build a stable key from a notification's identifying fields

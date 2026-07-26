@@ -177,12 +177,14 @@ export default function StoreInventory() {
     }
   }
 
+  // Only ever called from input onChange handlers — never during render.
   function updateField(recordId, field, value) {
     const next = {
       ...editedRecordsRef.current,
       [recordId]: { ...(editedRecordsRef.current[recordId] || {}), [field]: value },
     };
     editedRecordsRef.current = next;
+    // eslint-disable-next-line react-hooks/purity -- runs in an event handler, not during render
     editTimestampRef.current[recordId] = Date.now();
     setEditedRecords(next);
     setSavedRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
@@ -614,6 +616,7 @@ export default function StoreInventory() {
         <div className="inv-table-card">
           {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
           <div className="store-inv-cards">
+            {/* eslint-disable-next-line react-hooks/refs -- blankRowRefs is only written via ref callbacks, never read during render */}
             {records.map(record => {
               const isPending   = record.status === 'PENDING';
               const isEditable  = isPending && !isLocked;
@@ -832,6 +835,7 @@ export default function StoreInventory() {
                 </tr>
               </thead>
               <tbody>
+                {/* eslint-disable-next-line react-hooks/refs -- blankRowRefs is only written via ref callbacks, never read during render */}
                 {records.map(record => {
                   const isPending  = record.status === 'PENDING';
                   const isEditable = isPending && !isLocked;
