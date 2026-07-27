@@ -611,7 +611,7 @@ export default function AdminUsers() {
       await load();
       if (result.errorCount === 0) toast.success(`${result.successCount} user(s) created`);
       else toast.warning(`${result.successCount} created, ${result.errorCount} failed`);
-    } catch (err) { console.error('Batch create users:', err); toast.error('Could not create users. Try again.'); }
+    } catch (err) { console.error('Batch create users:', err); toast.error(err.response?.data?.error || 'Could not create users. Try again.'); }
     finally { setBatchCreating(false); }
   }
 

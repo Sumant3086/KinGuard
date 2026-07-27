@@ -972,6 +972,14 @@ export async function previewUpload(req, res, next) {
       throw new AppError('The file appears to be empty — no data rows were found', 400);
     }
 
+    const MAX_PREVIEW_ROWS = 50_000;
+    if (rows.length > MAX_PREVIEW_ROWS) {
+      throw new AppError(
+        `File contains ${rows.length.toLocaleString()} rows. Maximum is ${MAX_PREVIEW_ROWS.toLocaleString()} rows per upload. Split the file and upload in parts.`,
+        413
+      );
+    }
+
     // Fetch all plant codes for validation — retry once on cold-start connection failure
     const stores = await withDbRetry(() =>
       prisma.store.findMany({ select: { storeCode: true, storeName: true } })

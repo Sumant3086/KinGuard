@@ -52,7 +52,7 @@ export default function Reports() {
       setLoadedParams(params);
     } catch (err) {
       console.error('Load report:', err);
-      toast.error('Could not load report. Please try again.');
+      toast.error(err.response?.data?.error || 'Could not load report. Please try again.');
     } finally {
       setLoading(false);
     }
