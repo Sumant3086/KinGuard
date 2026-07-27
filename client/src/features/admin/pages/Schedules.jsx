@@ -7,7 +7,6 @@ import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
-const FREQ_LABELS = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' };
 const DOW_LABELS  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function describeSchedule(s) {

@@ -276,9 +276,7 @@ export default function AdminUsers() {
     return () => { mountedRef.current = false; };
   }, []);
 
-  useEffect(() => { load(); }, []);
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoadError('');
     setLoading(true);
     try {
@@ -299,7 +297,9 @@ export default function AdminUsers() {
       setLoadError('Could not load users. Please refresh.');
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   // ── Tab + search filtering — memoised so re-renders from modal/checkbox don't recompute ──
   const { pendingUsers, activeUsers, inactiveUsers, visibleUsers, adminCount } = useMemo(() => {
@@ -362,7 +362,7 @@ export default function AdminUsers() {
     } finally {
       setApprovingId(null);
     }
-  }, [load, toast]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [load, toast]);
 
   // ── Single reject ────────────────────────────────────────────────
   const openReject = useCallback((user) => { setRejectTarget(user); setRejectReason(''); }, []);

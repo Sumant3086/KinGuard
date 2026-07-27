@@ -270,7 +270,7 @@ export default function AdminDashboard() {
         setRefreshing(false);
       }
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reset mountedRef on every (re-)mount so React 18 StrictMode's double-mount
   // doesn't leave it false and cause load() to silently bail out.

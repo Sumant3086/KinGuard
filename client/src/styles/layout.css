@@ -624,10 +624,29 @@
 .am-shell .kpi-value       { color: #111827 !important; text-shadow: none !important; }
 .am-shell .kpi-sub         { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
 
-/* AM buttons — keep crimson */
+/* AM KPI icon — navy ring to match tier accent */
+.am-shell .kpi-icon {
+  background: rgba(239,246,255,0.90) !important;
+  border: 1.5px solid rgba(29,78,216,0.22) !important;
+  border-radius: 12px !important;
+  width: 46px !important; height: 46px !important;
+  margin-bottom: 14px;
+  transition: transform 0.22s, box-shadow 0.22s;
+}
+.am-shell .kpi-card:hover .kpi-icon {
+  transform: scale(1.08) rotate(4deg);
+  box-shadow: 0 4px 14px rgba(29,78,216,0.20) !important;
+}
+.am-shell .kpi-icon svg { color: #1d4ed8 !important; }
+
+/* AM buttons — keep crimson for primary actions */
 .am-shell .btn-primary  { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important; box-shadow: 0 4px 16px rgba(220,38,38,0.35) !important; font-weight: 700 !important; }
+.am-shell .btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%) !important; box-shadow: 0 6px 22px rgba(185,28,28,0.45) !important; }
 .am-shell .btn-secondary,
 .am-shell .btn-ghost    { background: rgba(255,255,255,0.92) !important; border: 1.5px solid rgba(29,78,216,0.20) !important; color: #1e3a8a !important; font-weight: 700 !important; }
+.am-shell .btn-secondary:hover:not(:disabled),
+.am-shell .btn-ghost:hover:not(:disabled)   { background: #ffffff !important; border-color: rgba(29,78,216,0.36) !important; color: #1e3a8a !important; }
+.am-shell .btn-success  { background: linear-gradient(135deg, #15803d 0%, #14532d 100%) !important; box-shadow: 0 4px 16px rgba(22,163,74,0.30) !important; }
 
 /* ── Admin shell — white cards + red accents (matches store + AM treatment) ── */
 .admin-shell .card,

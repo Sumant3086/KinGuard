@@ -7,9 +7,6 @@ import { useToast } from '../../../shared/context/ToastContext';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 
-const STATUS_COLOR = { PENDING_REVIEW: '#d97706', APPROVED: '#16a34a', RETURNED: '#dc2626' };
-const STATUS_LABEL = { PENDING_REVIEW: 'Pending', APPROVED: 'Approved', RETURNED: 'Returned' };
-
 export default function AMReviewList() {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);

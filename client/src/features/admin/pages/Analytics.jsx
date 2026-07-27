@@ -264,7 +264,7 @@ export default function Analytics() {
                       )}
                     </div>
                     <div className="analytics-trend-cycles">
-                      {trendBatches.map((b, i) => {
+                      {trendBatches.map((b) => {
                         const d = s.data.find(x => x.batchId === b.id);
                         return d ? (
                           <span key={b.id} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 4, ...rateColor(d.shortageRate), fontWeight: 600 }}>
