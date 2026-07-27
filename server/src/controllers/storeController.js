@@ -407,6 +407,8 @@ export async function submitInventory(req, res, next) {
           create: { batchId: parsedBatchId, storeId, areaManagerId: amId, status: 'PENDING_REVIEW', createdAt: new Date(), updatedAt: new Date() },
           update: { status: 'PENDING_REVIEW', areaManagerId: amId, remarks: null, reviewedAt: null, updatedAt: new Date() },
         });
+        // Bust AM caches so the AM's pending-review count updates immediately
+        sInvalidate(`am:batches:${amId}`, `am:notifications:${amId}`);
       } catch (amErr) {
         // Non-fatal: log clearly so it can be investigated without failing the submission
         console.error('[submit] AM review upsert failed — store submitted but AM review not created:', amErr.message);

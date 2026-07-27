@@ -332,7 +332,8 @@ export default function StoreInventory() {
       toast.success('Submitted! Your count has been sent.', 5000);
     } catch (err) {
       console.error('Submit inventory:', err);
-      toast.error('Could not submit. Please try again.');
+      const serverMsg = err.response?.data?.error;
+      toast.error(serverMsg || 'Could not submit. Please try again.');
     } finally {
       setSubmitting(false);
     }
