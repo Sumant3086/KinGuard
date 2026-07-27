@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import path from 'path';
@@ -99,6 +100,16 @@ if (!IS_PROD) {
   });
 }
 
+// ── Rate limiting ───────────────────────────────────────────────────────────
+const rlOptions = { standardHeaders: true, legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: 'Too many requests. Please try again later.' }) };
+
+// Auth endpoints — 20 attempts per 15 minutes per IP (covers both login and refresh)
+const authLimiter = rateLimit({ ...rlOptions, windowMs: 15 * 60 * 1000, max: 20 });
+
+// Heavy read/export endpoints — 30 requests per minute per IP
+const heavyLimiter = rateLimit({ ...rlOptions, windowMs: 60 * 1000, max: 30 });
+
 // ── Routes ─────────────────────────────────────────────────────────────────
 import authRoutes      from './routes/authRoutes.js';
 import storeRoutes     from './routes/storeRoutes.js';
@@ -107,7 +118,7 @@ import amRoutes        from './routes/areaManagerRoutes.js';
 import adminAmRoutes   from './routes/adminAmRoutes.js';
 import scheduleRoutes  from './routes/scheduleRoutes.js';
 
-app.use('/api/auth',          authRoutes);
+app.use('/api/auth',          authLimiter, authRoutes);
 app.use('/api/store',         storeRoutes);
 app.use('/api/admin',         adminRoutes);
 app.use('/api/am',            amRoutes);

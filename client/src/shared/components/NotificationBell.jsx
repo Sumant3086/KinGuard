@@ -32,16 +32,17 @@ const typeDot = {
   submitted: '#16a34a',
 };
 
-// Namespaced by role so dismissed state is not shared across different users on the same device
-function dismissKey(role) { return `notif:dismissed:${role ?? 'unknown'}`; }
+// Namespaced by userId so dismissed state is not shared between different
+// users who share the same device/browser (e.g., two admins on one PC).
+function dismissKey(userId, role) { return `notif:dismissed:${userId ?? role ?? 'unknown'}`; }
 
-function getDismissed(role) {
-  try { return new Set(JSON.parse(localStorage.getItem(dismissKey(role)) || '[]')); }
+function getDismissed(userId, role) {
+  try { return new Set(JSON.parse(localStorage.getItem(dismissKey(userId, role)) || '[]')); }
   catch { return new Set(); }
 }
 
-function saveDismissed(set, role) {
-  try { localStorage.setItem(dismissKey(role), JSON.stringify([...set].slice(-50))); }
+function saveDismissed(set, userId, role) {
+  try { localStorage.setItem(dismissKey(userId, role), JSON.stringify([...set].slice(-50))); }
   catch { /* localStorage full or blocked — dismiss state just won't persist */ }
 }
 
@@ -50,9 +51,9 @@ function notifKey(item) {
   return `${item.type}:${item.batchId ?? ''}:${item.message?.slice(0, 30) ?? ''}`;
 }
 
-export default function NotificationBell({ fetcher, role }) {
+export default function NotificationBell({ fetcher, role, userId }) {
   const [data,      setData]      = useState({ items: [], count: 0 });
-  const [dismissed, setDismissed] = useState(() => getDismissed(role));
+  const [dismissed, setDismissed] = useState(() => getDismissed(userId, role));
   const [open,      setOpen]      = useState(false);
   const ref     = useRef(null);
   const mounted = useRef(true);
@@ -106,14 +107,14 @@ export default function NotificationBell({ fetcher, role }) {
     const next = new Set(dismissed);
     next.add(notifKey(item));
     setDismissed(next);
-    saveDismissed(next, role);
+    saveDismissed(next, userId, role);
   }
 
   function dismissAll() {
     const next = new Set(dismissed);
     data.items.forEach(i => next.add(notifKey(i)));
     setDismissed(next);
-    saveDismissed(next, role);
+    saveDismissed(next, userId, role);
   }
 
   const visibleItems = data.items.filter(i => !dismissed.has(notifKey(i)));

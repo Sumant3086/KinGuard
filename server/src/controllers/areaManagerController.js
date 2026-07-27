@@ -23,10 +23,14 @@ async function withRetry(fn) {
 }
 
 // ── Helper: get all storeIds managed by this AM (cached per user) ─────────────
-async function getManagedStoreIds(areaManagerId) {
+// Pass forceRefresh=true on write operations to bypass the 60-second cache
+// and avoid stale authorization after a store is reassigned away from this AM.
+async function getManagedStoreIds(areaManagerId, forceRefresh = false) {
   const key = `am:stores:${areaManagerId}`;
-  const cached = sGet(key);
-  if (cached) return cached;
+  if (!forceRefresh) {
+    const cached = sGet(key);
+    if (cached) return cached;
+  }
   const stores = await prisma.store.findMany({
     where: { areaManagerId, isActive: true },
     select: { id: true },
@@ -336,7 +340,9 @@ export async function updateRecord(req, res, next) {
     if (!record) throw new AppError('This inventory record was not found', 404);
     if (record.status !== 'SUBMITTED') throw new AppError('Only records that have been submitted by the store can be edited at this stage', 400);
 
-    const storeIds = await getManagedStoreIds(req.user.id);
+    // Force a fresh DB lookup — bypasses the 60 s cache so a recently
+    // unassigned store is immediately denied even within the cache window.
+    const storeIds = await getManagedStoreIds(req.user.id, true);
     if (!storeIds.includes(record.storeId)) throw new AppError('This store is not assigned to you', 403);
 
     const { physicalQuantity, remarks, shrinkageCategory } = req.body;

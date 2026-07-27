@@ -1262,7 +1262,7 @@ export async function downloadReconciliationReport(req, res, next) {
         storeCode:        record.store.storeCode,
         storeName:        record.store.storeName,
         inventoryDate:    record.batch.inventoryDate.toISOString().split('T')[0],
-        materialCode:     record.materialCode,
+        materialCode:     sanitizeCell(record.materialCode),
         materialName:     sanitizeCell(record.materialName),
         systemQuantity:   record.systemQuantity,
         physicalQuantity: record.physicalQuantity,
@@ -2211,6 +2211,8 @@ export async function exportAuditLogs(req, res, next) {
 export async function downloadInventoryExportPDF(req, res, next) {
   try {
     const { status, discrepancy, search } = req.query;
+    if (status && !VALID_INV_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
+    if (discrepancy && !new Set(['shortage','excess','matched']).has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
     const where = {};
@@ -2281,6 +2283,8 @@ export async function downloadInventoryExportPDF(req, res, next) {
 export async function downloadReconciliationReportPDF(req, res, next) {
   try {
     const { status, discrepancy } = req.query;
+    if (status && !VALID_INV_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
+    if (discrepancy && !new Set(['shortage','excess','matched']).has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
     const where = {};

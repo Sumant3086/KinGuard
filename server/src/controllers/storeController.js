@@ -131,6 +131,7 @@ export async function getInventory(req, res, next) {
     }
 
     if (status) {
+      if (!new Set(['PENDING', 'SUBMITTED']).has(status)) throw new AppError('Invalid status filter', 400);
       where.status = status;
     }
 

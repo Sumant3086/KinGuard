@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import rateLimit from 'express-rate-limit';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 import * as adminController    from '../controllers/adminController.js';
@@ -9,6 +10,12 @@ const router = express.Router();
 
 // All admin routes require authentication and admin role
 router.use(authenticate, requireRole('ADMIN'));
+
+// Heavy export/analytics limiter — 30 per minute per IP
+const heavyLimiter = rateLimit({
+  windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: 'Too many export requests. Please slow down.' }),
+});
 
 // Configure multer for file uploads
 const upload = multer({
@@ -73,15 +80,15 @@ router.get('/uploads', adminController.getUploads);
 
 // Inventory
 router.get('/inventory', adminController.getInventory);
-router.get('/inventory/export',     adminController.downloadInventoryExport);
-router.get('/inventory/export-pdf', adminController.downloadInventoryExportPDF);
+router.get('/inventory/export',     heavyLimiter, adminController.downloadInventoryExport);
+router.get('/inventory/export-pdf', heavyLimiter, adminController.downloadInventoryExportPDF);
 router.patch('/inventory/:id/override', adminController.overrideInventoryRecord);
 router.post('/inventory/bulk-override', adminController.bulkOverrideInventory);
 
 // Reports
 router.get('/reports/reconciliation', adminController.getReconciliationReport);
-router.get('/reports/reconciliation/download',     adminController.downloadReconciliationReport);
-router.get('/reports/reconciliation/download-pdf', adminController.downloadReconciliationReportPDF);
+router.get('/reports/reconciliation/download',     heavyLimiter, adminController.downloadReconciliationReport);
+router.get('/reports/reconciliation/download-pdf', heavyLimiter, adminController.downloadReconciliationReportPDF);
 
 // Audit logs
 router.get('/audit-logs', adminController.getAuditLogs);

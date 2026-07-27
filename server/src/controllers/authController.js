@@ -225,8 +225,14 @@ export async function refresh(req, res, next) {
       throw new AppError('Your account has been deactivated. Contact your administrator', 401);
     }
 
-    // Rotate: delete old token, issue new one (one-time use)
-    await prisma.refreshToken.delete({ where: { id: stored.id } });
+    // Rotate: delete the old token atomically (optimistic lock).
+    // deleteMany returns { count: 0 } if a concurrent request already deleted it,
+    // preventing two simultaneous refreshes from both succeeding with the same token.
+    const { count } = await prisma.refreshToken.deleteMany({ where: { id: stored.id } });
+    if (count === 0) {
+      clearCookies(res);
+      throw new AppError('Your session has expired. Please sign in again', 401);
+    }
     await issueRefreshToken(user.id, res);
 
     // Issue new access token

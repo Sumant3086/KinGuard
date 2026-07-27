@@ -74,7 +74,7 @@ export default function AdminLayout({ children }) {
         </div>
 
         <div className="hl-right">
-          <NotificationBell fetcher={getNotifications} role="ADMIN" />
+          <NotificationBell fetcher={getNotifications} role="ADMIN" userId={user?.id} />
           <button
             className="hl-avatar"
             onClick={() => navigate('/profile')}

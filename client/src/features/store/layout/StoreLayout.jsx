@@ -75,7 +75,7 @@ export default function StoreLayout({ children }) {
             <Link to="/profile" className="store-nav-user" style={{ textDecoration: 'none' }} title={t('nav.myProfile')}>
               {user?.name}
             </Link>
-            <NotificationBell fetcher={getNotifications} role="STORE_MANAGER" />
+            <NotificationBell fetcher={getNotifications} role="STORE_MANAGER" userId={user?.id} />
             <button className="btn-signout" onClick={logout}>{t('nav.signOut')}</button>
           </nav>
         </div>
