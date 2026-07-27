@@ -105,7 +105,7 @@ export default function Batches() {
       load(); // background sync
     } catch (e) {
       console.error('Update deadline:', e);
-      toast.error('Could not update deadline. Try again.');
+      toast.error(e.response?.data?.error || 'Could not update deadline. Try again.');
     } finally { setSavingDeadline(false); }
   }
 
@@ -127,7 +127,7 @@ export default function Batches() {
       load(); // background sync
     } catch (e) {
       console.error('Grant extension:', e);
-      toast.error('Could not give extension. Try again.');
+      toast.error(e.response?.data?.error || 'Could not give extension. Try again.');
     } finally { setSavingExt(false); }
   }
 
@@ -142,7 +142,7 @@ export default function Batches() {
       load(); // background sync
     } catch (e) {
       console.error('Unlock store:', e);
-      toast.error('Could not unlock. Try again.');
+      toast.error(e.response?.data?.error || 'Could not unlock. Try again.');
     } finally { setUnlocking(false); }
   }
 
@@ -173,7 +173,7 @@ export default function Batches() {
       load();
     } catch (e) {
       console.error('Close cycle:', e);
-      toast.error('Could not close cycle. Try again.');
+      toast.error(e.response?.data?.error || 'Could not close cycle. Try again.');
     } finally { setClosingBatch(null); }
   }
 

@@ -2024,7 +2024,15 @@ export async function unlockStoreForBatch(req, res, next) {
       metadata: { storeId, recordsUnlocked: result.count },
     });
 
-    sInvalidate('admin:dashboard');
+    // Bust the unlocked store's caches + admin batch list
+    sInvalidate('admin:dashboard', 'admin:batches',
+                `store:dashboard:${storeId}`, `store:notifications:${storeId}`);
+
+    // Bust the AM's caches if this store is assigned to one (non-fatal if query fails)
+    prisma.store.findUnique({ where: { id: storeId }, select: { areaManagerId: true } })
+      .then(s => { if (s?.areaManagerId) sInvalidate(`am:batches:${s.areaManagerId}`, `am:notifications:${s.areaManagerId}`); })
+      .catch(() => {});
+
     res.json({ message: `${result.count} record(s) reset to pending`, count: result.count });
   } catch (error) { next(error); }
 }
@@ -2093,7 +2101,9 @@ export async function overrideInventoryRecord(req, res, next) {
       },
     });
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard',
+                `store:dashboard:${record.storeId}`,
+                `store:notifications:${record.storeId}`);
     res.json(updated);
   } catch (error) { next(error); }
 }
