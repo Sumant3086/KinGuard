@@ -715,6 +715,14 @@ export async function uploadInventory(req, res, next) {
     const file = req.file;
     const rows = await parseFileToRows(file);
 
+    const MAX_UPLOAD_ROWS = 50_000;
+    if (rows.length > MAX_UPLOAD_ROWS) {
+      throw new AppError(
+        `File contains ${rows.length.toLocaleString()} rows. Maximum is ${MAX_UPLOAD_ROWS.toLocaleString()} rows per upload. Split the file and upload in parts.`,
+        413
+      );
+    }
+
     // Create upload batch
     const batch = await prisma.uploadBatch.create({
       data: {
@@ -747,6 +755,14 @@ export async function uploadInventory(req, res, next) {
     }
     const existingCodes = new Set(existingStores.map(s => s.storeCode));
     const newStoreCodes = [...fileStoreCodes].filter(c => !existingCodes.has(c));
+    const MAX_AUTO_STORES = 50;
+    if (newStoreCodes.length > MAX_AUTO_STORES) {
+      await prisma.uploadBatch.delete({ where: { id: batch.id } });
+      return res.status(422).json({
+        error: `File contains ${newStoreCodes.length} unknown store codes. Maximum ${MAX_AUTO_STORES} new stores can be auto-created per upload. Create the stores manually first, then re-upload.`,
+        newStoreCodes: newStoreCodes.slice(0, 20),
+      });
+    }
     if (newStoreCodes.length > 0) {
       await prisma.store.createMany({
         data: newStoreCodes.map(code => ({ storeCode: code, storeName: `Store ${code}`, isActive: true })),
@@ -877,6 +893,7 @@ export async function uploadInventory(req, res, next) {
       return res.status(422).json({
         error: 'No valid rows found — batch rejected. Check your file format.',
         errors: errors.slice(0, 20),
+        batchDeleted: true,
       });
     }
 

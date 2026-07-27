@@ -24,6 +24,7 @@ export function errorHandler(err, req, res, _next) {
     response.stack = err.stack;
   }
 
+  if (res.headersSent) return;
   res.status(statusCode).json(response);
 }
 

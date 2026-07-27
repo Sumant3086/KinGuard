@@ -22,13 +22,13 @@ export function invalidateUserCache(id) {
   userCache.delete(id);
 }
 
-// Sweep stale entries every 30 s so the Map doesn't grow unbounded.
+// Sweep stale entries every 15 s (half the 30 s TTL) so expired entries leave quickly.
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of userCache) {
     if (now > v.expires) userCache.delete(k);
   }
-}, 30_000).unref();
+}, 15_000).unref();
 
 export async function authenticate(req, res, next) {
   // Accept the access token from either:
@@ -59,7 +59,8 @@ export async function authenticate(req, res, next) {
     return next(err); // non-JWT error — propagate as 500
   }
 
-  if (!decoded?.userId || typeof decoded.userId !== 'number') {
+  if (!decoded?.userId || typeof decoded.userId !== 'number' ||
+      decoded.userId < 1 || decoded.userId > 2_147_483_647) {
     return next(new AppError('Your session has expired. Please sign in again', 401));
   }
 

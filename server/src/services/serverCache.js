@@ -9,7 +9,10 @@ export function sGet(key) {
 }
 
 export function sSet(key, data, ttlMs = 60_000) {
-  if (store.size >= MAX_ENTRIES) return; // silently skip writes when cap is hit
+  if (store.size >= MAX_ENTRIES) {
+    console.warn(`[serverCache] MAX_ENTRIES (${MAX_ENTRIES}) reached — skipping write for key: ${key}`);
+    return;
+  }
   store.set(key, { data, expires: Date.now() + ttlMs });
 }
 
