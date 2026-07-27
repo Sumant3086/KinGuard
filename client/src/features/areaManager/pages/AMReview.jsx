@@ -28,6 +28,7 @@ export default function AMReview() {
   const [returnReason,setReturnReason]= useState('');
   const [showReturn,  setShowReturn]  = useState(false);
   const [working,     setWorking]     = useState(false);
+  const openStoreToken = useRef(0); // incremented each call; stale calls bail on mismatch
 
   useEffect(() => {
     let live = true;
@@ -46,22 +47,24 @@ export default function AMReview() {
   }, [batchId, toast]);
 
   const openStore = useCallback(async (store) => {
+    const token = ++openStoreToken.current; // unique token for this call
     setSelected(store);
-    setRecords([]);        // clear stale records immediately so old store's data never shows
+    setRecords([]);
     setReview(null);
     setEditedRecs({});
     setRemarks(store.reviewRemarks || '');
     setShowReturn(false);
     setReturnReason('');
     setLoadingRecs(true);
-    let live = true;
     try {
       const { records: recs, review: rev } = await amApi.getStoreRecords(batchId, store.id);
-      if (live) { setRecords(recs); setReview(rev); }
+      if (token !== openStoreToken.current) return; // a newer call started — discard
+      setRecords(recs); setReview(rev);
     } catch (e) {
-      if (live) { console.error('AM store records:', e); toast.error('Could not load records.'); }
+      if (token !== openStoreToken.current) return;
+      console.error('AM store records:', e); toast.error('Could not load records.');
     } finally {
-      if (live) setLoadingRecs(false);
+      if (token === openStoreToken.current) setLoadingRecs(false);
     }
   }, [batchId, toast]);
 
@@ -84,6 +87,10 @@ export default function AMReview() {
   }
 
   async function handleApprove() {
+    if (Object.keys(editedRecs).length > 0) {
+      toast.warning('You have unsaved edits. Save each row before approving.');
+      return;
+    }
     setWorking(true);
     try {
       await amApi.approveStore(batchId, selected.id, { remarks });

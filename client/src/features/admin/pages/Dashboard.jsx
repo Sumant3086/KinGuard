@@ -252,7 +252,7 @@ export default function AdminDashboard() {
     );
 
     try {
-      const d = await Promise.race([adminApi.getDashboard(), timeoutPromise]);
+      const d = await Promise.race([adminApi.getDashboard(force), timeoutPromise]);
       if (mountedRef.current) {
         setData(d);
         setFetchedAt(Date.now());

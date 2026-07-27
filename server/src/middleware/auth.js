@@ -47,12 +47,16 @@ export async function authenticate(req, res, next) {
     return next(new AppError('Please sign in to continue', 401));
   }
 
-  // Verify JWT — any JWT error returns 401, never 500
+  // Verify JWT — JWT-specific errors return 401; unexpected errors (bad secret
+  // type, algorithm mismatch, etc.) propagate as 500 so they are visible in logs.
   let decoded;
   try {
     decoded = jwt.verify(token, env.jwt.secret);
-  } catch {
-    return next(new AppError('Your session has expired. Please sign in again', 401));
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError) {
+      return next(new AppError('Your session has expired. Please sign in again', 401));
+    }
+    return next(err); // non-JWT error — propagate as 500
   }
 
   if (!decoded?.userId || typeof decoded.userId !== 'number') {

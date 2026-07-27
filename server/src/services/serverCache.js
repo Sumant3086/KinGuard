@@ -1,4 +1,5 @@
 const store = new Map();
+const MAX_ENTRIES = 10_000; // defensive cap — all keys are derived from user IDs so this is never hit in practice
 
 export function sGet(key) {
   const e = store.get(key);
@@ -8,6 +9,7 @@ export function sGet(key) {
 }
 
 export function sSet(key, data, ttlMs = 60_000) {
+  if (store.size >= MAX_ENTRIES) return; // silently skip writes when cap is hit
   store.set(key, { data, expires: Date.now() + ttlMs });
 }
 

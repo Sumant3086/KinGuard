@@ -180,7 +180,8 @@ async function parseFileToRows(file) {
 export async function getDashboard(req, res, next) {
   const startTime = Date.now();
   try {
-    const cached = sGet('admin:dashboard');
+    const bust = !!req.query._bust; // manual refresh: skip server cache
+    const cached = bust ? null : sGet('admin:dashboard');
     if (cached) return res.json(cached);
 
     // Round 1 — two cheap queries; wrap in withDbRetry so a dropped Supabase
@@ -1085,6 +1086,8 @@ export async function getInventory(req, res, next) {
     const batchId     = parseId(req.query.batchId, 'batchId');
     const pageNum     = parsePage(req.query.page, 1);
     const pageSizeNum = parsePageSize(req.query.pageSize, 50, 200);
+
+    if (!batchId && !storeId) throw new AppError('A batchId or storeId filter is required', 400);
 
     const VALID_STATUSES = new Set(['PENDING', 'SUBMITTED']);
     if (status && !VALID_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);

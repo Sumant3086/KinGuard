@@ -104,6 +104,7 @@ export function AuthProvider({ children }) {
   async function logout() {
     try { await authApi.logout(); } catch { /* best-effort */ }
     localStorage.removeItem('kg_user');
+    sessionStorage.clear(); // clear store:returnedReason and any other per-session state
     clearCache();
     setUser(null);
     navigate('/login', { replace: true });

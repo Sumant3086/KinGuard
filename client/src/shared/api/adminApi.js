@@ -25,9 +25,9 @@ async function withCache(key, ttl, fetcher) {
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
-export function getDashboard() {
+export function getDashboard(bust = false) {
   return withCache('admin:dashboard', TTL.DASHBOARD,
-    async () => { const { data } = await client.get('/admin/dashboard'); return data; });
+    async () => { const { data } = await client.get('/admin/dashboard', bust ? { params: { _bust: Date.now() } } : {}); return data; });
 }
 
 // ── Stores ─────────────────────────────────────────────────────────────────

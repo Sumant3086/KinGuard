@@ -150,16 +150,14 @@ export default function Batches() {
     if (!deleteTarget) return;
     const target = deleteTarget;
     setDeletingBatch(true);
-    // Optimistic remove
-    setBatches(prev => prev.filter(b => b.id !== target.id));
-    setDeleteTarget(null);
     try {
       await adminApi.deleteBatch(target.id);
+      setBatches(prev => prev.filter(b => b.id !== target.id));
+      setDeleteTarget(null);
       toast.success('Cycle deleted');
     } catch (e) {
       console.error('Delete cycle:', e);
       toast.error('Could not delete cycle. Try again.');
-      load();
     } finally { setDeletingBatch(false); }
   }
 

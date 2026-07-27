@@ -311,6 +311,17 @@ export default function StoreInventory() {
   }
 
   async function executeSubmit() {
+    // Cancel every pending debounce timer so no autosave fires after submit
+    Object.keys(debounceTimers.current).forEach(id => {
+      clearTimeout(debounceTimers.current[id]);
+      delete debounceTimers.current[id];
+    });
+    // Also guard against an in-flight save completing after submit
+    if (savingRecords.size > 0) {
+      toast.warning('Wait for all saves to complete before submitting.');
+      setShowSubmitConfirm(false);
+      return;
+    }
     const batchId = parseInt(selectedBatch);
     try {
       setSubmitting(true);
