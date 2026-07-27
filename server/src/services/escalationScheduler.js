@@ -56,14 +56,17 @@ async function runEscalationCheck() {
         const inventoryDate = new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
         // Tier 1: notify Area Managers (fires from 0h up until 24h overdue)
+        // Stamp BEFORE sending — if the process crashes after stamping but before
+        // sending, the email is missed once. Stamping after sending risks duplicates
+        // on the next 30-minute tick if the process crashes between send and stamp.
         if (batch.escalationLevel < 1 && hoursOverdue >= TIER1_DELAY_MS / 3_600_000) {
+          await prisma.uploadBatch.update({ where: { id: batch.id }, data: { escalationLevel: 1 } });
           const amIds = [...new Set(pendingStores.map(s => s.areaManagerId).filter(Boolean))];
           if (amIds.length > 0) {
             const ams = await prisma.user.findMany({
               where: { id: { in: amIds }, isActive: true, email: { not: null } },
               select: { email: true, name: true, id: true },
             });
-            // Each AM gets a list of their own pending stores
             await Promise.allSettled(ams.map(am => {
               const theirPendingStores = pendingStores.filter(s => s.areaManagerId === am.id);
               return sendEscalationEmail({
@@ -74,12 +77,12 @@ async function runEscalationCheck() {
               });
             }));
           }
-          await prisma.uploadBatch.update({ where: { id: batch.id }, data: { escalationLevel: 1 } });
           console.warn(`[escalation] Tier 1 sent for batch ${batch.id} — ${storeIds.length} stores pending, ${Math.round(hoursOverdue)}h overdue`);
         }
 
-        // Tier 2: notify Admins (fires after 24h overdue)
+        // Tier 2: notify Admins (fires after 24h overdue) — stamp first, same rationale
         if (batch.escalationLevel < 2 && hoursOverdue >= TIER2_DELAY_MS / 3_600_000) {
+          await prisma.uploadBatch.update({ where: { id: batch.id }, data: { escalationLevel: 2 } });
           const admins = await prisma.user.findMany({
             where: { role: 'ADMIN', isActive: true, email: { not: null } },
             select: { email: true, name: true },
@@ -92,7 +95,6 @@ async function runEscalationCheck() {
               hoursOverdue: Math.round(hoursOverdue),
             })
           ));
-          await prisma.uploadBatch.update({ where: { id: batch.id }, data: { escalationLevel: 2 } });
           console.warn(`[escalation] Tier 2 sent for batch ${batch.id} — ${storeIds.length} stores still pending, ${Math.round(hoursOverdue)}h overdue`);
         }
       } catch (batchErr) {

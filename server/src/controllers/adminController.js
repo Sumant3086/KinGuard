@@ -49,6 +49,8 @@ const VALID_AUDIT_ACTIONS = new Set([
   'DOWNLOAD_BATCH_EXPORT', 'DOWNLOAD_BATCH_EXPORT_PDF',
   'DELETE_BATCH', 'CLOSE_BATCH', 'UPDATE_BATCH_DEADLINE',
   'BATCH_CREATE_USERS',
+  'DOWNLOAD_EXECUTIVE_SUMMARY',
+  'CREATE_CYCLE_SCHEDULE', 'UPDATE_CYCLE_SCHEDULE', 'DELETE_CYCLE_SCHEDULE',
 ]);
 
 // Generate a secure random temp password that satisfies validatePassword() rules.
@@ -1299,6 +1301,8 @@ export async function downloadInventoryExport(req, res, next) {
   const startTime = Date.now();
   try {
     const { status, search, discrepancy } = req.query;
+    if (status && !VALID_INV_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
+    if (discrepancy && !VALID_DISCREPANCIES.has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
 
@@ -2162,7 +2166,7 @@ export async function bulkOverrideInventory(req, res, next) {
 export async function exportAuditLogs(req, res, next) {
   try {
     const { action } = req.query;
-    const limit = Math.min(parseInt(req.query.limit) || 2000, 5000);
+    const limit = parseIntParam(req.query.limit, 'limit', 2000, 1, 5000);
     if (action && !VALID_AUDIT_ACTIONS.has(action)) throw new AppError('Invalid action filter', 400);
     const where = action ? { action } : {};
 
@@ -2501,7 +2505,7 @@ export async function getNotifications(req, res, next) {
     }
 
     // Run both record queries in parallel instead of sequentially
-    const [recentSubmits, pendingStores] = await Promise.all([
+    const [_recentSubmits, pendingStores] = await Promise.all([
       prisma.inventoryRecord.findMany({
         where: { batchId: latestBatch.id, status: 'SUBMITTED', submittedAt: { gte: since24h } },
         select: { storeId: true },

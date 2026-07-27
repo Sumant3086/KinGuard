@@ -107,9 +107,6 @@ const rlOptions = { standardHeaders: true, legacyHeaders: false,
 // Auth endpoints — 20 attempts per 15 minutes per IP (covers both login and refresh)
 const authLimiter = rateLimit({ ...rlOptions, windowMs: 15 * 60 * 1000, max: 20 });
 
-// Heavy read/export endpoints — 30 requests per minute per IP
-const heavyLimiter = rateLimit({ ...rlOptions, windowMs: 60 * 1000, max: 30 });
-
 // ── Routes ─────────────────────────────────────────────────────────────────
 import authRoutes      from './routes/authRoutes.js';
 import storeRoutes     from './routes/storeRoutes.js';

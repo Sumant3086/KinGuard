@@ -9,7 +9,19 @@ const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const WINDOW_MIN_MS     = 50 * 60 * 1000; // 50 min from now
 const WINDOW_MAX_MS     = 90 * 60 * 1000; // 90 min from now
 
+async function purgeExpiredTokens() {
+  try {
+    const { count } = await prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+    if (count > 0) console.warn(`[scheduler] Purged ${count} expired refresh token(s)`);
+  } catch (err) {
+    console.error('[scheduler] Token purge failed:', err.message);
+  }
+}
+
 async function runReminderCheck() {
+  // Purge expired refresh tokens on every tick — keeps the table from growing unboundedly
+  await purgeExpiredTokens();
+
   try {
     const now = new Date();
     const windowStart = new Date(now.getTime() + WINDOW_MIN_MS);

@@ -25,7 +25,7 @@ function categoryScore(categories) {
 
 export async function getRiskScores(req, res, next) {
   try {
-    const cycles = Math.min(parseInt(req.query.cycles) || 6, 12);
+    const cycles = Math.max(1, Math.min(parseInt(req.query.cycles) || 6, 12));
 
     const batches = await prisma.uploadBatch.findMany({
       where: { isDeleted: false, status: 'COMPLETED' },

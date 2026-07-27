@@ -376,7 +376,7 @@ export async function approveStore(req, res, next) {
     const batchId = requireId(req.params.batchId, 'batchId');
     const storeId = requireId(req.params.storeId, 'storeId');
 
-    const storeIds = await getManagedStoreIds(req.user.id);
+    const storeIds = await getManagedStoreIds(req.user.id, true); // forceRefresh — no stale auth on write
     if (!storeIds.includes(storeId)) throw new AppError('This store is not assigned to you', 403);
 
     // Server-side guard: all records must be submitted before an AM can approve.
@@ -430,7 +430,7 @@ export async function returnStore(req, res, next) {
     const batchId = requireId(req.params.batchId, 'batchId');
     const storeId = requireId(req.params.storeId, 'storeId');
 
-    const storeIds = await getManagedStoreIds(req.user.id);
+    const storeIds = await getManagedStoreIds(req.user.id, true); // forceRefresh — no stale auth on write
     if (!storeIds.includes(storeId)) throw new AppError('This store is not assigned to you', 403);
 
     const { remarks } = req.body;
