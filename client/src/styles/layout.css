@@ -57,7 +57,7 @@
 /* ─── Area Manager nav — light crimson, brand-aligned ───────────── */
 .am-nav {
   background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #991b1b 100%) !important;
-  border-bottom-color: rgba(255,255,255,0.16) !important;
+  border-bottom: 2.5px solid rgba(29,78,216,0.55) !important;
   box-shadow: 0 4px 20px rgba(0,0,0,0.24), 0 2px 8px rgba(185,28,28,0.30) !important;
 }
 .am-nav .hl-link.active,
@@ -71,15 +71,15 @@
   color: #ffffff !important;
   background: rgba(255,255,255,0.16) !important;
 }
-.am-mobile-menu { background: linear-gradient(180deg, #991b1b 0%, #b91c1c 100%) !important; }
+.am-mobile-menu { background: linear-gradient(180deg, #7f1d1d 0%, #991b1b 80%, #b91c1c 100%) !important; }
 
 /* ─── AM mobile bottom nav (mirrors store bottom nav) ────────────── */
 .am-bottom-nav {
   display: none;
   position: fixed; bottom: 0; left: 0; right: 0;
   height: var(--mob-nav-h, 60px);
-  background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #991b1b 100%);
-  border-top: 2px solid rgba(255,255,255,0.18);
+  background: linear-gradient(90deg, #1e3a8a 0%, #1d4ed8 50%, #1e3a8a 100%);
+  border-top: 2.5px solid rgba(99,143,255,0.45);
   z-index: 200; padding: 0 8px;
   box-shadow: 0 -4px 16px rgba(0,0,0,0.18);
   padding-bottom: env(safe-area-inset-bottom);
@@ -96,8 +96,8 @@
   min-height: 44px; justify-content: center; text-decoration: none;
 }
 .am-mob-item svg { width: 19px; height: 19px; }
-.am-mob-item.active { color: #fff; }
-.am-mob-item:hover  { color: #fecaca; }
+.am-mob-item.active { color: #fff; box-shadow: inset 0 2px 0 rgba(255,255,255,0.75); border-radius: 10px; background: rgba(255,255,255,0.14); }
+.am-mob-item:hover  { color: #bfdbfe; }
 .am-mob-logout {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 8px 16px; border-radius: var(--r);
@@ -113,7 +113,7 @@
 .hl-nav {
   height: 60px;
   background: linear-gradient(90deg, #7f1d1d 0%, #991b1b 50%, #7f1d1d 100%);
-  border-bottom: 2px solid rgba(255,255,255,0.12);
+  border-bottom: 2px solid rgba(22,163,74,0.28);
   box-shadow: 0 4px 20px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.14);
   display: flex;
   align-items: center;
@@ -317,7 +317,7 @@
 /* ─── Store top nav — vivid crimson, brighter than AM ────────────── */
 .store-header {
   background: linear-gradient(90deg, #b91c1c 0%, #dc2626 50%, #b91c1c 100%);
-  border-bottom: 2px solid rgba(255,255,255,0.18);
+  border-bottom: 2.5px solid rgba(8,145,178,0.55);
   box-shadow: 0 4px 20px rgba(0,0,0,0.20), 0 2px 8px rgba(220,38,38,0.30);
   position: sticky; top: 0; z-index: 200;
 }
@@ -366,7 +366,7 @@
 
 .store-bottom-nav { position: relative; z-index: 10; }
 
-/* ── Store Manager — clean white glass with vivid crimson accents ─── */
+/* ── Store Manager — white glass with teal accent ─── */
 .store-shell .card,
 .store-shell .kpi-card,
 .store-shell .metric-card,
@@ -377,9 +377,9 @@
 .store-shell .table-wrap,
 .store-shell .table-container,
 .store-shell .filter-card {
-  background: rgba(255, 255, 255, 0.96) !important;
-  border: 1.5px solid rgba(220, 38, 38, 0.14) !important;
-  box-shadow: 0 6px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(220,38,38,0.06), inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  border: 1.5px solid rgba(8, 145, 178, 0.22) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.10), 0 2px 10px rgba(8,145,178,0.09), inset 0 1px 0 rgba(255,255,255,0.95) !important;
   position: relative;
   overflow: hidden;
 }
@@ -543,9 +543,9 @@
 .am-shell .table-wrap,
 .am-shell .table-container,
 .am-shell .filter-card {
-  background: rgba(255,255,255,0.96) !important;
-  border: 1.5px solid rgba(29,78,216,0.13) !important;
-  box-shadow: 0 6px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(29,78,216,0.06), inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  background: rgba(255,255,255,0.97) !important;
+  border: 1.5px solid rgba(29,78,216,0.22) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.10), 0 2px 10px rgba(29,78,216,0.10), inset 0 1px 0 rgba(255,255,255,0.95) !important;
   position: relative; overflow: hidden;
 }
 
@@ -556,8 +556,8 @@
 .am-shell .dash-command::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, transparent 0%, #1d4ed8 30%, #dc2626 70%, transparent 100%);
+  top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, transparent 0%, #1d4ed8 25%, #3b82f6 50%, #dc2626 75%, transparent 100%);
   border-radius: inherit;
 }
 
@@ -604,7 +604,7 @@
 .am-shell .dash-cmd-title { color: #991b1b !important; font-weight: 900 !important; text-shadow: none !important; }
 .am-shell .page-header p,
 .am-shell .card-sub,
-.am-shell .dash-cmd-sub   { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
+.am-shell .dash-cmd-sub   { color: #475569 !important; font-weight: 600 !important; text-shadow: none !important; }
 
 /* AM stat card modifier overrides */
 .am-shell .stat-card.info,
@@ -621,7 +621,7 @@
 .am-shell .stat-card h4    { color: #1e3a8a !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
 .am-shell .stat-card .value{ color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
 .am-shell .stat-card p     { color: #6b7280 !important; font-weight: 500 !important; text-shadow: none !important; }
-.am-shell .kpi-label       { color: #374151 !important; font-weight: 800 !important; text-shadow: none !important; }
+.am-shell .kpi-label       { color: #1e3a8a !important; font-weight: 800 !important; text-shadow: none !important; }
 .am-shell .kpi-value       { color: #111827 !important; text-shadow: none !important; }
 .am-shell .kpi-sub         { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
 
@@ -649,7 +649,7 @@
 .am-shell .btn-ghost:hover:not(:disabled)   { background: #ffffff !important; border-color: rgba(29,78,216,0.36) !important; color: #1e3a8a !important; }
 .am-shell .btn-success  { background: linear-gradient(135deg, #15803d 0%, #14532d 100%) !important; box-shadow: 0 4px 16px rgba(22,163,74,0.30) !important; }
 
-/* ── Admin shell — white cards + red accents (matches store + AM treatment) ── */
+/* ── Admin shell — white cards + emerald accents ── */
 .admin-shell .card,
 .admin-shell .kpi-card,
 .admin-shell .metric-card,
@@ -660,9 +660,9 @@
 .admin-shell .table-wrap,
 .admin-shell .table-container,
 .admin-shell .filter-card {
-  background: rgba(255,255,255,0.96) !important;
-  border: 1.5px solid rgba(220,38,38,0.13) !important;
-  box-shadow: 0 6px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(220,38,38,0.06), inset 0 1px 0 rgba(255,255,255,0.90) !important;
+  background: rgba(255,255,255,0.97) !important;
+  border: 1.5px solid rgba(22,163,74,0.20) !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.10), 0 2px 10px rgba(22,163,74,0.08), inset 0 1px 0 rgba(255,255,255,0.95) !important;
   position: relative; overflow: hidden;
 }
 /* Admin tier accent — emerald stripe (echoes the lush green produce/plants in AdminPage.jpg) */
@@ -700,8 +700,8 @@
 .admin-shell .stat-card.accent,
 .admin-shell .stat-card {
   background: rgba(255,255,255,0.97) !important;
-  border: 1.5px solid rgba(220,38,38,0.13) !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 6px rgba(220,38,38,0.06) !important;
+  border: 1.5px solid rgba(22,163,74,0.18) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 1px 6px rgba(22,163,74,0.07) !important;
 }
 .admin-shell .stat-card h4    { color: #15803d !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; text-shadow: none !important; }
 .admin-shell .stat-card .value{ color: #111827 !important; font-weight: 900 !important; text-shadow: none !important; }
@@ -750,7 +750,7 @@
   display: none; position: fixed; bottom: 0; left: 0; right: 0;
   height: var(--mob-nav-h);
   background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #991b1b 100%);
-  border-top: 1.5px solid rgba(255,255,255,0.20);
+  border-top: 2.5px solid rgba(8,145,178,0.60);
   z-index: 200; padding: 0 8px;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.28);
   padding-bottom: env(safe-area-inset-bottom);
@@ -769,8 +769,9 @@
 /* Active: WHITE — never use brand-red on a red navbar (invisible) */
 .mob-nav-item.active {
   color: #ffffff !important;
-  background: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.16);
   border-radius: 10px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.75);
 }
 .mob-nav-item:hover { color: rgba(255,255,255,0.90); }
 .mob-logout {
@@ -873,11 +874,11 @@
    blur + brightness reduction keeps cards readable on small screens.
    ═══════════════════════════════════════════════════════════════════ */
 @media (max-width:768px) {
-  /* Near-white shell backgrounds — fill gaps the fixed ::before misses,
-     and keep each tier subtly distinct without fighting the photo. */
-  .admin-shell { background: rgba(248,252,250,1) !important; }
-  .am-shell    { background: rgba(246,249,254,1) !important; }
-  .store-shell { background: rgba(255,253,251,1) !important; }
+  /* Tier-specific gap-fill backgrounds — richer gradients signal which
+     tier you're in even before content loads. */
+  .admin-shell { background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%) !important; }
+  .am-shell    { background: linear-gradient(160deg, #eef2ff 0%, #e0e7ff 100%) !important; }
+  .store-shell { background: linear-gradient(160deg, #fff7ed 0%, #fef3c7 100%) !important; }
 
   /* Stronger blur + slight dimming on mobile so blurred photo doesn't
      compete with card content on a small screen. */

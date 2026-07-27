@@ -198,7 +198,7 @@
 .kpi-teal .kpi-icon   { background:rgba(8,145,178,0.12);  color:#0891b2; border-color:rgba(8,145,178,0.22); }
 .kpi-purple .kpi-icon { background:rgba(124,58,237,0.10); color:#7c3aed; border-color:rgba(124,58,237,0.18); }
 
-.kpi-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#2d0e09 !important; margin-bottom:4px; text-shadow: 0 1px 1px rgba(255,255,255,0.6); }
+.kpi-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.7px; color:#2d0e09 !important; margin-bottom:4px; text-shadow: 0 1px 1px rgba(255,255,255,0.6); }
 .kpi-value { font-size:28px; font-weight:900; letter-spacing:-1.5px; line-height:1; margin-bottom:4px; color:#0f0503 !important; animation:value-pop 0.28s var(--ease) both; text-shadow: 0 1px 2px rgba(255,255,255,0.7); }
 .kpi-sub   { font-size:11.5px; color:#2d0e09 !important; font-weight:600; line-height:1.4; text-shadow: 0 1px 1px rgba(255,255,255,0.5); }
 
@@ -223,7 +223,7 @@
   animation: fade-in-up 0.18s var(--ease) both;
 }
 .stat-card:hover { transform:translateY(-2px); border-color:var(--red-border-hover); }
-.stat-card h4    { font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.9px; color:#3d1510 !important; margin-bottom:8px; text-shadow: none; }
+.stat-card h4    { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#3d1510 !important; margin-bottom:8px; text-shadow: none; }
 .stat-card .value{ font-size:26px; font-weight:900; color:#1a0a08 !important; letter-spacing:-1px; animation:value-pop 0.25s var(--ease) both; text-shadow: none; }
 .stat-card p     { font-size:10.5px; color:#3d1510 !important; margin-top:4px; font-weight:600; text-shadow: none; }
 .stat-card.danger  { border-left: 4px solid #dc2626; padding-left: 14px; }
@@ -400,8 +400,8 @@
 table { width:100%; border-collapse:collapse; font-size:13.5px; }
 thead tr { background:rgba(248,232,228,0.95); position:sticky; top:0; z-index:var(--z-dropdown); }
 th {
-  padding:10px 16px; text-align:left; font-size:10px; font-weight:800;
-  color:var(--tx2); text-transform:uppercase; letter-spacing:0.9px;
+  padding:10px 16px; text-align:left; font-size:11px; font-weight:800;
+  color:var(--tx2); text-transform:uppercase; letter-spacing:0.6px;
   border-bottom:1px solid var(--red-border); white-space:nowrap; user-select:none;
 }
 th.sortable, th.th-sortable { cursor:pointer; position:relative; padding-right:28px; transition:color 0.15s; }
@@ -476,9 +476,9 @@ tbody.zebra tr:nth-child(even) td { background:rgba(0,0,0,0.02); }
 
 .btn-primary {
   background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);
-  color:#fff; box-shadow:0 3px 12px rgba(185,28,28,0.32); border:1px solid transparent;
+  color:#fff; box-shadow:0 4px 14px rgba(185,28,28,0.38), 0 1px 3px rgba(0,0,0,0.10); border:1px solid transparent;
 }
-.btn-primary:hover:not(:disabled) { background:linear-gradient(135deg,#b91c1c 0%,#991b1b 100%); box-shadow:0 5px 18px rgba(185,28,28,0.42); color:#fff; }
+.btn-primary:hover:not(:disabled) { background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%); box-shadow:0 6px 22px rgba(185,28,28,0.50), 0 2px 6px rgba(0,0,0,0.12); color:#fff; }
 
 .btn-secondary {
   background:rgba(255,255,255,0.70); border:1px solid rgba(185,28,28,0.20); color:var(--tx2); box-shadow:0 1px 6px rgba(0,0,0,0.08);
