@@ -2396,14 +2396,176 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   gap: 16px;
   align-items: start;
 }
-@media (max-width: 768px) {
-  .am-review-grid { grid-template-columns: 1fr !important; }
-  .am-review-store-panel { max-height: 220px; overflow-y: auto; }
-}
 @media (min-width: 769px) {
   .am-review-grid.has-selection  { grid-template-columns: min(260px, 28%) 1fr; }
   .am-review-grid.no-selection   { grid-template-columns: 1fr; }
 }
+
+/* ── AM Review — desktop table / mobile cards toggle ──────────────── */
+.am-review-table-wrap  { display: block; }
+.am-review-mobile-cards { display: none; }
+.am-rec-back-btn { display: none; }
+
+@media (max-width: 768px) {
+  /* Master-detail: when a store is selected, hide the store list
+     and show records full-width — no side-by-side squishing */
+  .am-review-grid { grid-template-columns: 1fr !important; }
+  .am-review-grid.has-selection .am-review-store-panel { display: none !important; }
+  .am-review-grid.no-selection  .am-review-store-panel { max-height: none; overflow-y: auto; }
+
+  /* Swap table → cards */
+  .am-review-table-wrap   { display: none; }
+  .am-review-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    max-height: 56vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Back button visible on mobile */
+  .am-rec-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: 1.5px solid rgba(29,78,216,0.22);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e3a8a;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ── AM Review record cards (mobile) ──────────────────────────────── */
+.am-rec-card {
+  border: 1.5px solid rgba(29,78,216,0.16);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.96);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  flex-shrink: 0;
+}
+.am-rec-card.am-rec-shortage {
+  border-color: rgba(220,38,38,0.28);
+  background: rgba(254,242,242,0.70);
+}
+.am-rec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.am-rec-code {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--tx3);
+  font-family: monospace;
+  letter-spacing: 0.3px;
+}
+.am-rec-save-btn {
+  font-size: 11px !important;
+  padding: 5px 12px !important;
+  min-height: 28px !important;
+  background: #1d4ed8 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 7px !important;
+}
+.am-rec-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tx1);
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+.am-rec-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+  background: rgba(29,78,216,0.05);
+  border-radius: 9px;
+  padding: 9px 8px;
+}
+.am-rec-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.am-rec-metric-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #1e3a8a;
+}
+.am-rec-metric-val {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--tx1);
+  font-variant-numeric: tabular-nums;
+}
+.am-rec-neg { color: #dc2626 !important; }
+.am-rec-pos { color: #16a34a !important; }
+.am-rec-qty-input {
+  width: 100% !important;
+  text-align: center !important;
+  padding: 4px 4px !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  border: 1.5px solid rgba(29,78,216,0.35) !important;
+  border-radius: 7px !important;
+  background: #fff !important;
+  color: var(--tx1) !important;
+  max-width: 72px;
+}
+.am-rec-qty-input:focus {
+  outline: none !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 0 0 3px rgba(29,78,216,0.14) !important;
+}
+.am-rec-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.am-rec-select {
+  width: 100%;
+  padding: 9px 12px !important;
+  font-size: 15px !important;
+  border: 1.5px solid rgba(29,78,216,0.20) !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: var(--tx1) !important;
+  min-height: 42px;
+}
+.am-rec-remark {
+  width: 100%;
+  padding: 9px 12px !important;
+  font-size: 15px !important;
+  border: 1.5px solid rgba(29,78,216,0.20) !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: var(--tx1) !important;
+}
+.am-rec-fields-readonly { display: flex; flex-direction: column; gap: 4px; }
+.am-rec-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 99px;
+  background: rgba(29,78,216,0.10); color: #1e3a8a;
+  border: 1px solid rgba(29,78,216,0.20);
+  align-self: flex-start;
+}
+.am-rec-remark-text { font-size: 12px; color: var(--tx3); font-style: italic; }
 
 /* ═══════════════════════════════════════════════════════════════════
    GLOBAL MOBILE IMPROVEMENTS

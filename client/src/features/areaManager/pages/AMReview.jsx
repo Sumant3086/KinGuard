@@ -173,7 +173,9 @@ export default function AMReview() {
         {selected && (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--red-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-              <div>
+              {/* Back button — mobile only, returns to store list */}
+              <button className="am-rec-back-btn" onClick={() => setSelected(null)}>← Stores</button>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--tx1)' }}>{selected.storeName}</div>
                 <div style={{ fontSize: 12, color: 'var(--tx3)' }}>{selected.storeCode}</div>
               </div>
@@ -192,88 +194,134 @@ export default function AMReview() {
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--tx3)' }}>Loading records…</div>
             ) : (
               <>
-                {/* Records table */}
-                <div className="table-wrap" style={{ maxHeight: 380, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                  <table style={{ minWidth: 560 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ minWidth: 80 }}>Item Code</th>
-                        <th style={{ minWidth: 120 }}>Name</th>
-                        <th style={{ textAlign: 'right', minWidth: 64 }}>System</th>
-                        <th style={{ textAlign: 'right', minWidth: 80 }}>Physical</th>
-                        <th style={{ textAlign: 'right', minWidth: 72 }}>Variance</th>
-                        <th style={{ minWidth: 100 }}>Category</th>
-                        <th style={{ minWidth: 110 }}>Remarks</th>
-                        {review?.status !== 'APPROVED' && <th style={{ minWidth: 52 }}></th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {records.map(r => {
-                        const edited = editedRecs[r.id] || {};
-                        const qty    = edited.physicalQuantity !== undefined ? edited.physicalQuantity : r.physicalQuantity;
-                        const cat    = edited.shrinkageCategory !== undefined ? edited.shrinkageCategory : r.shrinkageCategory;
-                        const rem    = edited.remarks !== undefined ? edited.remarks : r.remarks;
-                        const diff   = qty !== null && qty !== undefined ? qty - r.systemQuantity : r.difference;
-                        const hasDiff= diff !== null && diff !== 0;
-                        const dirty  = !!editedRecs[r.id];
-
-                        return (
-                          <tr key={r.id} style={{ background: hasDiff && diff < 0 ? 'rgba(220,38,38,0.04)' : 'none' }}>
-                            <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{r.materialCode}</td>
-                            <td>{r.materialName}</td>
-                            <td style={{ textAlign: 'right' }}>{r.systemQuantity}</td>
-                            <td style={{ textAlign: 'right' }}>
-                              {review?.status !== 'APPROVED' ? (
-                                <input
-                                  type="number" inputMode="decimal" min="0" step="0.01"
-                                  value={qty ?? ''}
-                                  onChange={e => editField(r.id, 'physicalQuantity', e.target.value === '' ? null : parseFloat(e.target.value))}
-                                  style={{ width: 70, textAlign: 'right', padding: '3px 6px', fontSize: 12, border: '1px solid var(--red-border)', borderRadius: 6 }}
-                                />
-                              ) : (qty ?? '—')}
-                            </td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: diff < 0 ? '#dc2626' : diff > 0 ? '#16a34a' : 'var(--tx3)' }}>
-                              {diff !== null ? `${diff > 0 ? '+' : ''}${typeof diff === 'number' ? diff.toFixed(2).replace(/\.00$/, '') : diff}` : '—'}
-                            </td>
-                            <td>
-                              {review?.status !== 'APPROVED' ? (
-                                <select
-                                  value={cat || ''}
-                                  onChange={e => editField(r.id, 'shrinkageCategory', e.target.value || null)}
-                                  style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--red-border)', borderRadius: 6 }}
-                                >
-                                  <option value="">—</option>
-                                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                              ) : (cat || '—')}
-                            </td>
-                            <td>
-                              {review?.status !== 'APPROVED' ? (
-                                <input
-                                  type="text"
-                                  value={rem || ''}
-                                  onChange={e => editField(r.id, 'remarks', e.target.value || null)}
-                                  placeholder="Add note…"
-                                  style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--red-border)', borderRadius: 6, width: 120 }}
-                                />
-                              ) : (rem || '—')}
-                            </td>
-                            {review?.status !== 'APPROVED' && (
-                              <td>
-                                {dirty && (
-                                  <button
-                                    className="btn btn-sm"
-                                    style={{ fontSize: 10, padding: '3px 8px' }}
-                                    onClick={() => saveEdit(r)}
-                                  >Save</button>
-                                )}
+                {/* Desktop table — hidden on mobile */}
+                <div className="am-review-table-wrap">
+                  <div className="table-wrap" style={{ maxHeight: 380, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <table style={{ minWidth: 560 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ minWidth: 80 }}>Item Code</th>
+                          <th style={{ minWidth: 120 }}>Name</th>
+                          <th style={{ textAlign: 'right', minWidth: 64 }}>System</th>
+                          <th style={{ textAlign: 'right', minWidth: 80 }}>Physical</th>
+                          <th style={{ textAlign: 'right', minWidth: 72 }}>Variance</th>
+                          <th style={{ minWidth: 100 }}>Category</th>
+                          <th style={{ minWidth: 110 }}>Remarks</th>
+                          {review?.status !== 'APPROVED' && <th style={{ minWidth: 52 }}></th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {records.map(r => {
+                          const edited = editedRecs[r.id] || {};
+                          const qty    = edited.physicalQuantity !== undefined ? edited.physicalQuantity : r.physicalQuantity;
+                          const cat    = edited.shrinkageCategory !== undefined ? edited.shrinkageCategory : r.shrinkageCategory;
+                          const rem    = edited.remarks !== undefined ? edited.remarks : r.remarks;
+                          const diff   = qty !== null && qty !== undefined ? qty - r.systemQuantity : r.difference;
+                          const hasDiff= diff !== null && diff !== 0;
+                          const dirty  = !!editedRecs[r.id];
+                          return (
+                            <tr key={r.id} style={{ background: hasDiff && diff < 0 ? 'rgba(220,38,38,0.04)' : 'none' }}>
+                              <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{r.materialCode}</td>
+                              <td>{r.materialName}</td>
+                              <td style={{ textAlign: 'right' }}>{r.systemQuantity}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                {review?.status !== 'APPROVED' ? (
+                                  <input type="number" inputMode="decimal" min="0" step="0.01"
+                                    value={qty ?? ''}
+                                    onChange={e => editField(r.id, 'physicalQuantity', e.target.value === '' ? null : parseFloat(e.target.value))}
+                                    style={{ width: 70, textAlign: 'right', padding: '3px 6px', fontSize: 12, border: '1px solid var(--red-border)', borderRadius: 6 }}
+                                  />
+                                ) : (qty ?? '—')}
                               </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: diff < 0 ? '#dc2626' : diff > 0 ? '#16a34a' : 'var(--tx3)' }}>
+                                {diff !== null ? `${diff > 0 ? '+' : ''}${typeof diff === 'number' ? diff.toFixed(2).replace(/\.00$/, '') : diff}` : '—'}
+                              </td>
+                              <td>
+                                {review?.status !== 'APPROVED' ? (
+                                  <select value={cat || ''} onChange={e => editField(r.id, 'shrinkageCategory', e.target.value || null)}
+                                    style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--red-border)', borderRadius: 6 }}>
+                                    <option value="">—</option>
+                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                  </select>
+                                ) : (cat || '—')}
+                              </td>
+                              <td>
+                                {review?.status !== 'APPROVED' ? (
+                                  <input type="text" value={rem || ''}
+                                    onChange={e => editField(r.id, 'remarks', e.target.value || null)}
+                                    placeholder="Add note…"
+                                    style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--red-border)', borderRadius: 6, width: 120 }}
+                                  />
+                                ) : (rem || '—')}
+                              </td>
+                              {review?.status !== 'APPROVED' && (
+                                <td>{dirty && <button className="btn btn-sm" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => saveEdit(r)}>Save</button>}</td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Mobile cards — one card per item, no horizontal scrolling */}
+                <div className="am-review-mobile-cards">
+                  {records.map(r => {
+                    const edited  = editedRecs[r.id] || {};
+                    const qty     = edited.physicalQuantity  !== undefined ? edited.physicalQuantity  : r.physicalQuantity;
+                    const cat     = edited.shrinkageCategory !== undefined ? edited.shrinkageCategory : r.shrinkageCategory;
+                    const rem     = edited.remarks           !== undefined ? edited.remarks           : r.remarks;
+                    const diff    = qty !== null && qty !== undefined ? qty - r.systemQuantity : r.difference;
+                    const dirty   = !!editedRecs[r.id];
+                    return (
+                      <div key={r.id} className={`am-rec-card${diff !== null && diff < 0 ? ' am-rec-shortage' : ''}`}>
+                        <div className="am-rec-header">
+                          <span className="am-rec-code">{r.materialCode}</span>
+                          {dirty && <button className="btn am-rec-save-btn" onClick={() => saveEdit(r)}>Save</button>}
+                        </div>
+                        <div className="am-rec-name">{r.materialName}</div>
+                        <div className="am-rec-metrics">
+                          <div className="am-rec-metric">
+                            <span className="am-rec-metric-label">System</span>
+                            <span className="am-rec-metric-val">{r.systemQuantity}</span>
+                          </div>
+                          <div className="am-rec-metric">
+                            <span className="am-rec-metric-label">Physical</span>
+                            {review?.status !== 'APPROVED' ? (
+                              <input type="number" inputMode="decimal" min="0" step="0.01"
+                                value={qty ?? ''} className="am-rec-qty-input"
+                                onChange={e => editField(r.id, 'physicalQuantity', e.target.value === '' ? null : parseFloat(e.target.value))}
+                              />
+                            ) : <span className="am-rec-metric-val">{qty ?? '—'}</span>}
+                          </div>
+                          <div className="am-rec-metric">
+                            <span className="am-rec-metric-label">Variance</span>
+                            <span className={`am-rec-metric-val${diff < 0 ? ' am-rec-neg' : diff > 0 ? ' am-rec-pos' : ''}`}>
+                              {diff !== null ? `${diff > 0 ? '+' : ''}${typeof diff === 'number' ? diff.toFixed(2).replace(/\.00$/, '') : diff}` : '—'}
+                            </span>
+                          </div>
+                        </div>
+                        {review?.status !== 'APPROVED' && (
+                          <div className="am-rec-fields">
+                            <select value={cat || ''} className="am-rec-select"
+                              onChange={e => editField(r.id, 'shrinkageCategory', e.target.value || null)}>
+                              <option value="">— Category —</option>
+                              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input type="text" value={rem || ''} placeholder="Add note…" className="am-rec-remark"
+                              onChange={e => editField(r.id, 'remarks', e.target.value || null)} />
+                          </div>
+                        )}
+                        {review?.status === 'APPROVED' && (cat || rem) && (
+                          <div className="am-rec-fields-readonly">
+                            {cat && <span className="am-rec-badge">{cat}</span>}
+                            {rem && <span className="am-rec-remark-text">{rem}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Review actions */}
