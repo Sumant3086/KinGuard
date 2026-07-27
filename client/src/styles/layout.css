@@ -78,8 +78,8 @@
   display: none;
   position: fixed; bottom: 0; left: 0; right: 0;
   height: var(--mob-nav-h, 60px);
-  background: linear-gradient(90deg, #1e3a8a 0%, #1d4ed8 50%, #1e3a8a 100%);
-  border-top: 2.5px solid rgba(99,143,255,0.45);
+  background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #991b1b 100%);
+  border-top: 2.5px solid rgba(29,78,216,0.45);
   z-index: 200; padding: 0 8px;
   box-shadow: 0 -4px 16px rgba(0,0,0,0.18);
   padding-bottom: env(safe-area-inset-bottom);
@@ -97,7 +97,7 @@
 }
 .am-mob-item svg { width: 19px; height: 19px; }
 .am-mob-item.active { color: #fff; box-shadow: inset 0 2px 0 rgba(255,255,255,0.75); border-radius: 10px; background: rgba(255,255,255,0.14); }
-.am-mob-item:hover  { color: #bfdbfe; }
+.am-mob-item:hover  { color: #fecaca; }
 .am-mob-logout {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 8px 16px; border-radius: var(--r);
@@ -625,10 +625,10 @@
 .am-shell .kpi-value       { color: #111827 !important; text-shadow: none !important; }
 .am-shell .kpi-sub         { color: #6b7280 !important; font-weight: 600 !important; text-shadow: none !important; }
 
-/* AM KPI icon — navy ring to match tier accent */
+/* AM KPI icon — subtle navy tint, not a heavy blue box */
 .am-shell .kpi-icon {
-  background: rgba(239,246,255,0.90) !important;
-  border: 1.5px solid rgba(29,78,216,0.22) !important;
+  background: rgba(248,250,255,0.95) !important;
+  border: 1px solid rgba(29,78,216,0.14) !important;
   border-radius: 12px !important;
   width: 46px !important; height: 46px !important;
   margin-bottom: 14px;
@@ -636,9 +636,9 @@
 }
 .am-shell .kpi-card:hover .kpi-icon {
   transform: scale(1.08) rotate(4deg);
-  box-shadow: 0 4px 14px rgba(29,78,216,0.20) !important;
+  box-shadow: 0 4px 14px rgba(29,78,216,0.12) !important;
 }
-.am-shell .kpi-icon svg { color: #1d4ed8 !important; }
+.am-shell .kpi-icon svg { color: #1e3a8a !important; }
 
 /* AM buttons — keep crimson for primary actions */
 .am-shell .btn-primary  { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important; box-shadow: 0 4px 16px rgba(220,38,38,0.35) !important; font-weight: 700 !important; }
