@@ -2752,7 +2752,7 @@ export async function batchCreateUsersForPlants(req, res, next) {
       })
     );
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:users', 'admin:stores');
 
     res.json({
       message: `Created ${createdUsers.length} user(s)`,

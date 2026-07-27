@@ -163,7 +163,7 @@ export default function Inventory() {
       setOverrideRecord(null);
     } catch (err) {
       console.error('Override record:', err);
-      setOverrideError('Could not save changes. Please try again.');
+      setOverrideError(err.response?.data?.error || 'Could not save changes. Please try again.');
     } finally {
       setOverriding(false);
     }

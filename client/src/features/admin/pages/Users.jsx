@@ -358,7 +358,7 @@ export default function AdminUsers() {
       load();
     } catch (err) {
       console.error('Approve user:', err);
-      toast.error('Could not approve user. Try again.');
+      toast.error(err.response?.data?.error || 'Could not approve user. Try again.');
     } finally {
       setApprovingId(null);
     }
@@ -380,7 +380,7 @@ export default function AdminUsers() {
       load();
     } catch (err) {
       console.error('Reject user:', err);
-      toast.error('Could not reject user. Try again.');
+      toast.error(err.response?.data?.error || 'Could not reject user. Try again.');
       load();
     } finally {
       setRejectingId(null);
@@ -552,6 +552,7 @@ export default function AdminUsers() {
     setImportStep('upload');
     setImportPreview(null);
     setImportResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setShowImportModal(true);
   }
 
