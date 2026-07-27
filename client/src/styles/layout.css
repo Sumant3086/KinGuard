@@ -865,36 +865,28 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MOBILE PERFORMANCE + BACKGROUND
-   On mobile we skip the heavy background photos entirely. We also
-   replace the ::before / ::after fixed-position elements with a direct
-   background on the shell element itself — position:fixed pseudo-elements
-   inside a stacking context do not reliably fill gutter areas on all
-   mobile browsers, causing dark gaps between cards.
-   Gradients are pulled from the dominant tones of each tier's photo.
+   MOBILE BACKGROUND
+   Background images ARE shown on mobile — they're already small JPEGs
+   (193–315 KB) and users want to see them.
+   The shell element gets a near-white fallback background to fill any
+   gaps between cards that the fixed ::before can't reach. A stronger
+   blur + brightness reduction keeps cards readable on small screens.
    ═══════════════════════════════════════════════════════════════════ */
 @media (max-width:768px) {
-  /* Kill the fixed pseudo-element layers entirely on mobile */
-  .hl-shell::before,  .hl-shell::after,
-  .am-shell.hl-shell::before, .am-shell.hl-shell::after,
-  .store-shell::before, .store-shell::after { display: none !important; }
+  /* Near-white shell backgrounds — fill gaps the fixed ::before misses,
+     and keep each tier subtly distinct without fighting the photo. */
+  .admin-shell { background: rgba(248,252,250,1) !important; }
+  .am-shell    { background: rgba(246,249,254,1) !important; }
+  .store-shell { background: rgba(255,253,251,1) !important; }
 
-  /* Admin — warm cream with a subtle green tint (lush produce / plants
-     in AdminPage.jpg; green accent matches the admin emerald theme) */
-  .admin-shell {
-    background: linear-gradient(160deg, #f5fbf7 0%, #ebf5ee 45%, #dfeee5 100%) !important;
+  /* Stronger blur + slight dimming on mobile so blurred photo doesn't
+     compete with card content on a small screen. */
+  .hl-shell::before,
+  .am-shell.hl-shell::before {
+    filter: blur(5px) brightness(0.88) !important;
   }
-
-  /* Area Manager — cool steel-blue tint (deep navy shelving units visible
-     in AreaManagerPage.jpg; blue echoes the AM navy accent) */
-  .am-shell {
-    background: linear-gradient(160deg, #f1f4fa 0%, #e8edf6 50%, #dce4f0 100%) !important;
-  }
-
-  /* Store Manager — warm peach-cream (warm store interior + teal cold-chain
-     glow in StoreManagerPage.jpg; peach echoes the produce warmth) */
-  .store-shell {
-    background: linear-gradient(160deg, #fef4f0 0%, #f7e9e3 50%, #efdfd8 100%) !important;
+  .store-shell::before {
+    filter: blur(5px) brightness(0.85) !important;
   }
 }
 

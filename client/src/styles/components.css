@@ -2543,3 +2543,26 @@ select, label { -webkit-tap-highlight-color: transparent; }
   .schedule-card-meta { flex-direction: column; gap: 4px; }
 }
 
+
+/* ── Store Manager — white-glass cards on mobile ──────────────────
+   Amber-glass is the desktop store look (warm, inviting over the
+   blurred photo). On mobile the photo now shows through, so switching
+   to white-glass avoids the double-warmth yellow effect and matches
+   the clean white-card look of admin and AM tiers on mobile.        */
+@media (max-width:768px) {
+  .store-shell .card,
+  .store-shell .kpi-card,
+  .store-shell .metric-card,
+  .store-shell .stat-card,
+  .store-shell .page-header,
+  .store-shell .page-header-root,
+  .store-shell .dash-command,
+  .store-shell .filter-card {
+    background: rgba(255,255,255,0.93) !important;
+  }
+  .store-shell .card:hover,
+  .store-shell .kpi-card:hover,
+  .store-shell .metric-card:hover {
+    background: rgba(255,255,255,0.97) !important;
+  }
+}
