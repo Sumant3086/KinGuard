@@ -1054,7 +1054,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   font-weight: 900;
 }
 .store-shell .page-header p {
-  color: #dc2626 !important;
+  color: #991b1b !important;
   text-shadow: none;
   font-weight: 700;
 }
@@ -1220,7 +1220,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 .store-shell .page-header p,
 .store-shell .page-header-text p {
-  color: #dc2626 !important;
+  color: #991b1b !important;
   font-size: 14px !important;
   font-weight: 700 !important;
   text-shadow: none !important;

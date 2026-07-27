@@ -865,29 +865,36 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MOBILE PERFORMANCE — skip heavy background photos on phones
-   The blurred background PNGs are 800 KB–1 MB each. On mobile networks
-   (the primary environment for store managers in DRC) that is a full
-   megabyte of decorative blur per page load. At ≤768px we override the
-   background-image with a gradient that approximates the image tones —
-   the browser then never downloads the PNG at all (background images
-   that are not the final cascade value are not fetched).
+   MOBILE PERFORMANCE + BACKGROUND
+   On mobile we skip the heavy background photos entirely. We also
+   replace the ::before / ::after fixed-position elements with a direct
+   background on the shell element itself — position:fixed pseudo-elements
+   inside a stacking context do not reliably fill gutter areas on all
+   mobile browsers, causing dark gaps between cards.
+   Gradients are pulled from the dominant tones of each tier's photo.
    ═══════════════════════════════════════════════════════════════════ */
 @media (max-width:768px) {
-  /* Admin shell — warm dark neutral, echoes the blurred office interior */
-  .hl-shell::before {
-    background-image: linear-gradient(160deg, #f3ede8 0%, #e8ded6 45%, #ddd0c5 100%) !important;
-    filter: none !important;
+  /* Kill the fixed pseudo-element layers entirely on mobile */
+  .hl-shell::before,  .hl-shell::after,
+  .am-shell.hl-shell::before, .am-shell.hl-shell::after,
+  .store-shell::before, .store-shell::after { display: none !important; }
+
+  /* Admin — warm cream with a subtle green tint (lush produce / plants
+     in AdminPage.jpg; green accent matches the admin emerald theme) */
+  .admin-shell {
+    background: linear-gradient(160deg, #f5fbf7 0%, #ebf5ee 45%, #dfeee5 100%) !important;
   }
-  /* Area Manager shell — slightly warmer store-interior tone */
-  .am-shell.hl-shell::before {
-    background-image: linear-gradient(160deg, #efe6de 0%, #e2d4c8 50%, #d5c4b4 100%) !important;
-    filter: none !important;
+
+  /* Area Manager — cool steel-blue tint (deep navy shelving units visible
+     in AreaManagerPage.jpg; blue echoes the AM navy accent) */
+  .am-shell {
+    background: linear-gradient(160deg, #f1f4fa 0%, #e8edf6 50%, #dce4f0 100%) !important;
   }
-  /* Store Manager shell */
-  .store-shell::before {
-    background-image: linear-gradient(160deg, #f2eae3 0%, #e6d9cd 50%, #d9c9bb 100%) !important;
-    filter: none !important;
+
+  /* Store Manager — warm peach-cream (warm store interior + teal cold-chain
+     glow in StoreManagerPage.jpg; peach echoes the produce warmth) */
+  .store-shell {
+    background: linear-gradient(160deg, #fef4f0 0%, #f7e9e3 50%, #efdfd8 100%) !important;
   }
 }
 
@@ -902,6 +909,10 @@
   .store-brand-name    { font-size:12px; }
   .store-content       { padding:8px 8px calc(76px + env(safe-area-inset-bottom)) !important; }
   .hl-mobile-menu      { top:48px; max-height:calc(100vh - 48px); }
+  /* Shrink bottom-nav labels on tiny phones so multi-word labels ("INVENTORY COUNT",
+     "SIGN OUT") stay on one line without wrapping */
+  .mob-nav-item, .mob-logout,
+  .am-mob-item, .am-mob-logout { font-size: 8px !important; letter-spacing: 0.2px !important; }
   .hl-shell::before,
   .hl-shell::after,
   .store-shell::before,
