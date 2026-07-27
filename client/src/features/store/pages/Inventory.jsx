@@ -423,7 +423,7 @@ export default function StoreInventory() {
             </div>
           )}
           <div className="actions" style={{ justifyContent: 'center', marginTop: 8 }}>
-            <button className="btn btn-primary" onClick={() => { setSubmitResult(null); loadInventory(); }}>
+            <button className="btn btn-primary" onClick={() => { setSubmitResult(null); loadBatches(); }}>
               {t('storeInv.viewAllRecords')}
             </button>
             <button className="btn btn-secondary" onClick={handleDownload}>

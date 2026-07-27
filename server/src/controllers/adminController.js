@@ -1479,7 +1479,7 @@ export async function updateBatch(req, res, next) {
       entityType: 'UPLOAD_BATCH', entityId: batch.id,
       metadata: { submissionDeadline },
     });
-    sInvalidate('admin:batches', 'admin:uploads');
+    sInvalidate('admin:batches', 'admin:uploads', 'admin:notifications');
     res.json(batch);
   } catch (error) { next(error); }
 }
@@ -1517,7 +1517,8 @@ export async function closeBatch(req, res, next) {
       metadata: { inventoryDate: batch.inventoryDate, lockedPendingItems: pendingCount, submittedItems: submittedCount },
     });
 
-    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications');
+    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications',
+                'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
     res.json({
       message:        `Cycle locked. ${pendingCount} pending item(s) frozen, ${submittedCount} already submitted.`,
       pendingCount,
@@ -1552,6 +1553,7 @@ export async function grantStoreExtension(req, res, next) {
       entityType: 'UPLOAD_BATCH', entityId: batchId,
       metadata: { storeCode: store.storeCode, storeName: store.storeName, newDeadline, note },
     });
+    sInvalidate('admin:batches', `store:dashboard:${storeId}`, `store:notifications:${storeId}`);
     res.json(ext);
   } catch (error) { next(error); }
 }
@@ -1896,7 +1898,7 @@ export async function bulkDeleteStores(req, res, next) {
         metadata: { ids: storeIds, force: true, count: storeIds.length },
       }).catch(() => {});
 
-      sInvalidate('admin:dashboard');
+      sInvalidate('admin:dashboard', 'admin:stores');
       return res.json({ deleted: storeIds.length, message: `${storeIds.length} store(s) permanently deleted` });
     }
 
@@ -1923,7 +1925,7 @@ export async function bulkDeleteStores(req, res, next) {
       metadata: { ids: storeIds, force: false, deleted: deletableIds.length, blocked: blockedIds.size },
     }).catch(() => {});
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:stores');
     res.json({
       deleted: deletableIds.length,
       blocked: blockedIds.size,
@@ -1956,7 +1958,7 @@ export async function forceDeleteStore(req, res, next) {
       metadata: { storeCode: store.storeCode, storeName: store.storeName },
     });
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:stores');
     res.json({ message: 'Store and all its data permanently deleted' });
   } catch (error) { next(error); }
 }
@@ -2633,7 +2635,7 @@ export async function approveUser(req, res, next) {
     });
 
     invalidateUserCache(userId);
-    sInvalidate('admin:dashboard', 'admin:users');
+    sInvalidate('admin:dashboard', 'admin:users', 'admin:stores');
     const { passwordHash: _, ...safeUser } = result.updated;
     res.json({ ...safeUser, tempPassword: result.tempPassword });
   } catch (error) { next(error); }

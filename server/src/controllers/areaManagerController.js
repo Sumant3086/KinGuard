@@ -494,6 +494,13 @@ export async function batchAssignAMStores(req, res, next) {
     const rows = await prisma.$queryRaw`SELECT role FROM "User" WHERE id = ${amId} LIMIT 1`;
     if (!rows.length || rows[0].role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
 
+    // Capture old AM assignments before update so we can bust their caches too
+    const oldStores = await prisma.store.findMany({
+      where: { id: { in: parsedStoreIds }, areaManagerId: { not: null } },
+      select: { areaManagerId: true },
+    });
+    const prevAmIds = [...new Set(oldStores.map(s => s.areaManagerId).filter(id => id && id !== amId))];
+
     try {
       await prisma.$transaction(
         parsedStoreIds.map(sid => prisma.store.update({ where: { id: sid }, data: { areaManagerId: amId } }))
@@ -503,7 +510,8 @@ export async function batchAssignAMStores(req, res, next) {
       throw txErr;
     }
 
-    sInvalidate(`am:stores:${amId}`); // bust cache after bulk assignment
+    // Bust new AM's cache and all previously-managing AMs' caches
+    sInvalidate(`am:stores:${amId}`, ...prevAmIds.map(id => `am:stores:${id}`));
     createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds: parsedStoreIds, areaManagerId: amId } }).catch(() => {});
     res.json({ assigned: parsedStoreIds.length });
   } catch (error) { next(error); }
