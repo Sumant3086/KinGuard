@@ -565,7 +565,7 @@ export default function Analytics() {
                 </div>
               </div>
               <div>
-                <p style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 600, marginBottom: 6 }}>{yoyData.comparison.batches.length > 0 ? `${yoyData.compareYear ?? yoyYear}` : `NO DATA FOR ${yoyYear}`}</p>
+                <p style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 600, marginBottom: 6 }}>{yoyData.comparison.batches.length > 0 ? `${yoyYear}` : `NO DATA FOR ${yoyYear}`}</p>
                 <div style={{ display: 'flex', gap: 12 }}>
                   {yoyData.comparison.rates.length > 0 ? yoyData.comparison.rates.map(r => (
                     <div key={r.batchId} style={{ textAlign: 'center' }}>

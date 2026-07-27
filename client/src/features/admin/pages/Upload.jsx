@@ -140,7 +140,8 @@ export default function Upload() {
         setShowDuplicateConfirm(true);
       } else {
         console.error('Upload:', err);
-        setError('Upload failed. Please check your file and try again.');
+        const serverMsg = err.response?.data?.error;
+        setError(serverMsg || 'Upload failed. Please check your file and try again.');
       }
     } finally {
       setUploading(false);
@@ -156,8 +157,10 @@ export default function Upload() {
       clearUploadedFile();
     } catch (err) {
       console.error('Force upload:', err);
-      toast.error('Upload failed. Please try again.');
-      setError('Upload failed. Please try again.');
+      const serverMsg = err.response?.data?.error;
+      const msg = serverMsg || 'Upload failed. Please try again.';
+      toast.error(msg);
+      setError(msg);
     } finally {
       setUploading(false);
     }
