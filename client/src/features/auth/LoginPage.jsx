@@ -48,6 +48,10 @@ export default function LoginPage() {
   // fires the redirect before getCurrentUser() can invalidate it.
   useEffect(() => {
     if (!authLoading && user) {
+      // mustChangePassword is handled by AuthContext.login() directly via navigate().
+      // If we also navigate here, the two destinations race and the wrong one wins.
+      // PrivateRoute also enforces this redirect, so we let it do so for that case.
+      if (user.mustChangePassword) return;
       const defaultDash = user.role === 'ADMIN' ? '/admin/dashboard'
                         : user.role === 'AREA_MANAGER' ? '/am/dashboard'
                         : '/store/dashboard';

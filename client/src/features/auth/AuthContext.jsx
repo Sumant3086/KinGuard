@@ -87,18 +87,18 @@ export function AuthProvider({ children }) {
     const { user: userData } = await authApi.login(employeeId, password);
     localStorage.setItem('kg_user', JSON.stringify(userData));
     setUser(userData);
-
+    // Navigation is handled exclusively by LoginPage's useEffect on [user, authLoading].
+    // Putting navigate() here AND in the useEffect causes a double navigation: setUser()
+    // queues a re-render, navigate() fires first, then the useEffect fires again on the
+    // next render cycle — resulting in two back-to-back replace() calls that can land the
+    // user on the wrong page if `redirectTo` and `defaultDashboard` differ.
+    //
+    // Exception: mustChangePassword forces a specific destination that LoginPage doesn't
+    // know about, so we keep that navigate here.
     if (userData.mustChangePassword) {
       navigate('/change-password', { replace: true });
-      return;
     }
-
-    // Only honour the saved destination if it's a real protected route.
-    // A `from` of '/' or '/login' (public pages) should fall through to
-    // the role dashboard — otherwise the user ends up on the home page
-    // after signing in from the home page "Sign In" link.
-    const dest = isProtectedPath(redirectTo) ? redirectTo : defaultDashboard(userData.role);
-    navigate(dest, { replace: true });
+    // For all other cases LoginPage's useEffect does the redirect using redirectTo.
   }
 
   async function logout() {

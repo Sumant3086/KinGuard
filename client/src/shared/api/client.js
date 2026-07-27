@@ -68,6 +68,12 @@ client.interceptors.response.use(
                             path.startsWith('/am') ||
                             path === '/change-password';
         if (isProtected) {
+          // CRITICAL: clear stale localStorage user before redirecting.
+          // Without this, the next page load reads a stale user from localStorage,
+          // AuthContext calls getCurrentUser() → 401 again → interceptor fires again
+          // → another redirect → infinite fast login/logout loop visible to the user.
+          try { localStorage.removeItem('kg_user'); } catch { /* ignore */ }
+          try { sessionStorage.clear(); } catch { /* ignore */ }
           window.location.href = '/login';
         }
         return Promise.reject(error);
