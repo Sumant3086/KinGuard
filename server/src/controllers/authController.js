@@ -140,10 +140,7 @@ export async function login(req, res, next) {
     const delays = [0, 500, 1200];
     let lastErr;
     for (const delay of delays) {
-      if (delay > 0) {
-        console.warn(`[auth] Login DB query failed, retrying in ${delay}ms:`, lastErr?.message);
-        await new Promise(r => setTimeout(r, delay));
-      }
+      if (delay > 0) await new Promise(r => setTimeout(r, delay));
       try {
         user = await prisma.user.findUnique({
           where: { employeeId: employeeId.trim() },
@@ -156,7 +153,8 @@ export async function login(req, res, next) {
       }
     }
     if (lastErr) {
-      console.error('[auth] DB unavailable after all retries:', lastErr.message);
+      // Log once — not per retry — so server output stays readable
+      console.error('[auth] DB unavailable after retries:', lastErr.message);
       throw new AppError('We are having trouble connecting right now. Please try again in a moment', 503);
     }
 

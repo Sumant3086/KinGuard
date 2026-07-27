@@ -69,10 +69,9 @@ export default function LoginPage() {
   }
 
   // Retry delays for transient server errors (ECONNRESET, ECONNREFUSED, 503, 500).
-  // node --watch typically takes 3-5 s to restart + reconnect Supabase.
-  // We keep retrying silently — button shows "Reconnecting…" so the user
-  // knows something is happening and doesn't need to click again.
-  const RETRY_DELAYS = [600, 1200, 2000, 2500, 3000, 3000];
+  // Reduced to 3 retries — enough to survive a node --watch restart (~3-5 s)
+  // without flooding the console with repeated failure messages.
+  const RETRY_DELAYS = [800, 2000, 3500];
 
   async function attemptLogin(attempt = 0) {
     try {
