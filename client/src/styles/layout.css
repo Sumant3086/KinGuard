@@ -364,7 +364,7 @@
   transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.18);
 }
 
-.store-header, .store-bottom-nav { position: relative; z-index: 10; }
+.store-bottom-nav { position: relative; z-index: 10; }
 
 /* ── Store Manager — clean white glass with vivid crimson accents ─── */
 .store-shell .card,
@@ -442,13 +442,14 @@
   text-shadow: none !important;
 }
 
-/* KPI left bar — teal (cold-chain / refrigerator accent) */
+/* KPI left bar — teal (cold-chain / refrigerator accent). !important beats the
+   crimson ::after in components.css which loads later but has no !important. */
 .store-shell .kpi-card::after,
 .store-shell .stat-card::after {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0; width: 4px;
-  background: linear-gradient(180deg, #0891b2 0%, #0e7490 100%);
+  background: linear-gradient(180deg, #0891b2 0%, #0e7490 100%) !important;
   border-radius: 16px 0 0 16px;
 }
 
@@ -720,11 +721,7 @@
 .admin-shell .btn-secondary,
 .admin-shell .btn-ghost    { background: rgba(255,255,255,0.92) !important; border: 1.5px solid rgba(220,38,38,0.20) !important; color: #7f1d1d !important; font-weight: 700 !important; }
 
-/* ── Developer credit — crimson shimmer, consistent across all layouts ── */
-@keyframes dev-credit-shine {
-  0%   { background-position: 200% center; }
-  100% { background-position:   0% center; }
-}
+/* ── Developer credit — crimson shimmer (keyframe defined in pages.css) ── */
 .dev-credit,
 .dev-credit-store {
   text-align: center;

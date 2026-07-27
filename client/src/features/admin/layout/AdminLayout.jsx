@@ -47,7 +47,7 @@ export default function AdminLayout({ children }) {
     : 'A';
 
   return (
-    <div className="hl-shell">
+    <div className="hl-shell admin-shell">
       <nav className="hl-nav">
         <Link to="/admin/dashboard" className="hl-brand">
           <img src={logoImg} alt="KinMarché" className="hl-logo-img" />

@@ -110,6 +110,7 @@
     "typeCustomReason": "Describe the issue…",
     "save": "Save",
     "saving": "Saving…",
+    "unsaved": "Unsaved changes",
     "saved": "Saved ✓",
     "retryButton": "Retry",
     "noRecords": "No Records Found",

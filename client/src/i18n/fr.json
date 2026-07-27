@@ -110,6 +110,7 @@
     "typeCustomReason": "Décrire le problème…",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
+    "unsaved": "Modifications non sauvegardées",
     "saved": "Enregistré ✓",
     "retryButton": "Réessayer",
     "noRecords": "Aucun article trouvé",

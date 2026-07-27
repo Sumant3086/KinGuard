@@ -693,6 +693,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 .empty-state-title       { font-size:var(--text-xl); font-weight:700; color:var(--tx1); margin-bottom:6px; }
 .empty-state-description { font-size:var(--text-base); color:var(--tx3); max-width:380px; margin-bottom:20px; line-height:1.6; }
 .empty-state-help        { margin-top:12px; font-size:var(--text-sm); color:var(--tx4); text-align:center; }
+.empty-state-cta         { margin-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
 
 /* ─── Pagination ──────────────────────────────────────────────────── */
 .pagination { display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; background:rgba(255,244,241,0.60); border-top:1px solid rgba(185,28,28,0.10); border-radius:0 0 var(--r-md) var(--r-md); font-size:12.5px; color:var(--tx3); }
@@ -1034,31 +1035,6 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
    Strong visibility with warm brand-red accents - Professional & Clear
    ═══════════════════════════════════════════════════════════════════ */
 
-/* Store cards - warm amber glass */
-.store-shell .card {
-  background: linear-gradient(135deg, rgba(255,244,210,0.82) 0%, rgba(255,240,195,0.80) 100%) !important;
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1.5px solid rgba(220,38,38,0.25);
-  border-radius: 16px;
-  box-shadow:
-    0 4px 20px rgba(180,100,20,0.16),
-    0 1px 6px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.60);
-}
-.store-shell .card::before {
-  background: linear-gradient(90deg, transparent 0%, rgba(220,38,38,0.65) 40%, rgba(234,179,8,0.50) 60%, transparent 100%);
-  height: 3px;
-}
-.store-shell .card:hover {
-  background: linear-gradient(135deg, rgba(255,248,222,0.88) 0%, rgba(255,244,208,0.86) 100%) !important;
-  border-color: rgba(220,38,38,0.38);
-  transform: translateY(-3px) scale(1.005);
-  box-shadow:
-    0 8px 32px rgba(180,100,20,0.22),
-    0 3px 10px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,0.70);
-}
 
 /* Store text - very dark body, vibrant crimson labels */
 .store-shell h2,
@@ -1165,9 +1141,8 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(220, 38, 38, 0.70) 25%,
-    rgba(234, 179, 8, 0.60) 50%,
-    rgba(220, 38, 38, 0.70) 75%,
+    rgba(220, 38, 38, 0.70) 30%,
+    rgba(8, 145, 178, 0.65) 70%,
     transparent 100%
   );
   border-radius: 20px 20px 0 0;
@@ -2033,7 +2008,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 /* ── Phone (≤ 520px) ───────────────────────────────────────────── */
 @media (max-width: 520px) {
-  .store-content { padding: 10px 10px 76px !important; }
+  .store-content { padding: 10px 10px calc(76px + env(safe-area-inset-bottom)) !important; }
 
   /* Cards tighter */
   .store-shell .card           { border-radius: 12px !important; padding: 14px !important; }
@@ -2108,7 +2083,7 @@ input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#
 
 /* ── Small phones (≤ 380px) ────────────────────────────────────── */
 @media (max-width: 380px) {
-  .store-content { padding: 8px 8px 72px !important; }
+  .store-content { padding: 8px 8px calc(72px + env(safe-area-inset-bottom)) !important; }
   .store-shell .card           { padding: 12px !important; }
   .store-shell .page-header,
   .store-shell .page-header-root { padding: 12px !important; }

@@ -1040,11 +1040,6 @@
   position: relative;
 }
 
-@keyframes dev-shine {
-  0%   { background-position: 200% center; }
-  100% { background-position:   0% center; }
-}
-/* Alias used by home footer + login dev credit */
 @keyframes dev-credit-shine {
   0%   { background-position: 200% center; }
   100% { background-position:   0% center; }

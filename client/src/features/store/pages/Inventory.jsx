@@ -527,7 +527,7 @@ export default function StoreInventory() {
       {(hasUnsavedChanges || isSaving) && (
         <div className="autosave-notice">
           <div className="autosave-dot" />
-          {isSaving ? t('storeInv.saving') : t('storeInv.saving')}
+          {isSaving ? t('storeInv.saving') : t('storeInv.unsaved')}
         </div>
       )}
 
