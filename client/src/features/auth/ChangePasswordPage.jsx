@@ -94,7 +94,7 @@ export default function ChangePasswordPage() {
             <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
               {saving ? t('auth.changingPassword') : t('auth.changePassword')}
             </button>
-            <button type="button" className="btn btn-secondary" onClick={logout} disabled={saving}>
+            <button type="button" className="btn btn-secondary" onClick={logout} disabled={saving} style={{ minWidth: '100px' }}>
               {t('auth.signOut')}
             </button>
           </div>

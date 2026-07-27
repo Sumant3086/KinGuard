@@ -95,7 +95,7 @@ export default function AuditLogs() {
     <select
       value={limit}
       onChange={e => setLimit(Number(e.target.value))}
-      style={{ padding: '7px 11px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontSize: 13, color: 'var(--t1)', background: 'var(--surface)' }}
+      style={{ padding: '7px 11px', border: '1.5px solid var(--border)', borderRadius: 'var(--r)', fontSize: 13, color: 'var(--t1)', background: 'var(--surface)', minHeight: '44px' }}
     >
       <option value="50">50 entries</option>
       <option value="100">100 entries</option>

@@ -334,7 +334,7 @@ function AMPipelineCard({ pipeline }) {
           {pipeline.length} store{pipeline.length !== 1 ? 's' : ''} in review
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+      <div className="am-pipeline-grid">
         {/* Pending AM review */}
         {pending.length > 0 && (
           <div style={{ border: '1px solid rgba(217,119,6,0.25)', borderLeft: '3px solid #d97706', borderRadius: 10, padding: '12px 14px', background: 'rgba(217,119,6,0.04)' }}>
@@ -445,9 +445,9 @@ function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
             title="Refresh dashboard data"
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 10px', borderRadius: 8, border: '1px solid var(--red-border)',
+              padding: '10px 14px', borderRadius: 8, border: '1px solid var(--red-border)',
               background: 'rgba(185,28,28,0.06)', color: 'var(--tx2)',
-              fontSize: 11, fontWeight: 600, cursor: refreshing ? 'wait' : 'pointer',
+              fontSize: 11, fontWeight: 600, cursor: refreshing ? 'wait' : 'pointer', minHeight: '44px',
               transition: 'background 0.15s',
             }}
           >
@@ -599,7 +599,7 @@ function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
                   {store.shortageCount > 0 && (
                     <button
                       onClick={() => navigate(`/admin/inventory?storeId=${store.storeId}&discrepancy=shortage`)}
-                      style={{ background: 'none', border: 'none', padding: 0, fontWeight: 700, fontSize: 12, color: 'var(--red)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}
+                      style={{ background: 'none', border: 'none', padding: '8px 0', fontWeight: 700, fontSize: 12, color: 'var(--red)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}
                     >
                       {store.shortageCount} shortage item{store.shortageCount !== 1 ? 's' : ''} →
                     </button>

@@ -79,7 +79,7 @@ export default function AMDashboard() {
         </div>
         {!loading && data?.pendingReview > 0 && (
           <button
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary"
             onClick={() => navigate('/am/review')}
           >
             Go to Reviews →

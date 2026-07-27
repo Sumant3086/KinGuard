@@ -1152,7 +1152,7 @@ export default function AdminUsers() {
                 )}
 
                 <div style={{ maxHeight: 340, overflowY: 'auto', overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 14 }}>
-                  <table style={{ fontSize: 11 }}>
+                  <table style={{ fontSize: 11, minWidth: 640 }}>
                     <thead>
                       <tr style={{ background: 'var(--surface-2)', position: 'sticky', top: 0, zIndex: 1 }}>
                         <th scope="col">#</th><th scope="col">Employee ID</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th>
@@ -1430,8 +1430,8 @@ export default function AdminUsers() {
                 <p style={{ fontSize: 13, color: 'var(--t3)', marginBottom: 16 }}>
                   Stores below have no assigned users. Create store managers (username: <strong>MGR&#123;storeCode&#125;</strong>) with unique temporary passwords.
                 </p>
-                <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
-                  <table style={{ fontSize: 12 }}>
+                <div style={{ maxHeight: 360, overflowY: 'auto', overflowX: 'auto', marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
+                  <table style={{ fontSize: 12, minWidth: 480 }}>
                     <thead><tr style={{ background: 'var(--surface-2)' }}>
                       <th scope="col">Store Code</th><th scope="col">Store Name</th><th scope="col">Username</th><th scope="col">Full Name</th>
                     </tr></thead>

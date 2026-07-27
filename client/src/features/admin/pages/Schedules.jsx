@@ -121,7 +121,7 @@ export default function Schedules() {
                     <button
                       onClick={() => toggleActive(s)}
                       style={{
-                        fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 999, border: 'none', cursor: 'pointer', flexShrink: 0,
+                        fontSize: 11, fontWeight: 700, padding: '10px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', flexShrink: 0, minHeight: '44px',
                         background: s.isActive ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.12)',
                         color: s.isActive ? '#059669' : '#64748b',
                       }}

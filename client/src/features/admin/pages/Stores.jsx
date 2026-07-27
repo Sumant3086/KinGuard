@@ -361,7 +361,7 @@ export default function Stores() {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)' }}>
                 {selected.size} store{selected.size !== 1 ? 's' : ''} selected
               </span>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => setSelected(new Set())} disabled={bulkDeleting}>Clear selection</button>
                 <button
                   className="btn btn-sm"

@@ -259,7 +259,7 @@ export default function Upload() {
           )}
 
           <div style={{ maxHeight: 360, overflowY: 'auto', overflowX: 'auto', marginBottom: 16 }}>
-            <table style={{ fontSize: 12 }}>
+            <table style={{ fontSize: 12, minWidth: 580 }}>
               <thead>
                 <tr>
                   <th scope="col">#</th><th scope="col">Plant</th><th scope="col">Store</th><th scope="col">Material Code</th>
