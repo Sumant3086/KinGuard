@@ -150,7 +150,7 @@ export default function Stores() {
       loadStores();
     } catch (err) {
       console.error('Save store:', err);
-      setFormError('Could not save. Please check the details and try again.');
+      setFormError(err.response?.data?.error || 'Could not save. Please check the details and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -210,7 +210,7 @@ export default function Stores() {
       setAmModal(null);
     } catch (e) {
       console.error('Assign AM:', e);
-      toast.error('Could not assign. Try again.');
+      toast.error(e.response?.data?.error || 'Could not assign. Try again.');
     } finally {
       setAmAssigning(false);
     }

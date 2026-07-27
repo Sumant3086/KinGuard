@@ -3144,7 +3144,7 @@ export async function bulkReviewUsers(req, res, next) {
       );
     }
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:users', 'admin:stores');
     res.json({
       action,
       approved: approved.length > 0 ? approved : undefined,
@@ -3209,7 +3209,7 @@ export async function bulkDeleteUsers(req, res, next) {
     });
 
     validIds.forEach(id => invalidateUserCache(id));
-    sInvalidate('admin:users');
+    sInvalidate('admin:users', 'admin:stores');
 
     createAuditLog({
       userId: req.user.id, action: 'BULK_DELETE_USERS',

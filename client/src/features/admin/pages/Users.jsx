@@ -487,25 +487,33 @@ export default function AdminUsers() {
       if (editingId) {
         const updated = await adminApi.updateUser(editingId, payload);
         setUsers(prev => prev.map(u => u.id === editingId ? { ...u, ...updated } : u));
-        // Re-assign stores if any selected (edit mode)
         if (payload.role === 'AREA_MANAGER' && amStoreIds.length > 0) {
           await adminApi.batchAssignAMStores(editingId, amStoreIds);
         }
+        setShowModal(false);
+        setEditingId(null);
+        setAmStoreIds([]);
+        load();
       } else {
         const created = await adminApi.createUser(payload);
         setUsers(prev => [...prev, created]);
-        // Assign selected stores to the new AM
+        // Close modal immediately — user was created successfully
+        setShowModal(false);
+        setEditingId(null);
+        setAmStoreIds([]);
+        // Store assignment is a secondary step; failure is non-fatal to the user record
         if (payload.role === 'AREA_MANAGER' && amStoreIds.length > 0) {
-          await adminApi.batchAssignAMStores(created.id, amStoreIds);
+          try {
+            await adminApi.batchAssignAMStores(created.id, amStoreIds);
+          } catch {
+            toast.warning('User created but store assignment failed — assign stores manually in the Stores tab.');
+          }
         }
+        load();
       }
-      setShowModal(false);
-      setEditingId(null);
-      setAmStoreIds([]);
-      load();
     } catch (err) {
       console.error('Save user:', err);
-      setFormError('Could not save. Please check the details and try again.');
+      setFormError(err.response?.data?.error || 'Could not save. Please check the details and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -573,7 +581,7 @@ export default function AdminUsers() {
       await load();
     } catch (err) {
       console.error('Import commit:', err);
-      toast.error('Import failed. Try again.');
+      toast.error(err.response?.data?.error || 'Import failed. Try again.');
     } finally {
       setImportCommitting(false);
     }
