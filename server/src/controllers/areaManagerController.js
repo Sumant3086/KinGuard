@@ -511,7 +511,7 @@ export async function batchAssignAMStores(req, res, next) {
     }
 
     // Bust new AM's cache and all previously-managing AMs' caches
-    sInvalidate(`am:stores:${amId}`, ...prevAmIds.map(id => `am:stores:${id}`));
+    sInvalidate('admin:dashboard', `am:stores:${amId}`, ...prevAmIds.map(id => `am:stores:${id}`));
     createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds: parsedStoreIds, areaManagerId: amId } }).catch(() => {});
     res.json({ assigned: parsedStoreIds.length });
   } catch (error) { next(error); }
@@ -553,6 +553,8 @@ export async function assignStoreAM(req, res, next) {
     if (areaManagerId) sInvalidate(`am:stores:${parseInt(areaManagerId)}`);
     // Bust old AM's cache — prevAmId is the value BEFORE the update
     if (prevAmId && prevAmId !== parseInt(areaManagerId)) sInvalidate(`am:stores:${prevAmId}`);
+    // Dashboard scorecard shows each store's areaManagerName — bust it too
+    sInvalidate('admin:dashboard');
 
     createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { storeCode: store.storeCode, storeName: store.storeName, areaManagerId: areaManagerId ?? null, areaManagerName: am?.name ?? null } }).catch(() => {});
     res.json(store);

@@ -594,6 +594,9 @@ export async function createUser(req, res, next) {
       metadata: { employeeId, name, role },
     });
 
+    sInvalidate('admin:users');
+    if (storeId) sInvalidate('admin:stores'); // store's manager count changed
+
     const { passwordHash: _, ...userWithoutPassword } = user;
     res.status(201).json(userWithoutPassword);
   } catch (error) {
@@ -3022,7 +3025,7 @@ export async function commitUserBatchImport(req, res, next) {
       },
     }).catch(() => {});
 
-    sInvalidate('admin:dashboard');
+    sInvalidate('admin:dashboard', 'admin:users', 'admin:stores');
     res.status(201).json({
       message:       txResult.created.length + ' pending user(s) created, awaiting admin approval',
       created:       txResult.created,
