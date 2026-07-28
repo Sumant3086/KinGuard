@@ -61,9 +61,9 @@ export function buildInventoryWorkbook(records, {
 
   records.forEach(r => {
     const row = {
-      storeCode:    r.store.storeCode,
-      storeName:    r.store.storeName,
-      materialCode: r.materialCode,
+      storeCode:    sanitizeCell(r.store.storeCode),
+      storeName:    sanitizeCell(r.store.storeName),
+      materialCode: sanitizeCell(r.materialCode),
       materialName: sanitizeCell(r.materialName),
       sys:          r.systemQuantity,
       sold:         r.physicalQuantity ?? '',
@@ -79,7 +79,7 @@ export function buildInventoryWorkbook(records, {
     }
     if (includeSubmitter) {
       row.submittedBy = r.submitter
-        ? `${r.submitter.name} (${r.submitter.employeeId})`
+        ? sanitizeCell(`${r.submitter.name} (${r.submitter.employeeId})`)
         : '';
     }
     worksheet.addRow(row);

@@ -9,7 +9,7 @@ import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { parseId, requireId, parsePage, parsePageSize, parseIntParam } from '../utils/params.js';
 import { invalidateUserCache } from '../middleware/auth.js';
 import { validatePassword } from '../controllers/authController.js';
-import { buildInventoryWorkbook } from '../utils/excelExport.js';
+import { buildInventoryWorkbook, sanitizeCell } from '../utils/excelExport.js';
 import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
 
 // Hard cap on rows returned by report/export endpoints.
@@ -2195,12 +2195,12 @@ export async function exportAuditLogs(req, res, next) {
 
     logs.forEach(log => ws.addRow({
       time:       log.createdAt.toISOString().replace('T', ' ').substring(0, 19),
-      empId:      log.user?.employeeId || '--',
-      name:       log.user?.name || 'System',
+      empId:      sanitizeCell(log.user?.employeeId || '--'),
+      name:       sanitizeCell(log.user?.name || 'System'),
       action:     log.action,
       entityType: log.entityType || '',
       entityId:   log.entityId ?? '',
-      metadata:   log.metadata ? JSON.stringify(log.metadata) : '',
+      metadata:   log.metadata ? sanitizeCell(JSON.stringify(log.metadata)) : '',
     }));
 
     const date = new Date().toISOString().split('T')[0];

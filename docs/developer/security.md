@@ -34,7 +34,7 @@ On every authenticated request:
 
 **Login lockout** — after 10 failed login attempts for the same account within a 15-minute window, the account is locked for 15 minutes (`loginAttempts` / `lockedUntil` on `User`, checked and updated in `authController.js`). This is database-backed, not in-process memory, so it survives server restarts and applies consistently across multiple server instances. A constant-time dummy bcrypt comparison runs even when the employee ID doesn't exist, so login timing doesn't reveal whether an account exists.
 
-Passwords are hashed with bcrypt at cost factor 10, must be 8–128 characters, and the `passwordHash` field is never included in any API response.
+Passwords are hashed with bcrypt at cost factor 10. `validatePassword()` (`authController.js`) requires 8–128 characters with at least one uppercase letter, one lowercase letter, and one digit — enforced on both self-service password changes and admin-created accounts. The `passwordHash` field is never included in any API response.
 
 ## Route Guards
 

@@ -74,9 +74,11 @@ There must always be **at least 1 active Administrator** in the system. The last
 
 ### Password requirements
 
-All passwords must be:
-- At least **8 characters** long
-- There are no other requirements, but longer and more complex passwords are safer
+All passwords must:
+- Be between **8 and 128 characters** long
+- Include at least **one uppercase letter** (A–Z)
+- Include at least **one lowercase letter** (a–z)
+- Include at least **one number** (0–9)
 
 ## 3. Stores & Plants
 
@@ -226,7 +228,7 @@ Your in-progress count for the row you're editing may fail to save until the con
 | Duplicate date warning | ±3 days | Can override with confirmation |
 | Login session | Up to 7 days | Refreshes automatically while active; re-login after 7 days idle |
 | Wrong-password lockout | 10 attempts | Locks the account for 15 minutes |
-| Min password length | 8 characters | — |
+| Min password length | 8 characters | Must also include 1 uppercase, 1 lowercase, 1 number |
 | Max password length | 128 characters | — |
 | Number of users | Unlimited | Database plan may apply |
 | Number of stores | Unlimited | Database plan may apply |
