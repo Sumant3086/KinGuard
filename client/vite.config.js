@@ -54,6 +54,7 @@ export default defineConfig({
             './src/features/admin/pages/Upload',
             './src/features/admin/pages/Analytics',
             './src/features/admin/pages/Batches',
+            './src/features/admin/pages/Schedules',
             './src/features/admin/layout/AdminLayout',
           ],
           'store-pages': [

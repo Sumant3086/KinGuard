@@ -32,8 +32,8 @@
     "reconciliation",
     "loss-prevention"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Sumant Yadav",
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=22"
   }

@@ -188,6 +188,6 @@ Plain-language guides for people using the app, and technical references for peo
 
 ## License
 
-ISC — Developed by Sumant Yadav
+Proprietary — All Rights Reserved. This is closed-source software developed by Sumant Yadav. No part of this codebase may be copied, modified, or redistributed without written permission.
 
 *KinMarché · Loss & Prevention Platform · Kinshasa, DRC*
