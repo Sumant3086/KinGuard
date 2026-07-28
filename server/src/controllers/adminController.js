@@ -10,6 +10,7 @@ import { parseId, requireId, parsePage, parsePageSize, parseIntParam } from '../
 import { invalidateUserCache } from '../middleware/auth.js';
 import { validatePassword } from '../controllers/authController.js';
 import { buildInventoryWorkbook } from '../utils/excelExport.js';
+import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
 
 // Hard cap on rows returned by report/export endpoints.
 const EXPORT_ROW_LIMIT = 10_000;
@@ -2068,7 +2069,12 @@ export async function overrideInventoryRecord(req, res, next) {
     }
 
     if (remarks !== undefined) updateData.remarks = remarks || null;
-    if (shrinkageCategory !== undefined) updateData.shrinkageCategory = shrinkageCategory || null;
+    if (shrinkageCategory !== undefined) {
+      if (shrinkageCategory && !VALID_SHRINKAGE_CATEGORIES.has(shrinkageCategory)) {
+        throw new AppError('Invalid shrinkage category', 400);
+      }
+      updateData.shrinkageCategory = shrinkageCategory || null;
+    }
     if (status !== undefined) {
       if (!['PENDING', 'SUBMITTED'].includes(status)) throw new AppError('Invalid status', 400);
       if (status === 'SUBMITTED') {

@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import prisma from '../config/prisma.js';
 import { parseId, requireId, parsePage, parsePageSize } from '../utils/params.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
+import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
 
 const EMPTY_STATS = { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 };
 
@@ -211,6 +212,9 @@ export async function updateInventoryRecord(req, res, next) {
     if (systemProvided && systemQuantityIn !== null) {
       const qty = parseFloat(systemQuantityIn);
       if (isNaN(qty) || qty < 0) throw new AppError('System quantity must be zero or a positive number', 400);
+    }
+    if (shrinkageCategory !== undefined && shrinkageCategory && !VALID_SHRINKAGE_CATEGORIES.has(shrinkageCategory)) {
+      throw new AppError('Invalid shrinkage category', 400);
     }
 
     // Single query: ownership + current values + deadline + extension — no second round-trip

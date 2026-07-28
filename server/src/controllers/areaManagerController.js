@@ -3,6 +3,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { requireId } from '../utils/params.js';
+import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
 
 const AM_STORES_TTL = 60_000;
 
@@ -354,7 +355,12 @@ export async function updateRecord(req, res, next) {
       updateData.difference = parseFloat((qty - record.systemQuantity).toFixed(4));
     }
     if (remarks !== undefined)           updateData.remarks = remarks || null;
-    if (shrinkageCategory !== undefined) updateData.shrinkageCategory = shrinkageCategory || null;
+    if (shrinkageCategory !== undefined) {
+      if (shrinkageCategory && !VALID_SHRINKAGE_CATEGORIES.has(shrinkageCategory)) {
+        throw new AppError('Invalid shrinkage category', 400);
+      }
+      updateData.shrinkageCategory = shrinkageCategory || null;
+    }
 
     const updated = await prisma.inventoryRecord.update({ where: { id }, data: updateData });
 
