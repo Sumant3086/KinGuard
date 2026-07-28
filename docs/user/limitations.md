@@ -7,9 +7,9 @@
 | How big can my Excel file be? | Up to **10 MB** |
 | How many rows can I upload? | Up to ~**50,000 items** in one file |
 | How many users can log in? | **No fixed limit** — depends on your internet plan |
-| How long does a login session last? | **8 hours**, then you must sign in again |
+| How long does a login session last? | Up to **7 days** of inactivity before you must sign in again |
 | How many stores can I manage? | **No fixed limit** |
-| How many wrong passwords before lockout? | No automatic lockout — use a strong password |
+| How many wrong passwords before lockout? | **10 wrong attempts** locks the account for 15 minutes |
 
 ## 1. File Uploads (Excel / CSV)
 
@@ -56,11 +56,13 @@ PDF, Word documents, and images are **not accepted**.
 
 ## 2. Users & Logins
 
-### Session length — 8 hours
+### Session length — up to 7 days
 
-Once you sign in, your session lasts **8 hours**. After that, you will be automatically signed out and need to log in again.
+Once you sign in, the system keeps you signed in automatically in the background for up to **7 days** of activity, refreshing your session every few minutes without interrupting you. If you don't open the app for 7 days, or you sign out manually, you'll need to log in again.
 
-This is a security feature to protect the system if you leave your computer unattended.
+### Wrong password lockout
+
+If a login is attempted with the wrong password **10 times in a row** for the same account, that account is temporarily locked for **15 minutes** as a protection against password-guessing. Signing in with the correct password before then still fails until the lockout expires — contact your administrator if you need it cleared sooner.
 
 ### Number of users
 
@@ -127,11 +129,11 @@ When viewing inventory records on screen, the system loads **50 records per page
 
 ### Excel & PDF exports
 
-Exports have **no row limit** — whatever records match your filters are included in the downloaded file. If you have 50,000 matching records, all 50,000 go into the Excel file.
+Exports are capped at **10,000 records**. If your filters match more than that, the download is blocked with a message asking you to narrow the results — select a specific cycle or store first, then export.
 
 ### Reconciliation Report
 
-The Reconciliation Report now includes a **Cycle filter**. It is strongly recommended to always select a specific cycle before loading the report. Loading without a cycle filter will return **all records across all time**, which on a large database can be very slow.
+The Reconciliation Report includes a **Cycle filter**. Always select a specific cycle before loading the report — this keeps you comfortably under the 10,000-record export cap and avoids loading a large, slow, unfiltered result.
 
 ## 6. Analytics & Hotspot Detection
 
@@ -157,11 +159,11 @@ If you need to review activity beyond these limits, contact your system administ
 
 ## 8. Email Notifications
 
-Email notifications (new cycle alerts, deadline reminders, submission confirmations) are optional and require the system to be configured with an email server (SMTP).
+Email notifications (new cycle alerts, deadline reminders, submission confirmations) are optional and require the system to be configured with a Brevo API key (a free-tier email delivery service — no mail server setup needed).
 
 **If emails are not arriving:**
 1. Check that the manager's email address is entered in User Management
-2. Ask your administrator to confirm SMTP is configured
+2. Ask your administrator to confirm the Brevo API key is configured
 3. Check spam/junk folders
 
 There is **no limit** on how many email notifications the system can send.
@@ -195,16 +197,22 @@ If you need the very latest data, use your browser's refresh button or navigate 
 ## 10. Common Questions
 
 **Q: My Excel file has 75,000 rows. Can I upload it?**
+No — the upload limit is 50,000 rows. Split it into two files (for example, by store range or item category) and upload them as separate cycles, or ask your administrator about combining them differently.
 
 **Q: A manager submitted by mistake. Can they undo it?**
+Not directly — once submitted, a store manager's records are locked and cannot be edited. Either the Area Manager can **Return for Recount** (if it hasn't been approved yet) or an Administrator can **Unlock Store** to reset that store's records back to pending. Both actions clear the counted values so the manager can recount from scratch.
 
 **Q: Can two managers submit at the same time?**
+Yes. Each store manager only ever affects their own assigned store's records — there's no shared state between stores, so simultaneous submissions from different stores never conflict.
 
 **Q: How long is data kept?**
+Indefinitely. Even when an administrator "deletes" a cycle, the records aren't actually erased — they're marked deleted and hidden from normal views, but preserved in the database and can be restored if needed. The Activity Log is never deleted at all.
 
 **Q: Can I use the system on a phone or tablet?**
+Yes. The interface is responsive and works in any modern mobile browser, and it can be installed as an app (Add to Home Screen) for quicker access.
 
 **Q: What happens if I lose internet during entry?**
+Your in-progress count for the row you're editing may fail to save until the connection returns — the app doesn't silently queue changes offline. If you notice a gap in your connection, re-check the last few rows you entered once you're back online before submitting.
 
 ## 11. Summary Table — All Limits at a Glance
 
@@ -216,16 +224,17 @@ If you need the very latest data, use your browser's refresh button or navigate 
 | File formats | .xlsx, .xls, .csv | PDF/images not accepted |
 | Upload timeout | 2 minutes | Split large files if needed |
 | Duplicate date warning | ±3 days | Can override with confirmation |
-| Login session | 8 hours | Then must re-login |
+| Login session | Up to 7 days | Refreshes automatically while active; re-login after 7 days idle |
+| Wrong-password lockout | 10 attempts | Locks the account for 15 minutes |
 | Min password length | 8 characters | — |
 | Max password length | 128 characters | — |
 | Number of users | Unlimited | Database plan may apply |
 | Number of stores | Unlimited | Database plan may apply |
 | Admin accounts minimum | 1 | Cannot delete last admin |
 | Records per screen page | 50 (max 200) | Adjustable with filter |
-| Export rows | Unlimited | All matching records |
-| Reconciliation report | All matching records | Always filter by cycle |
-| Hotspot detection | Last 4 cycles | Flags ≥2 consecutive shortages |
+| Export rows | 10,000 | Narrow filters if exceeded |
+| Reconciliation report | Up to 10,000 records | Always filter by cycle |
+| Hotspot detection | Last 4 cycles | Flags items short in ≥2 of those cycles (not necessarily back-to-back) |
 | Hotspots shown | Top 5 | Full data in Inventory view |
 | Trends history | Up to 24 cycles | Needs ≥2 cycles |
 | Activity log on screen | 500 entries | — |

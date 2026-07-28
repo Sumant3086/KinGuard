@@ -154,7 +154,6 @@ Opens the API on port 5000 and the React app on port 5173. Visit [http://localho
 | `PORT` | Yes | Server port (Render sets this automatically) |
 | `NODE_ENV` | Yes | `development` or `production` |
 | `CLIENT_URL` | Yes | Frontend origin for CORS (no trailing slash) |
-| `JWT_EXPIRES_IN` | No | Access token lifetime, default `8h` |
 | `BREVO_API_KEY` | No | Brevo API key for email notifications. Free at brevo.com (300 emails/day). Leave blank to disable emails. |
 | `SMTP_FROM` | No | Sender display name and email, e.g. `KinMarché <noreply@kinmarche.com>` |
 | `ADMIN_EMAIL` | No | Fallback admin email if no admin has an email address in the database |
@@ -165,22 +164,24 @@ Email is fully optional. The system works completely without it.
 
 The app is deployed on Render as a single web service — the backend serves both the API and the built React frontend.
 
-See [docs/deployment.md](docs/deployment.md) for the full Render setup, VPS instructions, and deployment checklist.
+See [docs/developer/deployment.md](docs/developer/deployment.md) for the full Render setup, VPS instructions, and deployment checklist.
 
 ## Documentation
 
+Plain-language guides for people using the app, and technical references for people building or running it — see [docs/](docs/) for the full index.
+
 | Document | Audience |
 |---|---|
-| [Store Manager Guide](docs/user-guide/store-manager-guide.md) | Store managers completing a stock count |
-| [Area Manager Guide](docs/user-guide/area-manager-guide.md) | Area managers reviewing and approving store submissions |
-| [Administrator Guide](docs/user-guide/admin-guide.md) | Admins running cycles, monitoring stores, exporting reports |
-| [Getting Started](docs/getting-started.md) | Developers setting up the project locally |
-| [Deployment](docs/deployment.md) | DevOps — Render, VPS, database setup |
-| [Architecture](docs/architecture.md) | Backend team — component map, data flow, caching |
-| [Security](docs/security.md) | Security model, auth, store isolation, audit trail |
-| [API Reference](docs/api-reference.md) | All REST endpoints with request/response examples |
-| [Database Schema](docs/database-schema.md) | Tables, relationships, indexes |
-| [Limitations](docs/LIMITATIONS.md) | Capacity, limits, performance expectations |
+| [Store Manager Guide](docs/user/store-manager-guide.md) | Store managers completing a stock count |
+| [Area Manager Guide](docs/user/area-manager-guide.md) | Area managers reviewing and approving store submissions |
+| [Administrator Guide](docs/user/admin-guide.md) | Admins running cycles, monitoring stores, exporting reports |
+| [Limitations](docs/user/limitations.md) | Capacity, limits, performance expectations — plain language |
+| [Getting Started](docs/developer/getting-started.md) | Developers setting up the project locally |
+| [Deployment](docs/developer/deployment.md) | DevOps — Render, VPS, database setup |
+| [Architecture](docs/developer/architecture.md) | Backend team — component map, data flow, caching |
+| [Security](docs/developer/security.md) | Security model, auth, store isolation, audit trail |
+| [API Reference](docs/developer/api-reference.md) | All REST endpoints with request/response examples |
+| [Database Schema](docs/developer/database-schema.md) | Tables, relationships, indexes |
 
 ## License
 

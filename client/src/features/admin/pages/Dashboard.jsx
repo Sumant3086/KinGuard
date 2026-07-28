@@ -682,7 +682,7 @@ function DashboardContent({ data, navigate, ageLabel, onRefresh, refreshing }) {
             Recurring Loss Items
           </span>
           <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 500 }}>
-            Items with shortages in 2+ consecutive cycles
+            Items short in 2 or more of the last 4 cycles
           </span>
         </div>
 
