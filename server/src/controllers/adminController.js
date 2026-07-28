@@ -2088,6 +2088,7 @@ export async function overrideInventoryRecord(req, res, next) {
         updateData.submittedAt       = null;
         updateData.shrinkageCategory = null;
         updateData.remarks           = null;
+        updateData.isRepeat          = false; // re-evaluated when the store re-submits
       }
       updateData.status = status;
     }
