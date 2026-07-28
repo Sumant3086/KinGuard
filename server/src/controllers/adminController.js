@@ -24,15 +24,6 @@ const MAX_MATERIAL_NAME_LEN = 200;
 const MAX_REMARKS_LEN       = 500;
 const MAX_STORE_CODE_LEN    = 50;
 
-// Prefix cells that start with formula-injection characters to prevent formula execution in Excel.
-function sanitizeCell(value) {
-  if (typeof value !== 'string') return value;
-  if (value.length > 0 && ['=', '+', '-', '@', '\t', '\r'].includes(value[0])) {
-    return "'" + value;
-  }
-  return value;
-}
-
 // Whitelist of valid audit log action values for the filter endpoint
 const VALID_AUDIT_ACTIONS = new Set([
   'BULK_OVERRIDE_RECORDS',
@@ -1262,50 +1253,10 @@ export async function downloadReconciliationReport(req, res, next) {
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
     });
 
-    // Create Excel workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Reconciliation Report');
-
-    // Add headers
-    worksheet.columns = [
-      { header: 'Plant Code', key: 'storeCode', width: 12 },
-      { header: 'Plant Name', key: 'storeName', width: 20 },
-      { header: 'Date', key: 'inventoryDate', width: 15 },
-      { header: 'Material Name', key: 'materialCode', width: 20 },
-      { header: 'Material Description', key: 'materialName', width: 30 },
-      { header: 'System Stock', key: 'systemQuantity', width: 14 },
-      { header: 'Physical Stock', key: 'physicalQuantity', width: 14 },
-      { header: 'Diff', key: 'difference', width: 12 },
-      { header: 'Remarks', key: 'remarks', width: 30 },
-      { header: 'Status', key: 'status', width: 12 },
-      { header: 'Submitted By', key: 'submittedBy', width: 20 },
-      { header: 'Submitted At', key: 'submittedAt', width: 20 },
-    ];
-
-    // Style header
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' },
-    };
-
-    // Add data
-    filtered.forEach((record) => {
-      worksheet.addRow({
-        storeCode:        record.store.storeCode,
-        storeName:        record.store.storeName,
-        inventoryDate:    record.batch.inventoryDate.toISOString().split('T')[0],
-        materialCode:     sanitizeCell(record.materialCode),
-        materialName:     sanitizeCell(record.materialName),
-        systemQuantity:   record.systemQuantity,
-        physicalQuantity: record.physicalQuantity,
-        difference:       record.difference,
-        remarks:          sanitizeCell(record.remarks || ''),
-        status:           record.status,
-        submittedBy:      record.submitter ? record.submitter.name : '',
-        submittedAt:      record.submittedAt ? record.submittedAt.toISOString() : '',
-      });
+    const workbook = buildInventoryWorkbook(filtered, {
+      sheetName:        'Reconciliation Report',
+      includeDate:      true,
+      includeSubmitter: true,
     });
 
     await createAuditLog({
@@ -2295,31 +2246,12 @@ export async function downloadInventoryExportPDF(req, res, next) {
       },
     });
 
-    const { buildPDF, baseDocDef, tableLayout, inventoryTableRows } = await import('../services/pdfService.js');
+    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../services/pdfService.js');
     const today = new Date().toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
       ...baseDocDef({ title: 'Inventory Submissions', subtitle: `${records.length} records - ${today}` }),
-      content: [{
-        table: {
-          headerRows: 1,
-          widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
-          body: [
-            [
-              { text: 'Store', style: 'th' },
-              { text: 'Material', style: 'th' },
-              { text: 'Description', style: 'th' },
-              { text: 'Date', style: 'th' },
-              { text: 'SYS', style: 'th', alignment: 'right' },
-              { text: 'Sold', style: 'th', alignment: 'right' },
-              { text: 'Variance', style: 'th', alignment: 'right' },
-              { text: 'Status', style: 'th' },
-            ],
-            ...inventoryTableRows(records),
-          ],
-        },
-        layout: tableLayout(),
-      }],
+      content: [inventoryTableContent(records)],
     });
 
     await createAuditLog({
@@ -2363,31 +2295,12 @@ export async function downloadReconciliationReportPDF(req, res, next) {
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
     });
 
-    const { buildPDF, baseDocDef, tableLayout, inventoryTableRows } = await import('../services/pdfService.js');
+    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../services/pdfService.js');
     const today = new Date().toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
       ...baseDocDef({ title: 'Reconciliation Report', subtitle: `${records.length} records - ${today}` }),
-      content: [{
-        table: {
-          headerRows: 1,
-          widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
-          body: [
-            [
-              { text: 'Store',       style: 'th' },
-              { text: 'Material',    style: 'th' },
-              { text: 'Description', style: 'th' },
-              { text: 'Date',        style: 'th' },
-              { text: 'SYS',         style: 'th', alignment: 'right' },
-              { text: 'Sold',        style: 'th', alignment: 'right' },
-              { text: 'Variance',    style: 'th', alignment: 'right' },
-              { text: 'Status',      style: 'th' },
-            ],
-            ...inventoryTableRows(records),
-          ],
-        },
-        layout: tableLayout(),
-      }],
+      content: [inventoryTableContent(records)],
     });
 
     await createAuditLog({
@@ -2495,31 +2408,12 @@ export async function downloadBatchExportPDF(req, res, next) {
       },
     });
 
-    const { buildPDF, baseDocDef, tableLayout, inventoryTableRows } = await import('../services/pdfService.js');
+    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../services/pdfService.js');
     const dateStr = batch.inventoryDate.toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
       ...baseDocDef({ title: 'Cycle Export', subtitle: `Date: ${dateStr} - ${records.length} records` }),
-      content: [{
-        table: {
-          headerRows: 1,
-          widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
-          body: [
-            [
-              { text: 'Store', style: 'th' },
-              { text: 'Material', style: 'th' },
-              { text: 'Description', style: 'th' },
-              { text: 'Date', style: 'th' },
-              { text: 'SYS', style: 'th', alignment: 'right' },
-              { text: 'Sold', style: 'th', alignment: 'right' },
-              { text: 'Variance', style: 'th', alignment: 'right' },
-              { text: 'Status', style: 'th' },
-            ],
-            ...inventoryTableRows(records),
-          ],
-        },
-        layout: tableLayout(),
-      }],
+      content: [inventoryTableContent(records)],
     });
 
     await createAuditLog({

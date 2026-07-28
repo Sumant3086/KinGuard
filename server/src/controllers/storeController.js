@@ -1,12 +1,18 @@
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
-import ExcelJS from 'exceljs';
 import prisma from '../config/prisma.js';
 import { parseId, requireId, parsePage, parsePageSize } from '../utils/params.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
+import { buildInventoryWorkbook } from '../utils/excelExport.js';
 
 const EMPTY_STATS = { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 };
+
+// A per-store deadline extension (if one exists) overrides the batch's default submissionDeadline.
+function effectiveDeadline(batchLike) {
+  const extension = batchLike?.deadlineExtensions?.[0] ?? null;
+  return extension ? extension.newDeadline : (batchLike?.submissionDeadline ?? null);
+}
 
 export async function getDashboard(req, res, next) {
   const startTime = Date.now();
@@ -169,9 +175,8 @@ export async function getInventory(req, res, next) {
     ]);
 
     // C2: Check for per-store deadline extension override (fetched inline with batchInfo)
-    const extension = batchInfo?.deadlineExtensions?.[0] ?? null;
-    const effectiveDeadline = extension ? extension.newDeadline : batchInfo?.submissionDeadline;
-    const isLocked = effectiveDeadline ? new Date() > new Date(effectiveDeadline) : false;
+    const deadline = effectiveDeadline(batchInfo);
+    const isLocked = deadline ? new Date() > new Date(deadline) : false;
 
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_INVENTORY (${records.length} records): ${duration}ms`);
@@ -243,9 +248,8 @@ export async function updateInventoryRecord(req, res, next) {
     if (record.status === 'SUBMITTED') throw new AppError('This item has already been submitted and cannot be edited', 403);
 
     if (record.batch?.submissionDeadline) {
-      const extension = record.batch.deadlineExtensions?.[0] ?? null;
-      const effectiveDeadline = extension ? extension.newDeadline : record.batch.submissionDeadline;
-      if (new Date() > new Date(effectiveDeadline)) {
+      const deadline = effectiveDeadline(record.batch);
+      if (new Date() > new Date(deadline)) {
         throw new AppError('This cycle is now closed — the submission deadline has passed. Contact your administrator if you need an extension', 403);
       }
     }
@@ -319,9 +323,8 @@ export async function submitInventory(req, res, next) {
     });
     if (!batchForDeadline) throw new AppError('This inventory cycle was not found', 404);
     if (batchForDeadline.submissionDeadline) {
-      const extension = batchForDeadline.deadlineExtensions?.[0] ?? null;
-      const effectiveDeadline = extension ? extension.newDeadline : batchForDeadline.submissionDeadline;
-      if (new Date() > new Date(effectiveDeadline)) {
+      const deadline = effectiveDeadline(batchForDeadline);
+      if (new Date() > new Date(deadline)) {
         throw new AppError('This cycle is now closed — the submission deadline has passed. Contact your administrator if you need an extension', 403);
       }
     }
@@ -655,6 +658,7 @@ export async function downloadInventory(req, res, next) {
         store: {
           select: {
             storeCode: true,
+            storeName: true,
           },
         },
       },
@@ -665,44 +669,10 @@ export async function downloadInventory(req, res, next) {
       throw new AppError('No inventory records found for your store in this cycle', 404);
     }
 
-    // Create Excel workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Inventory');
-
-    // Add headers
-    worksheet.columns = [
-      { header: 'Plant Code', key: 'storeCode', width: 12 },
-      { header: 'Date', key: 'inventoryDate', width: 15 },
-      { header: 'Material Name', key: 'materialCode', width: 20 },
-      { header: 'Material Description', key: 'materialName', width: 30 },
-      { header: 'System Stock', key: 'systemQuantity', width: 14 },
-      { header: 'Physical Stock', key: 'physicalQuantity', width: 14 },
-      { header: 'Diff', key: 'difference', width: 12 },
-      { header: 'Remarks', key: 'remarks', width: 30 },
-      { header: 'Status', key: 'status', width: 12 },
-    ];
-
-    // Style header row
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' },
-    };
-
-    // Add data rows
-    records.forEach((record) => {
-      worksheet.addRow({
-        storeCode: record.store.storeCode,
-        inventoryDate: record.batch.inventoryDate.toISOString().split('T')[0],
-        materialCode: record.materialCode,
-        materialName: record.materialName,
-        systemQuantity: record.systemQuantity,
-        physicalQuantity: record.physicalQuantity,
-        difference: record.difference,
-        remarks: record.remarks,
-        status: record.status,
-      });
+    const workbook = buildInventoryWorkbook(records, {
+      sheetName:        'Inventory',
+      includeDate:      true,
+      includeSubmitter: false,
     });
 
     createAuditLog({

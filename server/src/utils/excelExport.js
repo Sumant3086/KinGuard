@@ -1,8 +1,6 @@
 import ExcelJS from 'exceljs';
 
-const BRAND_RED  = 'FFDC2626';
-const HEADER_BG  = 'FFE0E0E0';
-const WHITE_TEXT  = 'FFFFFFFF';
+const HEADER_BG = 'FFE0E0E0';
 
 // Prefix cells that could trigger formula execution in Excel.
 export function sanitizeCell(value) {
@@ -93,14 +91,3 @@ export function buildInventoryWorkbook(records, {
 
   return workbook;
 }
-
-/**
- * Build a branded header workbook with a red title bar (for reports).
- */
-export function buildBrandedWorkbook(sheetName = 'Report') {
-  const workbook  = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet(sheetName);
-  return { workbook, worksheet };
-}
-
-export { BRAND_RED, HEADER_BG, WHITE_TEXT };

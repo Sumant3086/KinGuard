@@ -86,3 +86,28 @@ export function inventoryTableRows(records) {
     { text: r.status === 'SUBMITTED' ? 'Counted' : 'Pending', color: r.status === 'SUBMITTED' ? '#059669' : '#d97706' },
   ]);
 }
+
+// Shared content block for the three inventory PDF exports (admin: export/report/batch) —
+// same columns and layout, only title/subtitle/filters differ at the call site.
+export function inventoryTableContent(records) {
+  return {
+    table: {
+      headerRows: 1,
+      widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+      body: [
+        [
+          { text: 'Store', style: 'th' },
+          { text: 'Material', style: 'th' },
+          { text: 'Description', style: 'th' },
+          { text: 'Date', style: 'th' },
+          { text: 'SYS', style: 'th', alignment: 'right' },
+          { text: 'Sold', style: 'th', alignment: 'right' },
+          { text: 'Variance', style: 'th', alignment: 'right' },
+          { text: 'Status', style: 'th' },
+        ],
+        ...inventoryTableRows(records),
+      ],
+    },
+    layout: tableLayout(),
+  };
+}
