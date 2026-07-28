@@ -31,7 +31,7 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 
 **[https://kinmarchae.onrender.com](https://kinmarchae.onrender.com)**
 
-> The demo runs on Render's free tier and may take up to 60 seconds to wake from sleep on the first visit. Wait a moment and the login page will appear.
+> The demo runs on Render's free tier, kept warm by an automated health-check monitor — no cold-start wait expected on first visit.
 
 ## Features
 
@@ -83,6 +83,7 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 | PDF | pdfmake |
 | Email | Brevo HTTP API (no SMTP required — works on all hosting platforms) |
 | PWA | Web App Manifest + Service Worker (installable, offline shell) |
+| Localization | English / French UI, persisted per user (i18next) |
 | Hosting | Render (backend + frontend), Supabase (database) |
 
 ## Local Setup
