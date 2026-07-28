@@ -185,7 +185,7 @@ export async function getRiskScores(req, res, next) {
 
 export async function getTrendsYoY(req, res, next) {
   try {
-    const cycles      = Math.min(parseInt(req.query.cycles) || 6, 12);
+    const cycles      = Math.max(1, Math.min(parseInt(req.query.cycles) || 6, 12));
     const compareYear = parseInt(req.query.compareYear);
     if (!compareYear || isNaN(compareYear) || compareYear < 2000 || compareYear > 2100) {
       throw new AppError('compareYear must be a valid year (e.g. 2025)', 400);
