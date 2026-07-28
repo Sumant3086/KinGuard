@@ -39,7 +39,11 @@ export default function Home() {
           <nav className="home-nav">
             {user ? (
               <Link
-                to={user.role === 'ADMIN' ? '/admin/dashboard' : '/store/dashboard'}
+                to={
+                  user.role === 'ADMIN' ? '/admin/dashboard'
+                  : user.role === 'AREA_MANAGER' ? '/am/dashboard'
+                  : '/store/dashboard'
+                }
                 className="home-signin-btn"
               >
                 Go to Dashboard →

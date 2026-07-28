@@ -104,13 +104,13 @@ export async function rejectUser(id, reason) {
 
 export async function bulkReviewUsers(action, userIds, reason) {
   const { data } = await client.post('/admin/users/bulk-review', { action, userIds, reason });
-  cacheInvalidate('admin:users', 'admin:dashboard');
+  cacheInvalidate('admin:users', 'admin:dashboard', 'admin:stores');
   return data;
 }
 
 export async function bulkDeleteUsers(userIds) {
   const { data } = await client.post('/admin/users/bulk-delete', { userIds });
-  cacheInvalidate('admin:users', 'admin:dashboard');
+  cacheInvalidate('admin:users', 'admin:dashboard', 'admin:stores');
   return data;
 }
 
