@@ -193,7 +193,7 @@ export async function getTrendsYoY(req, res, next) {
 
     // Current: latest N batches regardless of year
     const currentBatches = (await prisma.uploadBatch.findMany({
-      where: { isDeleted: false },
+      where: { isDeleted: false, status: 'COMPLETED' },
       orderBy: { inventoryDate: 'desc' },
       take: cycles,
       select: { id: true, inventoryDate: true },
@@ -203,6 +203,7 @@ export async function getTrendsYoY(req, res, next) {
     const comparisonBatches = await prisma.uploadBatch.findMany({
       where: {
         isDeleted: false,
+        status: 'COMPLETED',
         inventoryDate: {
           gte: new Date(`${compareYear}-01-01T00:00:00Z`),
           lte: new Date(`${compareYear}-12-31T23:59:59Z`),
@@ -220,14 +221,16 @@ export async function getTrendsYoY(req, res, next) {
       SELECT
         ir."batchId"::int,
         COUNT(*)::int                                                        AS "total",
+        COUNT(CASE WHEN ir.status='SUBMITTED' THEN 1 END)::int                AS "submitted",
         COUNT(CASE WHEN ir.difference < 0 AND ir.status='SUBMITTED' THEN 1 END)::int AS "shortages"
       FROM "InventoryRecord" ir
       WHERE ir."batchId" = ANY(${allIds})
       GROUP BY ir."batchId"
     `;
+    // Share of counted items — consistent with the dashboard, trends and risk scores
     const rateMap = new Map(rows.map(r => [
       r.batchId,
-      r.total > 0 ? Math.round((r.shortages / r.total) * 1000) / 10 : 0,
+      r.submitted > 0 ? Math.round((r.shortages / r.submitted) * 1000) / 10 : 0,
     ]));
 
     res.json({
@@ -264,6 +267,7 @@ export async function downloadExecutiveSummary(req, res, next) {
       prisma.$queryRaw`
         SELECT
           COUNT(*)::int                                                         AS "total",
+          COUNT(CASE WHEN status='SUBMITTED' THEN 1 END)::int                    AS "submitted",
           COUNT(CASE WHEN difference < 0 AND status='SUBMITTED' THEN 1 END)::int AS "shortages",
           COUNT(CASE WHEN difference > 0 AND status='SUBMITTED' THEN 1 END)::int AS "excess",
           COUNT(CASE WHEN difference = 0 AND status='SUBMITTED' THEN 1 END)::int AS "matched",
@@ -295,15 +299,19 @@ export async function downloadExecutiveSummary(req, res, next) {
       prisma.store.count({ where: { isActive: true } }),
       priorBatch ? prisma.$queryRaw`
         SELECT COUNT(*)::int AS "total",
+               COUNT(CASE WHEN status='SUBMITTED' THEN 1 END)::int AS "submitted",
                COUNT(CASE WHEN difference < 0 AND status='SUBMITTED' THEN 1 END)::int AS "shortages"
         FROM "InventoryRecord" WHERE "batchId" = ${priorBatch.id}
       ` : Promise.resolve(null),
     ]);
 
     const net          = networkStats[0] ?? {};
-    const shortageRate = net.total > 0 ? Math.round((net.shortages / net.total) * 1000) / 10 : 0;
+    // Denominator is submitted items, matching the per-store table below and the
+    // dashboard/risk scores. Dividing by total would make this headline KPI disagree
+    // with the Top Risk Stores table printed on the same page.
+    const shortageRate = net.submitted > 0 ? Math.round((net.shortages / net.submitted) * 1000) / 10 : 0;
     const prior        = priorStats?.[0];
-    const priorRate    = prior?.total > 0 ? Math.round((prior.shortages / prior.total) * 1000) / 10 : null;
+    const priorRate    = prior?.submitted > 0 ? Math.round((prior.shortages / prior.submitted) * 1000) / 10 : null;
     const delta        = priorRate !== null ? Math.round((shortageRate - priorRate) * 10) / 10 : null;
     const trendText    = delta === null ? '' : delta > 0 ? `+${delta}pp vs prior` : delta < 0 ? `${delta}pp vs prior` : 'Flat vs prior';
     const trendColor   = delta === null ? '#64748b' : delta > 0 ? '#dc2626' : '#16a34a';

@@ -77,6 +77,11 @@ export async function authenticate(req, res, next) {
       if (!user || !user.isActive) {
         return next(new AppError('Your account is not active. Contact your administrator', 401));
       }
+      // Login refuses accounts awaiting approval; an already-issued token has to be
+      // refused too, otherwise revoking approval leaves the session usable.
+      if (user.pendingApproval) {
+        return next(new AppError('Your account is awaiting administrator approval', 401));
+      }
 
       cached = {
         id:                user.id,

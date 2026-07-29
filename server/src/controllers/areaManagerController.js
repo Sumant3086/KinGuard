@@ -359,6 +359,14 @@ export async function updateRecord(req, res, next) {
       metadata: { batchId: record.batchId, storeId: record.storeId, changes: updateData },
     }).catch(() => {});
 
+    // An AM edit changes the numbers admins and the store see, so the cached
+    // dashboards have to go with it — approve/return already do this.
+    sInvalidate(
+      'admin:dashboard',
+      `am:batches:${req.user.id}`,
+      `store:dashboard:${record.storeId}`,
+    );
+
     res.json(updated);
   } catch (error) { next(error); }
 }
@@ -402,7 +410,7 @@ export async function approveStore(req, res, next) {
     // Notify all admins — reuse storeMeta already fetched above, only fetch admins + batch
     const storeMeta_ = { storeName: storeMeta.storeName, storeCode: storeMeta.storeCode };
     Promise.all([
-      prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, NOT: { email: null } }, select: { email: true, name: true } }),
+      prisma.user.findMany({ where: { role: 'ADMIN', isActive: true, pendingApproval: false, NOT: { email: null } }, select: { email: true, name: true } }),
       prisma.uploadBatch.findUnique({ where: { id: batchId }, select: { inventoryDate: true } }),
     ]).then(async ([admins, batch]) => {
       if (!admins.length || !batch) return;
@@ -428,6 +436,16 @@ export async function returnStore(req, res, next) {
 
     const { remarks } = req.body;
     if (!remarks?.trim()) throw new AppError('Please provide a reason so the store manager knows what to correct', 400);
+
+    // Mirror of the approve guard: there must be something to send back. Without this
+    // a second return call wipes nothing but still flips the review to RETURNED,
+    // re-alerting a store that has already been sent its recount.
+    const submittedCount = await prisma.inventoryRecord.count({
+      where: { batchId, storeId, status: 'SUBMITTED' },
+    });
+    if (submittedCount === 0) {
+      throw new AppError('This store has no submitted items to return', 400);
+    }
 
     await prisma.$transaction([
       // Reset submitted records fully — clears all count data so store must re-enter

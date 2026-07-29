@@ -1,8 +1,8 @@
 // cycleScheduleService.js — automatic inventory cycle creation based on saved schedules
 //
-// Runs hourly. When a CycleSchedule's nextRunAt falls in the past,
-// it creates an UploadBatch placeholder (status PENDING, no file — admin uploads file separately)
-// and advances nextRunAt to the next occurrence.
+// Runs hourly. When a CycleSchedule's nextRunAt falls in the past, it logs that a
+// cycle is due and advances nextRunAt to the next occurrence. It does NOT create
+// batches — see the note in runScheduleCheck for why.
 
 import prisma from '../config/prisma.js';
 
@@ -33,9 +33,13 @@ export function computeNextRun(frequency, dayOfMonth, dayOfWeek, from = new Date
 
   if (frequency === 'quarterly') {
     const dom = Math.min(dayOfMonth ?? 1, 28);
-    next.setDate(dom);
+    // Anchor to the calendar quarter (Jan/Apr/Jul/Oct) so runs are always three
+    // months apart. Using the current month for the first run makes a quarterly
+    // schedule fire like a monthly one once, then jump a quarter.
+    const quarterStartMonth = Math.floor(next.getMonth() / 3) * 3;
+    next.setMonth(quarterStartMonth, dom); // set month+day together — avoids day overflow
     next.setHours(6, 0, 0, 0);
-    if (next <= from) next.setMonth(next.getMonth() + 3);
+    if (next <= from) next.setMonth(next.getMonth() + 3, dom);
     return next;
   }
 

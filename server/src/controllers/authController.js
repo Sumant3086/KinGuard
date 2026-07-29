@@ -224,6 +224,13 @@ export async function refresh(req, res, next) {
       clearCookies(res);
       throw new AppError('Your account has been deactivated. Contact your administrator', 401);
     }
+    // Same gate as login — approval can be revoked while a session is live, and
+    // refresh is the point where that has to take effect.
+    if (user.pendingApproval) {
+      await prisma.refreshToken.delete({ where: { id: stored.id } }).catch(() => {});
+      clearCookies(res);
+      throw new AppError('Your account is awaiting administrator approval', 401);
+    }
 
     // Rotate: delete the old token atomically (optimistic lock).
     // deleteMany returns { count: 0 } if a concurrent request already deleted it,

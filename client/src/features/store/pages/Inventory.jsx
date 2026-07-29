@@ -14,6 +14,22 @@ import { SHRINKAGE_CATEGORIES, CATEGORY_NAMES } from '../../../shared/utils/shri
 const ISSUE_REASONS = SHRINKAGE_CATEGORIES;
 const CATEGORIES    = CATEGORY_NAMES;
 
+const NO_GAPS = { totalPending: 0, missingPhysical: 0, missingCategory: 0, missingDetail: 0 };
+
+// Counts what still blocks a submission in a set of records. Mirrors the checks in
+// storeController.submitInventory so the client never green-lights a submit the
+// server will reject.
+function computeGaps(records) {
+  const pending    = records.filter(r => r.status === 'PENDING');
+  const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
+  return {
+    totalPending:    pending.length,
+    missingPhysical: pending.filter(r => r.physicalQuantity === null).length,
+    missingCategory: discrepant.filter(r => !r.shrinkageCategory).length,
+    missingDetail:   discrepant.filter(r => !r.remarks || r.remarks.trim() === '').length,
+  };
+}
+
 const IconSave = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -55,6 +71,10 @@ export default function StoreInventory() {
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
   const [pagination, setPagination]     = useState(null);
+  // Gaps that exist in this cycle but are NOT on the page currently loaded. Derived
+  // once per load from the server's batch-wide readiness figures, so progress and
+  // pre-submit checks cover the whole cycle instead of just the visible 100 rows.
+  const [offPageGaps, setOffPageGaps]   = useState(NO_GAPS);
   const [currentPage, setCurrentPage]   = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [editedRecords, setEditedRecords] = useState({});
@@ -157,8 +177,22 @@ export default function StoreInventory() {
       setLoading(true);
       setError('');
       const res = await storeApi.getInventory(search, statusFilter, selectedBatch, page);
-      const { records: recs, isLocked: locked, returnedByAM, pagination: pag } = res;
+      const { records: recs, isLocked: locked, returnedByAM, pagination: pag, readiness } = res;
       setRecords(recs);
+
+      // Subtract what's on this page from the cycle-wide totals — the remainder is
+      // what sits on the other pages (or is hidden by the current filter).
+      if (readiness) {
+        const onPage = computeGaps(recs);
+        setOffPageGaps({
+          totalPending:    Math.max(0, readiness.totalPending    - onPage.totalPending),
+          missingPhysical: Math.max(0, readiness.missingPhysical - onPage.missingPhysical),
+          missingCategory: Math.max(0, readiness.missingCategory - onPage.missingCategory),
+          missingDetail:   Math.max(0, readiness.missingDetail   - onPage.missingDetail),
+        });
+      } else {
+        setOffPageGaps(NO_GAPS);
+      }
       setIsLocked(locked);
       const reason = returnedByAM || '';
       setReturnedReason(reason);
@@ -276,6 +310,9 @@ export default function StoreInventory() {
     if (blank) {
       const el = blankRowRefs.current[blank.id];
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+    } else if (offPageGaps.missingPhysical > 0) {
+      // Nothing blank here, but the cycle isn't done — point them at the right page
+      toast.info(`${offPageGaps.missingPhysical} item(s) still need a count on another page.`);
     }
   }
 
@@ -289,22 +326,26 @@ export default function StoreInventory() {
       return;
     }
 
-    // Client-side validation before hitting the server
-    const pending = records.filter(r => r.status === 'PENDING');
-    const missingPhysical = pending.filter(r => r.physicalQuantity === null);
-    if (missingPhysical.length > 0) {
-      toast.error(`${missingPhysical.length} item(s) still need a physical count.`);
+    // Client-side validation before hitting the server. Counts cover the whole
+    // cycle, not just the loaded page — the server validates every pending row.
+    const onPage = computeGaps(records);
+    // Items missing from this page are elsewhere in the cycle; say so, otherwise the
+    // manager stares at a full-looking page wondering what the error means.
+    const elsewhere = (onPageCount) => (onPageCount === 0 ? ' They are on another page of this cycle.' : '');
+
+    const missingPhysical = onPage.missingPhysical + offPageGaps.missingPhysical;
+    if (missingPhysical > 0) {
+      toast.error(`${missingPhysical} item(s) still need a physical count.${elsewhere(onPage.missingPhysical)}`);
       return;
     }
-    const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
-    const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
-    if (missingCategory.length > 0) {
-      toast.error(`${missingCategory.length} item(s) have a difference — please select a category for each.`);
+    const missingCategory = onPage.missingCategory + offPageGaps.missingCategory;
+    if (missingCategory > 0) {
+      toast.error(`${missingCategory} item(s) have a difference — please select a category for each.${elsewhere(onPage.missingCategory)}`);
       return;
     }
-    const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
-    if (missingDetail.length > 0) {
-      toast.error(`${missingDetail.length} item(s) need an issue detail filled in.`);
+    const missingDetail = onPage.missingDetail + offPageGaps.missingDetail;
+    if (missingDetail > 0) {
+      toast.error(`${missingDetail} item(s) need an issue detail filled in.${elsewhere(onPage.missingDetail)}`);
       return;
     }
 
@@ -344,7 +385,7 @@ export default function StoreInventory() {
     downloadFile(storeApi.downloadInventory, 'inventory.xlsx', selectedBatch || undefined);
 
   const pendingRecords = records.filter(r => r.status === 'PENDING');
-  const enteredCount   = pendingRecords.filter(r => {
+  const enteredOnPage  = pendingRecords.filter(r => {
     // If the user has an active edit, that overrides the saved value
     if (editedRecords[r.id] && editedRecords[r.id].physicalQuantity !== undefined) {
       const editedQty = editedRecords[r.id].physicalQuantity;
@@ -352,7 +393,10 @@ export default function StoreInventory() {
     }
     return r.physicalQuantity !== null;
   }).length;
-  const totalPending    = pendingRecords.length;
+  // Page counts plus the rest of the cycle, so the bar tracks the real submission
+  // requirement rather than however many rows happen to be loaded.
+  const totalPending    = pendingRecords.length + offPageGaps.totalPending;
+  const enteredCount    = enteredOnPage + (offPageGaps.totalPending - offPageGaps.missingPhysical);
   const progressPct     = totalPending > 0 ? Math.round((enteredCount / totalPending) * 100) : 100;
   const blankCount      = totalPending - enteredCount;
   const hasUnsavedChanges = Object.keys(editedRecords).length > 0;

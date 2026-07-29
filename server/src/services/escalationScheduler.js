@@ -35,15 +35,30 @@ async function runEscalationCheck() {
         const hoursOverdue = (now - new Date(batch.submissionDeadline)) / 3_600_000;
 
         // Find stores that are still pending in this batch
-        const pendingRows = await prisma.inventoryRecord.findMany({
+        const allPendingRows = await prisma.inventoryRecord.findMany({
           where: { batchId: batch.id, status: 'PENDING' },
           select: { storeId: true },
           distinct: ['storeId'],
         });
 
-        if (pendingRows.length === 0) {
-          // All submitted — advance escalation level to max so we stop checking
+        // A store granted an extension is not overdue until ITS deadline passes.
+        // Escalating on the batch deadline alone reports stores as delinquent to their
+        // AM and to admins while the app is still telling those stores they have time.
+        const activeExtensions = await prisma.batchDeadlineExtension.findMany({
+          where: { batchId: batch.id, newDeadline: { gt: now } },
+          select: { storeId: true },
+        });
+        const extendedStoreIds = new Set(activeExtensions.map(e => e.storeId));
+        const pendingRows = allPendingRows.filter(r => !extendedStoreIds.has(r.storeId));
+
+        if (allPendingRows.length === 0) {
+          // Genuinely everyone submitted — advance to max so we stop checking this batch
           await prisma.uploadBatch.update({ where: { id: batch.id }, data: { escalationLevel: 2 } });
+          return;
+        }
+        if (pendingRows.length === 0) {
+          // Everyone still outstanding holds a live extension. Leave escalationLevel
+          // alone so this batch is re-examined once those extensions lapse.
           return;
         }
 

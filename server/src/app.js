@@ -104,8 +104,20 @@ if (!IS_PROD) {
 const rlOptions = { standardHeaders: true, legacyHeaders: false,
   handler: (_req, res) => res.status(429).json({ error: 'Too many requests. Please try again later.' }) };
 
-// Auth endpoints — 20 attempts per 15 minutes per IP (covers both login and refresh)
-const authLimiter = rateLimit({ ...rlOptions, windowMs: 15 * 60 * 1000, max: 20 });
+// Credential-guessing guard — applied to /login only. Brute-force protection is
+// primarily the per-account DB lockout in authController (10 failures → 15 min);
+// this is the secondary per-IP ceiling.
+const loginLimiter = rateLimit({
+  ...rlOptions, windowMs: 15 * 60 * 1000, max: 20,
+  handler: (_req, res) => res.status(429).json({ error: 'Too many sign-in attempts. Please try again in a few minutes.' }),
+});
+
+// Everything else under /api/auth is session upkeep, not credential entry:
+// /me fires on every page load and /refresh every 15 minutes per active user.
+// Stores share one NAT'd office IP, so this ceiling has to accommodate a whole
+// site's normal traffic — a tight per-IP limit here locks out the entire office
+// (including /login, since it sits on the same router).
+const authLimiter = rateLimit({ ...rlOptions, windowMs: 15 * 60 * 1000, max: 600 });
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 import authRoutes      from './routes/authRoutes.js';
@@ -115,6 +127,7 @@ import amRoutes        from './routes/areaManagerRoutes.js';
 import adminAmRoutes   from './routes/adminAmRoutes.js';
 import scheduleRoutes  from './routes/scheduleRoutes.js';
 
+app.use('/api/auth/login',    loginLimiter);
 app.use('/api/auth',          authLimiter, authRoutes);
 app.use('/api/store',         storeRoutes);
 app.use('/api/admin',         adminRoutes);

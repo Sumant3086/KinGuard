@@ -45,12 +45,16 @@ async function runReminderCheck() {
     // Process all due batches in parallel — each is independent
     await Promise.allSettled(batches.map(async (batch) => {
       try {
-        // Fetch pending store IDs and managers in parallel
-        const [pendingStoreRows, _] = await Promise.all([
+        // Fetch pending store IDs and live extensions in parallel
+        const [pendingStoreRows, activeExtensions] = await Promise.all([
           prisma.inventoryRecord.findMany({
             where: { batchId: batch.id, status: 'PENDING' },
             select: { storeId: true },
             distinct: ['storeId'],
+          }),
+          prisma.batchDeadlineExtension.findMany({
+            where: { batchId: batch.id, newDeadline: { gt: now } },
+            select: { storeId: true },
           }),
           // Stamp immediately — even if email fails, don't retry (avoids spam)
           prisma.uploadBatch.update({ where: { id: batch.id }, data: { autoReminderSentAt: now } }),
@@ -58,7 +62,11 @@ async function runReminderCheck() {
 
         if (pendingStoreRows.length === 0) return; // all submitted, already stamped above
 
-        const storeIds = pendingStoreRows.map(r => r.storeId);
+        // Skip stores holding a live extension — the batch deadline is not their deadline,
+        // so "1 hour left" would be wrong for them.
+        const extendedStoreIds = new Set(activeExtensions.map(e => e.storeId));
+        const storeIds = pendingStoreRows.map(r => r.storeId).filter(id => !extendedStoreIds.has(id));
+        if (storeIds.length === 0) return;
         const managers = await prisma.user.findMany({
           where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: storeIds }, email: { not: null } },
           include: { store: true },

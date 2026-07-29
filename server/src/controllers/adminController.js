@@ -291,10 +291,15 @@ export async function getDashboard(req, res, next) {
 
     const storeScorecard = allStores.map((store) => {
       const s = statsMap.get(store.id);
-      const totalItems    = s ? s.totalItems    : 0;
-      const shortageCount = s ? s.shortageCount : 0;
-      const shortageRate  = totalItems > 0 ? Math.round((shortageCount / totalItems) * 100) : 0;
-      const isSubmitted   = s ? s.pendingCount === 0 && s.submittedCount > 0 : false;
+      const totalItems      = s ? s.totalItems     : 0;
+      const submittedCount  = s ? s.submittedCount : 0;
+      const shortageCount   = s ? s.shortageCount  : 0;
+      // Rate is shortages as a share of what the store actually COUNTED, not of everything
+      // it was assigned. Dividing by totalItems dilutes the rate by however much is still
+      // pending, so a store that counted 10 items and found 10 shortages would score 10%
+      // (GREEN) instead of 100% (RED) — understating risk on exactly the stores that matter.
+      const shortageRate    = submittedCount > 0 ? Math.round((shortageCount / submittedCount) * 100) : 0;
+      const isSubmitted     = s ? s.pendingCount === 0 && s.submittedCount > 0 : false;
       const isPending     = s ? s.pendingCount > 0 : false;
       const riskLevel     = shortageRate >= 20 ? 'RED' : shortageRate >= 5 ? 'YELLOW' : 'GREEN';
       return {
@@ -691,8 +696,9 @@ export async function uploadInventory(req, res, next) {
     const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
     const windowStart = new Date(targetDate); windowStart.setDate(windowStart.getDate() - 3);
     const windowEnd   = new Date(targetDate); windowEnd.setDate(windowEnd.getDate() + 3);
-    // Only warn about COMPLETED batches — PENDING ones are placeholder entries
-    // created by the cycle scheduler and should not block a real file upload.
+    // Only warn about COMPLETED batches. A PENDING batch is a half-finished upload
+    // (the row is created before rows are parsed), not a real cycle, so it must not
+    // block a genuine upload for the same date.
     const existingBatch = await withDbRetry(() => prisma.uploadBatch.findFirst({
       where: { inventoryDate: { gte: windowStart, lte: windowEnd }, status: 'COMPLETED', isDeleted: false },
       select: { id: true, inventoryDate: true, originalFileName: true },
@@ -873,14 +879,19 @@ export async function uploadInventory(req, res, next) {
       }
     }
 
-    // Insert successful records " skipDuplicates prevents re-uploading the same
-    // (batch, store, material) from creating duplicate rows
+    // Insert successful records — skipDuplicates prevents re-uploading the same
+    // (batch, store, material) from creating duplicate rows. Use the count Prisma
+    // returns rather than successfulRecords.length: when a file repeats a
+    // plant+material pair, the repeat is silently skipped and the two numbers differ.
+    let insertedRows = 0;
     if (successfulRecords.length > 0) {
-      await prisma.inventoryRecord.createMany({
+      const { count } = await prisma.inventoryRecord.createMany({
         data: successfulRecords,
         skipDuplicates: true,
       });
+      insertedRows = count;
     }
+    const duplicateRows = successfulRecords.length - insertedRows;
 
     // If every row failed, delete the orphan batch and surface a clean error
     if (successfulRecords.length === 0) {
@@ -892,13 +903,14 @@ export async function uploadInventory(req, res, next) {
       });
     }
 
-    // Update batch
+    // Update batch. Every row either produced an error or a record, and the
+    // all-rows-failed case already returned above, so the batch is COMPLETED here.
     await prisma.uploadBatch.update({
       where: { id: batch.id },
       data: {
-        successfulRows: successfulRecords.length,
+        successfulRows: insertedRows,
         rejectedRows: errors.length,
-        status: errors.length === rows.length ? 'FAILED' : 'COMPLETED',
+        status: 'COMPLETED',
       },
     });
 
@@ -912,7 +924,8 @@ export async function uploadInventory(req, res, next) {
       metadata: {
         fileName: file.originalname,
         totalRows: rows.length,
-        successfulRows: successfulRecords.length,
+        successfulRows: insertedRows,
+        duplicateRows,
         rejectedRows: errors.length,
       },
     });
@@ -923,7 +936,9 @@ export async function uploadInventory(req, res, next) {
     res.status(201).json({
       batchId: batch.id,
       totalRows: rows.length,
-      successfulRows: successfulRecords.length,
+      successfulRows: insertedRows,
+      // Rows that parsed cleanly but repeated a plant+material already in this cycle
+      duplicateRows: duplicateRows > 0 ? duplicateRows : undefined,
       rejectedRows: errors.length,
       errors: errors.slice(0, 50),
       autoCreatedUsers: autoCreatedUsers.length > 0 ? autoCreatedUsers : undefined,
@@ -937,7 +952,9 @@ export async function uploadInventory(req, res, next) {
       if (!areaManagers.length) return;
       const { sendNewCycleEmailAM } = await import('../services/emailService.js');
       const amWithCount = areaManagers.map(am => ({ ...am, storeCount: am.managedStores.length }));
-      sendNewCycleEmailAM({ managers: amWithCount, inventoryDate, deadline: submissionDeadline || null })
+      // Pass the parsed Date objects, not the raw request strings — parseUserDate accepts
+      // formats that a bare new Date() in the email template would render "Invalid Date".
+      sendNewCycleEmailAM({ managers: amWithCount, inventoryDate: targetDate, deadline: parsedDeadline })
         .then(r => console.warn(`[upload] AM email result: sent=${r.sent}, failed=${r.failed}`))
         .catch(e => console.error('[upload] AM email send error:', e.message));
     }).catch(e => console.error('[upload] AM query failed:', e.message));
@@ -1405,10 +1422,24 @@ export async function updateBatch(req, res, next) {
     const batchId = requireId(req.params.id, 'batchId');
     const { submissionDeadline } = req.body;
     const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
-    const batch = await prisma.uploadBatch.update({
+
+    const existing = await prisma.uploadBatch.findUnique({
       where: { id: batchId },
-      data: { submissionDeadline: parsedDeadline },
+      select: { id: true, submissionDeadline: true },
     });
+    if (!existing) throw new AppError('Cycle not found', 404);
+
+    // Moving the deadline later re-opens the cycle, so the reminder/escalation state
+    // has to be rewound too. Without this a batch that already sent its "1 hour left"
+    // email (or escalated) stays stamped, and the extended window passes with the
+    // stores getting no warning at all.
+    const data = { submissionDeadline: parsedDeadline };
+    if (!existing.submissionDeadline || parsedDeadline > existing.submissionDeadline) {
+      data.autoReminderSentAt = null;
+      data.escalationLevel    = 0;
+    }
+
+    const batch = await prisma.uploadBatch.update({ where: { id: batchId }, data });
     await createAuditLog({
       userId: req.user.id, action: 'UPDATE_BATCH_DEADLINE',
       entityType: 'UPLOAD_BATCH', entityId: batch.id,
@@ -1500,7 +1531,7 @@ export async function getTrends(req, res, next) {
     const cached = sGet(cacheKey);
     if (cached) return res.json(cached);
     const batches = (await prisma.uploadBatch.findMany({
-      where: { isDeleted: false },
+      where: { isDeleted: false, status: 'COMPLETED' },
       orderBy: { inventoryDate: 'desc' },
       take: cycles,
       select: { id: true, inventoryDate: true },
@@ -1514,6 +1545,7 @@ export async function getTrends(req, res, next) {
         ir."storeId",
         s."storeName",
         COUNT(*)::int AS "totalItems",
+        COUNT(CASE WHEN ir.status='SUBMITTED' THEN 1 END)::int AS "submittedCount",
         COUNT(CASE WHEN ir.difference < 0 AND ir.status='SUBMITTED' THEN 1 END)::int AS "shortageCount",
         SUM(CASE WHEN ir.difference < 0 AND ir.status='SUBMITTED' THEN ABS(ir.difference) ELSE 0 END)::float AS "totalUnitsLost"
       FROM "InventoryRecord" ir
@@ -1530,7 +1562,8 @@ export async function getTrends(req, res, next) {
         batchId: Number(r.batchId),
         totalItems: r.totalItems,
         shortageCount: r.shortageCount,
-        shortageRate: r.totalItems > 0 ? Math.round((r.shortageCount / r.totalItems) * 1000) / 10 : 0,
+        // Share of counted items — same denominator as the dashboard and risk scores
+        shortageRate: r.submittedCount > 0 ? Math.round((r.shortageCount / r.submittedCount) * 1000) / 10 : 0,
         totalUnitsLost: Math.round(r.totalUnitsLost * 10) / 10,
       });
     });
@@ -1959,6 +1992,7 @@ export async function overrideInventoryRecord(req, res, next) {
     if (physicalQuantity !== undefined) {
       const qty = physicalQuantity !== null && physicalQuantity !== '' ? parseFloat(physicalQuantity) : null;
       if (qty !== null && isNaN(qty)) throw new AppError('Invalid quantity', 400);
+      if (qty !== null && qty < 0) throw new AppError('Physical quantity cannot be negative', 400);
       updateData.physicalQuantity = qty;
       updateData.difference = qty !== null ? parseFloat((qty - record.systemQuantity).toFixed(4)) : null;
     }

@@ -144,7 +144,27 @@ export async function getInventory(req, res, next) {
 
     const skip = (pageNum - 1) * pageSizeNum;
 
-    const [totalRecords, records, batchInfo, amReview] = await Promise.all([
+    // Batch-wide readiness, deliberately ignoring search/status/page. The client's
+    // progress bar and pre-submit checks have to describe the whole cycle — scoping
+    // them to the current page tells a 250-item store it is "100% complete · 0 blank"
+    // and then lets the server reject the submission.
+    const readinessQuery = batchId
+      ? prisma.$queryRaw`
+          SELECT
+            COUNT(*)::int AS "totalPending",
+            COUNT(CASE WHEN "physicalQuantity" IS NULL THEN 1 END)::int AS "missingPhysical",
+            COUNT(CASE WHEN "difference" IS NOT NULL AND "difference" <> 0
+                        AND ("shrinkageCategory" IS NULL OR "shrinkageCategory" = '')
+                       THEN 1 END)::int AS "missingCategory",
+            COUNT(CASE WHEN "difference" IS NOT NULL AND "difference" <> 0
+                        AND ("remarks" IS NULL OR TRIM("remarks") = '')
+                       THEN 1 END)::int AS "missingDetail"
+          FROM "InventoryRecord"
+          WHERE "storeId" = ${storeId} AND "batchId" = ${batchId} AND status = 'PENDING'
+        `.then(rows => rows[0] ?? null).catch(() => null)
+      : Promise.resolve(null);
+
+    const [totalRecords, records, batchInfo, amReview, readiness] = await Promise.all([
       prisma.inventoryRecord.count({ where }),
       prisma.inventoryRecord.findMany({
         where,
@@ -172,6 +192,7 @@ export async function getInventory(req, res, next) {
             LIMIT 1
           `.then(rows => rows[0] ?? null).catch(() => null)
         : Promise.resolve(null),
+      readinessQuery,
     ]);
 
     // C2: Check for per-store deadline extension override (fetched inline with batchInfo)
@@ -185,6 +206,7 @@ export async function getInventory(req, res, next) {
       records,
       isLocked,
       returnedByAM: amReview?.status === 'RETURNED' ? amReview.remarks || 'Your submission was returned. Please recount and resubmit.' : null,
+      readiness,
       pagination: {
         page: pageNum,
         pageSize: pageSizeNum,
@@ -551,9 +573,13 @@ export async function getNotifications(req, res, next) {
       where: {
         storeId,
         status: 'RETURNED',
-        batch: { isDeleted: false },
-        // Only show if there are still pending records (store hasn't resubmitted yet)
-        store: { inventoryRecords: { some: { storeId, status: 'PENDING' } } },
+        // Scope the "still pending" test to THIS review's batch by walking the batch
+        // relation. Testing it via `store` instead would match a pending record in any
+        // batch, so an unrelated new cycle would keep a stale return alert alive.
+        batch: {
+          isDeleted: false,
+          inventoryRecords: { some: { storeId, status: 'PENDING' } },
+        },
       },
       select: { batchId: true, remarks: true, batch: { select: { inventoryDate: true } } },
       take: 5,
@@ -565,9 +591,13 @@ export async function getNotifications(req, res, next) {
       items.push({ type: 'returned', message: `${dateLabel} — Returned by Area Manager. Please recount and resubmit.`, batchId: r.batchId, urgent: true });
     }
 
-    // Every batch that still has PENDING records for this store
+    // Every live batch that still has PENDING records for this store.
+    // isDeleted must be filtered here exactly as it is on the dashboard — a soft-deleted
+    // cycle keeps its PENDING records, so without this the bell shows (eventually urgent,
+    // "past deadline") alerts for a cycle the dashboard no longer lists and the manager
+    // cannot open.
     const pendingBatches = await prisma.uploadBatch.findMany({
-      where: { inventoryRecords: { some: { storeId, status: 'PENDING' } } },
+      where: { isDeleted: false, inventoryRecords: { some: { storeId, status: 'PENDING' } } },
       orderBy: { inventoryDate: 'desc' },
       select: {
         id: true,
@@ -622,9 +652,10 @@ export async function downloadInventory(req, res, next) {
     if (queryBatchId) {
       targetBatchId = requireId(queryBatchId, 'batchId');
     } else {
-      // Fall back to latest batch for this store
+      // Fall back to latest live batch for this store — a soft-deleted cycle keeps its
+      // records, so without the isDeleted filter this can silently export a deleted cycle.
       const latestBatch = await prisma.uploadBatch.findFirst({
-        where: { inventoryRecords: { some: { storeId } } },
+        where: { isDeleted: false, inventoryRecords: { some: { storeId } } },
         orderBy: { inventoryDate: 'desc' },
       });
       if (!latestBatch) throw new AppError('No inventory records found for your store in this cycle', 404);
