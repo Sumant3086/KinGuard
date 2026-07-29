@@ -253,10 +253,6 @@ Returns `409` with `warning: "duplicate_batch"` if a cycle exists within 3 days 
 
 Parse and validate a file without creating a cycle. Returns up to 100 preview rows plus full-file error/warning counts.
 
-#### `GET /api/admin/uploads`
-
-All uploaded batch records. Cached 1 minute.
-
 #### `GET /api/admin/uploads/template`
 
 Download a formatted Excel template with sample rows and a shrinkage reference sheet.
@@ -418,10 +414,6 @@ All area manager endpoints require a valid session with role `AREA_MANAGER`.
 ### `GET /api/am/dashboard`
 
 Summary dashboard: count of assigned stores, how many have submitted, how many are pending review, how many have been approved or returned. Includes per-store progress breakdown.
-
-### `GET /api/am/stores`
-
-List of stores assigned to this area manager.
 
 ### `GET /api/am/notifications`
 

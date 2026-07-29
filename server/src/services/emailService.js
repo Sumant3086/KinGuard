@@ -79,28 +79,6 @@ function row(label, value, valueColor) {
   </tr>`;
 }
 
-// ── Notify store managers when a new cycle is uploaded ────────────────────────
-export function sendNewCycleEmail({ managers, inventoryDate, deadline }) {
-  const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  const dlStr   = deadline
-    ? new Date(deadline).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
-    : 'No deadline set';
-  return sendBulk(managers, m => ({
-    to: m.email, toName: m.name,
-    subject: `New Inventory Cycle — ${dateStr}`,
-    htmlContent: html(`
-      <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Ready</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new cycle has been published. Log in to begin your physical count.</p>
-      <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
-        ${row('Inventory Date', dateStr)}
-        ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
-        ${row('Your Store', m.store?.storeName || 'Your store')}
-      </table>
-      <p style="color:#64748b;font-size:13px;margin:20px 0 0">Complete and submit your count before the deadline. Contact your administrator if you need an extension.</p>
-    `),
-  }), 'new-cycle-store');
-}
-
 // ── Notify area managers when a new cycle is uploaded ────────────────────────
 export function sendNewCycleEmailAM({ managers, inventoryDate, deadline }) {
   const dateStr = new Date(inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });

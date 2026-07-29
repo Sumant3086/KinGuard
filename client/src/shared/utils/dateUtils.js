@@ -36,14 +36,6 @@ export function fmtISO(value) {
   return d.toISOString().split('T')[0];
 }
 
-/** Return "YYYY-MM-DD HH:MM:SS" in local time (for spreadsheets). */
-export function fmtISOLocal(value) {
-  const d = toDate(value);
-  if (!d) return '';
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
 /** Format a date string in a specific timezone (e.g. Africa/Kinshasa). */
 export function fmtDateTZ(dateStr, timeZone, style = 'long') {
   const d = toDate(dateStr);

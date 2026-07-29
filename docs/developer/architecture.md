@@ -255,14 +255,12 @@ In-memory Map in the browser tab. Cleared on logout.
 | admin:stores | 3 min |
 | admin:users | 2 min |
 | admin:batches-client | 1 min |
-| admin:uploads | 1 min |
 | admin:area-managers | 2 min |
 | admin:trends:N | 5 min |
 | store:dashboard | 2 min |
 | store:batches | 1 min |
 | am:dashboard | 1 min |
 | am:batches | 1 min |
-| am:stores | 5 min |
 
 ## Background Schedulers
 

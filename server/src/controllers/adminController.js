@@ -902,7 +902,7 @@ export async function uploadInventory(req, res, next) {
       },
     });
 
-    sInvalidate('admin:batches', 'admin:uploads', 'admin:notifications');
+    sInvalidate('admin:batches', 'admin:notifications');
 
     await createAuditLog({
       userId: req.user.id,
@@ -929,14 +929,11 @@ export async function uploadInventory(req, res, next) {
       autoCreatedUsers: autoCreatedUsers.length > 0 ? autoCreatedUsers : undefined,
     });
 
-    // Send emails to store managers (bell notification only — no email per new design)
-    // Send emails to area managers (they get email on new cycle)
-    Promise.all([
-      prisma.user.findMany({
-        where: { role: 'AREA_MANAGER', isActive: true, pendingApproval: false, email: { not: null } },
-        select: { id: true, name: true, email: true, managedStores: { select: { id: true } } },
-      }),
-    ]).then(async ([areaManagers]) => {
+    // Store managers get a bell notification only. Area managers get an email.
+    prisma.user.findMany({
+      where: { role: 'AREA_MANAGER', isActive: true, pendingApproval: false, email: { not: null } },
+      select: { id: true, name: true, email: true, managedStores: { select: { id: true } } },
+    }).then(async areaManagers => {
       if (!areaManagers.length) return;
       const { sendNewCycleEmailAM } = await import('../services/emailService.js');
       const amWithCount = areaManagers.map(am => ({ ...am, storeCount: am.managedStores.length }));
@@ -1066,31 +1063,6 @@ export async function previewUpload(req, res, next) {
       preview,
       showingPartial: rows.length > 100,
     });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getUploads(req, res, next) {
-  try {
-    const cached = sGet('admin:uploads');
-    if (cached) return res.json(cached);
-
-    const uploads = await prisma.uploadBatch.findMany({
-      where: { isDeleted: false },
-      orderBy: { uploadedAt: 'desc' },
-      include: {
-        uploader: {
-          select: {
-            employeeId: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    sSet('admin:uploads', uploads, 30_000);
-    res.json(uploads);
   } catch (error) {
     next(error);
   }
@@ -1442,7 +1414,7 @@ export async function updateBatch(req, res, next) {
       entityType: 'UPLOAD_BATCH', entityId: batch.id,
       metadata: { submissionDeadline },
     });
-    sInvalidate('admin:batches', 'admin:uploads', 'admin:notifications');
+    sInvalidate('admin:batches', 'admin:notifications');
     res.json(batch);
   } catch (error) { next(error); }
 }
@@ -1480,7 +1452,7 @@ export async function closeBatch(req, res, next) {
       metadata: { inventoryDate: batch.inventoryDate, lockedPendingItems: pendingCount, submittedItems: submittedCount },
     });
 
-    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications',
+    sInvalidate('admin:dashboard', 'admin:batches', 'admin:notifications',
                 'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
     res.json({
       message:        `Cycle locked. ${pendingCount} pending item(s) frozen, ${submittedCount} already submitted.`,
@@ -1566,34 +1538,6 @@ export async function getTrends(req, res, next) {
     const trendsResult = { batches: batches.map(b => ({ id: b.id, inventoryDate: b.inventoryDate })), series: Array.from(storeMap.values()) };
     sSet(cacheKey, trendsResult, 300_000); // 5-minute cache
     res.json(trendsResult);
-  } catch (error) { next(error); }
-}
-
-export async function getStoreDrilldown(req, res, next) {
-  try {
-    const storeId = requireId(req.params.storeId, 'storeId');
-    const batchIdParam = parseId(req.query.batchId, 'batchId');
-
-    let targetBatchId = batchIdParam ?? null;
-    if (!targetBatchId) {
-      const latest = await prisma.uploadBatch.findFirst({ orderBy: { inventoryDate: 'desc' }, select: { id: true } });
-      if (!latest) return res.json([]);
-      targetBatchId = latest.id;
-    }
-
-    // type=shortage (default) | excess | all
-    const type = req.query.type;
-    const where = { storeId, batchId: targetBatchId, status: 'SUBMITTED' };
-    if (!type || type === 'shortage') where.difference = { lt: 0 };
-    else if (type === 'excess')       where.difference = { gt: 0 };
-    // type=all: no difference filter
-
-    const records = await prisma.inventoryRecord.findMany({
-      where,
-      orderBy: { difference: 'asc' },
-      select: { id: true, materialCode: true, materialName: true, systemQuantity: true, physicalQuantity: true, difference: true, remarks: true, shrinkageCategory: true },
-    });
-    res.json(records);
   } catch (error) { next(error); }
 }
 
@@ -1951,7 +1895,7 @@ export async function deleteBatch(req, res, next) {
       metadata: { inventoryDate: batch.inventoryDate, fileName: batch.originalFileName, softDelete: true },
     });
 
-    sInvalidate('admin:dashboard', 'admin:batches', 'admin:uploads', 'admin:notifications', 'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
+    sInvalidate('admin:dashboard', 'admin:batches', 'admin:notifications', 'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
     res.json({ message: 'Cycle deleted' });
   } catch (error) { next(error); }
 }

@@ -74,7 +74,7 @@ function diffCell(diff) {
   return { text: txt, color: diff < 0 ? RED : diff > 0 ? '#059669' : '#64748b', bold: diff !== 0 };
 }
 
-export function inventoryTableRows(records) {
+function inventoryTableRows(records) {
   return records.map(r => [
     { text: r.store?.storeCode || '', bold: true, color: RED },
     r.materialCode || '',

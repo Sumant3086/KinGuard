@@ -23,13 +23,6 @@ export const getBatches = () =>
     return data;
   });
 
-// Store list rarely changes — cache for the session duration
-export const getMyStores = () =>
-  withCache('am:stores', 300_000, async () => {
-    const { data } = await client.get('/am/stores');
-    return data;
-  });
-
 // Per-batch/store data and review actions are always fetched fresh
 export const getNotifications = async () => { const { data } = await client.get('/am/notifications');                                         return data; };
 export const getBatchStores   = async (batchId)                   => { const { data } = await client.get(`/am/batches/${batchId}/stores`);                             return data; };

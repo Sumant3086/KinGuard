@@ -76,7 +76,6 @@ router.delete('/users/:id', adminController.deleteUser);
 router.get('/uploads/template', adminController.downloadSampleTemplate);
 router.post('/uploads/preview', fileTimeout, upload.single('file'), adminController.previewUpload);
 router.post('/uploads', fileTimeout, upload.single('file'), adminController.uploadInventory);
-router.get('/uploads', adminController.getUploads);
 
 // Inventory
 router.get('/inventory', adminController.getInventory);
@@ -112,8 +111,5 @@ router.get('/analytics/trends-yoy',    analyticsController.getTrendsYoY);
 
 // Reports
 router.get('/reports/executive-summary', analyticsController.downloadExecutiveSummary);
-
-// Store drilldown
-router.get('/stores/:storeId/drilldown', adminController.getStoreDrilldown);
 
 export default router;

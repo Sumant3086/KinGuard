@@ -9,8 +9,6 @@ const TTL = {
   DASHBOARD:  120_000, // 2 min — reduced from 5 min so data feels fresh
   STORES:     180_000, // 3 min
   USERS:      120_000, // 2 min
-  BATCHES:     60_000, // 1 min
-  UPLOADS:     60_000, // 1 min
   AUDIT_LOGS: 120_000, // 2 min
   TRENDS:     300_000, // 5 min
 };
@@ -141,12 +139,7 @@ export async function batchCreateUsersForPlants(plants) {
 }
 
 // ── Uploads / Inventory cycles ─────────────────────────────────────────────
-export function getUploads() {
-  return withCache('admin:uploads', TTL.UPLOADS,
-    async () => { const { data } = await client.get('/admin/uploads'); return data; });
-}
-
-const UPLOAD_CACHE_KEYS = ['admin:dashboard', 'admin:uploads', 'admin:batches-client', 'admin:stores', 'admin:trends:8'];
+const UPLOAD_CACHE_KEYS = ['admin:dashboard', 'admin:batches-client', 'admin:stores', 'admin:trends:8'];
 
 /** Upload an inventory file. Pass { force: true } to bypass the duplicate-batch check. */
 export async function uploadInventory(file, inventoryDate, submissionDeadline, { force = false } = {}) {
@@ -200,7 +193,7 @@ export async function updateBatch(id, payload) {
 
 export async function deleteBatch(id) {
   const { data } = await client.delete(`/admin/batches/${id}`);
-  cacheInvalidate('admin:batches-client', 'admin:dashboard', 'admin:uploads');
+  cacheInvalidate('admin:batches-client', 'admin:dashboard');
   return data;
 }
 
@@ -266,11 +259,6 @@ export function getTrends(cycles = 6) {
       const { data } = await client.get('/admin/analytics/trends', { params: { cycles } });
       return data;
     });
-}
-
-export async function getStoreDrilldown(storeId, batchId) {
-  const { data } = await client.get(`/admin/stores/${storeId}/drilldown`, { params: { batchId } });
-  return data;
 }
 
 // ── Risk scores + YoY analytics ───────────────────────────────────────────────

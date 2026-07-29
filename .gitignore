@@ -45,4 +45,3 @@ uploads/*
 # Test coverage
 coverage/
 client/test-results/
-client/playwright-report/

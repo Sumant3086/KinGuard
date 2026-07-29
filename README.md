@@ -145,7 +145,6 @@ Opens the API on port 5000 and the React app on port 5173. Visit [http://localho
 | `npm run db:reset` | Drop all data, re-migrate, re-seed (destructive) |
 | `npm run db:clear` | Delete all operational data, keep user accounts |
 | `npm run test:unit` | Run backend unit tests (Vitest) |
-| `npm run test:e2e` | Run frontend end-to-end tests (Playwright) |
 
 ## Environment Variables
 
