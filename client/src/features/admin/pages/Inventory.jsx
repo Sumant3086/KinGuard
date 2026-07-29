@@ -9,6 +9,7 @@ import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate, fmtISO } from '../../../shared/utils/dateUtils';
+import { CATEGORY_NAMES } from '../../../shared/utils/shrinkageCategories';
 
 const EmptyIcon = (
   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -494,7 +495,10 @@ export default function Inventory() {
               </div>
               <div className="form-group">
                 <label htmlFor="ov-shrinkage">Shrinkage Category <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>(optional)</span></label>
-                <input id="ov-shrinkage" type="text" value={overrideForm.shrinkageCategory} onChange={e => setOverrideForm(f => ({ ...f, shrinkageCategory: e.target.value }))} placeholder="e.g. Theft, Damage, Admin Error…" disabled={overriding} />
+                <select id="ov-shrinkage" value={overrideForm.shrinkageCategory} onChange={e => setOverrideForm(f => ({ ...f, shrinkageCategory: e.target.value }))} disabled={overriding}>
+                  <option value="">None</option>
+                  {CATEGORY_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
               <p style={{ fontSize: 11.5, color: 'var(--amber)', marginBottom: 14 }}>
                 ⚠ This override will be recorded in the audit trail with your employee ID.

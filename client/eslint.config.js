@@ -15,7 +15,9 @@ export default [
       parserOptions: { ecmaVersion: 2022 },
     },
     rules: {
-      'no-console': 'warn',
+      // console.error / console.warn are used deliberately for diagnostics;
+      // console.log left behind from debugging is what this rule should catch.
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
   {
@@ -48,7 +50,9 @@ export default [
       ...reactHooks.configs.recommended.rules,
 
       // Project-level overrides
-      'no-console': 'warn',
+      // console.error / console.warn are used deliberately for diagnostics;
+      // console.log left behind from debugging is what this rule should catch.
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': ['warn', { vars: 'all', args: 'after-used', ignoreRestSiblings: true, varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
       // Prop-types validation not used in this JS-only prototype
       'react/prop-types': 'off',

@@ -2,7 +2,7 @@ import prisma from '../config/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
-import { requireId } from '../utils/params.js';
+import { parseId, requireId } from '../utils/params.js';
 import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
 
 const AM_STORES_TTL = 60_000;
@@ -331,8 +331,7 @@ export async function getStoreRecords(req, res, next) {
 // ── AM edits a single record ──────────────────────────────────────────────────
 export async function updateRecord(req, res, next) {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) throw new AppError('Invalid record ID', 400);
+    const id = requireId(req.params.id, 'record ID');
 
     const record = await prisma.inventoryRecord.findUnique({
       where: { id },
@@ -484,9 +483,8 @@ export async function returnStore(req, res, next) {
 // ── Admin: batch-assign multiple stores to one area manager ───────────────────
 export async function batchAssignAMStores(req, res, next) {
   try {
-    const amId     = parseInt(req.params.amId);
+    const amId     = requireId(req.params.amId, 'area manager ID');
     const storeIds = req.body.storeIds ?? [];
-    if (isNaN(amId)) throw new AppError('Invalid area manager ID', 400);
     if (!Array.isArray(storeIds)) throw new AppError('storeIds must be an array', 400);
     if (storeIds.length > 100) throw new AppError('Cannot assign more than 100 stores at once', 400);
 
@@ -526,13 +524,13 @@ export async function batchAssignAMStores(req, res, next) {
 // ── Admin: assign a store to an area manager ──────────────────────────────────
 export async function assignStoreAM(req, res, next) {
   try {
-    const storeId       = parseInt(req.params.storeId);
-    const { areaManagerId } = req.body;
-    if (isNaN(storeId)) throw new AppError('Invalid store ID', 400);
+    const storeId = requireId(req.params.storeId, 'store ID');
+    // parseId returns undefined for null/undefined/'' — all of which mean "unassign"
+    const amId = parseId(req.body.areaManagerId, 'areaManagerId') ?? null;
 
-    if (areaManagerId !== null && areaManagerId !== undefined) {
+    if (amId !== null) {
       const rows = await prisma.$queryRaw`
-        SELECT role FROM "User" WHERE id = ${parseInt(areaManagerId)} LIMIT 1
+        SELECT role FROM "User" WHERE id = ${amId} LIMIT 1
       `;
       if (!rows.length || rows[0].role !== 'AREA_MANAGER') throw new AppError('User is not an Area Manager', 400);
     }
@@ -546,23 +544,23 @@ export async function assignStoreAM(req, res, next) {
     const [store, amUser] = await Promise.all([
       prisma.store.update({
         where: { id: storeId },
-        data: { areaManagerId: areaManagerId ? parseInt(areaManagerId) : null },
+        data: { areaManagerId: amId },
         select: { id: true, storeCode: true, storeName: true, areaManagerId: true },
       }),
-      areaManagerId
-        ? prisma.$queryRaw`SELECT "employeeId", name FROM "User" WHERE id = ${parseInt(areaManagerId)} LIMIT 1`
+      amId
+        ? prisma.$queryRaw`SELECT "employeeId", name FROM "User" WHERE id = ${amId} LIMIT 1`
         : Promise.resolve([]),
     ]);
     const am = amUser[0] ?? null;
 
     // Bust new AM's cache so getManagedStoreIds reflects the new assignment immediately
-    if (areaManagerId) sInvalidate(`am:stores:${parseInt(areaManagerId)}`);
+    if (amId) sInvalidate(`am:stores:${amId}`);
     // Bust old AM's cache — prevAmId is the value BEFORE the update
-    if (prevAmId && prevAmId !== parseInt(areaManagerId)) sInvalidate(`am:stores:${prevAmId}`);
+    if (prevAmId && prevAmId !== amId) sInvalidate(`am:stores:${prevAmId}`);
     // Dashboard scorecard shows each store's areaManagerName — bust it too
     sInvalidate('admin:dashboard');
 
-    createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { storeCode: store.storeCode, storeName: store.storeName, areaManagerId: areaManagerId ?? null, areaManagerName: am?.name ?? null } }).catch(() => {});
+    createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { storeCode: store.storeCode, storeName: store.storeName, areaManagerId: amId, areaManagerName: am?.name ?? null } }).catch(() => {});
     res.json(store);
   } catch (error) { next(error); }
 }

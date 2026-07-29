@@ -42,7 +42,11 @@ export default function StoreInventory() {
 
   const [records, setRecords]           = useState([]);
   const [batches, setBatches]           = useState([]);
-  const [selectedBatch, setSelectedBatch] = useState(urlBatchId);
+  // Always starts empty — loadBatches() resolves the real value (from ?batchId=
+  // when it points at a real batch, otherwise the newest one). Seeding it with
+  // urlBatchId would make that setState a no-op, so the filter effect that
+  // triggers the first loadInventory() call would never fire.
+  const [selectedBatch, setSelectedBatch] = useState('');
   const [isLocked, setIsLocked]         = useState(false);
   const [returnedReason, setReturnedReason] = useState(() => {
     // Persist the AM return reason across page navigations within the session
@@ -184,7 +188,6 @@ export default function StoreInventory() {
       [recordId]: { ...(editedRecordsRef.current[recordId] || {}), [field]: value },
     };
     editedRecordsRef.current = next;
-    // eslint-disable-next-line react-hooks/purity -- runs in an event handler, not during render
     editTimestampRef.current[recordId] = Date.now();
     setEditedRecords(next);
     setSavedRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
@@ -369,7 +372,7 @@ export default function StoreInventory() {
           <div className="submit-summary-header">
             <div className="submit-success-icon">✓</div>
             <h2>{t('storeInv.submissionComplete')}</h2>
-            <p>{t('storeInv.itemsSubmitted_other', { count: submitResult.recordCount })}</p>
+            <p>{t('storeInv.itemsSubmitted', { count: submitResult.recordCount })}</p>
           </div>
           <div className="summary-metrics">
             <div className="summary-metric matched">
@@ -626,7 +629,6 @@ export default function StoreInventory() {
         <div className="inv-table-card">
           {/* ── Mobile cards (≤768px) ─────────────────────────────── */}
           <div className="store-inv-cards">
-            {/* eslint-disable-next-line react-hooks/refs -- blankRowRefs is only written via ref callbacks, never read during render */}
             {records.map(record => {
               const isPending   = record.status === 'PENDING';
               const isEditable  = isPending && !isLocked;
@@ -832,7 +834,6 @@ export default function StoreInventory() {
                 </tr>
               </thead>
               <tbody>
-                {/* eslint-disable-next-line react-hooks/refs -- blankRowRefs is only written via ref callbacks, never read during render */}
                 {records.map(record => {
                   const isPending  = record.status === 'PENDING';
                   const isEditable = isPending && !isLocked;

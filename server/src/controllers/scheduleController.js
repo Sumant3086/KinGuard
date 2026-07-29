@@ -2,13 +2,11 @@ import prisma from '../config/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
 import { computeNextRun } from '../services/cycleScheduleService.js';
+import { requireId, parseIntParam } from '../utils/params.js';
 
 const VALID_FREQUENCIES = new Set(['weekly', 'monthly', 'quarterly']);
 
-function validateScheduleInput({ name, frequency, dayOfMonth, dayOfWeek, submissionWindowDays }) {
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    throw new AppError('Schedule name is required', 400);
-  }
+function validateFrequencyInput({ frequency, dayOfMonth, dayOfWeek }) {
   if (!VALID_FREQUENCIES.has(frequency)) {
     throw new AppError('Frequency must be weekly, monthly, or quarterly', 400);
   }
@@ -20,6 +18,13 @@ function validateScheduleInput({ name, frequency, dayOfMonth, dayOfWeek, submiss
     const dom = parseInt(dayOfMonth);
     if (isNaN(dom) || dom < 1 || dom > 28) throw new AppError('dayOfMonth must be 1–28 for monthly/quarterly schedules', 400);
   }
+}
+
+function validateScheduleInput({ name, frequency, dayOfMonth, dayOfWeek, submissionWindowDays }) {
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    throw new AppError('Schedule name is required', 400);
+  }
+  validateFrequencyInput({ frequency, dayOfMonth, dayOfWeek });
   const window = parseInt(submissionWindowDays) || 7;
   if (window < 1 || window > 90) throw new AppError('submissionWindowDays must be between 1 and 90', 400);
 }
@@ -71,19 +76,23 @@ export async function createSchedule(req, res, next) {
 
 export async function updateSchedule(req, res, next) {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) throw new AppError('Invalid schedule ID', 400);
+    const id = requireId(req.params.id, 'schedule ID');
 
     const { name, frequency, dayOfMonth, dayOfWeek, submissionWindowDays, isActive } = req.body;
 
     // If frequency-related fields are changing, recompute nextRunAt
     const updateData = {};
-    if (name !== undefined)               updateData.name = name.trim();
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim()) throw new AppError('Schedule name is required', 400);
+      updateData.name = name.trim();
+    }
     if (isActive !== undefined)           updateData.isActive = Boolean(isActive);
-    if (submissionWindowDays !== undefined) updateData.submissionWindowDays = parseInt(submissionWindowDays) || 7;
+    if (submissionWindowDays !== undefined) {
+      updateData.submissionWindowDays = parseIntParam(submissionWindowDays, 'submissionWindowDays', 7, 1, 90);
+    }
 
     if (frequency !== undefined) {
-      validateScheduleInput({ name: name || 'x', frequency, dayOfMonth, dayOfWeek, submissionWindowDays: submissionWindowDays || 7 });
+      validateFrequencyInput({ frequency, dayOfMonth, dayOfWeek });
       updateData.frequency  = frequency;
       updateData.dayOfMonth = dayOfMonth ? parseInt(dayOfMonth) : null;
       updateData.dayOfWeek  = dayOfWeek  ? parseInt(dayOfWeek)  : null;
@@ -92,7 +101,7 @@ export async function updateSchedule(req, res, next) {
 
     const schedule = await prisma.cycleSchedule.update({
       where: { id },
-      data: { ...updateData, updatedAt: new Date() },
+      data: updateData,
       include: { creator: { select: { name: true, employeeId: true } } },
     }).catch(err => {
       if (err.code === 'P2025') throw new AppError('Schedule not found', 404);
@@ -111,8 +120,7 @@ export async function updateSchedule(req, res, next) {
 
 export async function deleteSchedule(req, res, next) {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) throw new AppError('Invalid schedule ID', 400);
+    const id = requireId(req.params.id, 'schedule ID');
 
     const schedule = await prisma.cycleSchedule.findUnique({ where: { id }, select: { id: true, name: true } });
     if (!schedule) throw new AppError('Schedule not found', 404);

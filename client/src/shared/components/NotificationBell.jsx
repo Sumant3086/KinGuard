@@ -12,14 +12,18 @@ const BellIcon = () => (
 // Admin and store-manager roles need different destinations for the
 // same notification type, so a single static map would have duplicate
 // keys and silently overwrite the store-manager routes.
-function resolveNav(type, role) {
+// Only the two inventory pages read ?batchId= from the query string; the
+// area-manager review page takes the batch as a route param instead, and
+// /admin/batches has no per-batch view at all.
+function resolveNav(type, role, batchId) {
   if (role === 'ADMIN') {
-    return type === 'submitted' ? '/admin/inventory' : '/admin/batches';
+    if (type !== 'submitted') return '/admin/batches';
+    return batchId ? `/admin/inventory?batchId=${batchId}` : '/admin/inventory';
   }
   if (role === 'AREA_MANAGER') {
-    return '/am/review';
+    return batchId ? `/am/review/${batchId}` : '/am/review';
   }
-  return '/store/inventory';
+  return batchId ? `/store/inventory?batchId=${batchId}` : '/store/inventory';
 }
 
 const typeDot = {
@@ -98,9 +102,7 @@ export default function NotificationBell({ fetcher, role, userId }) {
   function handleItem(item) {
     dismiss(item);
     setOpen(false);
-    const base = resolveNav(item.type, role);
-    const path = item.batchId ? `${base}?batchId=${item.batchId}` : base;
-    navigate(path);
+    navigate(resolveNav(item.type, role, item.batchId));
   }
 
   function dismiss(item) {
