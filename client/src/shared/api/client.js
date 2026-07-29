@@ -66,7 +66,8 @@ client.interceptors.response.use(
         const isProtected = path.startsWith('/admin') ||
                             path.startsWith('/store') ||
                             path.startsWith('/am') ||
-                            path === '/change-password';
+                            path === '/change-password' ||
+                            path === '/profile';
         if (isProtected) {
           // CRITICAL: clear stale localStorage user before redirecting.
           // Without this, the next page load reads a stale user from localStorage,

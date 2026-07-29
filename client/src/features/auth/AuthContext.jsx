@@ -9,14 +9,6 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-function isProtectedPath(path) {
-  return path && (
-    path.startsWith('/admin') ||
-    path.startsWith('/store') ||
-    path.startsWith('/am')
-  );
-}
-
 function defaultDashboard(role) {
   if (role === 'ADMIN')        return '/admin/dashboard';
   if (role === 'AREA_MANAGER') return '/am/dashboard';
