@@ -6,6 +6,10 @@ import * as adminApi from '../../../shared/api/adminApi';
 import { useAuth } from '../../auth/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
 
+// Matches the recommended cap shown in Stores.jsx — kept in sync so the two
+// admin screens don't advertise different limits for the same business rule.
+const MAX_STORES_PER_AM = 5;
+
 // ── Password strength indicator ──────────────────────────────────
 function pwScore(pw) {
   let s = 0;
@@ -472,7 +476,7 @@ export default function AdminUsers() {
     setAmStoreIds(prev =>
       prev.includes(storeId)
         ? prev.filter(id => id !== storeId)
-        : prev.length >= 10 ? prev : [...prev, storeId]
+        : prev.length >= MAX_STORES_PER_AM ? prev : [...prev, storeId]
     );
   }
 
@@ -1368,7 +1372,7 @@ export default function AdminUsers() {
                   <label>
                     Assign Stores{' '}
                     <span style={{ fontWeight: 400, color: 'var(--t3)', fontSize: 12 }}>
-                      ({amStoreIds.length} / 10 selected — optional)
+                      ({amStoreIds.length} / {MAX_STORES_PER_AM} selected — optional)
                     </span>
                   </label>
                   {stores.filter(s => s.isActive).length === 0 ? (
@@ -1377,7 +1381,7 @@ export default function AdminUsers() {
                     <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid rgba(185,28,28,0.18)', borderRadius: 'var(--r)', padding: '6px 0' }}>
                       {stores.filter(s => s.isActive).map(s => {
                         const checked = amStoreIds.includes(s.id);
-                        const disabled = !checked && amStoreIds.length >= 10;
+                        const disabled = !checked && amStoreIds.length >= MAX_STORES_PER_AM;
                         return (
                           <label
                             key={s.id}
@@ -1399,9 +1403,9 @@ export default function AdminUsers() {
                       })}
                     </div>
                   )}
-                  {amStoreIds.length >= 10 && (
+                  {amStoreIds.length >= MAX_STORES_PER_AM && (
                     <small style={{ color: '#b45309', fontSize: 11, marginTop: 4, display: 'block' }}>
-                      Maximum 10 stores per Area Manager. Deselect one to add another.
+                      Maximum {MAX_STORES_PER_AM} stores per Area Manager. Deselect one to add another.
                     </small>
                   )}
                 </div>

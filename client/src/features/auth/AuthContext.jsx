@@ -9,12 +9,6 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-function defaultDashboard(role) {
-  if (role === 'ADMIN')        return '/admin/dashboard';
-  if (role === 'AREA_MANAGER') return '/am/dashboard';
-  return '/store/dashboard';
-}
-
 export function AuthProvider({ children }) {
   // Bootstrap from localStorage (profile only — token is an HttpOnly cookie)
   const [user, setUser] = useState(() => {
@@ -75,7 +69,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  async function login(employeeId, password, redirectTo) {
+  async function login(employeeId, password) {
     const { user: userData } = await authApi.login(employeeId, password);
     localStorage.setItem('kg_user', JSON.stringify(userData));
     setUser(userData);
@@ -83,14 +77,14 @@ export function AuthProvider({ children }) {
     // Putting navigate() here AND in the useEffect causes a double navigation: setUser()
     // queues a re-render, navigate() fires first, then the useEffect fires again on the
     // next render cycle — resulting in two back-to-back replace() calls that can land the
-    // user on the wrong page if `redirectTo` and `defaultDashboard` differ.
+    // user on the wrong page.
     //
     // Exception: mustChangePassword forces a specific destination that LoginPage doesn't
     // know about, so we keep that navigate here.
     if (userData.mustChangePassword) {
       navigate('/change-password', { replace: true });
     }
-    // For all other cases LoginPage's useEffect does the redirect using redirectTo.
+    // For all other cases LoginPage's useEffect does the redirect.
   }
 
   async function logout() {

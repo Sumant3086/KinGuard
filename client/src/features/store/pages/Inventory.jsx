@@ -214,7 +214,7 @@ export default function StoreInventory() {
     setErrorRecords(prev => { const m = new Map(prev); m.delete(recordId); return m; });
 
     try {
-      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.systemQuantity, edits.remarks, edits.shrinkageCategory);
+      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.remarks, edits.shrinkageCategory);
       setRecords(prev => prev.map(r => r.id === parseInt(recordId, 10) ? updated : r));
       setSavedRecords(prev => new Set(prev).add(recordId));
       setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
@@ -242,17 +242,15 @@ export default function StoreInventory() {
     return record[field] ?? '';
   }
 
-  // Returns instant local diff from typed values (no API wait)
+  // Returns instant local diff from the typed physical count (no API wait).
+  // systemQuantity is never store-editable (see storeController.updateInventoryRecord),
+  // so it's always the server-stored value.
   function getInstantDiff(record) {
     const edited = editedRecords[record.id];
     const physRaw = edited?.physicalQuantity !== undefined ? edited.physicalQuantity : record.physicalQuantity;
-    const sysRaw  = edited?.systemQuantity  !== undefined ? edited.systemQuantity   : record.systemQuantity;
     const phys = parseFloat(physRaw);
-    const sys  = parseFloat(sysRaw);
     if (!isNaN(phys) && physRaw !== '' && physRaw !== null) {
-      // Fall back to the server-stored system quantity when the typed value is empty/NaN
-      const effectiveSys = isNaN(sys) ? (record.systemQuantity ?? 0) : sys;
-      return parseFloat((phys - effectiveSys).toFixed(4));
+      return parseFloat((phys - (record.systemQuantity ?? 0)).toFixed(4));
     }
     return record.difference;
   }
@@ -656,20 +654,7 @@ export default function StoreInventory() {
                   <div className="sic-metrics">
                     <div className="sic-metric">
                       <div className="sic-metric-label">System Stock</div>
-                      {isEditable ? (
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          step="0.01"
-                          min="0"
-                          value={getFieldValue(record, 'systemQuantity')}
-                          onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
-                          placeholder="0"
-                          className="qty-input sic-sys-input"
-                        />
-                      ) : (
-                        <div className="sic-metric-val">{record.systemQuantity ?? '—'}</div>
-                      )}
+                      <div className="sic-metric-val">{record.systemQuantity ?? '—'}</div>
                     </div>
                     {!isEditable && (
                       <div className="sic-metric">
@@ -879,22 +864,9 @@ export default function StoreInventory() {
                         <span className="mat-desc">{record.materialName}</span>
                       </td>
 
-                      {/* System Stock (editable when pending) */}
+                      {/* System Stock — read-only; ground truth from the admin's upload */}
                       <td style={{ textAlign: 'right' }}>
-                        {isEditable ? (
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            step="0.01"
-                            min="0"
-                            value={getFieldValue(record, 'systemQuantity')}
-                            onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
-                            placeholder="0"
-                            className="qty-input qty-input-sys"
-                          />
-                        ) : (
-                          <span className="qty-sys">{record.systemQuantity}</span>
-                        )}
+                        <span className="qty-sys">{record.systemQuantity}</span>
                       </td>
 
                       {/* Physical Stock (editable when pending) */}

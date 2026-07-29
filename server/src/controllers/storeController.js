@@ -202,21 +202,21 @@ export async function updateInventoryRecord(req, res, next) {
   try {
     const recordId = requireId(req.params.id, 'recordId');
     const storeId = req.user.storeId;
-    const { physicalQuantity: rawPhys, systemQuantity: rawSys, remarks, shrinkageCategory } = req.body;
+    // systemQuantity is the ground truth from the admin's uploaded reconciliation
+    // file and is intentionally NOT store-editable — the store is the party being
+    // audited for shrinkage, so letting it rewrite the number its count is measured
+    // against would let it erase any discrepancy it introduced. Only admins can
+    // correct systemQuantity, and only via a fresh upload (there is no override path
+    // for it either — see adminController.overrideInventoryRecord).
+    const { physicalQuantity: rawPhys, remarks, shrinkageCategory } = req.body;
 
     const physicalProvided = rawPhys !== undefined;
-    const systemProvided   = rawSys  !== undefined;
 
     const physicalQuantity = physicalProvided ? ((rawPhys === '' || rawPhys === null) ? null : rawPhys) : undefined;
-    const systemQuantityIn = systemProvided   ? ((rawSys  === '' || rawSys  === null) ? null : rawSys)  : undefined;
 
     if (physicalProvided && physicalQuantity !== null) {
       const qty = parseFloat(physicalQuantity);
       if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be zero or a positive number', 400);
-    }
-    if (systemProvided && systemQuantityIn !== null) {
-      const qty = parseFloat(systemQuantityIn);
-      if (isNaN(qty) || qty < 0) throw new AppError('System quantity must be zero or a positive number', 400);
     }
     if (shrinkageCategory !== undefined && shrinkageCategory && !VALID_SHRINKAGE_CATEGORIES.has(shrinkageCategory)) {
       throw new AppError('Invalid shrinkage category', 400);
@@ -254,11 +254,6 @@ export async function updateInventoryRecord(req, res, next) {
       }
     }
 
-    // Resolve final values for both fields — used for diff AND for the DB write
-    // so the stored physicalQuantity and the stored difference are always consistent.
-    const finalSysQty  = systemProvided  && systemQuantityIn !== null
-      ? parseFloat(systemQuantityIn)
-      : record.systemQuantity;
     // When physicalQuantity is explicitly cleared (null), effectivePhysQty is null.
     // Falling back to record.physicalQuantity only when the field was NOT sent at all.
     const effectivePhysQty = physicalProvided
@@ -266,16 +261,15 @@ export async function updateInventoryRecord(req, res, next) {
       : record.physicalQuantity;
 
     let difference = undefined;
-    if (physicalProvided || systemProvided) {
+    if (physicalProvided) {
       difference = effectivePhysQty !== null && effectivePhysQty !== undefined
-        ? parseFloat((effectivePhysQty - finalSysQty).toFixed(4))
+        ? parseFloat((effectivePhysQty - record.systemQuantity).toFixed(4))
         : null;
     }
 
     const result = await prisma.inventoryRecord.update({
       where: { id: recordId },
       data: {
-        systemQuantity:   systemProvided  ? finalSysQty     : undefined,
         physicalQuantity: physicalProvided ? effectivePhysQty : undefined,
         difference,
         remarks:           remarks           !== undefined ? remarks                       : undefined,
@@ -288,7 +282,7 @@ export async function updateInventoryRecord(req, res, next) {
       action: 'UPDATE_INVENTORY',
       entityType: 'INVENTORY_RECORD',
       entityId: recordId,
-      metadata: { systemQuantity: finalSysQty, physicalQuantity: effectivePhysQty, remarks },
+      metadata: { systemQuantity: record.systemQuantity, physicalQuantity: effectivePhysQty, remarks },
     }).catch(err => console.error('[audit] UPDATE_INVENTORY log failed:', err.message));
 
     const duration = Date.now() - startTime;

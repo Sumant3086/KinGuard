@@ -79,7 +79,7 @@ export default function LoginPage() {
 
   async function attemptLogin(attempt = 0) {
     try {
-      await login(employeeId, password, from);
+      await login(employeeId, password);
       // AuthContext handles redirect on success
     } catch (err) {
       const status = err.response?.status;

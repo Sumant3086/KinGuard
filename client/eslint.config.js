@@ -4,7 +4,20 @@ import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
+  { ignores: ['dist/**'] },
   js.configs.recommended,
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+      },
+      parserOptions: { ecmaVersion: 2022 },
+    },
+    rules: {
+      'no-console': 'warn',
+    },
+  },
   {
     files: ['src/**/*.{js,jsx}'],
     plugins: {
