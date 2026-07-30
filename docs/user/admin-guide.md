@@ -1,6 +1,6 @@
 # Administrator Guide
 
-Complete guide for KinMarche administrators — L&P managers and operations leads.
+Complete guide for KinMarché administrators — L&P managers and operations leads.
 
 ## Your Role
 
@@ -13,11 +13,15 @@ As an administrator you have full visibility across the entire store network. Yo
 
 You do not enter stock counts — that is the store manager's responsibility.
 
+One limit applies to you as much as to everyone else: **book stock is read-only.** The system quantity that arrives in your uploaded ERP file cannot be edited afterwards by any role, including yours and including the Override screen. The only way to change it is to re-upload a corrected cycle. This is deliberate — a shrinkage figure is only evidence if the baseline it is measured against cannot be moved after the fact.
+
 ## Signing In
 
-Navigate to the KinMarche URL and click **Sign In**. Enter your Employee ID and password.
+Navigate to the KinMarché URL and click **Sign In**. Enter your Employee ID and password.
 
-Your dashboard has a **red navigation bar** across the top. Store managers see a white bar — this visual difference makes it easy to know which role you are logged in as.
+All roles share the same crimson navigation bar; the accent line along its bottom edge is **green** for administrators (blue for Area Managers, teal for store managers). The page content is colour-tiered the same way, so a screenshot alone tells you which role produced it.
+
+KinMarché is available in English and French — switch with the language selector in the navigation bar.
 
 ## Dashboard Overview
 
@@ -60,18 +64,23 @@ Lists store and item pairs that appeared in shortage in 2 or more of the last 4 
 
 ### Step 1 — Prepare the File
 
-Export your inventory file from your ERP (SAP, Sage, Oracle, etc.). The file must be Excel (.xlsx, .xls) or CSV. Accepted column names:
+Export your inventory file from your ERP (SAP, Sage, Oracle, etc.). The file must be Excel (.xlsx, .xls) or CSV. Column headers are matched by name, in any order, and several spellings are accepted for each:
 
-| What it is | Accepted column names |
-|---|---|
-| Store identifier | Plant, Plant Code, Store Code |
-| Item code | Material, Material Code, SKU |
-| Item description | Material Description, Description |
-| Book stock quantity | System Stock, SYS |
+| What it is | Accepted column names | Required |
+|---|---|---|
+| Store identifier | Plant, Plant Code, Store Code, Store, StoreCode, store_code | Yes |
+| Item code | Material, Material Code, MaterialCode, SKU, material_code | Yes |
+| Item description | Material Description, Material Name, Description, material_name | Yes |
+| Book stock quantity | System Stock, System Quantity, SYS, QTY, system_quantity | No — blank means 0 |
+| Opening remark | Remarks, Remark, Note | No |
+
+Upper-case and lower-case variants of these headers are all recognised.
 
 Click **Download Template** on the Upload page for a correctly formatted example.
 
-Store codes must match exactly — including capitalisation. If your ERP uses `2001` and KinMarche has `2001`, they match. A missing leading zero means they do not.
+**Matching store codes.** Codes are compared after trimming spaces and converting to upper case, so `2001a`, `2001A`, and ` 2001A ` are all the same store. What still has to match exactly is everything else: `02001` and `2001` are different stores, and so are `2001-A` and `2001A`. Check leading zeros and separators before you upload.
+
+**Rows that fail validation are skipped, not fatal.** A row is rejected for a missing plant code, a missing material code, a missing description, or a system quantity that is negative or not a number; the rest of the file still loads and the preview lists every rejected row with its reason. If the same plant and material appear twice in one file, the repeat is silently ignored rather than creating a duplicate. If *every* row fails, the cycle is not created at all and you get an error instead of an empty cycle.
 
 ### Step 2 — Upload and Validate
 
@@ -86,7 +95,9 @@ Store managers will immediately see their items in their Inventory Count page.
 
 If a cycle already exists within 3 days of the selected date, a warning appears. Click **Upload anyway** to proceed.
 
-Any store code in the file that does not exist in KinMarche is created automatically. Update the store name afterwards in Admin -> Stores.
+**Unknown store codes are created for you.** Any plant code in the file that does not already exist is created as a new store named `Store <code>`, along with an inactive placeholder manager account (`MGR<code>`) awaiting your approval in User Management. Rename the store in **Admin -> Stores** and activate or replace the placeholder account in **Admin -> Users**.
+
+This auto-creation is capped at **50 new stores per upload**. A file with more unknown codes than that is rejected outright, with the first of the unrecognised codes listed — that many surprises almost always means a wrong column or a wrong file, not fifty genuinely new branches. Create the stores manually and re-upload.
 
 ### Step 3 — Monitor Submissions
 
@@ -131,11 +142,21 @@ If a store manager submitted incorrect counts and needs to recount:
 
 This resets all that store's submitted records back to pending and clears their physical count values. The store manager can then recount and submit again. This action is logged in the Activity Log and all previous count data for that store in this cycle is erased.
 
+## Closing and Deleting a Cycle
+
+Both actions live on **Admin -> Cycles**.
+
+**Close a cycle** when counting is finished and you want the numbers frozen for reporting. Stores can no longer edit or submit; the cycle still appears everywhere it did before.
+
+**Delete a cycle** when it should never have existed — a wrong date, a wrong file, a duplicate. Deleting hides the cycle from every dashboard, report, export, and analytics figure for all three roles immediately. The underlying records are not erased: they are marked deleted and kept, so a mistaken deletion can be undone by a database administrator. The Activity Log entries are never touched at all.
+
+Either action takes effect for store managers and Area Managers within a few seconds — their dashboards and notification bells are refreshed as part of the change, not left showing a cycle that no longer exists.
+
 ## Managing Stores
 
 Go to **Admin -> Stores**.
 
-**Create a store:** Click + Add Store. Enter the Store Code (must match your ERP exactly, case-sensitive) and Store Name.
+**Create a store:** Click + Add Store. Enter the Store Code and Store Name. The code is saved in upper case, so capitalisation does not have to match your ERP — but leading zeros and separators do.
 
 **Edit a store:** Click the pencil icon to change the name or toggle active/inactive. Inactive stores do not appear on the dashboard scorecard but their historical data is preserved.
 
@@ -145,13 +166,33 @@ Go to **Admin -> Stores**.
 
 Go to **Admin -> Users**.
 
-**Create a store manager:** Click + Add User. Fill in Employee ID, Full Name, Password, set Role to Store Manager, and select their Assigned Store.
+**Create a store manager:** Click + Add User. Fill in Employee ID, Full Name, Password, set Role to Store Manager, and select their Assigned Store. A store manager must have a store; the form will not save without one.
 
-**Create an admin:** Same as above but set Role to Admin and leave the store unassigned.
+**Create an admin:** Same as above but set Role to Admin. Admins are never tied to a store — the store field is rejected for this role.
 
-**Edit a user:** Click the pencil icon to update name, email, phone, password, store assignment, or active status. Setting a user to Inactive immediately prevents them from logging in.
+**Create an Area Manager:** Set Role to Area Manager, then pick the stores they will review from the store list on the form. Area Managers are not tied to a single store either; instead they hold a set of assigned stores, and they can see and review exactly those.
 
-**Delete a user:** You cannot delete your own account or the last admin. Deleting a user reassigns their uploaded batches and deadline extensions to you.
+**Edit a user:** Click the pencil icon to update name, email, phone, password, store assignment, or active status. The role itself cannot be changed after creation — create a new account instead. Setting a user to Inactive immediately prevents them from logging in and cuts off any session they already have within about 30 seconds.
+
+**Filling in an email address matters.** Deadline reminders, submission confirmations, and escalation notices all go to the address on the user record. A user with no email is simply skipped by every notification.
+
+**Delete a user:** You cannot delete your own account or the last remaining admin. Deleting a user reassigns their uploaded cycles and deadline extensions to you, so no history is lost.
+
+### Reassigning an Area Manager's stores
+
+Open the Area Manager in **Admin -> Users** and adjust the selected stores, or use the store assignment control on **Admin -> Stores**.
+
+The store selection is **the complete list, not a list of additions**. Whatever is ticked when you save becomes that Area Manager's entire portfolio — any store you untick is unassigned, and any store left out is unassigned too. Saving with nothing selected removes all of their stores. The confirmation tells you how many stores were assigned and how many were unassigned, and both numbers are written to the Activity Log.
+
+### Creating accounts for plants that have none
+
+If you have just uploaded a cycle that auto-created new stores, those stores have no manager and nobody can count them.
+
+**Admin -> Users** flags every active plant with no user account at all, and offers to create an account for each of them in one action. Each account is created with the Employee ID `MGR` followed by the plant code (plant `2001A` becomes `MGR2001A`), a name you can override, and a randomly generated temporary password.
+
+The temporary passwords are shown **once**, on the confirmation screen. Copy them before you leave the page and hand them out securely — they are hashed in the database and cannot be retrieved afterwards. Every one of these accounts is forced to set its own password at first sign-in.
+
+Plants whose `MGR` Employee ID is already taken are skipped and listed back to you rather than overwriting the existing account.
 
 ## Scheduling Recurring Cycles
 
@@ -249,4 +290,25 @@ Clicking an alert navigates to the relevant page.
 4. Modify the physical stock quantity, category, issue detail, or status
 5. Click **Apply Override**
 
-All overrides are logged in the Activity Log with before and after values. Use overrides sparingly — if a store needs to recount, use Unlock Store instead.
+You can override the physical count, the shrinkage category, the issue detail, and the status. You **cannot** override book stock — there is no path to it from this screen or any other, by design.
+
+All overrides are logged in the Activity Log with before and after values against your name. The variance is always recalculated on the server from the new count; it is never a figure you type.
+
+Use overrides sparingly. They are for correcting a single unambiguous data-entry error after the fact. If a store's numbers are wrong in substance, use **Unlock Store** so the store recounts and the corrected figures carry their name rather than yours.
+
+### Bulk override
+
+When many rows need the same treatment — typically marking a long tail of exact matches as reviewed — use the bulk action on **Admin -> Inventory** rather than opening rows one at a time. It applies the same change to every selected record in one go, up to **500 records per action**, and writes a single Activity Log entry covering the set.
+
+## The Review Chain
+
+A cycle normally moves through three hands, and it is worth knowing where a store currently sits before you intervene:
+
+| Stage | Who acts | What it means |
+|---|---|---|
+| Pending | Store manager | Counting in progress; rows are editable by the store |
+| Submitted | Store manager finished | Rows are locked to the store and queued for the Area Manager |
+| Returned | Area Manager sent it back | All counts cleared; the store is recounting from scratch |
+| Approved by AM | Area Manager signed off | Ready for your final check and for reporting |
+
+Your **Unlock Store** works at any stage and overrules the Area Manager. Their **Return for Recount** only works while a store has submitted items and has not yet been approved. If an Area Manager needs to undo their own approval, only you can do it.

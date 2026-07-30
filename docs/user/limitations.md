@@ -1,4 +1,4 @@
-﻿# KinMarche — System Limitations & Capacity Guide
+﻿# KinMarché — System Limitations & Capacity Guide
 
 ## Quick Summary
 
@@ -10,6 +10,8 @@
 | How long does a login session last? | Up to **7 days** of inactivity before you must sign in again |
 | How many stores can I manage? | **No fixed limit** |
 | How many wrong passwords before lockout? | **10 wrong attempts** locks the account for 15 minutes |
+| Can anyone edit the book stock figure? | **No** — read-only for every role, including admins |
+| What languages does it support? | **English and French**, switchable in the navigation bar |
 
 ## 1. File Uploads (Excel / CSV)
 
@@ -86,9 +88,17 @@ All passwords must:
 
 There is **no built-in limit** on how many stores (plants) you can add. The system is designed for multi-plant networks.
 
-### One manager per store
+### One store per manager account
 
-Each store manager account is assigned to **one specific store**. A manager can only see and count inventory for their own assigned store. They cannot access other stores' data.
+Each store manager account is assigned to **one specific store**. A manager can only see and count inventory for their own assigned store. They cannot access other stores' data. A store may have more than one manager account if you need cover for shifts or leave.
+
+### Auto-created stores per upload
+
+If an uploaded file contains plant codes that do not exist yet, up to **50 new stores** are created automatically in one upload. A file with more unknown codes than that is rejected — at that scale it is almost always a wrong file or a wrong column, not fifty new branches.
+
+### Area Manager assignments
+
+An Area Manager can hold any number of stores, and a store has at most one Area Manager. Saving an Area Manager's store list **replaces** it entirely — stores left out of the list are unassigned, not left alone.
 
 ### Deadline extensions
 
@@ -105,23 +115,30 @@ There is no cap on how many inventory items a cycle can contain. A single cycle 
 | Action | Can the manager do it? |
 |---|---|
 | Enter physical stock quantity | Yes |
-| Enter system stock quantity | Yes |
+| Enter system stock quantity (book stock) | **No** — read-only, see below |
 | Select shrinkage category | Yes (required if there is a discrepancy) |
 | Add issue details / remarks | Yes (required if there is a discrepancy) |
+| Change the variance figure | No — always calculated on the server |
 | Submit the cycle | Yes (once all items are filled in) |
 | Edit after submission | No — locked after submitting |
 | Delete a record | No |
 | See other stores' data | No |
 
+### System stock is read-only for everyone
+
+The system stock (book stock) figure comes from the ERP file the administrator uploaded, and **no role can edit it** — not the store manager, not the Area Manager, not the administrator, and not through the admin Override screen. The only way to change it is to upload a corrected cycle.
+
+This is the single most important rule in the system. Shrinkage is the gap between the book figure and the counted figure; if the people being measured — or the people reviewing them — could move the book figure, the gap would prove nothing. Everything else in this document is a capacity limit. This one is a design guarantee.
+
 ### Quantities must be zero or positive
 
-Physical stock and system stock quantities must be **0 or higher**. Negative numbers are not accepted (you cannot have −5 boxes of sardines on a shelf).
+Physical counts must be **0 or higher**. Negative numbers are not accepted (you cannot have −5 boxes of sardines on a shelf). The same applies to system quantities in an uploaded file: a negative or non-numeric value causes that row to be rejected in the preview.
 
 ### Variance (difference) calculation
 
 The system always calculates: **Variance = Physical Count − System Stock**
 
-This calculation happens automatically on the server — managers cannot manually change the variance figure. This protects the integrity of your L&P data.
+The calculation happens on the server every time a count is saved, by a store manager, an Area Manager, or an administrator. Nobody types a variance directly, and nobody can save one that does not follow from the two quantities.
 
 ## 5. Reports & Exports
 
@@ -147,7 +164,11 @@ Only the **top 5** repeat hotspot items are shown on the dashboard. The full dat
 
 ### Trends chart
 
-The Trends / Analytics page shows shortage rates over time. It displays up to **24 past cycles** (about 2 years of monthly counts). You need at least **2 completed cycles** for the trends chart to appear.
+The Trends / Analytics page shows shortage rates over time. The chart plots the **last 8 completed cycles**; the underlying data can be requested for up to 24 cycles (about two years of monthly counts). You need at least **2 completed cycles** for the trends chart to appear.
+
+### Risk scores and year-over-year comparison
+
+Risk scoring and the year-over-year comparison both look at up to **12 cycles** at a time, defaulting to 6. Deleted cycles are excluded from every analytics figure.
 
 ## 7. Activity Log (Audit Trail)
 
@@ -183,18 +204,27 @@ There is **no limit** on how many email notifications the system can send.
 
 ### Pages refresh automatically?
 
-No. Most pages use a short-term cache to avoid unnecessary server calls:
+No. Most pages use a short-term cache to avoid unnecessary server calls. The figures below are the **longest** a page can be behind; in practice it is usually less, and any change you make yourself is reflected immediately because your own action clears the cache for everyone.
 
-| Page / Data | How often it refreshes |
+| Page / Data | How stale it can be |
 |---|---|
-| Dashboard | Every 5 minutes |
-| Inventory list | Every time you apply filters (no auto-refresh) |
-| Users list | Every 2 minutes (or immediately after changes) |
-| Stores list | Every 3 minutes (or immediately after changes) |
-| Batches / Cycles | Every 1 minute (or immediately after changes) |
-| Activity Log | Every 2 minutes |
+| Admin dashboard | Up to 5 minutes |
+| Inventory list | Never cached — reloads every time you apply filters |
+| Users list | Up to 2 minutes (immediately after changes) |
+| Stores list | Up to 3 minutes (immediately after changes) |
+| Batches / Cycles | Up to 1 minute (immediately after changes) |
+| Activity Log | Up to 2 minutes |
+| Analytics / Trends | Up to 5 minutes |
+| Store and Area Manager dashboards | Up to 2 minutes |
+| Notification bell | Refreshes itself every 60 seconds |
+
+Actions that cross roles clear the caches on both sides. Uploading, closing, or deleting a cycle refreshes the affected store managers' and Area Managers' dashboards too, so nobody is left looking at a cycle that no longer exists.
 
 If you need the very latest data, use your browser's refresh button or navigate away and back.
+
+### Language
+
+The interface is available in **English and French**. Switch with the language selector in the navigation bar; the choice is remembered in that browser. Data you type — store names, issue details, remarks — is stored exactly as entered and is not translated.
 
 ## 10. Common Questions
 
@@ -236,11 +266,16 @@ Your in-progress count for the row you're editing may fail to save until the con
 | Records per screen page | 50 (max 200) | Adjustable with filter |
 | Export rows | 10,000 | Narrow filters if exceeded |
 | Reconciliation report | Up to 10,000 records | Always filter by cycle |
+| Bulk override | 500 records | Per action |
+| Auto-created stores | 50 per upload | File rejected above this |
 | Hotspot detection | Last 4 cycles | Flags items short in ≥2 of those cycles (not necessarily back-to-back) |
 | Hotspots shown | Top 5 | Full data in Inventory view |
-| Trends history | Up to 24 cycles | Needs ≥2 cycles |
-| Activity log on screen | 500 entries | — |
-| Activity log export | 5,000 entries | Excel download |
+| Trends chart | Last 8 cycles | Data available for up to 24; needs ≥2 |
+| Risk scores / year-over-year | Up to 12 cycles | Defaults to 6 |
+| Activity log on screen | 500 entries | 100 by default |
+| Activity log export | 5,000 entries | Excel download; 2,000 by default |
+| Book stock editing | Not possible | Any role — re-upload the cycle instead |
+| Languages | English, French | Switchable per browser |
 
-*Last updated: July 2026 — KinMarche Loss & Prevention Platform*
+*Last updated: July 2026 — KinMarché Loss & Prevention Platform*
 

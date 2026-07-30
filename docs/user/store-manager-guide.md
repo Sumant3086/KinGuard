@@ -1,23 +1,33 @@
 # Store Manager Guide
 
-Step-by-step guide for completing a physical stock count in KinMarche.
+Step-by-step guide for completing a physical stock count in KinMarché.
 
 ## Your Role
 
 As a store manager you are responsible for:
 
 1. Physically counting the stock in your store
-2. Entering your counts into KinMarche for each item assigned to your store
+2. Entering your counts into KinMarché for each item assigned to your store
 3. Noting the reason for any items where your count differs from the book stock
 4. Submitting your completed count by the deadline
 
 You can only see your own store's data. Other stores are not visible to you.
 
+**What you can and cannot change:** you enter the *physical count* — the number you actually counted on the shelf. The *book stock* comes from the company ERP file your administrator uploaded and is read-only for every role, including administrators. That separation is the whole point of the system: the figure you are measured against cannot be edited by the person being measured. If book stock is genuinely wrong, only a corrected re-upload by an administrator can change it.
+
 ## Signing In
 
-Navigate to the KinMarche URL and click **Sign In**. Enter your Employee ID and password.
+Navigate to the KinMarché URL and click **Sign In**. Enter your Employee ID and password.
 
-Your store's name appears in the navigation bar at the top. The bar is **white with a red bottom border** — administrators see a fully red navigation bar, so this is how you can tell which role you are in.
+Your store's name appears in the navigation bar at the top. All roles share the same crimson navigation bar; the thin accent line along its bottom edge tells you which role you are in — **teal** for store managers, blue for Area Managers, green for administrators.
+
+### Changing the language
+
+KinMarché is available in English and French. Use the language selector in the navigation bar to switch at any time. Your choice is remembered in that browser.
+
+### If you are asked to change your password
+
+New accounts, and accounts an administrator has reset, are sent straight to a **Set a new password** screen at sign-in. You cannot reach the rest of the app until it is done. The new password must be at least 8 characters and contain an uppercase letter, a lowercase letter, and a number, and it must be different from your current one.
 
 ## Your Dashboard
 
@@ -53,7 +63,7 @@ Click **Begin Count** on your dashboard, or **Inventory Count** in the navigatio
 |---|---|
 | Item Code | The unique code for this item from your store's system |
 | Item Name | The description of the item |
-| Book Stock | The quantity the system says you should have |
+| Book Stock | The quantity the system says you should have — read-only |
 | Your Count | The quantity you physically counted — this is what you enter |
 | Variance | Calculated automatically: Your Count minus Book Stock |
 | Category | Required when Variance is not zero |
@@ -159,7 +169,21 @@ A detail table shows each discrepant item with the variance and your notes.
 
 From this screen you can view submitted records (read-only) or download your reconciliation report as Excel.
 
-Your records are now locked. If a correction is needed, contact your administrator — they can unlock your submission so you can recount.
+Your records are now locked. If a correction is needed there are two routes back: your Area Manager can **return** the submission for a recount, or your administrator can **unlock** your store for the cycle. Either way you start the count again.
+
+## If Your Submission Is Returned
+
+Your Area Manager reviews every submission before it is finalised. If something looks wrong they send it back with a written reason.
+
+When that happens:
+
+- A red banner appears on the Inventory Count page: *Your submission was returned by your Area Manager. Please recount and resubmit.*
+- Their reason appears in your notification bell — read it first, it tells you exactly what to re-check
+- Every count you entered for that cycle is cleared, along with the categories and issue details. This is deliberate: a recount has to start clean, not from the numbers that were questioned
+- The rows go back to Pending and become editable again
+- Recount, re-enter everything, and submit as normal. It returns to your Area Manager's review queue
+
+Your Area Manager may also correct an obvious typing error on a single row themselves rather than returning the whole submission. Those edits are recorded in the activity log.
 
 ## Handling Past Cycles
 
@@ -206,7 +230,7 @@ A: No. Contact your administrator and ask them to unlock your store for the cycl
 A: Your administrator has not yet uploaded a cycle for your store, or your store was not included. Contact your administrator.
 
 **Q: The Book Stock looks wrong for an item.**
-A: The Book Stock comes from your organisation's ERP at the time the file was uploaded. If it is clearly wrong, you can edit it in the Book Stock field — but check with your administrator first. Any change is logged.
+A: Book Stock comes from your organisation's ERP as it stood when the file was uploaded, and it is read-only — you cannot edit it, and neither can your Area Manager or your administrator. Enter the quantity you actually counted, pick a category that explains the gap, and describe the problem in Issue Detail. If the ERP figure itself is wrong, tell your administrator: the only way to correct it is a fresh upload of the cycle.
 
 **Q: I entered the wrong number. What do I do?**
 A: Simply retype the correct number. It overwrites the previous value automatically.
@@ -218,4 +242,13 @@ A: No. Every save is stored in the database immediately. When you log back in, a
 A: The Submit button only appears when there are pending items. If the cycle is locked or all items are already submitted, the button is hidden.
 
 **Q: Can other stores see my data?**
-A: No. You can only see your own store's data.
+A: No. You can only see your own store's data. Your Area Manager and your administrators can.
+
+**Q: I typed my password wrong too many times and now it says my account is locked.**
+A: Ten wrong attempts in a row lock the account for 15 minutes. Wait it out, or ask your administrator to reset your password. The correct password will not work until the lock expires.
+
+**Q: My internet dropped while I was counting.**
+A: The app does not save counts offline. The row you were editing may not have reached the server. When you are back online, re-check the last few rows you entered before you submit.
+
+**Q: Can I count on my phone?**
+A: Yes. The count page has a card layout built for phones, and you can add KinMarché to your home screen to open it like an app.

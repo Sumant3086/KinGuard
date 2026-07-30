@@ -11,13 +11,15 @@ As an Area Manager you are responsible for the stores assigned to you. When stor
 3. Return submissions to the store manager if something looks wrong, with a clear written reason
 4. Escalate unusual patterns to your administrator
 
-You cannot see stores that are not assigned to you. You cannot edit system stock quantities or create new cycles — only admins can do that.
+You cannot see stores that are not assigned to you. You cannot create cycles or change deadlines — only administrators can do that. You also cannot change book stock: that figure comes from the uploaded ERP file and is read-only for every role, so the number a store is judged against can never be edited by anyone reviewing or being reviewed.
 
 ## Signing In
 
 Navigate to the KinMarché URL and click **Sign In**. Enter your Employee ID and password.
 
-Your navigation bar has a **dark header** and shows two sections: Dashboard and Review Submissions.
+All roles share the same crimson navigation bar; the accent line along its bottom edge is **blue** for Area Managers (teal for store managers, green for administrators). Your bar shows two sections: Dashboard and Review Submissions.
+
+KinMarché is available in English and French — switch with the language selector in the navigation bar at any time.
 
 ## Your Dashboard
 
@@ -86,7 +88,13 @@ If you spot a clear data entry mistake (for example, a manager typed 1 instead o
 2. Change the Physical Count to the correct value
 3. Click **Save**
 
-All your edits are recorded in the activity log.
+The variance is recalculated on the server the moment you save — you never type it yourself.
+
+Clearing your edits: leave the Physical Count field empty and save. That wipes the count and the variance for that row, so it reads as uncounted again. Use it when a figure is clearly wrong but you do not know the right one; the row is then blocking approval until it is filled in, which is usually the honest outcome.
+
+You can edit Physical Count, the category, and the issue detail. Book Stock is not editable — see Your Role above.
+
+Every edit you make is written to the activity log with the before and after values, against your name. Correct obvious slips; anything that needs judgement about what is really on the shelf belongs in a Return for Recount, not in your edit.
 
 ### Step 5 — Approve or Return
 
@@ -102,6 +110,8 @@ Once you have reviewed all records for a store, you have two options:
 - The store manager's submission is fully reset. They start the count again from scratch.
 - The store manager sees your message in their notification bell.
 
+You can only return a store that currently has submitted items. If you try to return one that has already been returned, or that never submitted, the action is refused — this stops a second return from re-alerting a store that is already recounting.
+
 ## What Happens After You Approve
 
 Once you approve a store:
@@ -112,8 +122,9 @@ Once you approve a store:
 ## What Happens After You Return a Store
 
 When you return a submission:
-- All counted records are reset to zero — the store manager must recount every item
-- The store manager sees a notification: "Your submission was returned — [your reason]"
+- Every submitted record is cleared — the count, the variance, the category, and the issue detail all go blank, and the rows return to Pending. Nothing is set to zero; a zero would be a count, and the point is that there is no count yet
+- The store manager must recount every item, not just the ones you queried
+- The store manager sees your reason in their notification bell and a banner on their count page
 - They will resubmit, and it will come back into your review queue
 
 ## Notifications
@@ -143,6 +154,12 @@ This can happen if the cycle is not yet complete (some items still pending). Ask
 
 **Can I return a submission after I have already approved it?**
 No — once you approve, only the administrator can unlock the submission. Contact your administrator and explain the situation.
+
+**Can I correct the Book Stock if the ERP figure is obviously wrong?**
+No. Book stock is read-only for every role. Approve or return based on the count in front of you, note the problem in your remark, and tell your administrator — only a corrected re-upload of the cycle can change it.
+
+**A store disappeared from my list.**
+Your administrator changed the store assignments. Assignment is set as a complete list, not store by store, so a store can drop off if it was left out when the list was last saved. Ask your administrator to check your assigned stores.
 
 **What if I disagree with my administrator's override of a record?**
 All changes are recorded in the activity log. Discuss it with your administrator directly.

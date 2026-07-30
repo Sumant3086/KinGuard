@@ -54,7 +54,13 @@ Every store manager query filters by `storeId: req.user.storeId` from the valida
 
 ## Data Integrity
 
-**Server-side variance calculation** — the `difference` field is always calculated server-side as `physicalQuantity - systemQuantity`. The client cannot send a `difference` value and have it accepted.
+**Book stock is immutable after upload.** `InventoryRecord.systemQuantity` is written by exactly one code path — the admin upload pipeline — and by no other endpoint in the application. Not the store update, not the area manager edit, not the admin single or bulk override. Correcting it requires re-uploading the cycle.
+
+Treat this as a security control rather than a data-modelling preference. The product exists to quantify the gap between what the books say and what is on the shelf. A store manager who can edit book stock can make their own shrinkage disappear; an area manager who can edit it can do the same for a store they are meant to be policing; an admin who can edit it silently destroys the evidentiary value of every historical cycle. The absence of a write path is the control. Any change that adds one — including a well-intentioned "admin can fix typos" feature — removes it.
+
+When reviewing a diff that touches `InventoryRecord`, check for `systemQuantity` in the write set of any handler. It should never appear outside the upload controller.
+
+**Server-side variance calculation** — the `difference` field is always calculated server-side as `physicalQuantity - systemQuantity`. The client cannot send a `difference` value and have it accepted. This holds for all three roles: the store's count entry, the area manager's correction, and both admin override paths all recompute it from the stored system quantity.
 
 **Transactional submission** — `submitInventory` runs inside a Prisma `$transaction`. Before marking any record as SUBMITTED, it validates that all pending records have a physical quantity, all discrepant records have a shrinkage category from the canonical 9-category list, and all discrepant records have non-empty remarks. If any check fails, the transaction rolls back.
 
@@ -74,14 +80,19 @@ CORS is restricted in production to the origin(s) listed in `CLIENT_URL` (comma-
 
 ## Rate Limiting
 
-Applied via `express-rate-limit`:
+Applied via `express-rate-limit`, in `app.js`:
 
-| Scope | Limit |
-|---|---|
-| `/api/auth/*` (login, refresh) | 20 requests / 15 minutes / IP |
-| Heavy export & analytics endpoints | 30 requests / minute / IP |
+| Scope | Limit | Why this number |
+|---|---|---|
+| `POST /api/auth/login` | 20 requests / 15 min / IP | Tight — this is the endpoint worth guessing against |
+| Rest of `/api/auth` (refresh, logout, me) | 600 requests / 15 min / IP | Deliberately loose, see below |
+| Heavy export & analytics endpoints | 30 requests / minute / IP | Each one is an expensive query or a document render |
 
-On top of this, the database-backed login lockout (above) rate-limits guessing attempts against a single account regardless of source IP.
+**Do not tighten the second row to match the first.** An entire store network typically sits behind a single NAT'd office IP. Every open tab silently refreshes its access token every 15 minutes, so a dozen managers counting stock generate a steady stream of `/api/auth/refresh` calls from one apparent address. A 20-request limit there logs the whole branch out mid-count and looks exactly like an outage. The limit that actually protects against credential guessing is the login-specific one plus the account lockout — not a blanket cap on the auth prefix.
+
+Both limiters key on IP, which is why neither is the primary defence. The database-backed login lockout (above) is: it targets the account rather than the source, so it holds across a rotating IP pool and across server instances.
+
+`/api/health` is deliberately exempt from all rate limiting so an uptime probe can never be throttled into reporting a false outage.
 
 ## DoS Mitigation
 

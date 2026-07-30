@@ -1,8 +1,20 @@
 # API Reference
 
+All endpoints are mounted under `/api`. Any path under `/api` that does not match a route returns `404 { "error": "API route not found" }` rather than falling through to the SPA shell.
+
+`GET /api/health` is the one unauthenticated, unrate-limited endpoint: it returns `200 { "status": "ok", "timestamp": … }` once the database pool is up, or `503 { "status": "starting", … }` before then. It is sent with `Cache-Control: no-store` so load balancers never serve a stale healthy response.
+
+## The One Invariant
+
+`systemQuantity` — the book stock figure — is written **only** by the admin upload pipeline. No endpoint in this API exposes a write path to it, for any role, including the admin override endpoints. The only way to change it is to upload a corrected cycle.
+
+This is not an oversight to be tidied up later. Shrinkage is the difference between the uploaded figure and the counted figure; a system where the audited party, or their reviewer, can move the baseline measures nothing. If you are adding an endpoint that touches `InventoryRecord`, that field is not yours to write.
+
+`difference` is likewise never accepted from a client. It is recomputed server-side as `physicalQuantity - systemQuantity` on every write that changes a count.
+
 ## Authentication
 
-KinMarche uses **HttpOnly cookies** for authentication — not Authorization headers. This means:
+KinMarché uses **HttpOnly cookies** for authentication — not Authorization headers. This means:
 
 - No token is returned in the login response body. The browser receives two cookies automatically: `accessToken` (15 min) and `refreshToken` (7 days).
 - Every subsequent request sends these cookies automatically. No manual header management needed.
@@ -32,8 +44,24 @@ In development mode, a `stack` field is also included.
 | `404` | Resource not found |
 | `409` | Conflict — duplicate record |
 | `413` | Result set too large — narrow your filters |
-| `429` | Too many failed login attempts — account temporarily locked |
+| `422` | File processed but no usable rows — see upload endpoints |
+| `429` | Rate limited, or the account is locked — see below |
 | `503` | Database temporarily unavailable — retry in a moment |
+
+### The two sources of `429`
+
+These are separate mechanisms and are easy to confuse when debugging:
+
+| Source | Scope | Trigger | Duration |
+|---|---|---|---|
+| IP rate limiter | Per IP address, `POST /api/auth/login` only | 20 requests in 15 minutes | Rolling 15-minute window |
+| Account lockout | Per user account, stored in the database | 10 consecutive failed passwords | 15 minutes from the tenth failure |
+
+The account lockout survives a change of IP, and the correct password still fails while it is in force. The IP limiter does not care whether the attempts succeeded.
+
+Note that the rest of `/api/auth` — refresh, logout, `me` — is limited far more loosely (600 requests per 15 minutes per IP). This is intentional: an entire store network typically shares one NAT'd office IP, and silent token refresh from a dozen browsers behind it must not exhaust a limit sized for interactive logins.
+
+`409` is also returned for a serialization conflict (`P2034`) on the transactional endpoints — submit, approve, and batch import. It is safe to retry.
 
 ---
 
@@ -71,7 +99,11 @@ For `STORE_MANAGER` users, `store` is populated:
 { "store": { "id": 3, "storeCode": "2003", "storeName": "Kinshasa CBD" } }
 ```
 
-**Error `401`:** Incorrect credentials. After 10 failures, the account is locked for 15 minutes (`429`).
+**Error `401`:** Incorrect credentials. The message is deliberately identical for an unknown Employee ID and a wrong password, so the response cannot be used to enumerate accounts.
+
+**Error `429`:** Either the per-IP limiter (20 login requests per 15 minutes) or the per-account lockout (10 consecutive failures, 15 minutes). See *The two sources of 429* above.
+
+Passwords longer than 128 characters are rejected as `401` without hashing, so an oversized body cannot be used to burn bcrypt time.
 
 ### `POST /api/auth/refresh`
 
@@ -150,7 +182,13 @@ Network overview for the most recent completed cycle. Cached server-side for 5 m
 
 #### `GET /api/admin/notifications`
 
-Up to 5 actionable notifications for the latest cycle (overdue stores, deadline approaching, AM approvals waiting).
+Up to 5 actionable notifications for the latest cycle (overdue stores, deadline approaching, AM approvals waiting). Cached server-side for 30 seconds.
+
+### A note on the cache TTLs quoted below
+
+Every "cached N" figure in this document is the **server-side** response cache in `serverCache.js`, keyed per endpoint and, where the data is user-scoped, per user ID. The browser client keeps a second, independent TTL cache of its own, so the staleness a user actually observes is the longer of the two. The figures differ on purpose and are listed side by side in `architecture.md`.
+
+Both layers are invalidated explicitly by the write that makes them wrong, including across roles — deleting or closing a cycle busts the store and Area Manager caches for every store in that cycle, not just the admin's own.
 
 ---
 
@@ -158,7 +196,7 @@ Up to 5 actionable notifications for the latest cycle (overdue stores, deadline 
 
 #### `GET /api/admin/stores`
 
-All stores with record counts. Cached 3 minutes.
+All stores with record counts. Cached 2 minutes server-side (3 minutes in the browser client).
 
 #### `POST /api/admin/stores`
 
@@ -190,7 +228,7 @@ Assign or remove an area manager. Body: `{ "areaManagerId": 5 }` (null to remove
 
 #### `GET /api/admin/users`
 
-All users (id, name, role, store, email, phone, status). Cached 2 minutes.
+All users (id, name, role, store, email, phone, status). Cached 1 minute server-side (2 minutes in the browser client).
 
 #### `POST /api/admin/users`
 
@@ -231,6 +269,27 @@ Upload a file (multipart) and preview what would be imported. No DB writes.
 #### `POST /api/admin/users/batch-import/commit`
 
 Upload a file and create pending users for admin approval.
+
+#### `GET /api/admin/users/plants-without-users`
+
+Every active store with no user account attached, ordered by store code. Used to surface plants nobody can count — typically stores that were auto-created by an upload.
+
+**Success `200`:** `[{ "id": 7, "storeCode": "2007", "storeName": "Store 2007" }]`
+
+#### `POST /api/admin/users/batch-create-for-plants`
+
+Create a store-manager account for each of the supplied plants in one call.
+
+**Request body:**
+```json
+{ "plants": [{ "storeId": 7 }, { "storeId": 8, "customName": "Marie Kabila" }] }
+```
+
+Each account is created active, with Employee ID `MGR` + the store code (`MGR2007`), a randomly generated temporary password, and `mustChangePassword: true` so the user must set their own password at first sign-in.
+
+**The generated passwords are returned in this response and nowhere else.** They are stored only as bcrypt hashes. A client that discards the response has stranded those accounts and the passwords must be reset individually.
+
+Plants whose `MGR` Employee ID is already taken are skipped and reported in the response's error list rather than overwriting the existing user. Invalid or unknown store IDs are reported the same way; valid entries in the same request still succeed.
 
 ---
 
@@ -301,7 +360,27 @@ Query params: `storeId`, `batchId`, `status` (PENDING/SUBMITTED), `discrepancy` 
 
 #### `PATCH /api/admin/inventory/:id/override`
 
-Admin override of any record's physical count, remarks, category, or status.
+Admin override of any record's physical count, remarks, category, or status. Logged with before and after values.
+
+Notably **not** `systemQuantity`. There is no admin escape hatch for book stock; the field is absent from this endpoint's write set on purpose. Correcting book stock means re-uploading the cycle.
+
+#### `POST /api/admin/inventory/bulk-override`
+
+Apply the same override to many records at once.
+
+**Request body:**
+```json
+{ "recordIds": [101, 102, 103], "action": "match" }
+```
+
+| `action` | Effect |
+|---|---|
+| `match` | Sets each record's physical count equal to its own system quantity — variance zero — and marks it `SUBMITTED` |
+| `reset` | Clears the count, variance, category, remarks, and submission metadata, returning the rows to `PENDING` |
+
+Note that `match` copies each record's existing `systemQuantity` into `physicalQuantity` — it does not write `systemQuantity`, and the resulting variance is still computed, not asserted.
+
+Capped at **500 records** per call (`400` above that). Returns `404` if none of the IDs match. Busts the admin, store, and area manager caches for every store touched, so all three roles see the change immediately.
 
 #### `GET /api/admin/inventory/export`
 
@@ -403,7 +482,22 @@ All active area managers with their assigned stores.
 
 #### `PATCH /api/admin/area-managers/:amId/stores`
 
-Batch-assign multiple stores to one area manager. Body: `{ "storeIds": [1, 2, 3] }` (max 100).
+Set an area manager's complete store portfolio. Body: `{ "storeIds": [1, 2, 3] }` (max 100).
+
+**This is authoritative, not additive.** The supplied array becomes the AM's entire set of stores: any store currently assigned to them and absent from the array is unassigned. An empty array clears the portfolio. Callers that mean "add one store" must send the existing list plus the new ID — a common source of accidental mass-unassignment when treated as an add-only endpoint.
+
+**Success `200`:**
+```json
+{ "assigned": 3, "unassigned": 1 }
+```
+
+Both the assigned and the unassigned store IDs are recorded in the audit log entry, so an unintended clear-out is reconstructible after the fact.
+
+To assign a single store without touching the rest of the portfolio, use `PATCH /api/admin/stores/:storeId/assign-am` instead.
+
+#### `PATCH /api/admin/stores/:storeId/assign-am`
+
+Assign one store to an area manager, or clear its assignment. Body: `{ "areaManagerId": 4 }`, or `{ "areaManagerId": null }` to unassign. Affects only the named store.
 
 ---
 
@@ -433,9 +527,15 @@ Full inventory records for one store in one cycle, plus the AM review record.
 
 ### `PATCH /api/am/records/:id`
 
-Edit a single inventory record before approving. Only works on submitted records for assigned stores. Creates an audit log entry.
+Edit a single inventory record before approving. Only works on submitted records for stores assigned to the caller. Creates an audit log entry with before and after values.
 
 Body (all optional): `{ "physicalQuantity": 10, "remarks": "Corrected after recount", "shrinkageCategory": "Miscount" }`
+
+`physicalQuantity` accepts `null` or `""` to **clear** the count. Doing so sets both `physicalQuantity` and `difference` back to `null`, returning the row to an uncounted state — which is what an AM wants when a figure is clearly wrong but the correct one is unknown. Any other value must be a number ≥ 0.
+
+When `physicalQuantity` changes, `difference` is recalculated server-side as `physicalQuantity - systemQuantity` and rounded to 4 decimal places. It is never read from the request body.
+
+`systemQuantity` is not accepted. Sending it has no effect.
 
 ### `POST /api/am/batches/:batchId/stores/:storeId/approve`
 
@@ -471,7 +571,13 @@ Response also includes `isLocked` (deadline passed), and `returnedByAM` (message
 
 ### `PATCH /api/store/inventory/:id`
 
-Update a single record's physical count, system quantity, remarks, or shrinkage category. Auto-calculates variance. Blocked if the batch deadline has passed or the record is submitted.
+Update a single record's **physical count**, remarks, or shrinkage category.
+
+`systemQuantity` is **not** writable here or anywhere else. It is the uploaded ground truth the store is being measured against, and a store manager who could edit it could erase their own shrinkage. Sending the field is ignored, not honoured. See *The One Invariant* at the top of this document.
+
+`difference` is recalculated on the server from the stored `systemQuantity` and the new count; it is never accepted from the client.
+
+Rejected with `403` if the record belongs to another store, and with `400` if the cycle's effective deadline has passed or the record has already been submitted. "Effective deadline" means the store's own extension where one exists, otherwise the cycle deadline.
 
 ### `POST /api/store/inventory/submit`
 

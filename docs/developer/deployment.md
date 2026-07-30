@@ -119,21 +119,38 @@ If `BREVO_API_KEY` is not set, the system runs normally but no email notificatio
 ## Deployment Checklist
 
 **Before first deploy:**
+- [ ] Client lint, server lint, unit tests, and the production client build all pass locally (see `getting-started.md`)
 - [ ] Database created and migrations applied (`npm run migrate`)
-- [ ] `JWT_SECRET` is at least 32 random characters
-- [ ] `CLIENT_URL` matches the exact frontend origin (no trailing slash)
-- [ ] `NODE_ENV=production` is set
+- [ ] `JWT_SECRET` is at least 32 random characters, and is **not** the value from any other environment
+- [ ] `DATABASE_URL` is the pooled URL and `DIRECT_URL` the direct one — migrations run over `DIRECT_URL`
+- [ ] `CLIENT_URL` matches the exact frontend origin (no trailing slash; comma-separate multiple origins)
+- [ ] `NODE_ENV=production` is set — this is what masks 5xx internal detail and enables HSTS
 - [ ] Admin account seeded and password changed
 
 **After deploy:**
 - [ ] Login as admin works at the production URL
 - [ ] `/api/health` returns `{ "status": "ok" }`
+- [ ] An unknown `/api/...` path returns a JSON 404, not the SPA shell
+- [ ] A deep link such as `/store/inventory` loads on a hard refresh, not a 404 — confirms SPA fallback
 - [ ] Upload a test file and verify the cycle appears in store manager view
 - [ ] Log in as a store manager and confirm store isolation (only their store visible)
+- [ ] Confirm the store manager's Book Stock column is not editable — this is the core integrity guarantee and is worth verifying on the deployed build, not just in code review
+- [ ] Log in as an area manager and confirm only assigned stores are listed
 - [ ] If Brevo is configured, confirm a test email arrives
+- [ ] Delete the test cycle and confirm it disappears from the store and area manager dashboards within a minute
 
 **Ongoing:**
-- [ ] Monitor `/api/health` with UptimeRobot or similar
+- [ ] Monitor `/api/health` with UptimeRobot or similar — it is exempt from rate limiting for exactly this
 - [ ] Review audit logs via Admin → Activity Log
 - [ ] Back up the PostgreSQL database regularly
 - [ ] Run `npm run migrate` after pulling schema changes
+
+## Operating Notes
+
+**Schedulers run in the server process.** The reminder, escalation, and cycle-schedule services are intervals inside the Node process, not external cron. Running more than one instance of the API means running more than one copy of each scheduler, and duplicate reminder emails. If you scale horizontally, gate the schedulers to a single instance first.
+
+**The response cache is per-instance.** `serverCache.js` is an in-memory Map. Two instances hold two independent caches, and an invalidation on one does not reach the other, so a write can appear to roll back for up to the TTL depending on which instance serves the next read. The TTLs are short (30 seconds to 5 minutes) and nothing correctness-critical depends on the cache, but it is a real source of confusing reports at more than one instance.
+
+**PgBouncer drops idle connections.** Supabase's pooler closes idle connections, which surfaces as `P1001`/`P1002`/`P1008`/`P1017` from Prisma. The `withRetry` / `withDbRetry` helpers already retry these, and `server.js` keeps a periodic keep-alive ping. An occasional retried error in the logs is expected; a sustained run of them is not.
+
+**Cold starts on free tiers.** Render's free tier spins down after 15 minutes idle and the first request afterwards can take 30–60 seconds. The login page retries automatically, and `/api/health` answers `503 { "status": "starting" }` rather than failing outright while the pool comes up. A 5-minute uptime ping avoids the problem entirely.

@@ -125,14 +125,18 @@ Stores and manager accounts can be created two ways:
 - Go to Admin → Users → Add User (select role: Store Manager, assign a store)
 
 **Automatically from an uploaded file:**
-- When you upload an inventory file, any store codes in the file that don't exist in the system are created automatically
-- A placeholder manager account is also created (inactive, pending your approval)
+- When you upload an inventory file, any store codes in the file that don't exist in the system are created automatically (up to 50 per upload — beyond that the file is rejected, since that many unknown codes usually means a wrong column)
+- A placeholder manager account is also created for each, named `MGR<storeCode>`, inactive and pending your approval
+
+Store codes are normalised to trimmed upper case on both paths, so `2001a` and `2001A` are the same store. Leading zeros and separators are significant: `02001`, `2001`, and `2001-A` are three different stores.
+
+To provision accounts for plants that already exist but have no user, use the *plants without users* action on Admin → Users. It creates one account per plant with a generated temporary password shown **once** — copy them before leaving the page.
 
 ## Uploading Your First Inventory File
 
 1. Go to **Admin → Upload**
 2. Click **↓ Download Template** to get a correctly formatted example
-3. Fill in your inventory data — Plant Code, Material Code, Material Description, System Stock
+3. Fill in your inventory data — Plant Code, Material Code, Material Description, System Stock. Headers are matched by name in any order and several aliases are accepted for each (see the admin guide for the full list); System Stock is optional and defaults to 0
 4. Set the **Inventory Date** and optionally a **Submission Deadline**
 5. Click **Validate & Preview** to see a row-by-row validation summary
 6. Click **Confirm & Publish**
@@ -160,6 +164,31 @@ npm run db:reset
 # Build the frontend for production
 npm run build:client
 ```
+
+## Checks Before You Push
+
+There is no CI gate on this repository, so these four commands are the gate. Run all of them, from the repository root, before opening a pull request or pushing to `main`.
+
+```bash
+npm run lint --workspace=client   # ESLint 9 flat config
+npm run lint --workspace=server   # ESLint 10 flat config
+npm run test:unit                 # Vitest, server unit tests
+npm run build:client              # Production Vite build
+```
+
+Both lint configs run with `--max-warnings 0`, so a warning fails the command just like an error. That is deliberate: a warning nobody has to fix is a warning everybody ignores.
+
+Lint the workspaces separately, not with a single root command. They are on different major versions of ESLint with separate flat configs — the client config also carries the browser and service-worker globals that `client/public/sw.js` needs, and the server config carries the Node globals. A combined run would silently apply the wrong environment to one of them.
+
+Finally, confirm the server still boots:
+
+```bash
+cd server && node -e "import('./src/app.js').then(() => console.log('boot ok'))"
+```
+
+Run that from `server/`, not from the root — `env.js` validates the required variables at import time and reads them from `server/.env`. From the root you will get `Missing required environment variable: DATABASE_URL` even on a perfectly good checkout.
+
+If the boot fails with a Prisma client error after pulling schema changes, regenerate it: `cd server && npx prisma generate`.
 
 ## Troubleshooting
 
@@ -196,3 +225,23 @@ Set `CLIENT_URL` to the exact origin of your deployed frontend — include the p
 ```env
 CLIENT_URL=https://your-app.example.com
 ```
+
+Multiple origins are supported as a comma-separated list.
+
+### `Missing required environment variable: DATABASE_URL` when the file clearly exists
+
+You are running from the wrong directory. `server/src/config/env.js` validates on import and the `.env` it reads is `server/.env`. Run server-side commands from `server/`.
+
+### `No workspaces found` from an npm workspace command
+
+Run npm workspace commands from the repository root. A `cd` earlier in the same shell session is the usual cause.
+
+### 429 responses during local testing
+
+Two separate mechanisms produce a 429, and they clear differently. The per-IP login limiter (20 requests per 15 minutes) resets when the server restarts, because it is in process memory. The per-account lockout (10 consecutive wrong passwords, 15 minutes) is stored on the `User` row and survives a restart — clear `loginAttempts` and `lockedUntil` in Prisma Studio, or wait it out.
+
+### Emails are not being sent
+
+Email is optional and silently disabled when `BREVO_API_KEY` is unset — the app works fully without it. If the key is set and mail still is not arriving, check that the recipient user actually has an `email` value: users without one are skipped by every notification path, with no error.
+
+Note that this uses Brevo's HTTP API rather than SMTP, so an SMTP connectivity test tells you nothing. Render's free tier blocks outbound SMTP ports, which is precisely why the HTTP API is used.

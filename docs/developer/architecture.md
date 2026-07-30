@@ -2,7 +2,7 @@
 
 ## Overview
 
-KinMarche is a three-tier web application.
+KinMarché is a three-tier web application.
 
 ```
 Browser
@@ -18,10 +18,36 @@ Express API Server  (Node.js 22+)
 PostgreSQL 15+  (Supabase)
 ```
 
+### What the system is for, and what follows from it
+
+KinMarché reconciles what a store's books say it has against what is physically on its shelves, and attributes the gap. Three roles form a chain: an **administrator** uploads the book figures and runs the cycle, a **store manager** counts and explains discrepancies, an **area manager** reviews and either approves or sends the count back.
+
+One property makes the rest of the design legible: **the uploaded book figure (`systemQuantity`) is immutable after upload, for every role.** Shrinkage is the difference between that figure and the count, so if the audited party — or their reviewer, or an administrator — could edit the baseline, the number the system produces would mean nothing. Everything downstream follows from that: the variance is always recomputed on the server rather than accepted from a client, corrections flow through recounts and audited overrides rather than in-place edits, cycles are soft-deleted rather than erased, and the audit log is protected by a database trigger rather than by convention.
+
+If you take one thing from this document into a code change, take that. It is documented in full in `security.md` under *Data Integrity*.
+
 ## Component Map
 
 ```
 client/src/
+  App.jsx            Route table — every path in the app is declared here
+  main.jsx           React root, i18n init, service worker registration (production only)
+
+  i18n/
+    index.js         i18next setup, language detection, persistence
+    en.json          English strings
+    fr.json          French strings — kept at exact key parity with en.json
+
+  pages/
+    Home.jsx         Public landing page
+    ProfilePage.jsx  Name / email / phone — rendered outside every role layout
+    NotFound.jsx     404 fallback
+
+  features/auth/
+    AuthContext.jsx        Session state, login/logout, refreshUser, route guards
+    LoginPage.jsx          Employee ID + password
+    ChangePasswordPage.jsx Forced when mustChangePassword is set
+
   shared/api/
     client.js        Axios instance — HttpOnly cookie auth, silent token refresh, progress bus
     authApi.js       login, getCurrentUser, changePassword, updateProfile
@@ -35,11 +61,30 @@ client/src/
     ui/TopProgress.jsx       Fixed 3px progress bar driven by the progress bus
     ui/LoadingCard.jsx       Skeleton cards and skeleton table components
     ui/Modal.jsx             Portal-based modal with scroll-lock reference counting
+    ui/ConfirmModal.jsx      Confirm/cancel dialog built on Modal
+    ui/EmptyState.jsx        Shared empty and no-results state
+    ui/PageHeader.jsx        Title + subtitle + actions block used by every page
     ui/ErrorBoundary.jsx     Catches render errors — Try again (soft) + Refresh (hard)
     NotificationBell.jsx     Polls /notifications every 60s, badge + dropdown
 
+  shared/context/
+    ToastContext.jsx  Toast queue — success/error notifications
+
+  shared/hooks/
+    useDebounce.js    Debounced value, used by search boxes and count auto-save
+    useDownload.js    Blob download with in-flight state and error surfacing
+
+  shared/utils/
+    dateUtils.js            Date formatting and deadline comparison
+    downloadBlob.js         Triggers a browser download from a response blob
+    shrinkageCategories.js  Canonical 9 categories + their issue details
+                            (must stay in sync with the server copy)
+
+  styles/            tokens.css (design tokens) + reset, layout, components,
+                     inventory, pages, toast, utilities — plain CSS, no framework
+
   features/admin/
-    layout/AdminLayout.jsx   Red top navbar, hamburger mobile menu, notification bell
+    layout/AdminLayout.jsx   Crimson navbar with green accent, hamburger mobile menu, bell
     pages/Dashboard.jsx      Network KPIs, risk scorecard, hotspot items
     pages/Upload.jsx         3-step flow: pick file -> validate preview -> confirm publish
     pages/Batches.jsx        Cycle management: deadlines, extensions, unlocks, close cycle, exports
@@ -52,13 +97,13 @@ client/src/
     pages/Schedules.jsx      Create/edit/pause recurring inventory cycle schedules
 
   features/store/
-    layout/StoreLayout.jsx   White navbar, bottom mobile nav, notification bell
+    layout/StoreLayout.jsx   Crimson navbar with teal accent, bottom mobile nav, bell
     pages/Dashboard.jsx      Cycle progress, deadline countdown, past-batch alerts
     pages/Inventory.jsx      Inline count entry, debounced auto-save (700ms),
                              instant variance, batch selector, AM return messages
 
   features/areaManager/
-    layout/AMLayout.jsx      Top navbar, mobile bottom nav, notification bell
+    layout/AMLayout.jsx      Crimson navbar with blue accent, mobile bottom nav, bell
     pages/AMDashboard.jsx    Store progress overview, per-store review status
     pages/AMReviewList.jsx   List of all cycles with review counts
     pages/AMReview.jsx       Per-store record review, edit, approve, or return for recount
@@ -88,7 +133,8 @@ server/src/
     areaManagerController.js AM dashboard, batch review, approve, return, record editing
 
   routes/
-    authRoutes.js       POST /login, POST /refresh, POST /logout, GET /me, PATCH /profile
+    authRoutes.js       POST /login, POST /refresh, POST /logout, GET /me,
+                        POST /change-password, PATCH /profile
     adminRoutes.js      All /admin/* with ADMIN role guard, Multer for file routes
     storeRoutes.js      All /store/* with STORE_MANAGER role guard
     areaManagerRoutes.js All /am/* with AREA_MANAGER role guard
@@ -105,9 +151,23 @@ server/src/
     cycleScheduleService.js  Hourly check for due recurring schedules, auto-creates batches
 
   utils/
-    params.js         parseId, requireId, parsePage, parsePageSize — validates all URL/query params
-    excelExport.js    buildInventoryWorkbook() — shared Excel builder used by all export endpoints
+    params.js              parseId, requireId, parsePage, parsePageSize, parseIntParam
+                           — validates all URL/query params
+    excelExport.js         buildInventoryWorkbook() — shared Excel builder used by all exports
+    shrinkageCategories.js Canonical category set — mirror of the client copy
+
+client/public/
+  sw.js              Service worker — hashed assets cache-first, HTML shell
+                     network-first, API never cached. Registered in production only
+  manifest.json      PWA manifest (installable, standalone display)
+  _redirects         SPA fallback for static hosts
 ```
+
+### Internationalisation
+
+The interface ships in English and French via `react-i18next`. Every user-facing string in the store and shared surfaces goes through `t()`; `en.json` and `fr.json` are kept at exact key parity, including i18next plural suffixes (`_one` / `_other`). The selected language is detected from the browser and persisted per browser.
+
+Data the user types — store names, remarks, issue details — is stored verbatim and never translated. Shrinkage category *values* stay canonical English in the database (`Theft`, `Miscount`, …) and are translated only for display, so a French user's submission is queryable alongside an English one.
 
 ## Data Flow
 
@@ -236,24 +296,39 @@ In-memory Map in the Node.js process. All TTLs reset on relevant mutations.
 
 | Key | TTL | Invalidated by |
 |---|---|---|
-| admin:dashboard | 5 min | upload, store changes, record override, batch close |
-| admin:batches | 1 min | upload, delete, deadline update, close |
-| admin:stores | 2 min | store CRUD, user changes |
-| admin:users | 1 min | user CRUD |
-| store:dashboard | 1 min | store submit, AM return |
-| store:notifications | 30 sec | store submit, AM return |
-| am:batches | 1 min | AM approve/return |
-| am:notifications | 30 sec | AM approve/return |
+| admin:dashboard | 5 min | upload, store changes, record override, batch close/delete |
+| admin:batches | 1 min | upload, delete, deadline update, close, unlock |
+| admin:stores | 2 min | store CRUD, user changes, AM assignment, upload (auto-created stores) |
+| admin:users | 1 min | user CRUD, upload (auto-created placeholder managers) |
+| admin:notifications | 30 sec | upload, submit, AM approve, batch close/delete |
+| admin:trends:N | 5 min | upload, batch close/delete |
+| store:dashboard:{storeId} | 1 min | store submit, AM return, admin override, batch close/delete |
+| store:notifications:{storeId} | 30 sec | store submit, AM return, admin override, batch close/delete |
+| am:batches:{userId} | 1 min | AM approve/return, store assignment change, batch close/delete |
+| am:notifications:{userId} | 30 sec | AM approve/return, store assignment change, batch close/delete |
+
+Keys carrying an ID suffix are per-store or per-user; the rest are global.
+
+### Invalidation crosses role boundaries
+
+The non-obvious rule: **a write invalidates every role's view of the data it changed, not just the writer's own.**
+
+Deleting or closing a cycle is the clearest case. It happens in the admin controller, but the rows it hides belong to store managers and area managers who each have their own cached dashboard and notification payload. `invalidateBatchAudience(batchId)` resolves the distinct stores in that cycle and their area managers, and busts all of their keys alongside the admin's. Without it a store manager keeps seeing a deleted cycle on their dashboard for up to a minute, clicks into it, and gets an error — the exact class of "ghost cycle" bug this indirection exists to prevent.
+
+The same reasoning applies in the other direction. An upload can auto-create stores and placeholder manager accounts, so it busts `admin:stores` and `admin:users` even though neither is the endpoint's own resource. A bulk override busts the store and area manager caches for every store it touched. An area manager reassignment busts the caches of both the previous and the new manager, which is why `assignStoreAM` reads the old `areaManagerId` before writing rather than after.
+
+When adding a write path, the question to answer is not "which cache did I just make stale for me" but "who else is looking at this row".
 
 ### Client Cache (shared/api/cache.js)
 
-In-memory Map in the browser tab. Cleared on logout.
+In-memory Map in the browser tab. Cleared on logout, with a sweep of expired entries every 2 minutes.
 
 | Key | TTL |
 |---|---|
 | admin:dashboard | 2 min |
 | admin:stores | 3 min |
 | admin:users | 2 min |
+| admin:audit-logs:{limit}:{action} | 2 min |
 | admin:batches-client | 1 min |
 | admin:area-managers | 2 min |
 | admin:trends:N | 5 min |
@@ -261,6 +336,10 @@ In-memory Map in the browser tab. Cleared on logout.
 | store:batches | 1 min |
 | am:dashboard | 1 min |
 | am:batches | 1 min |
+
+The two layers are independent and their TTLs deliberately differ, so the staleness a user can observe is the longer of the pair — `admin:users`, for instance, is 1 minute on the server but 2 in the browser. Client-side mutations call `cacheInvalidate(...)` with the affected keys immediately, so a user never waits on a TTL to see their own change.
+
+`invalidate()` deletes exact keys only; there is no prefix matching. A parameterised key such as `admin:trends:N` therefore has to be invalidated by naming each N that the app actually requests — currently 8, from the Analytics page. Adding a new cycles value to a call site means adding it to the invalidation lists too, on both sides.
 
 ## Background Schedulers
 
@@ -291,7 +370,9 @@ When a user is deleted, their audit logs remain — the userId is set to null bu
 | Store isolation | Store managers can only query records where storeId matches their own. All queries are scoped by storeId from req.user, never from request params. |
 | Role guards | requireRole(), requireStoreManager(), requireAreaManager() — every route has an explicit guard. |
 | Input validation | All ID and pagination params go through parseId()/parsePage() helpers. All user-input strings are length-limited before DB writes. |
+| Book stock immutability | `systemQuantity` is writable only by the upload pipeline. No role — including admin, including the override endpoints — has a write path to it. See `security.md`. |
 | Variance integrity | Difference is always computed server-side. The client cannot influence the stored variance value. |
+| Rate limiting | 20 logins / 15 min / IP on `/api/auth/login`; 600 / 15 min on the rest of `/api/auth` (store networks share one NAT'd IP); 30 / min on heavy exports and analytics. |
 | Export limits | All export endpoints reject filters matching more than 10,000 records before starting the DB query. |
 | Excel injection | All free-text fields sanitized in exports — values starting with =, +, -, @ are prefixed with a single quote. |
 

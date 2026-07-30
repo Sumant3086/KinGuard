@@ -100,9 +100,9 @@ One row per store × item within a cycle. The core table.
 | storeId | Int | FK → Store |
 | materialCode | String | item code — labeled "Item Code" in the UI |
 | materialName | String | item description — labeled "Item Name" in the UI |
-| systemQuantity | Float | book stock, from the uploaded file — labeled "Book Stock" |
-| physicalQuantity | Float? | nullable until the store manager counts it — labeled "Your Count" |
-| difference | Float? | `physicalQuantity - systemQuantity`, computed server-side, never client-writable — labeled "Variance" |
+| systemQuantity | Float | book stock, from the uploaded file — labeled "Book Stock". **Written only by the upload pipeline; immutable thereafter for every role.** See below |
+| physicalQuantity | Float? | nullable until the store manager counts it — labeled "Your Count". Set back to null by an AM return, an admin unlock, or a bulk reset |
+| difference | Float? | `physicalQuantity - systemQuantity`, computed server-side to 4 decimal places, never client-writable — labeled "Variance". Null whenever the count is null |
 | remarks | String? | issue detail entered by the store manager |
 | shrinkageCategory | String? | one of the 9 canonical categories, required when `difference != 0` |
 | isRepeat | Boolean | default false — true if this store/material pair was also short in a recent prior cycle. Cleared when an admin resets the record back to PENDING |
@@ -123,6 +123,16 @@ Variance = 0   → Exact Match
 Variance < 0   → Shortage (items missing)
 Variance > 0   → Surplus (extra items)
 ```
+
+Which side of that subtraction is writable is the load-bearing decision in the schema:
+
+| Column | Writable by |
+|---|---|
+| `systemQuantity` | The admin upload pipeline, and nothing else |
+| `physicalQuantity` | Store manager (own store, before submit), area manager (assigned stores, after submit), admin override |
+| `difference` | Nobody — always recomputed from the two columns above |
+
+`systemQuantity` has no update path in any controller. This is not an omission to be filled in: shrinkage is defined as the gap between the uploaded figure and the counted one, so a schema where the counted party can move the uploaded figure records nothing worth auditing. Correcting a wrong book figure means re-uploading the cycle, which leaves a batch record and an audit entry behind. If a code review turns up `systemQuantity` in a handler's write set outside the upload controller, that is a defect regardless of how the feature was framed.
 
 ### AreaManagerReview
 
@@ -208,3 +218,19 @@ Store 1──* BatchDeadlineExtension
 ## Cascade behavior
 
 Only two relations cascade on delete: `RefreshToken → User` and `AreaManagerReview → UploadBatch` / `AreaManagerReview → Store`. Everything else is deliberately non-cascading — deleting a user reassigns or nulls their foreign keys (see `deleteUser` in `adminController.js`) instead of deleting dependent rows, so cycle history and audit trails are never silently destroyed by a user or store deletion.
+
+## Querying Soft-Deleted Cycles
+
+`UploadBatch.isDeleted` is a soft-delete flag, not a display preference. Deleted cycles keep every one of their inventory records, and those records remain joinable — which means **any query that reaches `InventoryRecord` without filtering the parent batch will silently include deleted cycles.**
+
+Every read path must therefore constrain the batch:
+
+```js
+where: { batch: { isDeleted: false }, /* … */ }
+```
+
+or, when querying batches directly, `where: { isDeleted: false }`.
+
+Getting this wrong does not throw. It produces plausible-looking numbers that quietly include a cycle an administrator deleted precisely because it was wrong — a duplicate upload double-counting a network's shrinkage, for instance. Dashboards, scorecards, analytics, exports, and the area manager's record view all carry this filter; a new aggregate query is the likely place for it to go missing.
+
+The audit log is the deliberate exception: `AuditLog` rows are never filtered by batch deletion, and a database trigger blocks `DELETE` on that table entirely. The record that a cycle was deleted must outlive the cycle.
