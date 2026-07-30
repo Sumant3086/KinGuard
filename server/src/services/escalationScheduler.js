@@ -7,12 +7,20 @@
 // escalationLevel on UploadBatch tracks which tier has fired so we never duplicate.
 
 import prisma from '../config/prisma.js';
+import { withSchedulerLock } from './schedulerLock.js';
 
 const CHECK_INTERVAL_MS   = 30 * 60 * 1000; // every 30 minutes
 const TIER1_DELAY_MS      = 0;               // immediately after deadline
 const TIER2_DELAY_MS      = 24 * 60 * 60 * 1000; // 24h after deadline
 
-async function runEscalationCheck() {
+// One instance only: escalationLevel is read and stamped in separate statements, so
+// concurrent instances would both pass the `< 1` check and mail every AM twice.
+function runEscalationCheck() {
+  return withSchedulerLock('escalation', CHECK_INTERVAL_MS, runEscalationCheckLocked)
+    .catch(err => console.error('[escalation] Tick failed:', err.message));
+}
+
+async function runEscalationCheckLocked() {
   try {
     const now = new Date();
 

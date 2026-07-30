@@ -4,6 +4,7 @@
 // to all pending stores, then stamps autoReminderSentAt so it never fires twice.
 
 import prisma from '../config/prisma.js';
+import { withSchedulerLock } from './schedulerLock.js';
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const WINDOW_MIN_MS     = 50 * 60 * 1000; // 50 min from now
@@ -18,7 +19,16 @@ async function purgeExpiredTokens() {
   }
 }
 
-async function runReminderCheck() {
+// One instance only: without this, two instances both see autoReminderSentAt = null
+// for the same batch and every pending store manager gets the reminder twice.
+// The .catch matters: this is a timer callback, so a rejection here would be an
+// unhandled rejection and take the process down.
+function runReminderCheck() {
+  return withSchedulerLock('reminder', CHECK_INTERVAL_MS, runReminderCheckLocked)
+    .catch(err => console.error('[scheduler] Reminder tick failed:', err.message));
+}
+
+async function runReminderCheckLocked() {
   // Purge expired refresh tokens on every tick — keeps the table from growing unboundedly
   await purgeExpiredTokens();
 

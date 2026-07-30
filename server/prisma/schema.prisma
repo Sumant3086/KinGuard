@@ -220,6 +220,15 @@ model CycleSchedule {
   @@index([isActive, nextRunAt])
 }
 
+/// One row per scheduled job. Held as a time-boxed lease so only one instance
+/// runs a given tick; see services/schedulerLock.js.
+model SchedulerLock {
+  name        String   @id
+  lockedUntil DateTime
+  owner       String
+  updatedAt   DateTime @default(now()) @updatedAt
+}
+
 model BatchDeadlineExtension {
   id          Int      @id @default(autoincrement())
   batchId     Int

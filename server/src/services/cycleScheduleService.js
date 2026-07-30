@@ -5,6 +5,7 @@
 // batches — see the note in runScheduleCheck for why.
 
 import prisma from '../config/prisma.js';
+import { withSchedulerLock } from './schedulerLock.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // every 1 hour
 
@@ -48,7 +49,14 @@ export function computeNextRun(frequency, dayOfMonth, dayOfWeek, from = new Date
 
 // ── Scheduler runner ──────────────────────────────────────────────────────────
 
-async function runScheduleCheck() {
+// One instance only: two instances would both find the same due schedule and each
+// advance nextRunAt, skipping a period and double-logging the due notice.
+function runScheduleCheck() {
+  return withSchedulerLock('cycle-schedule', CHECK_INTERVAL_MS, runScheduleCheckLocked)
+    .catch(err => console.error('[cycle-scheduler] Tick failed:', err.message));
+}
+
+async function runScheduleCheckLocked() {
   try {
     const now = new Date();
 

@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same branch makes the in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Root lockfile covers both workspaces.
+      - name: Install
+        run: npm ci
+
+      # The server imports @prisma/client at require time, so the generated client
+      # has to exist before lint or tests load any controller.
+      - name: Generate Prisma client
+        run: npm run prisma:generate --workspace=server
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # Catches broken imports and JSX that lint alone lets through.
+      - name: Build client
+        run: npm run build:client
