@@ -6,6 +6,14 @@ import { requireId, parseIntParam } from '../utils/params.js';
 
 const VALID_FREQUENCIES = new Set(['weekly', 'monthly', 'quarterly']);
 
+// dayOfWeek 0 is Sunday, so a plain `dayOfWeek ? parseInt(...) : null` throws it away
+// and the schedule silently falls back to Monday.
+function toDayInt(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const n = parseInt(value, 10);
+  return isNaN(n) ? null : n;
+}
+
 function validateFrequencyInput({ frequency, dayOfMonth, dayOfWeek }) {
   if (!VALID_FREQUENCIES.has(frequency)) {
     throw new AppError('Frequency must be weekly, monthly, or quarterly', 400);
@@ -44,18 +52,16 @@ export async function createSchedule(req, res, next) {
     const { name, frequency, dayOfMonth, dayOfWeek, submissionWindowDays } = req.body;
     validateScheduleInput({ name, frequency, dayOfMonth, dayOfWeek, submissionWindowDays });
 
-    const nextRunAt = computeNextRun(
-      frequency,
-      dayOfMonth ? parseInt(dayOfMonth) : null,
-      dayOfWeek  ? parseInt(dayOfWeek)  : null,
-    );
+    const dom = toDayInt(dayOfMonth);
+    const dow = toDayInt(dayOfWeek);
+    const nextRunAt = computeNextRun(frequency, dom, dow);
 
     const schedule = await prisma.cycleSchedule.create({
       data: {
         name:                 name.trim(),
         frequency,
-        dayOfMonth:           dayOfMonth ? parseInt(dayOfMonth) : null,
-        dayOfWeek:            dayOfWeek  ? parseInt(dayOfWeek)  : null,
+        dayOfMonth:           dom,
+        dayOfWeek:            dow,
         submissionWindowDays: parseInt(submissionWindowDays) || 7,
         isActive:             true,
         nextRunAt,
@@ -91,12 +97,26 @@ export async function updateSchedule(req, res, next) {
       updateData.submissionWindowDays = parseIntParam(submissionWindowDays, 'submissionWindowDays', 7, 1, 90);
     }
 
-    if (frequency !== undefined) {
-      validateFrequencyInput({ frequency, dayOfMonth, dayOfWeek });
-      updateData.frequency  = frequency;
-      updateData.dayOfMonth = dayOfMonth ? parseInt(dayOfMonth) : null;
-      updateData.dayOfWeek  = dayOfWeek  ? parseInt(dayOfWeek)  : null;
-      updateData.nextRunAt  = computeNextRun(frequency, updateData.dayOfMonth, updateData.dayOfWeek);
+    // Changing only the day (keeping the frequency) is a normal edit, so it cannot be
+    // gated on `frequency` being present — that silently discarded the new day and
+    // left nextRunAt pointing at the old one. Merge whichever fields were sent onto
+    // the stored schedule, then validate and recompute the whole thing.
+    if (frequency !== undefined || dayOfMonth !== undefined || dayOfWeek !== undefined) {
+      const current = await prisma.cycleSchedule.findUnique({
+        where: { id },
+        select: { frequency: true, dayOfMonth: true, dayOfWeek: true },
+      });
+      if (!current) throw new AppError('Schedule not found', 404);
+
+      const nextFrequency = frequency  !== undefined ? frequency            : current.frequency;
+      const nextDom       = dayOfMonth !== undefined ? toDayInt(dayOfMonth) : current.dayOfMonth;
+      const nextDow       = dayOfWeek  !== undefined ? toDayInt(dayOfWeek)  : current.dayOfWeek;
+
+      validateFrequencyInput({ frequency: nextFrequency, dayOfMonth: nextDom, dayOfWeek: nextDow });
+      updateData.frequency  = nextFrequency;
+      updateData.dayOfMonth = nextDom;
+      updateData.dayOfWeek  = nextDow;
+      updateData.nextRunAt  = computeNextRun(nextFrequency, nextDom, nextDow);
     }
 
     const schedule = await prisma.cycleSchedule.update({

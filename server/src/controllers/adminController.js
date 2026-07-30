@@ -235,7 +235,9 @@ export async function getDashboard(req, res, next) {
         WHERE "batchId" = ${latestBatch.id}
       `,
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true, areaManagerId: true, areaManager: { select: { name: true } } } }),
-      prisma.uploadBatch.findMany({ where: { isDeleted: false }, orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
+      // COMPLETED only, matching latestBatch above — a half-finished upload has no
+      // usable rows and would push a real cycle out of the 4-cycle hotspot window.
+      prisma.uploadBatch.findMany({ where: { status: 'COMPLETED', isDeleted: false }, orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
       prisma.$queryRaw`
         SELECT "storeId"::int AS "storeId", remarks, COUNT(*)::int AS cnt
         FROM "InventoryRecord"
@@ -694,6 +696,18 @@ export async function uploadInventory(req, res, next) {
 
     const targetDate     = parseUserDate(inventoryDate, 'inventoryDate');
     const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
+
+    // A deadline that is already past (or before the count date) creates a cycle that
+    // is locked the moment it appears — stores can see it but can never submit to it.
+    if (parsedDeadline) {
+      if (parsedDeadline <= new Date()) {
+        throw new AppError('Submission deadline must be in the future', 400);
+      }
+      if (parsedDeadline < targetDate) {
+        throw new AppError('Submission deadline cannot be before the inventory date', 400);
+      }
+    }
+
     const windowStart = new Date(targetDate); windowStart.setDate(windowStart.getDate() - 3);
     const windowEnd   = new Date(targetDate); windowEnd.setDate(windowEnd.getDate() + 3);
     // Only warn about COMPLETED batches. A PENDING batch is a half-finished upload
@@ -914,7 +928,18 @@ export async function uploadInventory(req, res, next) {
       },
     });
 
-    sInvalidate('admin:batches', 'admin:notifications');
+    // Every store in the file has a new cycle waiting, and so does their area manager.
+    // Without busting those keys the cycle stays invisible for up to a minute.
+    const affectedStoreIds = [...new Set(successfulRecords.map(r => r.storeId))];
+    const affectedAms = await prisma.store.findMany({
+      where: { id: { in: affectedStoreIds }, areaManagerId: { not: null } },
+      select: { areaManagerId: true },
+      distinct: ['areaManagerId'],
+    }).catch(() => []);
+
+    sInvalidate('admin:batches', 'admin:notifications',
+      ...affectedStoreIds.flatMap(id => [`store:dashboard:${id}`, `store:notifications:${id}`]),
+      ...affectedAms.flatMap(a => [`am:batches:${a.areaManagerId}`, `am:notifications:${a.areaManagerId}`, `am:stores:${a.areaManagerId}`]));
 
     await createAuditLog({
       userId: req.user.id,
@@ -1103,7 +1128,9 @@ export async function getInventory(req, res, next) {
     const VALID_DISC = new Set(['shortage', 'excess', 'matched']);
     if (discrepancy && !VALID_DISC.has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
 
-    const where = {};
+    // Deleted cycles are soft-deleted, so their records survive. Without this the
+    // rows of a cycle the admin already removed still land in store-filtered results.
+    const where = { batch: { isDeleted: false } };
 
     if (storeId)  where.storeId  = storeId;
     if (status)   where.status   = status;
@@ -1169,7 +1196,7 @@ export async function getReconciliationReport(req, res, next) {
     if (status && !VALID_INV_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
     if (discrepancy && !VALID_DISCREPANCIES.has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
 
-    const where = {};
+    const where = { batch: { isDeleted: false } };
 
     if (storeId)  where.storeId = storeId;
     if (batchId)  where.batchId = batchId;
@@ -1214,7 +1241,7 @@ export async function downloadReconciliationReport(req, res, next) {
     if (status && !VALID_INV_STATUSES.has(status)) throw new AppError('Invalid status filter', 400);
     if (discrepancy && !VALID_DISCREPANCIES.has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
 
-    const where = {};
+    const where = { batch: { isDeleted: false } };
 
     if (storeId)  where.storeId = storeId;
     if (batchId)  where.batchId = batchId;
@@ -1278,7 +1305,7 @@ export async function downloadInventoryExport(req, res, next) {
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
 
-    const where = {};
+    const where = { batch: { isDeleted: false } };
 
     if (storeId) { where.storeId = storeId; }
     if (status)  { where.status  = status;  }
@@ -1423,8 +1450,8 @@ export async function updateBatch(req, res, next) {
     const { submissionDeadline } = req.body;
     const parsedDeadline = parseUserDate(submissionDeadline, 'submissionDeadline');
 
-    const existing = await prisma.uploadBatch.findUnique({
-      where: { id: batchId },
+    const existing = await prisma.uploadBatch.findFirst({
+      where: { id: batchId, isDeleted: false },
       select: { id: true, submissionDeadline: true },
     });
     if (!existing) throw new AppError('Cycle not found', 404);
@@ -1455,8 +1482,8 @@ export async function updateBatch(req, res, next) {
 export async function closeBatch(req, res, next) {
   try {
     const batchId = requireId(req.params.id, 'batchId');
-    const batch = await prisma.uploadBatch.findUnique({
-      where: { id: batchId },
+    const batch = await prisma.uploadBatch.findFirst({
+      where: { id: batchId, isDeleted: false },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });
     if (!batch) throw new AppError('Cycle not found', 404);
@@ -1504,7 +1531,7 @@ export async function grantStoreExtension(req, res, next) {
     if (isNaN(deadlineDate.getTime())) throw new AppError('Invalid deadline date', 400);
     if (deadlineDate <= new Date()) throw new AppError('Extension deadline must be in the future', 400);
     const [batch, store] = await Promise.all([
-      prisma.uploadBatch.findUnique({ where: { id: batchId }, select: { id: true, inventoryDate: true } }),
+      prisma.uploadBatch.findFirst({ where: { id: batchId, isDeleted: false }, select: { id: true, inventoryDate: true } }),
       prisma.store.findUnique({ where: { id: storeId }, select: { id: true, storeCode: true, storeName: true } }),
     ]);
     if (!batch) throw new AppError('Batch not found', 404);
@@ -1577,8 +1604,8 @@ export async function getTrends(req, res, next) {
 export async function getBatchExport(req, res, next) {
   try {
     const batchId = requireId(req.params.batchId, 'batchId');
-    const batch = await prisma.uploadBatch.findUnique({
-      where: { id: batchId },
+    const batch = await prisma.uploadBatch.findFirst({
+      where: { id: batchId, isDeleted: false },
       select: { inventoryDate: true, originalFileName: true },
     });
     if (!batch) throw new AppError('Batch not found', 404);
@@ -2031,7 +2058,7 @@ export async function overrideInventoryRecord(req, res, next) {
     const updated = await prisma.inventoryRecord.update({
       where: { id: recordId },
       data: updateData,
-      include: { store: { select: { storeCode: true, storeName: true } } },
+      include: { store: { select: { storeCode: true, storeName: true, areaManagerId: true } } },
     });
 
     await createAuditLog({
@@ -2048,9 +2075,13 @@ export async function overrideInventoryRecord(req, res, next) {
       },
     });
 
-    sInvalidate('admin:dashboard',
+    sInvalidate('admin:dashboard', 'admin:batches', 'admin:notifications',
                 `store:dashboard:${record.storeId}`,
                 `store:notifications:${record.storeId}`);
+    if (updated.store?.areaManagerId) {
+      sInvalidate(`am:batches:${updated.store.areaManagerId}`,
+                  `am:notifications:${updated.store.areaManagerId}`);
+    }
     res.json(updated);
   } catch (error) { next(error); }
 }
@@ -2075,6 +2106,27 @@ export async function bulkOverrideInventory(req, res, next) {
 
     const parsedIds = recordIds.map((id, i) => requireId(id, `recordIds[${i}]`));
 
+    // Load the affected records up front — both branches need the store (and its area
+    // manager) so every cached view of these rows can be busted, not just the admin one.
+    const records = await prisma.inventoryRecord.findMany({
+      where: { id: { in: parsedIds } },
+      select: {
+        id: true,
+        systemQuantity: true,
+        storeId: true,
+        store: { select: { areaManagerId: true } },
+      },
+    });
+    if (records.length === 0) throw new AppError('No matching records found', 404);
+
+    const bustCaches = () => {
+      const storeIds = [...new Set(records.map(r => r.storeId))];
+      const amIds    = [...new Set(records.map(r => r.store?.areaManagerId).filter(Boolean))];
+      sInvalidate('admin:dashboard', 'admin:batches', 'admin:notifications',
+                  ...storeIds.flatMap(id => [`store:dashboard:${id}`, `store:notifications:${id}`]),
+                  ...amIds.flatMap(id => [`am:batches:${id}`, `am:notifications:${id}`]));
+    };
+
     if (action === 'reset') {
       const result = await prisma.inventoryRecord.updateMany({
         where: { id: { in: parsedIds } },
@@ -2098,17 +2150,11 @@ export async function bulkOverrideInventory(req, res, next) {
         metadata: { action: 'reset', count: result.count, recordIds: parsedIds.slice(0, 50) },
       });
 
-      sInvalidate('admin:dashboard');
+      bustCaches();
       return res.json({ updated: result.count, message: `${result.count} record(s) reset to Pending` });
     }
 
     // action === 'match': per-record update so each difference is computed against its own systemQuantity
-    const records = await prisma.inventoryRecord.findMany({
-      where: { id: { in: parsedIds } },
-      select: { id: true, systemQuantity: true },
-    });
-    if (records.length === 0) throw new AppError('No matching records found', 404);
-
     await prisma.$transaction(
       records.map(r =>
         prisma.inventoryRecord.update({
@@ -2135,7 +2181,7 @@ export async function bulkOverrideInventory(req, res, next) {
       metadata: { action: 'match', count: records.length, recordIds: parsedIds.slice(0, 50) },
     });
 
-    sInvalidate('admin:dashboard');
+    bustCaches();
     res.json({ updated: records.length, message: `${records.length} record(s) marked as matched` });
   } catch (error) { next(error); }
 }
@@ -2198,7 +2244,7 @@ export async function downloadInventoryExportPDF(req, res, next) {
     if (discrepancy && !new Set(['shortage','excess','matched']).has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
-    const where = {};
+    const where = { batch: { isDeleted: false } };
     if (storeId)     where.storeId  = storeId;
     if (status)      where.status   = status;
     if (batchId)     where.batchId  = batchId;
@@ -2251,7 +2297,7 @@ export async function downloadReconciliationReportPDF(req, res, next) {
     if (discrepancy && !new Set(['shortage','excess','matched']).has(discrepancy)) throw new AppError('Invalid discrepancy filter', 400);
     const storeId = parseId(req.query.storeId, 'storeId');
     const batchId = parseId(req.query.batchId, 'batchId');
-    const where = {};
+    const where = { batch: { isDeleted: false } };
     if (storeId)  where.storeId = storeId;
     if (batchId)  where.batchId = batchId;
     if (status)   where.status  = status;
@@ -2296,17 +2342,23 @@ export async function downloadReconciliationReportPDF(req, res, next) {
 export async function sendBatchReminders(req, res, next) {
   try {
     const batchId = requireId(req.params.id, 'batchId');
-    const batch = await prisma.uploadBatch.findUnique({
-      where: { id: batchId },
+    const batch = await prisma.uploadBatch.findFirst({
+      where: { id: batchId, isDeleted: false },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });
     if (!batch) throw new AppError('Batch not found', 404);
 
-    const pendingRecords = await prisma.inventoryRecord.findMany({
-      where: { batchId, status: 'PENDING' },
-      select: { storeId: true },
-      distinct: ['storeId'],
-    });
+    const [pendingRecords, extensions] = await Promise.all([
+      prisma.inventoryRecord.findMany({
+        where: { batchId, status: 'PENDING' },
+        select: { storeId: true },
+        distinct: ['storeId'],
+      }),
+      prisma.batchDeadlineExtension.findMany({
+        where: { batchId },
+        select: { storeId: true, newDeadline: true },
+      }),
+    ]);
 
     if (pendingRecords.length === 0) {
       return res.json({ sent: 0, pending: 0, message: 'All stores have submitted -- no reminders needed.' });
@@ -2330,10 +2382,34 @@ export async function sendBatchReminders(req, res, next) {
       });
     }
 
+    // A store holding an extension is working to its own deadline, so quoting the
+    // batch deadline at it would be wrong. Group the managers by the deadline that
+    // actually applies to them and send one batch of emails per distinct deadline.
+    const extensionByStore = new Map(extensions.map(e => [e.storeId, e.newDeadline]));
+    const groups = new Map(); // deadline ISO → managers
+    for (const m of managers) {
+      const deadline = extensionByStore.get(m.storeId) ?? batch.submissionDeadline;
+      const key = new Date(deadline).toISOString();
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(m);
+    }
+
     let emailResult = { configured: false, sent: 0, failed: 0 };
     try {
       const { sendDeadlineReminderEmail } = await import('../services/emailService.js');
-      emailResult = await sendDeadlineReminderEmail({ managers, inventoryDate: batch.inventoryDate, deadline: batch.submissionDeadline });
+      // With no reachable managers still make one empty call, so the response can
+      // tell "email is not configured" apart from "nobody has an email address".
+      const entries = groups.size > 0
+        ? [...groups.entries()]
+        : [[new Date(batch.submissionDeadline).toISOString(), []]];
+      const results = await Promise.all(entries.map(([deadline, group]) =>
+        sendDeadlineReminderEmail({ managers: group, inventoryDate: batch.inventoryDate, deadline })
+      ));
+      emailResult = results.reduce((acc, r) => ({
+        configured: acc.configured || r.configured,
+        sent:       acc.sent   + r.sent,
+        failed:     acc.failed + r.failed,
+      }), { configured: false, sent: 0, failed: 0 });
     } catch (emailErr) {
       console.error('[batches] Email service error:', emailErr.message);
       emailResult = { configured: true, sent: 0, failed: managers.length };
@@ -2371,8 +2447,8 @@ export async function sendBatchReminders(req, res, next) {
 export async function downloadBatchExportPDF(req, res, next) {
   try {
     const batchId = requireId(req.params.batchId, 'batchId');
-    const batch = await prisma.uploadBatch.findUnique({
-      where: { id: batchId },
+    const batch = await prisma.uploadBatch.findFirst({
+      where: { id: batchId, isDeleted: false },
       select: { inventoryDate: true },
     });
     if (!batch) throw new AppError('Batch not found', 404);
@@ -2641,6 +2717,16 @@ export async function batchCreateUsersForPlants(req, res, next) {
         }
       })
     );
+
+    // One summary entry for the run itself — the per-user CREATE_USER rows above do
+    // not tell you that a single batch operation produced them, and BATCH_CREATE_USERS
+    // is an offered audit filter that would otherwise never match anything.
+    if (createdUsers.length > 0) {
+      createAuditLog({
+        userId: req.user.id, action: 'BATCH_CREATE_USERS', entityType: 'USER', entityId: null,
+        metadata: { requested: plants.length, created: createdUsers.length, failed: errors.length },
+      }).catch(() => {});
+    }
 
     sInvalidate('admin:dashboard', 'admin:users', 'admin:stores');
 

@@ -170,6 +170,19 @@ export async function login(req, res, next) {
 
     if (!user || !isPasswordValid) {
       if (user) await recordDbFailure(user.id);
+      // FAILED_LOGIN is offered as an audit filter, so it has to actually be written.
+      // userId is null when the employee ID does not exist — the attempted ID is kept
+      // (truncated) so repeated guesses against one account are visible in the log.
+      createAuditLog({
+        userId: user?.id ?? null,
+        action: 'FAILED_LOGIN',
+        entityType: 'USER',
+        entityId: user?.id ?? null,
+        metadata: {
+          employeeId: employeeId.trim().slice(0, 64),
+          reason: user ? 'wrong_password' : 'unknown_employee_id',
+        },
+      }).catch(() => {});
       throw new AppError('Incorrect Employee ID or password', 401);
     }
 

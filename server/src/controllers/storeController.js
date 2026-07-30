@@ -37,6 +37,11 @@ export async function getDashboard(req, res, next) {
           inventoryDate: true,
           uploadedAt: true,
           submissionDeadline: true,
+          deadlineExtensions: {
+            where: { storeId },
+            select: { newDeadline: true },
+            take: 1,
+          },
         },
       }),
       // All batches that still have PENDING records — surfaces past-date uploads
@@ -72,9 +77,12 @@ export async function getDashboard(req, res, next) {
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
 
+    // Report the deadline this store is actually held to, so the dashboard does not
+    // tell a store with a granted extension that the cycle is locked.
+    const { deadlineExtensions: _ext, ...batchFields } = latestBatch;
     const result = {
       store: req.user.store,
-      batch: latestBatch,
+      batch: { ...batchFields, submissionDeadline: effectiveDeadline(latestBatch) },
       stats: stats[0] ?? EMPTY_STATS,
       olderPendingBatches,
     };

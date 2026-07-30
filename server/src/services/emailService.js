@@ -72,10 +72,26 @@ function html(body) {
 </table></td></tr></table></body></html>`;
 }
 
+// Store names, user names and free-text remarks all end up inside these templates.
+// Without escaping, an apostrophe-free name like "R&D <Gombe>" mangles the layout and
+// anything resembling a tag would be delivered as live markup in a mail that looks
+// like it came from the platform. Subjects are plain text in the Brevo payload, so
+// only HTML bodies are escaped.
+function esc(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Every call site passes plain text as the value, so escaping here covers them all.
 function row(label, value, valueColor) {
   return `<tr>
-    <td style="padding:10px 14px;font-size:12px;color:#64748b;border-bottom:1px solid #f1f5f9;background:#f8fafc">${label}</td>
-    <td style="padding:10px 14px;font-weight:600;color:${valueColor || '#1e293b'};border-bottom:1px solid #f1f5f9">${value}</td>
+    <td style="padding:10px 14px;font-size:12px;color:#64748b;border-bottom:1px solid #f1f5f9;background:#f8fafc">${esc(label)}</td>
+    <td style="padding:10px 14px;font-weight:600;color:${valueColor || '#1e293b'};border-bottom:1px solid #f1f5f9">${esc(value)}</td>
   </tr>`;
 }
 
@@ -90,7 +106,7 @@ export function sendNewCycleEmailAM({ managers, inventoryDate, deadline }) {
     subject: `New Inventory Cycle — ${dateStr}`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">New Inventory Cycle Uploaded</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, a new inventory cycle has been published. Your store managers will begin their physical counts.</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${esc(m.name)}, a new inventory cycle has been published. Your store managers will begin their physical counts.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
         ${row('Inventory Date', dateStr)}
         ${row('Submission Deadline', dlStr, deadline ? '#dc2626' : undefined)}
@@ -112,7 +128,7 @@ export function sendDeadlineReminderEmail({ managers, inventoryDate, deadline })
     subject: `Reminder — Submit inventory by ${dlStr}`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#dc2626;margin:0 0 6px">Submission Deadline Approaching</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${m.name}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${esc(m.name)}, your inventory count for <strong>${dateStr}</strong> is due in <strong style="color:#dc2626">${hoursLeft}h</strong>.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
         ${row('Deadline', dlStr, '#dc2626')}
         ${row('Store', m.store?.storeName || '')}
@@ -130,7 +146,7 @@ export async function sendSubmissionEmail({ adminEmail, adminName, store, batchD
     subject: `${store.storeName} submitted inventory`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Store Submission Received</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${adminName}, <strong>${store.storeName}</strong> (${store.storeCode}) has submitted their inventory count.</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${esc(adminName)}, <strong>${esc(store.storeName)}</strong> (${esc(store.storeCode)}) has submitted their inventory count.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
         ${row('Store', `${store.storeCode} — ${store.storeName}`)}
         ${row('Cycle Date', batchDate)}
@@ -149,7 +165,7 @@ export async function sendManagerSubmissionConfirmation({ managerEmail, managerN
     subject: `Submission confirmed — ${store.storeName} · ${batchDate}`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Inventory Submission Confirmed</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${managerName}, your inventory count for <strong>${store.storeName}</strong> has been successfully submitted.</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${esc(managerName)}, your inventory count for <strong>${esc(store.storeName)}</strong> has been successfully submitted.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
         ${row('Store', `${store.storeCode} — ${store.storeName}`)}
         ${row('Cycle Date', batchDate)}
@@ -171,7 +187,7 @@ export async function sendAMApprovalEmail({ adminEmail, adminName, store, areaMa
     subject: `${store.storeName} approved by ${areaManagerName}`,
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:#1e293b;margin:0 0 6px">Area Manager Approved Submission</p>
-      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${adminName}, <strong>${areaManagerName}</strong> has reviewed and approved the submission from <strong>${store.storeName}</strong>.</p>
+      <p style="color:#64748b;font-size:14px;margin:0 0 22px">Hi ${esc(adminName)}, <strong>${esc(areaManagerName)}</strong> has reviewed and approved the submission from <strong>${esc(store.storeName)}</strong>.</p>
       <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
         ${row('Store', `${store.storeCode} — ${store.storeName}`)}
         ${row('Cycle Date', batchDate)}
@@ -188,7 +204,7 @@ export async function sendAMApprovalEmail({ adminEmail, adminName, store, areaMa
 export async function sendEscalationEmail({ to, toName, tier, inventoryDate, pendingStores, hoursOverdue }) {
   if (!isConfigured()) return;
   const storeList = pendingStores
-    .map(s => `<li style="padding:4px 0;font-size:13px;color:#1e293b">${s.storeCode} — ${s.storeName}</li>`)
+    .map(s => `<li style="padding:4px 0;font-size:13px;color:#1e293b">${esc(s.storeCode)} — ${esc(s.storeName)}</li>`)
     .join('');
   const urgency  = tier === 2 ? '🚨 URGENT — ' : '';
   const audience = tier === 2 ? 'Admin Action Required' : 'Area Manager Alert';
@@ -198,8 +214,8 @@ export async function sendEscalationEmail({ to, toName, tier, inventoryDate, pen
     htmlContent: html(`
       <p style="font-size:17px;font-weight:800;color:${tier === 2 ? '#dc2626' : '#1e293b'};margin:0 0 6px">${audience}</p>
       <p style="color:#64748b;font-size:14px;margin:0 0 16px">
-        Hi ${toName}, the following store${pendingStores.length > 1 ? 's have' : ' has'} not submitted their inventory for
-        <strong>${inventoryDate}</strong> — now <strong>${hoursOverdue}h</strong> past the deadline.
+        Hi ${esc(toName)}, the following store${pendingStores.length > 1 ? 's have' : ' has'} not submitted their inventory for
+        <strong>${esc(inventoryDate)}</strong> — now <strong>${hoursOverdue}h</strong> past the deadline.
       </p>
       <ul style="margin:0 0 20px;padding-left:20px">${storeList}</ul>
       <p style="color:#64748b;font-size:13px;margin:0">
