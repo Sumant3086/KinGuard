@@ -29,7 +29,7 @@ KinMarché is an internal inventory reconciliation system built for multi-store 
 
 ### The one rule everything rests on
 
-**The uploaded book figure is read-only for every role, administrators included.** Shrinkage is defined as the gap between that figure and the physical count, so nobody in the chain — least of all the party being measured — can edit the number they are judged against. A wrong book figure is corrected by re-uploading the cycle, which leaves a batch record and an audit entry behind; it is never quietly moved. Where this is enforced in code is documented in [Security](docs/developer/security.md) and [Database Schema](docs/developer/database-schema.md).
+**Once a count is final, the figure it is measured against cannot be moved by the people being measured.** Shrinkage is the gap between the book figure and the physical count, so both freeze at the same instant: the store's book stock and its count lock together at submission, and no record can be submitted with either one blank. An Area Manager can never edit book stock. An administrator can, through the Override screen — that path exists because the upload deliberately allows the book stock column to be left blank for the store to fill in, so a wrong baseline is something a store can introduce and re-uploading the whole cycle to fix one figure is no remedy. Every such correction is written to the audit log with its before and after values. Where this is enforced in code, and what the store's open-window write access costs, is documented in [Security](docs/developer/security.md) and [Database Schema](docs/developer/database-schema.md).
 
 The interface is available in English and French, and the choice is remembered per user.
 

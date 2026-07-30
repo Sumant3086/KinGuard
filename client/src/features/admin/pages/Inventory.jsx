@@ -10,6 +10,7 @@ import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate, fmtISO } from '../../../shared/utils/dateUtils';
 import { CATEGORY_NAMES } from '../../../shared/utils/shrinkageCategories';
+import { fmtQty } from '../../../shared/utils/quantity';
 
 const EmptyIcon = (
   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -71,7 +72,7 @@ export default function Inventory() {
 
   // Override modal
   const [overrideRecord, setOverrideRecord] = useState(null);
-  const [overrideForm, setOverrideForm]     = useState({ physicalQuantity: '', remarks: '', shrinkageCategory: '', status: '' });
+  const [overrideForm, setOverrideForm]     = useState({ physicalQuantity: '', systemQuantity: '', remarks: '', shrinkageCategory: '', status: '' });
   const [overriding, setOverriding]         = useState(false);
   const [overrideError, setOverrideError]   = useState('');
 
@@ -141,6 +142,7 @@ export default function Inventory() {
     setOverrideRecord(record);
     setOverrideForm({
       physicalQuantity:  record.physicalQuantity != null ? String(record.physicalQuantity) : '',
+      systemQuantity:    record.systemQuantity   != null ? String(record.systemQuantity)   : '',
       remarks:           record.remarks || '',
       shrinkageCategory: record.shrinkageCategory || '',
       status:            record.status,
@@ -155,6 +157,7 @@ export default function Inventory() {
     try {
       const updated = await adminApi.overrideRecord(overrideRecord.id, {
         physicalQuantity:  overrideForm.physicalQuantity !== '' ? parseFloat(overrideForm.physicalQuantity) : null,
+        systemQuantity:    overrideForm.systemQuantity   !== '' ? parseFloat(overrideForm.systemQuantity)   : null,
         remarks:           overrideForm.remarks || null,
         shrinkageCategory: overrideForm.shrinkageCategory || null,
         status:            overrideForm.status,
@@ -318,8 +321,8 @@ export default function Inventory() {
                   <div className="inv-card-material">{record.materialCode}</div>
                   <div className="inv-card-desc">{record.materialName}</div>
                   <div className="inv-card-qty-row">
-                    <span>Sys: <strong>{record.systemQuantity}</strong></span>
-                    <span>Phys: <strong>{record.physicalQuantity ?? '—'}</strong></span>
+                    <span>Sys: <strong>{fmtQty(record.systemQuantity)}</strong></span>
+                    <span>Phys: <strong>{fmtQty(record.physicalQuantity)}</strong></span>
                     {record.difference !== null ? (
                       <span className={record.difference === 0 ? 'badge badge-matched' : record.difference < 0 ? 'badge badge-shortage' : 'badge badge-excess'}>
                         {record.difference > 0 ? '+' : ''}{record.difference}
@@ -381,8 +384,8 @@ export default function Inventory() {
                       <td style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--vi-light)' }}>{record.store.storeCode}</td>
                       <td style={{ fontWeight: 600 }}>{record.materialCode}</td>
                       <td style={{ color: 'var(--t3)', fontSize: 12 }}>{record.materialName}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--t2)' }}>{record.systemQuantity}</td>
-                      <td style={{ textAlign: 'right' }}>{record.physicalQuantity ?? '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--t2)' }}>{fmtQty(record.systemQuantity)}</td>
+                      <td style={{ textAlign: 'right' }}>{fmtQty(record.physicalQuantity)}</td>
                       <td>
                         {record.difference !== null ? (
                           <span className={record.difference === 0 ? 'badge badge-matched' : record.difference < 0 ? 'badge badge-shortage' : 'badge badge-excess'}>
@@ -469,8 +472,8 @@ export default function Inventory() {
               <strong style={{ color: 'var(--t1)' }}>{overrideRecord.materialCode}</strong> — {overrideRecord.materialName}
               <br />
               Store: <strong style={{ color: 'var(--vi-light)' }}>{overrideRecord.store.storeCode}</strong>
-              {' · '}System Stock: <strong>{overrideRecord.systemQuantity}</strong>
-              {' · '}Current Physical Stock: <strong>{overrideRecord.physicalQuantity ?? '—'}</strong>
+              {' · '}System Stock: <strong>{fmtQty(overrideRecord.systemQuantity)}</strong>
+              {' · '}Current Physical Stock: <strong>{fmtQty(overrideRecord.physicalQuantity)}</strong>
             </div>
 
             {overrideError && <div className="alert alert-error" style={{ marginBottom: 14, fontSize: 13 }}>{overrideError}</div>}
@@ -478,9 +481,15 @@ export default function Inventory() {
             <form onSubmit={handleOverrideSubmit}>
               <div className="form-row">
                 <div className="form-group">
+                  <label htmlFor="ov-sys">System Stock (override)</label>
+                  <input id="ov-sys" type="number" step="0.0001" min="0" value={overrideForm.systemQuantity} onChange={e => setOverrideForm(f => ({ ...f, systemQuantity: e.target.value }))} placeholder="Leave blank to clear" disabled={overriding} />
+                </div>
+                <div className="form-group">
                   <label htmlFor="ov-qty">Physical Stock (override)</label>
                   <input id="ov-qty" type="number" step="0.0001" value={overrideForm.physicalQuantity} onChange={e => setOverrideForm(f => ({ ...f, physicalQuantity: e.target.value }))} placeholder="Leave blank to clear" disabled={overriding} />
                 </div>
+              </div>
+              <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="ov-status">Status</label>
                   <select id="ov-status" value={overrideForm.status} onChange={e => setOverrideForm(f => ({ ...f, status: e.target.value }))} disabled={overriding}>

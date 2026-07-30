@@ -13,7 +13,9 @@ As an administrator you have full visibility across the entire store network. Yo
 
 You do not enter stock counts — that is the store manager's responsibility.
 
-One limit applies to you as much as to everyone else: **book stock is read-only.** The system quantity that arrives in your uploaded ERP file cannot be edited afterwards by any role, including yours and including the Override screen. The only way to change it is to re-upload a corrected cycle. This is deliberate — a shrinkage figure is only evidence if the baseline it is measured against cannot be moved after the fact.
+**Book stock and the blank column.** The System Stock column in your uploaded file may be left empty — the downloadable template ships that way. An empty cell is stored as blank, not as 0, and the store manager fills it in alongside their physical count. A cell containing an explicit `0` is kept as a real figure of zero.
+
+Once a store submits, the system quantity locks for that store along with everything else, so the baseline a shrinkage figure is measured against cannot be moved after the fact by the party being audited. Before submission it is editable by the store; at any time it is editable by you through the Override screen.
 
 ## Signing In
 
@@ -71,10 +73,12 @@ Export your inventory file from your ERP (SAP, Sage, Oracle, etc.). The file mus
 | Store identifier | Plant, Plant Code, Store Code, Store, StoreCode, store_code | Yes |
 | Item code | Material, Material Code, MaterialCode, SKU, material_code | Yes |
 | Item description | Material Description, Material Name, Description, material_name | Yes |
-| Book stock quantity | System Stock, System Quantity, SYS, QTY, system_quantity | No — blank means 0 |
+| Book stock quantity | System Stock, System Quantity, SYS, QTY, system_quantity | No — blank stays blank for the store to fill in |
 | Opening remark | Remarks, Remark, Note | No |
 
 Upper-case and lower-case variants of these headers are all recognised.
+
+**Blank book stock.** Leaving the System Stock column empty — or omitting it entirely — is supported and is what the downloadable template does. Those rows arrive at the store with the figure shown as a dash rather than 0, and the store manager enters it next to their physical count. A cell containing `0` is treated as a real figure of zero, not as a blank, so you can still state "the book says none" when that is what you mean.
 
 Click **Download Template** on the Upload page for a correctly formatted example.
 
@@ -287,12 +291,14 @@ Clicking an alert navigates to the relevant page.
 1. Go to **Admin -> Inventory**
 2. Find the record using the filters
 3. Click **Override** on that row
-4. Modify the physical stock quantity, category, issue detail, or status
+4. Modify the system stock, the physical stock quantity, the category, the issue detail, or the status
 5. Click **Apply Override**
 
-You can override the physical count, the shrinkage category, the issue detail, and the status. You **cannot** override book stock — there is no path to it from this screen or any other, by design.
+You can override the book stock, the physical count, the shrinkage category, the issue detail, and the status. Book stock is correctable here because the upload may leave that column blank for the store to supply, which means a wrong baseline is now something a store can introduce — without this you would have to re-upload the entire cycle to fix one figure. Correcting it here recalculates that record's variance against the new baseline.
 
-All overrides are logged in the Activity Log with before and after values against your name. The variance is always recalculated on the server from the new count; it is never a figure you type.
+You cannot mark a record as **Submitted** while either its book stock or its physical count is still blank: a submitted record with a blank on either side has a variance that can never be computed, and every downstream discrepancy check would read it as a clean match.
+
+All overrides are logged in the Activity Log with before and after values against your name, book stock included. The variance is always recalculated on the server; it is never a figure you type.
 
 Use overrides sparingly. They are for correcting a single unambiguous data-entry error after the fact. If a store's numbers are wrong in substance, use **Unlock Store** so the store recounts and the corrected figures carry their name rather than yours.
 

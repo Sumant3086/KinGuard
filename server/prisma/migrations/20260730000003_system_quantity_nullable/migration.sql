@@ -1,0 +1,12 @@
+-- Allow InventoryRecord.systemQuantity to be blank.
+--
+-- An admin can now upload a reconciliation file with the system quantity column left
+-- empty, so the store manager supplies the figure. Blank and zero are different facts:
+-- blank means "no figure supplied yet", zero means "the system says this store holds
+-- none of this item". Storing an empty cell as 0 conflated the two and showed the store
+-- a confident 0 for a number nobody had actually provided.
+--
+-- Rows that already hold 0 are deliberately left alone. Once written, a 0 is
+-- indistinguishable from a genuine zero, and rewriting historical rows would shift the
+-- difference and shrinkage figures on cycles that are already submitted and approved.
+ALTER TABLE "InventoryRecord" ALTER COLUMN "systemQuantity" DROP NOT NULL;

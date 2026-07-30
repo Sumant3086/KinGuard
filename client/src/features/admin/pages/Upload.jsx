@@ -7,6 +7,7 @@ import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDateTZ } from '../../../shared/utils/dateUtils';
+import { fmtQty } from '../../../shared/utils/quantity';
 
 const KINSHASA_TZ = 'Africa/Kinshasa';
 
@@ -278,7 +279,8 @@ export default function Upload() {
                     <td>{row.storeName}</td>
                     <td style={{ fontFamily: 'monospace' }}>{row.materialCode}</td>
                     <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.materialName}</td>
-                    <td style={{ textAlign: 'right' }}>{row.systemQuantity}</td>
+                    {/* Blank when the column was left empty — the store fills it in. */}
+                    <td style={{ textAlign: 'right' }}>{fmtQty(row.systemQuantity)}</td>
                     <td><span className={`badge badge-${row.status}`}>{row.status}</span></td>
                     <td style={{ color: 'var(--t3)' }}>{row.message !== 'OK' ? row.message : ''}</td>
                   </tr>

@@ -136,7 +136,7 @@ To provision accounts for plants that already exist but have no user, use the *p
 
 1. Go to **Admin → Upload**
 2. Click **↓ Download Template** to get a correctly formatted example
-3. Fill in your inventory data — Plant Code, Material Code, Material Description, System Stock. Headers are matched by name in any order and several aliases are accepted for each (see the admin guide for the full list); System Stock is optional and defaults to 0
+3. Fill in your inventory data — Plant Code, Material Code, Material Description, System Stock. Headers are matched by name in any order and several aliases are accepted for each (see the admin guide for the full list); System Stock is optional and a blank cell stays blank for the store manager to fill in, while an explicit `0` is kept as a real figure of zero
 4. Set the **Inventory Date** and optionally a **Submission Deadline**
 5. Click **Validate & Preview** to see a row-by-row validation summary
 6. Click **Confirm & Publish**

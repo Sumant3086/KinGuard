@@ -12,6 +12,7 @@ import { invalidateUserCache } from '../middleware/auth.js';
 import { validatePassword } from '../controllers/authController.js';
 import { buildInventoryWorkbook, sanitizeCell } from '../utils/excelExport.js';
 import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
+import { computeDifference } from '../utils/inventoryMath.js';
 
 // Hard cap on rows returned by report/export endpoints.
 const EXPORT_ROW_LIMIT = 10_000;
@@ -885,11 +886,13 @@ export async function uploadInventory(req, res, next) {
           continue;
         }
 
-        // System quantity is optional — default to 0 when not in the file
-        const qty = (rawQty !== null && rawQty !== undefined && rawQty !== '')
-          ? parseFloat(rawQty)
-          : 0;
-        if (isNaN(qty) || qty < 0) {
+        // System quantity is optional. A blank cell stays blank (null) rather than
+        // becoming 0, so the store manager is asked to supply the figure instead of
+        // being shown a confident zero nobody entered. An explicit 0 in the file is a
+        // real figure and is kept as 0.
+        const qtyProvided = rawQty !== null && rawQty !== undefined && String(rawQty).trim() !== '';
+        const qty = qtyProvided ? parseFloat(rawQty) : null;
+        if (qtyProvided && (isNaN(qty) || qty < 0)) {
           errors.push({ row: rowNum, error: 'Invalid System Quantity' });
           continue;
         }
@@ -1084,8 +1087,10 @@ export async function previewUpload(req, res, next) {
         errors.push(`Material Code too long (max ${MAX_MATERIAL_CODE_LEN} chars)`);
       }
 
-      let systemQty = 0;
-      if (rawQty !== null && rawQty !== undefined && rawQty !== '') {
+      // Blank stays blank in the preview too, so what the admin sees before committing
+      // matches what the upload will actually store.
+      let systemQty = null;
+      if (rawQty !== null && rawQty !== undefined && String(rawQty).trim() !== '') {
         const qty = parseFloat(rawQty);
         if (isNaN(qty)) {
           errors.push('Invalid System Quantity (not a number)');
@@ -2047,19 +2052,35 @@ export async function unlockStoreForBatch(req, res, next) {
 export async function overrideInventoryRecord(req, res, next) {
   try {
     const recordId = requireId(req.params.id, 'recordId');
-    const { physicalQuantity, remarks, shrinkageCategory, status } = req.body;
+    const { physicalQuantity, systemQuantity, remarks, shrinkageCategory, status } = req.body;
 
     const record = await prisma.inventoryRecord.findUnique({ where: { id: recordId } });
     if (!record) throw new AppError('Record not found', 404);
 
     const updateData = {};
 
+    // The system quantity is correctable here at any time, including after submission.
+    // An upload may leave the column blank for the store to supply, so a wrong baseline
+    // is now something a store can introduce — the admin needs a way to fix it without
+    // re-uploading the whole cycle. Every override is written to the audit trail.
+    let effectiveSysQty = record.systemQuantity;
+    if (systemQuantity !== undefined) {
+      const sys = systemQuantity !== null && systemQuantity !== '' ? parseFloat(systemQuantity) : null;
+      if (sys !== null && isNaN(sys)) throw new AppError('Invalid system quantity', 400);
+      if (sys !== null && sys < 0) throw new AppError('System quantity cannot be negative', 400);
+      updateData.systemQuantity = sys;
+      effectiveSysQty = sys;
+    }
+
     if (physicalQuantity !== undefined) {
       const qty = physicalQuantity !== null && physicalQuantity !== '' ? parseFloat(physicalQuantity) : null;
       if (qty !== null && isNaN(qty)) throw new AppError('Invalid quantity', 400);
       if (qty !== null && qty < 0) throw new AppError('Physical quantity cannot be negative', 400);
       updateData.physicalQuantity = qty;
-      updateData.difference = qty !== null ? parseFloat((qty - record.systemQuantity).toFixed(4)) : null;
+      updateData.difference = computeDifference(qty, effectiveSysQty);
+    } else if (systemQuantity !== undefined) {
+      // Baseline moved on its own — the variance has to follow it.
+      updateData.difference = computeDifference(record.physicalQuantity, effectiveSysQty);
     }
 
     if (remarks !== undefined) updateData.remarks = remarks || null;
@@ -2077,6 +2098,12 @@ export async function overrideInventoryRecord(req, res, next) {
           : record.physicalQuantity;
         if (finalPhysQty === null || finalPhysQty === undefined) {
           throw new AppError('Cannot mark as submitted without a physical stock quantity', 400);
+        }
+        // Same reason the store's own submit is blocked: a submitted record with a blank
+        // baseline has a variance that can never be computed, and the discrepancy checks
+        // downstream all read `difference`, so it would pass through as if it matched.
+        if (effectiveSysQty === null || effectiveSysQty === undefined) {
+          throw new AppError('Cannot mark as submitted without a system stock quantity', 400);
         }
         updateData.submittedBy = req.user.id;
         updateData.submittedAt = new Date();
@@ -2105,6 +2132,8 @@ export async function overrideInventoryRecord(req, res, next) {
       metadata: {
         before: {
           physicalQuantity: record.physicalQuantity,
+          // The audited baseline is now correctable, so a change to it has to be traceable.
+          systemQuantity: record.systemQuantity,
           difference: record.difference,
           remarks: record.remarks,
           status: record.status,
@@ -2192,9 +2221,18 @@ export async function bulkOverrideInventory(req, res, next) {
       return res.json({ updated: result.count, message: `${result.count} record(s) reset to Pending` });
     }
 
-    // action === 'match': per-record update so each difference is computed against its own systemQuantity
+    // action === 'match': per-record update so each difference is computed against its own systemQuantity.
+    // A record whose systemQuantity is blank has nothing to match against — copying the
+    // blank across and calling the difference 0 would assert a perfect count for an item
+    // with no figures at all, so those are skipped and reported back instead.
+    const matchable = records.filter(r => r.systemQuantity !== null);
+    const skipped   = records.length - matchable.length;
+    if (matchable.length === 0) {
+      throw new AppError('These records have no system quantity to match against. Enter a system quantity first', 400);
+    }
+
     await prisma.$transaction(
-      records.map(r =>
+      matchable.map(r =>
         prisma.inventoryRecord.update({
           where: { id: r.id },
           data: {
@@ -2216,11 +2254,14 @@ export async function bulkOverrideInventory(req, res, next) {
       action: 'BULK_OVERRIDE_RECORDS',
       entityType: 'INVENTORY_RECORD',
       entityId: null,
-      metadata: { action: 'match', count: records.length, recordIds: parsedIds.slice(0, 50) },
+      metadata: { action: 'match', count: matchable.length, skipped, recordIds: parsedIds.slice(0, 50) },
     });
 
     bustCaches();
-    res.json({ updated: records.length, message: `${records.length} record(s) marked as matched` });
+    const message = skipped > 0
+      ? `${matchable.length} record(s) marked as matched, ${skipped} skipped for having no system quantity`
+      : `${matchable.length} record(s) marked as matched`;
+    res.json({ updated: matchable.length, skipped, message });
   } catch (error) { next(error); }
 }
 

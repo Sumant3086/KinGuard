@@ -4,13 +4,13 @@ All endpoints are mounted under `/api`. Any path under `/api` that does not matc
 
 `GET /api/health` is the one unauthenticated, unrate-limited endpoint: it returns `200 { "status": "ok", "timestamp": … }` once the database pool is up, or `503 { "status": "starting", … }` before then. It is sent with `Cache-Control: no-store` so load balancers never serve a stale healthy response.
 
-## The One Invariant
+## Book Stock and the Variance
 
-`systemQuantity` — the book stock figure — is written **only** by the admin upload pipeline. No endpoint in this API exposes a write path to it, for any role, including the admin override endpoints. The only way to change it is to upload a corrected cycle.
+`systemQuantity` — the book stock figure — is **nullable**. Null means "no figure supplied", `0` means "the book says none"; the two are never conflated, and a null is never rendered or exported as 0. Uploads may leave the column blank on purpose so the store supplies it.
 
-This is not an oversight to be tidied up later. Shrinkage is the difference between the uploaded figure and the counted figure; a system where the audited party, or their reviewer, can move the baseline measures nothing. If you are adding an endpoint that touches `InventoryRecord`, that field is not yours to write.
+Exactly three endpoints write it: the admin upload, `PATCH /api/store/inventory/:id` (only while the record is `PENDING`), and `PATCH /api/admin/inventory/:id/override`. The area manager edit and the bulk override do not. Neither submit path will move a record to `SUBMITTED` while the field is null, so a store's baseline freezes at the same moment as its count. If you are adding an endpoint that touches `InventoryRecord`, that field is still not yours to write — see `docs/developer/security.md` for what the guarantee is now and what it costs.
 
-`difference` is likewise never accepted from a client. It is recomputed server-side as `physicalQuantity - systemQuantity` on every write that changes a count.
+`difference` is never accepted from a client. It is recomputed server-side by `utils/inventoryMath.js#computeDifference` on every write that changes either quantity, and is `null` whenever either quantity is null — a blank variance means "not comparable", never "no discrepancy".
 
 ## Authentication
 
@@ -360,9 +360,13 @@ Query params: `storeId`, `batchId`, `status` (PENDING/SUBMITTED), `discrepancy` 
 
 #### `PATCH /api/admin/inventory/:id/override`
 
-Admin override of any record's physical count, remarks, category, or status. Logged with before and after values.
+Admin override of any record's system quantity, physical count, remarks, category, or status. Logged with before and after values, `before.systemQuantity` included.
 
-Notably **not** `systemQuantity`. There is no admin escape hatch for book stock; the field is absent from this endpoint's write set on purpose. Correcting book stock means re-uploading the cycle.
+Body (all optional): `{ "systemQuantity": 120, "physicalQuantity": 115, "remarks": "…", "shrinkageCategory": "Miscount", "status": "SUBMITTED" }`
+
+`systemQuantity` accepts `null` or `""` to clear it back to blank, or a number ≥ 0. This is the only correction path for book stock after a store has submitted, and it exists because uploads may leave the column blank for the store to fill in — a wrong baseline is therefore something a store can introduce, and re-uploading the whole cycle to fix one figure is not a workable remedy.
+
+Changing `systemQuantity` alone recomputes `difference` against the stored physical count; changing both in one call computes it from the two new values. Setting `status` to `SUBMITTED` returns `400` if either quantity would be left null.
 
 #### `POST /api/admin/inventory/bulk-override`
 
@@ -379,6 +383,8 @@ Apply the same override to many records at once.
 | `reset` | Clears the count, variance, category, remarks, and submission metadata, returning the rows to `PENDING` |
 
 Note that `match` copies each record's existing `systemQuantity` into `physicalQuantity` — it does not write `systemQuantity`, and the resulting variance is still computed, not asserted.
+
+Records whose `systemQuantity` is null are **skipped** by `match`: there is nothing to match against, and copying a blank across would assert a perfect count for an item with no figures at all. The response carries a `skipped` count alongside `updated`, and the message names it. If every selected record is blank, the call fails with `400` rather than reporting a no-op success.
 
 Capped at **500 records** per call (`400` above that). Returns `404` if none of the IDs match. Busts the admin, store, and area manager caches for every store touched, so all three roles see the change immediately.
 
@@ -533,9 +539,9 @@ Body (all optional): `{ "physicalQuantity": 10, "remarks": "Corrected after reco
 
 `physicalQuantity` accepts `null` or `""` to **clear** the count. Doing so sets both `physicalQuantity` and `difference` back to `null`, returning the row to an uncounted state — which is what an AM wants when a figure is clearly wrong but the correct one is unknown. Any other value must be a number ≥ 0.
 
-When `physicalQuantity` changes, `difference` is recalculated server-side as `physicalQuantity - systemQuantity` and rounded to 4 decimal places. It is never read from the request body.
+When `physicalQuantity` changes, `difference` is recalculated server-side and rounded to 4 decimal places. It is never read from the request body. If the record's `systemQuantity` is null, `difference` stays null however the count is edited.
 
-`systemQuantity` is not accepted. Sending it has no effect.
+`systemQuantity` is not accepted here. Sending it has no effect — the area manager reviews the baseline, they do not set it. Corrections go through the admin override.
 
 ### `POST /api/am/batches/:batchId/stores/:storeId/approve`
 
@@ -571,11 +577,13 @@ Response also includes `isLocked` (deadline passed), and `returnedByAM` (message
 
 ### `PATCH /api/store/inventory/:id`
 
-Update a single record's **physical count**, remarks, or shrinkage category.
+Update a single record's **physical count**, **system quantity**, remarks, or shrinkage category.
 
-`systemQuantity` is **not** writable here or anywhere else. It is the uploaded ground truth the store is being measured against, and a store manager who could edit it could erase their own shrinkage. Sending the field is ignored, not honoured. See *The One Invariant* at the top of this document.
+`systemQuantity` is writable here only while the record is still `PENDING`, because an upload may leave that column blank for the store to supply. It accepts `null` or `""` to clear it back to blank, or a number ≥ 0. Once the record is `SUBMITTED` this endpoint rejects every write, that field included, so the baseline freezes at the same instant as the count. Changes are recorded in the audit log as `previousSystemQuantity`.
 
-`difference` is recalculated on the server from the stored `systemQuantity` and the new count; it is never accepted from the client.
+Fields absent from the body are left untouched — sending only `physicalQuantity` never blanks the system quantity.
+
+`difference` is recalculated on the server whenever either quantity is sent, and is `null` while either is blank. It is never accepted from the client.
 
 Rejected with `403` if the record belongs to another store, and with `400` if the cycle's effective deadline has passed or the record has already been submitted. "Effective deadline" means the store's own extension where one exists, otherwise the cycle deadline.
 
@@ -583,6 +591,7 @@ Rejected with `403` if the record belongs to another store, and with `400` if th
 
 Submit all pending records for the active cycle. Validates that:
 - All records have a physical count
+- All records have a system quantity — a record submitted without one has a variance that can never be computed, so the discrepancy checks below would pass it through as a clean match
 - All discrepant records have a category selected
 - All discrepant records have an issue detail entered
 

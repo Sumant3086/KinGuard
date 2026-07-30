@@ -31,11 +31,15 @@ export async function getInventory(search, status, batchId, page = 1, pageSize =
   return data;
 }
 
-export async function updateRecord(id, physicalQuantity, remarks, shrinkageCategory) {
+// systemQuantity is editable too: the admin's upload may leave that column blank for
+// the store to supply. Fields the caller leaves undefined are dropped from the JSON
+// body, and the server only writes the ones it actually receives.
+export async function updateRecord(id, physicalQuantity, remarks, shrinkageCategory, systemQuantity) {
   const { data } = await client.patch(`/store/inventory/${id}`, {
     physicalQuantity,
     remarks,
     shrinkageCategory,
+    systemQuantity,
   });
   return data;
 }

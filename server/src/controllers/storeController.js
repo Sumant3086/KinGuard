@@ -5,6 +5,7 @@ import prisma from '../config/prisma.js';
 import { parseId, requireId, parsePage, parsePageSize } from '../utils/params.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
+import { computeDifference } from '../utils/inventoryMath.js';
 import { buildInventoryWorkbook } from '../utils/excelExport.js';
 
 const EMPTY_STATS = { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 };
@@ -164,6 +165,7 @@ export async function getInventory(req, res, next) {
           SELECT
             COUNT(*)::int AS "totalPending",
             COUNT(CASE WHEN "physicalQuantity" IS NULL THEN 1 END)::int AS "missingPhysical",
+            COUNT(CASE WHEN "systemQuantity" IS NULL THEN 1 END)::int AS "missingSystem",
             COUNT(CASE WHEN "difference" IS NOT NULL AND "difference" <> 0
                         AND ("shrinkageCategory" IS NULL OR "shrinkageCategory" = '')
                        THEN 1 END)::int AS "missingCategory",
@@ -236,21 +238,28 @@ export async function updateInventoryRecord(req, res, next) {
   try {
     const recordId = requireId(req.params.id, 'recordId');
     const storeId = req.user.storeId;
-    // systemQuantity is the ground truth from the admin's uploaded reconciliation
-    // file and is intentionally NOT store-editable — the store is the party being
-    // audited for shrinkage, so letting it rewrite the number its count is measured
-    // against would let it erase any discrepancy it introduced. Only admins can
-    // correct systemQuantity, and only via a fresh upload (there is no override path
-    // for it either — see adminController.overrideInventoryRecord).
-    const { physicalQuantity: rawPhys, remarks, shrinkageCategory } = req.body;
+    // systemQuantity is normally the ground truth from the admin's uploaded
+    // reconciliation file, but an upload may deliberately leave that column blank for
+    // the store to supply. The store may therefore set and correct it — but only while
+    // the record is still open. It locks on submission along with everything else, so
+    // the number a count is finally measured against cannot be moved after the fact by
+    // the party being audited. Admins can still correct it at any time via
+    // adminController.overrideInventoryRecord.
+    const { physicalQuantity: rawPhys, systemQuantity: rawSys, remarks, shrinkageCategory } = req.body;
 
     const physicalProvided = rawPhys !== undefined;
+    const systemProvided   = rawSys !== undefined;
 
     const physicalQuantity = physicalProvided ? ((rawPhys === '' || rawPhys === null) ? null : rawPhys) : undefined;
+    const systemQuantity   = systemProvided   ? ((rawSys  === '' || rawSys  === null) ? null : rawSys)  : undefined;
 
     if (physicalProvided && physicalQuantity !== null) {
       const qty = parseFloat(physicalQuantity);
       if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be zero or a positive number', 400);
+    }
+    if (systemProvided && systemQuantity !== null) {
+      const qty = parseFloat(systemQuantity);
+      if (isNaN(qty) || qty < 0) throw new AppError('System quantity must be zero or a positive number', 400);
     }
     if (shrinkageCategory !== undefined && shrinkageCategory && !VALID_SHRINKAGE_CATEGORIES.has(shrinkageCategory)) {
       throw new AppError('Invalid shrinkage category', 400);
@@ -288,23 +297,25 @@ export async function updateInventoryRecord(req, res, next) {
       }
     }
 
-    // When physicalQuantity is explicitly cleared (null), effectivePhysQty is null.
-    // Falling back to record.physicalQuantity only when the field was NOT sent at all.
+    // When a quantity is explicitly cleared (null), the effective value is null.
+    // Falling back to the stored value only when the field was NOT sent at all.
     const effectivePhysQty = physicalProvided
       ? (physicalQuantity !== null ? parseFloat(physicalQuantity) : null)
       : record.physicalQuantity;
+    const effectiveSysQty = systemProvided
+      ? (systemQuantity !== null ? parseFloat(systemQuantity) : null)
+      : record.systemQuantity;
 
-    let difference = undefined;
-    if (physicalProvided) {
-      difference = effectivePhysQty !== null && effectivePhysQty !== undefined
-        ? parseFloat((effectivePhysQty - record.systemQuantity).toFixed(4))
-        : null;
-    }
+    // Either side changing moves the difference, so recompute whenever either was sent.
+    const difference = (physicalProvided || systemProvided)
+      ? computeDifference(effectivePhysQty, effectiveSysQty)
+      : undefined;
 
     const result = await prisma.inventoryRecord.update({
       where: { id: recordId },
       data: {
         physicalQuantity: physicalProvided ? effectivePhysQty : undefined,
+        systemQuantity:   systemProvided   ? effectiveSysQty  : undefined,
         difference,
         remarks:           remarks           !== undefined ? remarks                       : undefined,
         shrinkageCategory: shrinkageCategory !== undefined ? (shrinkageCategory || null)   : undefined,
@@ -316,7 +327,14 @@ export async function updateInventoryRecord(req, res, next) {
       action: 'UPDATE_INVENTORY',
       entityType: 'INVENTORY_RECORD',
       entityId: recordId,
-      metadata: { systemQuantity: record.systemQuantity, physicalQuantity: effectivePhysQty, remarks },
+      // Record both the previous and new system quantity when the store changed it —
+      // this is the audited baseline, so a change to it has to be traceable.
+      metadata: {
+        systemQuantity: effectiveSysQty,
+        ...(systemProvided ? { previousSystemQuantity: record.systemQuantity } : {}),
+        physicalQuantity: effectivePhysQty,
+        remarks,
+      },
     }).catch(err => logger.error('Audit log failed', { action: 'UPDATE_INVENTORY', ...errorDetails(err) }));
 
     const duration = Date.now() - startTime;
@@ -374,6 +392,17 @@ export async function submitInventory(req, res, next) {
         if (missingPhysical.length > 0) {
           throw new AppError(
             `${missingPhysical.length} item${missingPhysical.length > 1 ? 's are' : ' is'} missing a physical count. Please enter a count for every item before submitting`,
+            400
+          );
+        }
+
+        // A blank system quantity means the upload left it for the store to supply.
+        // Submitting without it would lock in a record whose difference can never be
+        // computed, so the discrepancy checks below would silently pass it through.
+        const missingSystem = pending.filter(r => r.systemQuantity === null);
+        if (missingSystem.length > 0) {
+          throw new AppError(
+            `${missingSystem.length} item${missingSystem.length > 1 ? 's are' : ' is'} missing a system quantity. Please enter one for every item before submitting`,
             400
           );
         }

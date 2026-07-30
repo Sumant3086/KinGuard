@@ -10,7 +10,7 @@
 | How long does a login session last? | Up to **7 days** of inactivity before you must sign in again |
 | How many stores can I manage? | **No fixed limit** |
 | How many wrong passwords before lockout? | **10 wrong attempts** locks the account for 15 minutes |
-| Can anyone edit the book stock figure? | **No** — read-only for every role, including admins |
+| Can anyone edit the book stock figure? | The store, until they submit; an admin, at any time. Never the Area Manager |
 | What languages does it support? | **English and French**, switchable in the navigation bar |
 
 ## 1. File Uploads (Excel / CSV)
@@ -115,7 +115,7 @@ There is no cap on how many inventory items a cycle can contain. A single cycle 
 | Action | Can the manager do it? |
 |---|---|
 | Enter physical stock quantity | Yes |
-| Enter system stock quantity (book stock) | **No** — read-only, see below |
+| Enter system stock quantity (book stock) | Yes, until submission — see below |
 | Select shrinkage category | Yes (required if there is a discrepancy) |
 | Add issue details / remarks | Yes (required if there is a discrepancy) |
 | Change the variance figure | No — always calculated on the server |
@@ -124,21 +124,37 @@ There is no cap on how many inventory items a cycle can contain. A single cycle 
 | Delete a record | No |
 | See other stores' data | No |
 
-### System stock is read-only for everyone
+### System stock locks at submission
 
-The system stock (book stock) figure comes from the ERP file the administrator uploaded, and **no role can edit it** — not the store manager, not the Area Manager, not the administrator, and not through the admin Override screen. The only way to change it is to upload a corrected cycle.
+The system stock (book stock) figure normally comes from the ERP file the administrator uploaded. That column may be left blank — the downloadable template ships blank — in which case the store manager supplies the figure alongside their physical count.
 
-This is the single most important rule in the system. Shrinkage is the gap between the book figure and the counted figure; if the people being measured — or the people reviewing them — could move the book figure, the gap would prove nothing. Everything else in this document is a capacity limit. This one is a design guarantee.
+Because of that, the rule is about *when* rather than *who*:
+
+| Who | When they can change book stock |
+|---|---|
+| Store manager | While the cycle is still open for their store. It locks the moment they submit |
+| Area Manager | Never |
+| Administrator | At any time, through the Override screen. Recorded in the Activity Log with the before and after values |
+
+Shrinkage is the gap between the book figure and the counted figure, so the party being audited must not be able to move the book figure *after* their count is final. That is what the lock at submission protects. The administrator keeps a correction path because a blank column means a store can now introduce a wrong baseline, and re-uploading the whole cycle to fix one figure is not a workable remedy.
+
+Neither the store nor the administrator can mark a record as submitted while book stock is still blank: the variance would be permanently uncomputable, and every downstream discrepancy check would read the record as a clean match.
+
+### Blank is not zero
+
+An empty book stock cell means "no figure supplied" and is displayed as a dash. A cell containing `0` means "the book says none" and is displayed as 0. The two are stored differently and never confused. Records that already held a genuine 0 before this distinction existed were left exactly as they were.
 
 ### Quantities must be zero or positive
 
-Physical counts must be **0 or higher**. Negative numbers are not accepted (you cannot have −5 boxes of sardines on a shelf). The same applies to system quantities in an uploaded file: a negative or non-numeric value causes that row to be rejected in the preview.
+Physical counts must be **0 or higher**. Negative numbers are not accepted (you cannot have −5 boxes of sardines on a shelf). The same applies to system quantities, whether they come from an uploaded file or are typed in: a negative or non-numeric value is rejected — in the preview for an upload, and with an error message for a typed entry.
 
 ### Variance (difference) calculation
 
 The system always calculates: **Variance = Physical Count − System Stock**
 
-The calculation happens on the server every time a count is saved, by a store manager, an Area Manager, or an administrator. Nobody types a variance directly, and nobody can save one that does not follow from the two quantities.
+If either quantity is still blank, the variance is blank too — not 0. A dash in the variance column means "not enough figures to say", never "no discrepancy".
+
+The calculation happens on the server every time a quantity is saved, by a store manager, an Area Manager, or an administrator. Nobody types a variance directly, and nobody can save one that does not follow from the two quantities.
 
 ## 5. Reports & Exports
 
@@ -274,7 +290,7 @@ Your in-progress count for the row you're editing may fail to save until the con
 | Risk scores / year-over-year | Up to 12 cycles | Defaults to 6 |
 | Activity log on screen | 500 entries | 100 by default |
 | Activity log export | 5,000 entries | Excel download; 2,000 by default |
-| Book stock editing | Not possible | Any role — re-upload the cycle instead |
+| Book stock editing | Until the store submits | Store manager, own store. Admin can still correct it afterwards on the Override screen; the Area Manager never can |
 | Languages | English, French | Switchable per browser |
 
 *Last updated: July 2026 — KinMarché Loss & Prevention Platform*

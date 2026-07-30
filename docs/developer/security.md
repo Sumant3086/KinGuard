@@ -54,15 +54,23 @@ Every store manager query filters by `storeId: req.user.storeId` from the valida
 
 ## Data Integrity
 
-**Book stock is immutable after upload.** `InventoryRecord.systemQuantity` is written by exactly one code path — the admin upload pipeline — and by no other endpoint in the application. Not the store update, not the area manager edit, not the admin single or bulk override. Correcting it requires re-uploading the cycle.
+**Book stock is immutable to the audited party after submission.** `InventoryRecord.systemQuantity` has exactly three write paths: the admin upload pipeline, the store's own record update while that record is still `PENDING`, and `adminController.overrideInventoryRecord`. It is not writable by the area manager edit or by the bulk override.
 
-Treat this as a security control rather than a data-modelling preference. The product exists to quantify the gap between what the books say and what is on the shelf. A store manager who can edit book stock can make their own shrinkage disappear; an area manager who can edit it can do the same for a store they are meant to be policing; an admin who can edit it silently destroys the evidentiary value of every historical cycle. The absence of a write path is the control. Any change that adds one — including a well-intentioned "admin can fix typos" feature — removes it.
+The store write path exists because uploads may deliberately leave the column blank for the store to supply — that is what the downloadable template does. The property being defended is therefore temporal, not role-based:
 
-When reviewing a diff that touches `InventoryRecord`, check for `systemQuantity` in the write set of any handler. It should never appear outside the upload controller.
+> The party being audited cannot move the baseline *after* their count is final.
 
-**Server-side variance calculation** — the `difference` field is always calculated server-side as `physicalQuantity - systemQuantity`. The client cannot send a `difference` value and have it accepted. This holds for all three roles: the store's count entry, the area manager's correction, and both admin override paths all recompute it from the stored system quantity.
+`storeController.updateInventoryRecord` refuses any write, `systemQuantity` included, once the record's status is `SUBMITTED`, and both submit paths refuse to move a record to `SUBMITTED` while `systemQuantity` is null. Together those mean a store's baseline and its count freeze at the same instant, and the frozen record always has both figures.
 
-**Transactional submission** — `submitInventory` runs inside a Prisma `$transaction`. Before marking any record as SUBMITTED, it validates that all pending records have a physical quantity, all discrepant records have a shrinkage category from the canonical 9-category list, and all discrepant records have non-empty remarks. If any check fails, the transaction rolls back.
+Be clear about what this costs relative to the old absolute rule. While a cycle is open, a store manager can now enter a book figure that flatters their own count, and the audit log is what catches it — `UPDATE_INVENTORY` metadata carries `previousSystemQuantity` whenever the store changed it, and `OVERRIDE_RECORD` carries `before.systemQuantity`. Detection replaced prevention for the open window. That was a deliberate product decision, not an oversight; if you are tightening this later, the lever is to reject store writes to `systemQuantity` when the uploaded value was non-null, rather than to remove the field from the write set entirely.
+
+When reviewing a diff that touches `InventoryRecord`, check for `systemQuantity` in the write set of any handler. Outside those three paths it should not appear, and the two that are not the upload must keep both their status gate and their audit-log entry.
+
+**Server-side variance calculation** — the `difference` field is always calculated server-side by `utils/inventoryMath.js#computeDifference`, as `physicalQuantity - systemQuantity` when both are present and `null` when either is blank. The client cannot send a `difference` value and have it accepted. This holds for all roles: the store's count entry, the area manager's correction, and both admin override paths recompute it from the effective quantities.
+
+The null case matters for correctness, not just display: every discrepancy check in the system tests `difference !== null && difference !== 0`, so a record with a blank on either side would pass through as if it matched. That is why blank is blocked at submission rather than allowed through with a null variance.
+
+**Transactional submission** — `submitInventory` runs inside a Prisma `$transaction`. Before marking any record as SUBMITTED, it validates that all pending records have a physical quantity and a system quantity, all discrepant records have a shrinkage category from the canonical 9-category list, and all discrepant records have non-empty remarks. If any check fails, the transaction rolls back.
 
 **Duplicate protection** — `InventoryRecord` has a unique constraint on `(batchId, storeId, materialCode)`. Re-uploading the same file is idempotent via `createMany({ skipDuplicates: true })`.
 

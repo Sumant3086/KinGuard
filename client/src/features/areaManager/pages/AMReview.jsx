@@ -6,6 +6,7 @@ import { useToast } from '../../../shared/context/ToastContext';
 import * as amApi from '../../../shared/api/amApi';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 import { CATEGORY_NAMES } from '../../../shared/utils/shrinkageCategories';
+import { fmtQty, calcDifference } from '../../../shared/utils/quantity';
 
 const STATUS_LABEL  = { PENDING_REVIEW: 'Awaiting Review', APPROVED: 'Approved', RETURNED: 'Returned' };
 const STATUS_COLOR  = { PENDING_REVIEW: '#d97706', APPROVED: '#16a34a', RETURNED: '#dc2626' };
@@ -223,14 +224,14 @@ export default function AMReview() {
                           const qty    = edited.physicalQuantity !== undefined ? edited.physicalQuantity : r.physicalQuantity;
                           const cat    = edited.shrinkageCategory !== undefined ? edited.shrinkageCategory : r.shrinkageCategory;
                           const rem    = edited.remarks !== undefined ? edited.remarks : r.remarks;
-                          const diff   = qty !== null && qty !== undefined ? qty - r.systemQuantity : r.difference;
+                          const diff   = qty !== null && qty !== undefined ? calcDifference(qty, r.systemQuantity) : r.difference;
                           const hasDiff= diff !== null && diff !== 0;
                           const dirty  = !!editedRecs[r.id];
                           return (
                             <tr key={r.id} style={{ background: hasDiff && diff < 0 ? 'rgba(220,38,38,0.04)' : 'none' }}>
                               <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{r.materialCode}</td>
                               <td>{r.materialName}</td>
-                              <td style={{ textAlign: 'right' }}>{r.systemQuantity}</td>
+                              <td style={{ textAlign: 'right' }}>{fmtQty(r.systemQuantity)}</td>
                               <td style={{ textAlign: 'right' }}>
                                 {review?.status !== 'APPROVED' ? (
                                   <input type="number" inputMode="decimal" min="0" step="0.01"
@@ -279,7 +280,7 @@ export default function AMReview() {
                     const qty     = edited.physicalQuantity  !== undefined ? edited.physicalQuantity  : r.physicalQuantity;
                     const cat     = edited.shrinkageCategory !== undefined ? edited.shrinkageCategory : r.shrinkageCategory;
                     const rem     = edited.remarks           !== undefined ? edited.remarks           : r.remarks;
-                    const diff    = qty !== null && qty !== undefined ? qty - r.systemQuantity : r.difference;
+                    const diff    = qty !== null && qty !== undefined ? calcDifference(qty, r.systemQuantity) : r.difference;
                     const dirty   = !!editedRecs[r.id];
                     return (
                       <div key={r.id} className={`am-rec-card${diff !== null && diff < 0 ? ' am-rec-shortage' : ''}`}>
@@ -291,7 +292,7 @@ export default function AMReview() {
                         <div className="am-rec-metrics">
                           <div className="am-rec-metric">
                             <span className="am-rec-metric-label">System</span>
-                            <span className="am-rec-metric-val">{r.systemQuantity}</span>
+                            <span className="am-rec-metric-val">{fmtQty(r.systemQuantity)}</span>
                           </div>
                           <div className="am-rec-metric">
                             <span className="am-rec-metric-label">Physical</span>

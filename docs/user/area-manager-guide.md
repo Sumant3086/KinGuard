@@ -11,7 +11,7 @@ As an Area Manager you are responsible for the stores assigned to you. When stor
 3. Return submissions to the store manager if something looks wrong, with a clear written reason
 4. Escalate unusual patterns to your administrator
 
-You cannot see stores that are not assigned to you. You cannot create cycles or change deadlines — only administrators can do that. You also cannot change book stock: that figure comes from the uploaded ERP file and is read-only for every role, so the number a store is judged against can never be edited by anyone reviewing or being reviewed.
+You cannot see stores that are not assigned to you. You cannot create cycles or change deadlines — only administrators can do that. You also cannot change book stock. That figure comes from the uploaded ERP file, or from the store when the upload leaves the column blank for them to fill in, and it locks the moment the store submits — so by the time a submission reaches you, neither the store nor you can move the number they are judged against. Only an administrator can correct it after that, and the correction is recorded against their name.
 
 ## Signing In
 
@@ -69,7 +69,7 @@ You will see every item for this store with:
 |---|---|
 | Item Code | The unique code for this item |
 | Item Name | Description of the item |
-| Book Stock | What the system says should be there |
+| Book Stock | What the system says should be there. Read-only for you — if it is wrong, ask an administrator to correct it |
 | Physical Count | What the store manager counted |
 | Variance | Difference between counted and book stock (negative = shortage, positive = surplus) |
 | Category | The reason the manager gave for any discrepancy |
@@ -156,7 +156,7 @@ This can happen if the cycle is not yet complete (some items still pending). Ask
 No — once you approve, only the administrator can unlock the submission. Contact your administrator and explain the situation.
 
 **Can I correct the Book Stock if the ERP figure is obviously wrong?**
-No. Book stock is read-only for every role. Approve or return based on the count in front of you, note the problem in your remark, and tell your administrator — only a corrected re-upload of the cycle can change it.
+No — it is read-only for you, and it is already locked for the store by the time you see it. Approve or return based on the count in front of you, note the problem in your remark, and tell your administrator. They can correct the figure on the Override screen, and the change is recorded against their name.
 
 **A store disappeared from my list.**
 Your administrator changed the store assignments. Assignment is set as a complete list, not store by store, so a store can drop off if it was left out when the list was last saved. Ask your administrator to check your assigned stores.

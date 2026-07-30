@@ -208,6 +208,22 @@
 /* System stock — amber tint so user knows it's editable but different */
 .qty-input-sys { background:#fffbf0; border-color:rgba(217,119,6,0.30); }
 .qty-input-sys:focus { border-color:var(--amber); box-shadow:0 0 0 3px rgba(217,119,6,0.12); }
+/* A quantity the upload never supplied. Stronger than the amber tint because this one
+   is not just editable, it is missing — the row cannot be submitted until it is filled. */
+.qty-input-missing {
+  background: #fff5f5;
+  border-color: rgba(220,38,38,0.42);
+  animation: qty-missing-pulse 2.4s ease-in-out infinite;
+}
+.qty-input-missing::placeholder { color: rgba(220,38,38,0.55); font-weight: 700; }
+.qty-input-missing:focus { border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,0.13); animation:none; }
+@keyframes qty-missing-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.00); }
+  50%      { box-shadow: 0 0 0 3px rgba(220,38,38,0.10); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qty-input-missing { animation: none; }
+}
 .qty-input::-webkit-outer-spin-button,
 .qty-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .qty-input[type=number] { -moz-appearance:textfield; }

@@ -10,11 +10,12 @@ import * as storeApi from '../../../shared/api/storeApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate } from '../../../shared/utils/dateUtils';
 import { SHRINKAGE_CATEGORIES, CATEGORY_NAMES } from '../../../shared/utils/shrinkageCategories';
+import { fmtQty, calcDifference } from '../../../shared/utils/quantity';
 
 const ISSUE_REASONS = SHRINKAGE_CATEGORIES;
 const CATEGORIES    = CATEGORY_NAMES;
 
-const NO_GAPS = { totalPending: 0, missingPhysical: 0, missingCategory: 0, missingDetail: 0 };
+const NO_GAPS = { totalPending: 0, missingPhysical: 0, missingSystem: 0, missingCategory: 0, missingDetail: 0 };
 
 // Counts what still blocks a submission in a set of records. Mirrors the checks in
 // storeController.submitInventory so the client never green-lights a submit the
@@ -25,6 +26,9 @@ function computeGaps(records) {
   return {
     totalPending:    pending.length,
     missingPhysical: pending.filter(r => r.physicalQuantity === null).length,
+    // An upload may leave the system quantity blank for the store to supply; the
+    // server refuses to submit until every row has one.
+    missingSystem:   pending.filter(r => r.systemQuantity === null).length,
     missingCategory: discrepant.filter(r => !r.shrinkageCategory).length,
     missingDetail:   discrepant.filter(r => !r.remarks || r.remarks.trim() === '').length,
   };
@@ -196,6 +200,7 @@ export default function StoreInventory() {
         setOffPageGaps({
           totalPending:    Math.max(0, readiness.totalPending    - onPage.totalPending),
           missingPhysical: Math.max(0, readiness.missingPhysical - onPage.missingPhysical),
+          missingSystem:   Math.max(0, (readiness.missingSystem ?? 0) - onPage.missingSystem),
           missingCategory: Math.max(0, readiness.missingCategory - onPage.missingCategory),
           missingDetail:   Math.max(0, readiness.missingDetail   - onPage.missingDetail),
         });
@@ -260,7 +265,7 @@ export default function StoreInventory() {
     setErrorRecords(prev => { const m = new Map(prev); m.delete(recordId); return m; });
 
     try {
-      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.remarks, edits.shrinkageCategory);
+      const updated = await storeApi.updateRecord(recordId, edits.physicalQuantity, edits.remarks, edits.shrinkageCategory, edits.systemQuantity);
       setRecords(prev => prev.map(r => r.id === parseInt(recordId, 10) ? updated : r));
       setSavedRecords(prev => new Set(prev).add(recordId));
       setSavingRecords(prev => { const s = new Set(prev); s.delete(recordId); return s; });
@@ -288,17 +293,23 @@ export default function StoreInventory() {
     return record[field] ?? '';
   }
 
-  // Returns instant local diff from the typed physical count (no API wait).
-  // systemQuantity is never store-editable (see storeController.updateInventoryRecord),
-  // so it's always the server-stored value.
+  /** The value a quantity field currently holds, counting unsaved edits, as a number or null. */
+  function liveQty(record, field) {
+    const edited = editedRecords[record.id]?.[field];
+    const raw = edited !== undefined ? edited : record[field];
+    if (raw === '' || raw === null || raw === undefined) return null;
+    const n = parseFloat(raw);
+    return isNaN(n) ? null : n;
+  }
+
+  // Instant local diff from the typed values (no API wait). Both sides are editable
+  // here now — an upload may leave the system quantity blank for the store to fill —
+  // so either one changing moves the difference. It stays blank until both exist.
   function getInstantDiff(record) {
-    const edited = editedRecords[record.id];
-    const physRaw = edited?.physicalQuantity !== undefined ? edited.physicalQuantity : record.physicalQuantity;
-    const phys = parseFloat(physRaw);
-    if (!isNaN(phys) && physRaw !== '' && physRaw !== null) {
-      return parseFloat((phys - (record.systemQuantity ?? 0)).toFixed(4));
-    }
-    return record.difference;
+    const phys = liveQty(record, 'physicalQuantity');
+    const sys  = liveQty(record, 'systemQuantity');
+    if (phys === null || sys === null) return null;
+    return calcDifference(phys, sys);
   }
 
   function getSaveState(recordId) {
@@ -345,6 +356,12 @@ export default function StoreInventory() {
     const missingPhysical = onPage.missingPhysical + offPageGaps.missingPhysical;
     if (missingPhysical > 0) {
       toast.error(`${missingPhysical} item(s) still need a physical count.${elsewhere(onPage.missingPhysical)}`);
+      return;
+    }
+
+    const missingSystem = onPage.missingSystem + offPageGaps.missingSystem;
+    if (missingSystem > 0) {
+      toast.error(`${missingSystem} item(s) still need a system quantity.${elsewhere(onPage.missingSystem)}`);
       return;
     }
     const missingCategory = onPage.missingCategory + offPageGaps.missingCategory;
@@ -460,8 +477,8 @@ export default function StoreInventory() {
                     {nonZero.map(r => (
                       <tr key={r.id}>
                         <td style={{ fontWeight: 600 }}>{r.materialCode}</td>
-                        <td>{r.systemQuantity}</td>
-                        <td>{r.physicalQuantity}</td>
+                        <td>{fmtQty(r.systemQuantity)}</td>
+                        <td>{fmtQty(r.physicalQuantity)}</td>
                         <td>
                           <span className={r.difference < 0 ? 'badge badge-shortage' : 'badge badge-excess'}>
                             {r.difference > 0 ? '+' : ''}{r.difference}
@@ -707,14 +724,16 @@ export default function StoreInventory() {
 
                   {/* ── Stock metrics row ── */}
                   <div className="sic-metrics">
-                    <div className="sic-metric">
-                      <div className="sic-metric-label">System Stock</div>
-                      <div className="sic-metric-val">{record.systemQuantity ?? '—'}</div>
-                    </div>
+                    {!isEditable && (
+                      <div className="sic-metric">
+                        <div className="sic-metric-label">System Stock</div>
+                        <div className="sic-metric-val">{fmtQty(record.systemQuantity)}</div>
+                      </div>
+                    )}
                     {!isEditable && (
                       <div className="sic-metric">
                         <div className="sic-metric-label">Your Count</div>
-                        <div className="sic-metric-val sic-metric-count">{record.physicalQuantity ?? '—'}</div>
+                        <div className="sic-metric-val sic-metric-count">{fmtQty(record.physicalQuantity)}</div>
                       </div>
                     )}
                     {instantDiff !== null && (
@@ -728,6 +747,28 @@ export default function StoreInventory() {
                       </div>
                     )}
                   </div>
+
+                  {/* ── System Stock input ──
+                      Normally supplied by the admin's upload, but that column is often left
+                      blank for the store to fill in, so it stays editable until submission. */}
+                  {isEditable && (
+                    <div className="sic-field">
+                      <label className="sic-field-label">
+                        System Stock
+                        {record.systemQuantity === null && <span className="sic-req"> — not supplied, please fill</span>}
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        value={getFieldValue(record, 'systemQuantity')}
+                        onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
+                        placeholder="Enter system stock…"
+                        className={`qty-input sic-count-input qty-input-sys${record.systemQuantity === null ? ' qty-input-missing' : ''}`}
+                      />
+                    </div>
+                  )}
 
                   {/* ── Your Count input ── */}
                   {isEditable && (
@@ -918,9 +959,25 @@ export default function StoreInventory() {
                         <span className="mat-desc">{record.materialName}</span>
                       </td>
 
-                      {/* System Stock — read-only; ground truth from the admin's upload */}
+                      {/* System Stock — normally from the admin's upload, but editable while
+                          the record is open because the upload may leave it blank for the
+                          store to supply. Locks on submission like everything else. */}
                       <td style={{ textAlign: 'right' }}>
-                        <span className="qty-sys">{record.systemQuantity}</span>
+                        {isEditable ? (
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.01"
+                            min="0"
+                            value={getFieldValue(record, 'systemQuantity')}
+                            onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
+                            placeholder="—"
+                            aria-label={`System stock for ${record.materialCode}`}
+                            className={`qty-input qty-input-sys${record.systemQuantity === null ? ' qty-input-missing' : ''}`}
+                          />
+                        ) : (
+                          <span className="qty-sys">{fmtQty(record.systemQuantity)}</span>
+                        )}
                       </td>
 
                       {/* Physical Stock (editable when pending) */}
@@ -938,7 +995,7 @@ export default function StoreInventory() {
                             className="qty-input"
                           />
                         ) : (
-                          <span className="qty-val">{record.physicalQuantity ?? '—'}</span>
+                          <span className="qty-val">{fmtQty(record.physicalQuantity)}</span>
                         )}
                       </td>
 

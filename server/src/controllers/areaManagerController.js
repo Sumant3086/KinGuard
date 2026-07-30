@@ -5,6 +5,7 @@ import { createAuditLog } from '../services/auditService.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { parseId, requireId } from '../utils/params.js';
 import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
+import { computeDifference } from '../utils/inventoryMath.js';
 
 const AM_STORES_TTL = 60_000;
 
@@ -382,7 +383,7 @@ export async function updateRecord(req, res, next) {
         const qty = parseFloat(physicalQuantity);
         if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be zero or a positive number', 400);
         updateData.physicalQuantity = qty;
-        updateData.difference = parseFloat((qty - record.systemQuantity).toFixed(4));
+        updateData.difference = computeDifference(qty, record.systemQuantity);
       }
     }
     if (remarks !== undefined)           updateData.remarks = remarks || null;

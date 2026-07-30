@@ -7,6 +7,7 @@ import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
 import { fmtDate, fmtISO } from '../../../shared/utils/dateUtils';
+import { fmtQty } from '../../../shared/utils/quantity';
 
 const ReportIcon = (
   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -170,8 +171,8 @@ export default function Reports() {
                   <div className="report-card-material">{record.materialCode}</div>
                   <div className="report-card-desc">{record.materialName}</div>
                   <div className="report-card-qty-row">
-                    <span>Sys: <strong>{record.systemQuantity}</strong></span>
-                    <span>Phys: <strong>{record.physicalQuantity ?? '—'}</strong></span>
+                    <span>Sys: <strong>{fmtQty(record.systemQuantity)}</strong></span>
+                    <span>Phys: <strong>{fmtQty(record.physicalQuantity)}</strong></span>
                     {record.difference !== null && (
                       <span className={`badge ${record.difference === 0 ? 'badge-matched' : record.difference < 0 ? 'badge-shortage' : 'badge-excess'}`}>
                         {record.difference > 0 ? '+' : ''}{record.difference}
@@ -207,8 +208,8 @@ export default function Reports() {
                       <td style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{fmtDate(record.batch.inventoryDate)}</td>
                       <td style={{ fontWeight: 600 }}>{record.materialCode}</td>
                       <td style={{ color: 'var(--t3)', fontSize: 12 }}>{record.materialName}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--t2)', fontVariantNumeric: 'tabular-nums' }}>{record.systemQuantity}</td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{record.physicalQuantity ?? '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--t2)', fontVariantNumeric: 'tabular-nums' }}>{fmtQty(record.systemQuantity)}</td>
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtQty(record.physicalQuantity)}</td>
                       <td>
                         {record.difference !== null ? (
                           <span className={record.difference === 0 ? 'badge badge-matched' : record.difference < 0 ? 'badge badge-shortage' : 'badge badge-excess'}>

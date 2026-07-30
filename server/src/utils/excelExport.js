@@ -65,7 +65,7 @@ export function buildInventoryWorkbook(records, {
       storeName:    sanitizeCell(r.store.storeName),
       materialCode: sanitizeCell(r.materialCode),
       materialName: sanitizeCell(r.materialName),
-      sys:          r.systemQuantity,
+      sys:          r.systemQuantity ?? '',
       sold:         r.physicalQuantity ?? '',
       diff:         r.difference ?? '',
       category:     r.shrinkageCategory || '',

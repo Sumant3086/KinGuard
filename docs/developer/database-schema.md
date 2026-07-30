@@ -100,9 +100,9 @@ One row per store × item within a cycle. The core table.
 | storeId | Int | FK → Store |
 | materialCode | String | item code — labeled "Item Code" in the UI |
 | materialName | String | item description — labeled "Item Name" in the UI |
-| systemQuantity | Float | book stock, from the uploaded file — labeled "Book Stock". **Written only by the upload pipeline; immutable thereafter for every role.** See below |
+| systemQuantity | Float? | book stock — labeled "Book Stock". Nullable: an upload may leave the column blank for the store to supply, and null ("no figure") is never conflated with 0 ("the book says none"). Locks at submission. See below |
 | physicalQuantity | Float? | nullable until the store manager counts it — labeled "Your Count". Set back to null by an AM return, an admin unlock, or a bulk reset |
-| difference | Float? | `physicalQuantity - systemQuantity`, computed server-side to 4 decimal places, never client-writable — labeled "Variance". Null whenever the count is null |
+| difference | Float? | `physicalQuantity - systemQuantity`, computed server-side to 4 decimal places, never client-writable — labeled "Variance". Null whenever **either** quantity is null |
 | remarks | String? | issue detail entered by the store manager |
 | shrinkageCategory | String? | one of the 9 canonical categories, required when `difference != 0` |
 | isRepeat | Boolean | default false — true if this store/material pair was also short in a recent prior cycle. Cleared when an admin resets the record back to PENDING |
@@ -128,11 +128,15 @@ Which side of that subtraction is writable is the load-bearing decision in the s
 
 | Column | Writable by |
 |---|---|
-| `systemQuantity` | The admin upload pipeline, and nothing else |
+| `systemQuantity` | The admin upload pipeline, the store manager (own store, **before** submit), and the admin single override. Not the area manager, not the bulk override |
 | `physicalQuantity` | Store manager (own store, before submit), area manager (assigned stores, after submit), admin override |
 | `difference` | Nobody — always recomputed from the two columns above |
 
-`systemQuantity` has no update path in any controller. This is not an omission to be filled in: shrinkage is defined as the gap between the uploaded figure and the counted one, so a schema where the counted party can move the uploaded figure records nothing worth auditing. Correcting a wrong book figure means re-uploading the cycle, which leaves a batch record and an audit entry behind. If a code review turns up `systemQuantity` in a handler's write set outside the upload controller, that is a defect regardless of how the feature was framed.
+The store write path exists because the upload template ships with the Book Stock column blank, so a store frequently has to supply the figure itself. What protects the audit is the timing, not the role: `storeController.updateInventoryRecord` rejects every write once the record is `SUBMITTED`, and neither submit path will move a record to `SUBMITTED` while `systemQuantity` is null — so the baseline and the count freeze together, and a frozen record always has both. Changes are recorded in the audit log (`previousSystemQuantity` for the store path, `before.systemQuantity` for the override).
+
+While the record is open, this does mean a store manager can enter a baseline that flatters their own count. That is a deliberate trade for supporting blank uploads, and the audit trail rather than the schema is what catches it. If a code review turns up `systemQuantity` in a handler's write set outside those three paths — or in one of them without its status gate and audit entry — that is a defect regardless of how the feature was framed.
+
+Migration `20260730000003_system_quantity_nullable` dropped the NOT NULL constraint. Existing rows holding `0` were deliberately left as `0`: some of them are genuine zeros, and there is no way after the fact to tell those apart from the ones an earlier blank cell turned into `0`. Rewriting them would have destroyed real data to fix presentational ones.
 
 ### AreaManagerReview
 

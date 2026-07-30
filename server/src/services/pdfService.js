@@ -80,7 +80,7 @@ function inventoryTableRows(records) {
     r.materialCode || '',
     { text: r.materialName || '', color: '#64748b' },
     r.batch ? r.batch.inventoryDate.toISOString().split('T')[0] : '',
-    { text: String(r.systemQuantity), alignment: 'right' },
+    { text: r.systemQuantity !== null ? String(r.systemQuantity) : '—', alignment: 'right' },
     { text: r.physicalQuantity !== null ? String(r.physicalQuantity) : '—', alignment: 'right' },
     { ...diffCell(r.difference), alignment: 'right' },
     { text: r.status === 'SUBMITTED' ? 'Counted' : 'Pending', color: r.status === 'SUBMITTED' ? '#059669' : '#d97706' },

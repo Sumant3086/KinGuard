@@ -131,7 +131,11 @@ model InventoryRecord {
   storeId           Int
   materialCode      String
   materialName      String
-  systemQuantity    Float
+  // Nullable: an upload may deliberately leave the system quantity column blank so the
+  // store manager fills it in. Blank and zero are different facts — a blank means "no
+  // figure supplied yet", a 0 means "the system says this store holds none" — so an
+  // empty cell is stored as null and an explicit 0 is stored as 0.
+  systemQuantity    Float?
   physicalQuantity  Float?
   difference        Float?
   remarks           String?

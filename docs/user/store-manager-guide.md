@@ -13,7 +13,9 @@ As a store manager you are responsible for:
 
 You can only see your own store's data. Other stores are not visible to you.
 
-**What you can and cannot change:** you enter the *physical count* — the number you actually counted on the shelf. The *book stock* comes from the company ERP file your administrator uploaded and is read-only for every role, including administrators. That separation is the whole point of the system: the figure you are measured against cannot be edited by the person being measured. If book stock is genuinely wrong, only a corrected re-upload by an administrator can change it.
+**What you can and cannot change:** you enter the *physical count* — the number you actually counted on the shelf. The *book stock* usually comes from the company ERP file your administrator uploaded, but that column is often left blank on purpose for you to fill in from your own records.
+
+Both figures are yours to edit **until you submit**, and both lock the moment you do. That is the point of the system: once your count is final, the figure you are measured against is fixed and neither you nor your Area Manager can move it. After submission, only an administrator can correct book stock, and the correction is recorded against their name.
 
 ## Signing In
 
@@ -63,7 +65,7 @@ Click **Begin Count** on your dashboard, or **Inventory Count** in the navigatio
 |---|---|
 | Item Code | The unique code for this item from your store's system |
 | Item Name | The description of the item |
-| Book Stock | The quantity the system says you should have — read-only |
+| Book Stock | The quantity the system says you should have. Usually filled in by the upload; if it arrives blank, you enter it |
 | Your Count | The quantity you physically counted — this is what you enter |
 | Variance | Calculated automatically: Your Count minus Book Stock |
 | Category | Required when Variance is not zero |
@@ -74,14 +76,24 @@ Variance explained:
 - **0** — Your count matches book stock. Nothing to add.
 - **Negative** — Missing items. Your count is lower than expected. This is a shortage.
 - **Positive** — Extra items. Your count is higher than expected. This is a surplus.
+- **—** (a dash) — One of the two quantities is still blank, so there is nothing to compare yet.
+
+### Blank Book Stock
+
+Some cycles arrive with the Book Stock column empty, shown as a dash with a highlighted box around the field. That is deliberate: the administrator's file left the figure for you to supply from your own records. Type it in the same way you type your count.
+
+A dash is not the same as a 0. If the book genuinely says none, enter `0` — leaving it blank will stop you submitting.
+
+Both figures lock the moment you submit, so check the book stock you entered before you do.
 
 ### Entering Your Counts
 
 1. Find the item you counted on the list
 2. Click the **Your Count** field for that item
 3. Type the quantity you counted
-4. The Variance column updates instantly as you type
-5. The row saves automatically — no Save button needed
+4. If the **Book Stock** field is blank, fill that in too
+5. The Variance column updates instantly as you type
+6. The row saves automatically — no Save button needed
 
 Tips:
 - Use the **Search** box to find a specific item by name or code
@@ -146,6 +158,7 @@ Once you have entered counts for all items and auto-save is complete:
 
 Before you submit, check:
 - All items in the Your Count column have a number (no blanks)
+- All items in the Book Stock column have a number (no blanks)
 - All items with a non-zero Variance have a Category selected
 - All items with a non-zero Variance have Issue Detail filled in
 - The autosave indicator is not showing
@@ -230,7 +243,10 @@ A: No. Contact your administrator and ask them to unlock your store for the cycl
 A: Your administrator has not yet uploaded a cycle for your store, or your store was not included. Contact your administrator.
 
 **Q: The Book Stock looks wrong for an item.**
-A: Book Stock comes from your organisation's ERP as it stood when the file was uploaded, and it is read-only — you cannot edit it, and neither can your Area Manager or your administrator. Enter the quantity you actually counted, pick a category that explains the gap, and describe the problem in Issue Detail. If the ERP figure itself is wrong, tell your administrator: the only way to correct it is a fresh upload of the cycle.
+A: Book Stock comes from your organisation's ERP as it stood when the file was uploaded, unless the column arrived blank and you filled it in yourself. Either way you can still correct it while the cycle is open — retype it like any other field. Enter the quantity you actually counted, pick a category that explains the gap, and describe the problem in Issue Detail. Once you have submitted, it is locked; tell your administrator, who can correct it on their Override screen.
+
+**Q: Book Stock shows a dash instead of a number.**
+A: The uploaded file left that figure blank for you to supply. Enter it from your own records. A dash is not 0 — if the book genuinely says none, type `0`, because leaving it blank will stop you submitting.
 
 **Q: I entered the wrong number. What do I do?**
 A: Simply retype the correct number. It overwrites the previous value automatically.
