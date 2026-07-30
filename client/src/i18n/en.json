@@ -52,7 +52,8 @@
     "phoneOptional": "(optional)",
     "saveChanges": "Save Changes",
     "saving": "Saving…",
-    "saved": "Profile updated."
+    "saved": "Profile updated.",
+    "backToDashboard": "Back to dashboard"
   },
   "nav": {
     "signOut": "Sign Out",

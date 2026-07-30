@@ -465,10 +465,13 @@ export default function AdminUsers() {
   const openEdit = useCallback((user) => {
     setEditingId(user.id);
     setFormData({ employeeId: user.employeeId, name: user.name, password: '', role: user.role, storeId: user.storeId || '', isActive: user.isActive, email: user.email || '', phone: user.phone || '' });
-    setAmStoreIds([]);
+    // Prefill the AM's current stores so editing doesn't silently look like "none assigned"
+    setAmStoreIds(user.role === 'AREA_MANAGER'
+      ? stores.filter(s => s.areaManagerId === user.id).map(s => s.id)
+      : []);
     setFormError('');
     setShowModal(true);
-  }, []);
+  }, [stores]);
 
   function closeModal() { if (submitting) return; setShowModal(false); setEditingId(null); setFormError(''); setAmStoreIds([]); }
 
@@ -491,7 +494,8 @@ export default function AdminUsers() {
       if (editingId) {
         const updated = await adminApi.updateUser(editingId, payload);
         setUsers(prev => prev.map(u => u.id === editingId ? { ...u, ...updated } : u));
-        if (payload.role === 'AREA_MANAGER' && amStoreIds.length > 0) {
+        // Sent even when empty — an emptied selection means "unassign every store"
+        if (payload.role === 'AREA_MANAGER') {
           await adminApi.batchAssignAMStores(editingId, amStoreIds);
         }
         setShowModal(false);

@@ -139,7 +139,9 @@ export async function batchCreateUsersForPlants(plants) {
 }
 
 // ── Uploads / Inventory cycles ─────────────────────────────────────────────
-const UPLOAD_CACHE_KEYS = ['admin:dashboard', 'admin:batches-client', 'admin:stores', 'admin:trends:8'];
+// An upload can auto-create both stores and pending manager accounts, so the
+// cached user list goes stale alongside the store list.
+const UPLOAD_CACHE_KEYS = ['admin:dashboard', 'admin:batches-client', 'admin:stores', 'admin:users', 'admin:trends:8'];
 
 /** Upload an inventory file. Pass { force: true } to bypass the duplicate-batch check. */
 export async function uploadInventory(file, inventoryDate, submissionDeadline, { force = false } = {}) {
@@ -193,7 +195,7 @@ export async function updateBatch(id, payload) {
 
 export async function deleteBatch(id) {
   const { data } = await client.delete(`/admin/batches/${id}`);
-  cacheInvalidate('admin:batches-client', 'admin:dashboard');
+  cacheInvalidate('admin:batches-client', 'admin:dashboard', 'admin:trends:8');
   return data;
 }
 
@@ -205,7 +207,7 @@ export async function grantStoreExtension(payload) {
 
 export async function unlockStoreForBatch(batchId, storeId) {
   const { data } = await client.post(`/admin/batches/${batchId}/unlock-store`, { storeId });
-  cacheInvalidate('admin:dashboard');
+  cacheInvalidate('admin:dashboard', 'admin:batches-client');
   return data;
 }
 
@@ -216,7 +218,7 @@ export async function sendBatchReminders(batchId) {
 
 export async function closeBatch(id) {
   const { data } = await client.post(`/admin/batches/${id}/close`);
-  cacheInvalidate('admin:batches-client', 'admin:dashboard');
+  cacheInvalidate('admin:batches-client', 'admin:dashboard', 'admin:trends:8');
   return data;
 }
 

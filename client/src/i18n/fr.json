@@ -52,7 +52,8 @@
     "phoneOptional": "(facultatif)",
     "saveChanges": "Enregistrer les modifications",
     "saving": "Enregistrement…",
-    "saved": "Profil mis à jour."
+    "saved": "Profil mis à jour.",
+    "backToDashboard": "Retour au tableau de bord"
   },
   "nav": {
     "signOut": "Se déconnecter",

@@ -44,7 +44,10 @@ client.interceptors.response.use(
     // Use endsWith to avoid false matches on routes that contain 'auth/refresh' as a substring.
     if (status === 401 && !url.endsWith('/auth/refresh') && !originalRequest._retried) {
       if (isRefreshing) {
-        // Another refresh is in flight — queue this request to retry after
+        // Another refresh is in flight — queue this request to retry after.
+        // Mark it first: without the flag a retry that still 401s starts a
+        // second refresh round instead of surfacing the failure.
+        originalRequest._retried = true;
         return new Promise((resolve, reject) => {
           refreshQueue.push({ resolve, reject });
         }).then(() => client(originalRequest));
@@ -78,7 +81,7 @@ client.interceptors.response.use(
           window.location.href = '/login';
         }
         return Promise.reject(error);
-      } finally { /* isRefreshing is already cleared above before drainQueue */ }
+      }
     }
 
     return Promise.reject(error);

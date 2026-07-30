@@ -45,6 +45,23 @@ const VALID_AUDIT_ACTIONS = new Set([
   'CREATE_CYCLE_SCHEDULE', 'UPDATE_CYCLE_SCHEDULE', 'DELETE_CYCLE_SCHEDULE',
 ]);
 
+// Bust the cached dashboards/notifications of every store in a cycle, plus their
+// area managers. Admin-only keys are not enough: when a cycle is deleted or locked
+// the stores and AMs keep serving it from their own cached payloads.
+async function invalidateBatchAudience(batchId) {
+  const rows = await prisma.inventoryRecord.findMany({
+    where: { batchId },
+    select: { storeId: true, store: { select: { areaManagerId: true } } },
+    distinct: ['storeId'],
+  }).catch(() => []);
+
+  const amIds = [...new Set(rows.map(r => r.store?.areaManagerId).filter(Boolean))];
+  sInvalidate(
+    ...rows.flatMap(r => [`store:dashboard:${r.storeId}`, `store:notifications:${r.storeId}`]),
+    ...amIds.flatMap(id => [`am:batches:${id}`, `am:notifications:${id}`]),
+  );
+}
+
 // Generate a secure random temp password that satisfies validatePassword() rules.
 // Uses only unambiguous characters (no I/l/0/O) so it's easy to communicate.
 function generateTempPassword() {
@@ -937,7 +954,9 @@ export async function uploadInventory(req, res, next) {
       distinct: ['areaManagerId'],
     }).catch(() => []);
 
-    sInvalidate('admin:batches', 'admin:notifications',
+    // An upload can also auto-create stores and pending manager accounts, so the
+    // admin store and user lists are stale too.
+    sInvalidate('admin:batches', 'admin:notifications', 'admin:stores', 'admin:users',
       ...affectedStoreIds.flatMap(id => [`store:dashboard:${id}`, `store:notifications:${id}`]),
       ...affectedAms.flatMap(a => [`am:batches:${a.areaManagerId}`, `am:notifications:${a.areaManagerId}`, `am:stores:${a.areaManagerId}`]));
 
@@ -1512,6 +1531,7 @@ export async function closeBatch(req, res, next) {
 
     sInvalidate('admin:dashboard', 'admin:batches', 'admin:notifications',
                 'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
+    await invalidateBatchAudience(batchId);
     res.json({
       message:        `Cycle locked. ${pendingCount} pending item(s) frozen, ${submittedCount} already submitted.`,
       pendingCount,
@@ -1956,6 +1976,7 @@ export async function deleteBatch(req, res, next) {
     });
 
     sInvalidate('admin:dashboard', 'admin:batches', 'admin:notifications', 'admin:trends:6', 'admin:trends:8', 'admin:trends:12');
+    await invalidateBatchAudience(batchId);
     res.json({ message: 'Cycle deleted' });
   } catch (error) { next(error); }
 }
@@ -2488,8 +2509,7 @@ export async function getNotifications(req, res, next) {
     const cached = sGet('admin:notifications');
     if (cached) return res.json(cached);
 
-    const now     = new Date();
-    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const now = new Date();
 
     const latestBatch = await prisma.uploadBatch.findFirst({
       where: { status: 'COMPLETED', isDeleted: false },
@@ -2502,19 +2522,11 @@ export async function getNotifications(req, res, next) {
       return res.json({ items: [], count: 0 });
     }
 
-    // Run both record queries in parallel instead of sequentially
-    const [_recentSubmits, pendingStores] = await Promise.all([
-      prisma.inventoryRecord.findMany({
-        where: { batchId: latestBatch.id, status: 'SUBMITTED', submittedAt: { gte: since24h } },
-        select: { storeId: true },
-        distinct: ['storeId'],
-      }),
-      prisma.inventoryRecord.findMany({
-        where: { batchId: latestBatch.id, status: 'PENDING' },
-        select: { storeId: true },
-        distinct: ['storeId'],
-      }),
-    ]);
+    const pendingStores = await prisma.inventoryRecord.findMany({
+      where: { batchId: latestBatch.id, status: 'PENDING' },
+      select: { storeId: true },
+      distinct: ['storeId'],
+    });
 
     const items = [];
     const dateLabel = new Date(latestBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });

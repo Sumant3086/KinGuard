@@ -128,7 +128,11 @@ export async function getNotifications(req, res, next) {
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });
 
-    if (!latestBatch) return res.json({ items: [], count: 0 });
+    if (!latestBatch) {
+      const empty = { items: [], count: 0 };
+      sSet(cacheKey, empty, 30_000);
+      return res.json(empty);
+    }
 
     const dateLabel = new Date(latestBatch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
@@ -179,7 +183,10 @@ export async function getBatches(req, res, next) {
     if (cached) return res.json(cached);
 
     const storeIds = await withRetry(() => getManagedStoreIds(req.user.id));
-    if (!storeIds.length) return res.json([]);
+    if (!storeIds.length) {
+      sSet(cacheKey, [], 60_000);
+      return res.json([]);
+    }
 
     const batches = await prisma.uploadBatch.findMany({
       where: {
@@ -213,8 +220,12 @@ export async function getBatches(req, res, next) {
           reviewStatus: review?.status || null,
           submitted: allSubmitted,
           pending: allPending,
+          // A store with no rows in this cycle simply wasn't part of it — it is
+          // neither submitted nor outstanding, so it must not inflate the counts.
+          inBatch: records.length > 0,
         };
       });
+      const storesInBatch = storeStatuses.filter(s => s.inBatch);
 
       return {
         id: b.id,
@@ -224,8 +235,8 @@ export async function getBatches(req, res, next) {
         pendingReview:  storeStatuses.filter(s => s.reviewStatus === 'PENDING_REVIEW').length,
         approved:       storeStatuses.filter(s => s.reviewStatus === 'APPROVED').length,
         returned:       storeStatuses.filter(s => s.reviewStatus === 'RETURNED').length,
-        notSubmitted:   storeStatuses.filter(s => s.submitted === false && s.reviewStatus === null).length,
-        totalStores:    storeIds.length,
+        notSubmitted:   storesInBatch.filter(s => s.submitted === false && s.reviewStatus === null).length,
+        totalStores:    storesInBatch.length,
       };
     });
 
@@ -297,7 +308,7 @@ export async function getStoreRecords(req, res, next) {
 
     const [records, review, store] = await Promise.all([
       prisma.inventoryRecord.findMany({
-        where: { batchId, storeId },
+        where: { batchId, storeId, batch: { isDeleted: false } },
         orderBy: { materialCode: 'asc' },
         select: {
           id: true, materialCode: true, materialName: true,
@@ -336,10 +347,17 @@ export async function updateRecord(req, res, next) {
     const { physicalQuantity, remarks, shrinkageCategory } = req.body;
     const updateData = {};
     if (physicalQuantity !== undefined) {
-      const qty = parseFloat(physicalQuantity);
-      if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be zero or a positive number', 400);
-      updateData.physicalQuantity = qty;
-      updateData.difference = parseFloat((qty - record.systemQuantity).toFixed(4));
+      // Clearing the field is a legitimate edit — the store controller accepts it
+      // too, and the review UI sends null when the input is emptied.
+      if (physicalQuantity === null || physicalQuantity === '') {
+        updateData.physicalQuantity = null;
+        updateData.difference = null;
+      } else {
+        const qty = parseFloat(physicalQuantity);
+        if (isNaN(qty) || qty < 0) throw new AppError('Physical count must be zero or a positive number', 400);
+        updateData.physicalQuantity = qty;
+        updateData.difference = parseFloat((qty - record.systemQuantity).toFixed(4));
+      }
     }
     if (remarks !== undefined)           updateData.remarks = remarks || null;
     if (shrinkageCategory !== undefined) {
@@ -511,19 +529,30 @@ export async function batchAssignAMStores(req, res, next) {
     });
     const prevAmIds = [...new Set(oldStores.map(s => s.areaManagerId).filter(id => id && id !== amId))];
 
+    // The payload is the AM's full store list, not an addition to it — stores this
+    // AM currently holds but that are absent from the list must be released,
+    // otherwise there is no way to unassign a store from the edit screen.
+    const removedIds = (await prisma.store.findMany({
+      where: { areaManagerId: amId, id: { notIn: parsedStoreIds } },
+      select: { id: true },
+    })).map(s => s.id);
+
     try {
-      await prisma.$transaction(
-        parsedStoreIds.map(sid => prisma.store.update({ where: { id: sid }, data: { areaManagerId: amId } }))
-      );
+      await prisma.$transaction([
+        ...(removedIds.length
+          ? [prisma.store.updateMany({ where: { id: { in: removedIds } }, data: { areaManagerId: null } })]
+          : []),
+        ...parsedStoreIds.map(sid => prisma.store.update({ where: { id: sid }, data: { areaManagerId: amId } })),
+      ]);
     } catch (txErr) {
       if (txErr.code === 'P2025') throw new AppError('One or more stores not found', 404);
       throw txErr;
     }
 
     // Bust new AM's cache and all previously-managing AMs' caches
-    sInvalidate('admin:dashboard', `am:stores:${amId}`, ...prevAmIds.map(id => `am:stores:${id}`));
-    createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds: parsedStoreIds, areaManagerId: amId } }).catch(() => {});
-    res.json({ assigned: parsedStoreIds.length });
+    sInvalidate('admin:dashboard', 'admin:stores', `am:stores:${amId}`, ...prevAmIds.map(id => `am:stores:${id}`));
+    createAuditLog({ userId: req.user.id, action: 'BATCH_ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: amId, metadata: { storeIds: parsedStoreIds, unassignedStoreIds: removedIds, areaManagerId: amId } }).catch(() => {});
+    res.json({ assigned: parsedStoreIds.length, unassigned: removedIds.length });
   } catch (error) { next(error); }
 }
 
@@ -563,8 +592,8 @@ export async function assignStoreAM(req, res, next) {
     if (amId) sInvalidate(`am:stores:${amId}`);
     // Bust old AM's cache — prevAmId is the value BEFORE the update
     if (prevAmId && prevAmId !== amId) sInvalidate(`am:stores:${prevAmId}`);
-    // Dashboard scorecard shows each store's areaManagerName — bust it too
-    sInvalidate('admin:dashboard');
+    // Dashboard scorecard and the store list both show the assignment — bust both
+    sInvalidate('admin:dashboard', 'admin:stores');
 
     createAuditLog({ userId: req.user.id, action: 'ASSIGN_AREA_MANAGER', entityType: 'STORE', entityId: storeId, metadata: { storeCode: store.storeCode, storeName: store.storeName, areaManagerId: amId, areaManagerName: am?.name ?? null } }).catch(() => {});
     res.json(store);

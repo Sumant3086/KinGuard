@@ -92,11 +92,20 @@ export default function StoreInventory() {
   const debounceTimers    = useRef({});
   const editedRecordsRef  = useRef({});
   const editTimestampRef  = useRef({});
-  const blankRowRefs      = useRef({});
+  const blankRowRefs      = useRef({}); // desktop table inputs
+  const blankCardRefs     = useRef({}); // mobile card inputs
   const batchesReadyRef   = useRef(false);
   const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
 
   useEffect(() => { loadBatches(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mobile cards and the desktop table both render the same rows — only one is
+  // visible at a time (CSS breakpoint), so pick the input that is actually shown.
+  function blankInput(recordId) {
+    const card = blankCardRefs.current[recordId];
+    if (card && card.offsetParent !== null) return card;
+    return blankRowRefs.current[recordId];
+  }
 
   // Keyboard navigation for inventory table
   useEffect(() => {
@@ -116,7 +125,7 @@ export default function StoreInventory() {
         const newIndex = selectedRowIndex + 1;
         setSelectedRowIndex(newIndex);
         const record = pendingRows[newIndex];
-        const el = blankRowRefs.current[record.id];
+        const el = blankInput(record.id);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else if (e.key === 'k' && selectedRowIndex > 0) {
         // Navigate up
@@ -124,13 +133,13 @@ export default function StoreInventory() {
         const newIndex = selectedRowIndex - 1;
         setSelectedRowIndex(newIndex);
         const record = pendingRows[newIndex];
-        const el = blankRowRefs.current[record.id];
+        const el = blankInput(record.id);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else if (e.key === 'Enter' && selectedRowIndex >= 0 && selectedRowIndex < pendingRows.length) {
         // Focus on physical quantity input
         e.preventDefault();
         const record = pendingRows[selectedRowIndex];
-        const el = blankRowRefs.current[record.id];
+        const el = blankInput(record.id);
         if (el) el.focus();
       }
     };
@@ -308,7 +317,7 @@ export default function StoreInventory() {
       return edited === undefined || edited === '';
     });
     if (blank) {
-      const el = blankRowRefs.current[blank.id];
+      const el = blankInput(blank.id);
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
     } else if (offPageGaps.missingPhysical > 0) {
       // Nothing blank here, but the cycle isn't done — point them at the right page
@@ -468,7 +477,7 @@ export default function StoreInventory() {
             </div>
           )}
           <div className="actions" style={{ justifyContent: 'center', marginTop: 8 }}>
-            <button className="btn btn-primary" onClick={() => { setSubmitResult(null); loadBatches(); }}>
+            <button className="btn btn-primary" onClick={() => { setSubmitResult(null); loadBatches(); setCurrentPage(1); loadInventory(1); }}>
               {t('storeInv.viewAllRecords')}
             </button>
             <button className="btn btn-secondary" onClick={handleDownload}>
@@ -725,7 +734,7 @@ export default function StoreInventory() {
                     <div className="sic-field">
                       <label className="sic-field-label">Your Count (Physical)</label>
                       <input
-                        ref={el => { blankRowRefs.current[record.id] = el; }}
+                        ref={el => { blankCardRefs.current[record.id] = el; }}
                         type="number"
                         inputMode="decimal"
                         step="0.01"

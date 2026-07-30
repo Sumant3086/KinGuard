@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../features/auth/AuthContext';
 import { updateProfile } from '../shared/api/authApi';
@@ -35,9 +36,17 @@ export default function ProfilePage() {
                   : user?.role === 'AREA_MANAGER' ? 'Area Manager'
                   : 'Store Manager';
 
+  // This page renders outside every role layout, so it needs its own way back.
+  const homePath = user?.role === 'ADMIN' ? '/admin/dashboard'
+                 : user?.role === 'AREA_MANAGER' ? '/am/dashboard'
+                 : '/store/dashboard';
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface-2)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 16px' }}>
       <div style={{ width: '100%', maxWidth: 480 }}>
+        <Link to={homePath} style={{ display: 'inline-block', marginBottom: 16, fontSize: 13, fontWeight: 600, color: 'var(--red)', textDecoration: 'none' }}>
+          {t('profile.backToDashboard')}
+        </Link>
         <h2 style={{ fontWeight: 800, fontSize: 22, color: 'var(--tx1)', marginBottom: 4 }}>{t('profile.title')}</h2>
         <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 28 }}>
           {user?.employeeId} · {roleLabel}{user?.store ? ` · ${user.store.storeName}` : ''}

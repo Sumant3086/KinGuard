@@ -101,7 +101,7 @@ export default function Upload() {
         }
       }
       console.error('Preview failed:', lastErr);
-      setError('Preview failed. Please check your file format and try again.');
+      setError(lastErr.response?.data?.error || 'Preview failed. Please check your file format and try again.');
     } finally {
       setPreviewing(false);
     }

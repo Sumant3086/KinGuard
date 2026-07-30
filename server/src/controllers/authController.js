@@ -335,7 +335,9 @@ export async function updateProfile(req, res, next) {
     const userId = req.user.id;
 
     const data = {};
-    if (name !== undefined) data.name = name?.trim() || undefined;
+    // A blank name is not a change — Prisma drops an `undefined` value, so keeping
+    // the key would make the "no changes" guard pass and the audit log claim an edit.
+    if (name !== undefined && name?.trim()) data.name = name.trim();
     if (email !== undefined) {
       const trimmed = email?.trim() || null;
       if (trimmed && !EMAIL_REGEX.test(trimmed)) {

@@ -529,7 +529,7 @@ async function detectRepeatDiscrepancies(storeId, batchId, userId) {
       difference: { lt: 0 },
       materialCode: { in: currentMaterials },
     },
-    select: { materialCode: true, batchId: true },
+    select: { materialCode: true },
     distinct: ['materialCode'],
   });
 
@@ -654,6 +654,9 @@ export async function getNotifications(req, res, next) {
 export async function downloadInventory(req, res, next) {
   try {
     const storeId = req.user.storeId;
+    if (!req.user.store) {
+      throw new AppError('Your account is not linked to a store. Please contact your administrator', 403);
+    }
     const { batchId: queryBatchId } = req.query;
 
     let targetBatchId;

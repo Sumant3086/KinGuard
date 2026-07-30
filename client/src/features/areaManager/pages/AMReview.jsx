@@ -82,7 +82,7 @@ export default function AMReview() {
       toast.success('Record updated');
     } catch (e) {
       console.error('AM update record:', e);
-      toast.error('Could not save change.');
+      toast.error(e.response?.data?.error || 'Could not save change.');
     }
   }
 
@@ -100,7 +100,7 @@ export default function AMReview() {
       setEditedRecs({});
     } catch (e) {
       console.error('AM approve:', e);
-      toast.error('Could not approve. Try again.');
+      toast.error(e.response?.data?.error || 'Could not approve. Try again.');
     } finally { setWorking(false); }
   }
 
@@ -119,7 +119,7 @@ export default function AMReview() {
       setReturnReason('');
     } catch (e) {
       console.error('AM return:', e);
-      toast.error('Could not return. Try again.');
+      toast.error(e.response?.data?.error || 'Could not return. Try again.');
     } finally { setWorking(false); }
   }
 
