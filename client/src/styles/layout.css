@@ -842,6 +842,13 @@
   .store-shell::after  { top:54px; }
   .hl-shell::before,
   .hl-shell::after     { top:54px; }
+  /* Swap the three shell backdrops for 960px-wide variants (~40% fewer bytes).
+     The viewport is at most 768 CSS px here and every one of these is rendered
+     blurred behind an overlay, so the smaller source looks identical. The AM rule
+     keeps its !important because the desktop rule it overrides has one too. */
+  .hl-shell::before       { background-image: url('../assets/img/AdminPage-mobile.jpg'); }
+  .am-shell.hl-shell::before { background-image: url('../assets/img/AreaManagerPage-mobile.jpg') !important; }
+  .store-shell::before    { background-image: url('../assets/img/StoreManagerPage-mobile.jpg'); }
 }
 @media (max-width:520px) {
   .hl-nav              { padding:0 12px; height:50px; }

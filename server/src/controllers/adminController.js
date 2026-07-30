@@ -1447,9 +1447,12 @@ export async function getBatches(req, res, next) {
     const batches = await withDbRetry(() => prisma.uploadBatch.findMany({
       where: { isDeleted: false },
       orderBy: { inventoryDate: 'desc' },
+      // _count.inventoryRecords is deliberately NOT included here: Prisma emits it as a
+      // correlated subquery per batch row, counting exactly the same rows the stats
+      // query below already groups. It is re-attached from those stats so the response
+      // shape is unchanged.
       include: {
         uploader: { select: { name: true, employeeId: true } },
-        _count: { select: { inventoryRecords: true } },
         deadlineExtensions: { select: { storeId: true, newDeadline: true } },
       },
     }));
@@ -1467,7 +1470,11 @@ export async function getBatches(req, res, next) {
     ` : [];
 
     const statsMap = new Map(statsRows.map(r => [Number(r.batchId), r]));
-    const result = batches.map(b => ({ ...b, stats: statsMap.get(b.id) || null }));
+    // A batch with no records at all has no stats row, and its count is zero.
+    const result = batches.map(b => {
+      const stats = statsMap.get(b.id) || null;
+      return { ...b, _count: { inventoryRecords: stats?.totalRecords ?? 0 }, stats };
+    });
     sSet('admin:batches', result, 60_000); // 1-minute cache
     res.json(result);
   } catch (error) { next(error); }

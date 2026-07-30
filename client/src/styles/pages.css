@@ -534,7 +534,9 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  /* Show the image on mobile — it's already a small 236 KB JPEG.
+  /* Show the image on mobile, using the 960px-wide variant instead of the full
+     1536px original (~40% fewer bytes) — it is blurred and the viewport is at most
+     768 CSS px, so the difference is not visible.
      Lighter blur + stronger dark overlay keeps the form legible. */
   .login-page::before {
     background:
@@ -544,7 +546,7 @@
         rgba(8,6,6,0.28) 70%,
         rgba(4,2,2,0.45) 100%
       ),
-      url('../assets/img/LoginPage.jpg') center center / cover no-repeat;
+      url('../assets/img/LoginPage-mobile.jpg') center center / cover no-repeat;
     filter: blur(2px) brightness(0.95) !important;
   }
   .login-shell { max-width: 100%; padding: 14px; }
@@ -1082,15 +1084,17 @@
 
 /* ─── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* Show background images on mobile — both are small optimised JPEGs (193–242 KB).
+  /* Show background images on mobile, at 960px wide instead of the full 1536px
+     desktop originals (~40% fewer bytes). The viewport here is at most 768 CSS px
+     and both images are blurred, so the smaller source is indistinguishable.
      Reduced blur + stronger overlay keeps text readable on small screens. */
   .home-hero-bg::before {
-    background: url('../assets/img/HomePage.jpg') center / cover no-repeat;
+    background: url('../assets/img/HomePage-mobile.jpg') center / cover no-repeat;
     filter: blur(3px) brightness(0.72);
     will-change: auto;
   }
   .home-features-section::before {
-    background: url('../assets/img/HomePage2.jpg') center center / cover no-repeat;
+    background: url('../assets/img/HomePage2-mobile.jpg') center center / cover no-repeat;
     filter: blur(4px) brightness(0.78);
   }
   .home-bar             { padding: 0 20px; height: 58px; position: fixed; }
