@@ -672,11 +672,18 @@ export async function updateUser(req, res, next) {
       data.mustChangePassword = true;
     }
 
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data,
-      include: { store: true },
-    });
+    // An admin-issued password reset has to end live sessions the same way a
+    // self-service change does (see authController.changePassword). Without this a
+    // stolen refresh token survives the reset for its full 7-day life, so resetting
+    // the password of a compromised account does not actually lock the attacker out.
+    const [user] = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data,
+        include: { store: true },
+      }),
+      ...(data.passwordHash ? [prisma.refreshToken.deleteMany({ where: { userId } })] : []),
+    ]);
 
     await createAuditLog({
       userId: req.user.id,
@@ -878,7 +885,7 @@ export async function uploadInventory(req, res, next) {
           continue;
         }
 
-        // System quantity is optional " default to 0 when not in the file
+        // System quantity is optional — default to 0 when not in the file
         const qty = (rawQty !== null && rawQty !== undefined && rawQty !== '')
           ? parseFloat(rawQty)
           : 0;
@@ -955,8 +962,11 @@ export async function uploadInventory(req, res, next) {
     }).catch(() => []);
 
     // An upload can also auto-create stores and pending manager accounts, so the
-    // admin store and user lists are stale too.
+    // admin store and user lists are stale too. A new cycle is likewise a new point
+    // on the trends chart — closeBatch and deleteBatch already bust those keys, and
+    // leaving them out here left Analytics on the pre-upload series for five minutes.
     sInvalidate('admin:batches', 'admin:notifications', 'admin:stores', 'admin:users',
+      'admin:trends:6', 'admin:trends:8', 'admin:trends:12',
       ...affectedStoreIds.flatMap(id => [`store:dashboard:${id}`, `store:notifications:${id}`]),
       ...affectedAms.flatMap(a => [`am:batches:${a.areaManagerId}`, `am:notifications:${a.areaManagerId}`, `am:stores:${a.areaManagerId}`]));
 

@@ -132,7 +132,9 @@ export async function getInventory(req, res, next) {
     const pageNum    = parsePage(req.query.page, 1);
     const pageSizeNum = parsePageSize(req.query.pageSize, 100, 500);
 
-    const where = { storeId };
+    // A soft-deleted cycle keeps its records, so without this filter a manager with a
+    // stale tab keeps seeing (and editing) a cycle the admin has already removed.
+    const where = { storeId, batch: { isDeleted: false } };
 
     if (batchId) {
       where.batchId = batchId;
@@ -169,6 +171,7 @@ export async function getInventory(req, res, next) {
                        THEN 1 END)::int AS "missingDetail"
           FROM "InventoryRecord"
           WHERE "storeId" = ${storeId} AND "batchId" = ${batchId} AND status = 'PENDING'
+            AND "batchId" IN (SELECT id FROM "UploadBatch" WHERE "isDeleted" = false)
         `.then(rows => rows[0] ?? null).catch(() => null)
       : Promise.resolve(null);
 
@@ -254,7 +257,7 @@ export async function updateInventoryRecord(req, res, next) {
 
     // Single query: ownership + current values + deadline + extension — no second round-trip
     const record = await prisma.inventoryRecord.findFirst({
-      where: { id: recordId, storeId },
+      where: { id: recordId, storeId, batch: { isDeleted: false } },
       select: {
         id: true,
         systemQuantity: true,
@@ -330,12 +333,13 @@ export async function submitInventory(req, res, next) {
     const parsedBatchId = requireId(req.body.batchId, 'batchId');
     const submittedAt   = new Date();
 
-    // Enforce deadline — same logic as updateInventoryRecord.
-    // Without this check, a store manager could bypass the lock by POSTing
-    // directly to /store/inventory/submit after the deadline passed.
-    // Fetch deadline + any per-store extension in one query
-    const batchForDeadline = await prisma.uploadBatch.findUnique({
-      where: { id: parsedBatchId },
+    // Enforce deadline — same logic as updateInventoryRecord. Without this check, a
+    // store manager could bypass the lock by POSTing directly to
+    // /store/inventory/submit after the deadline passed. Deleted cycles are excluded
+    // for the same reason: a tab opened before the admin removed the cycle must not
+    // still be able to submit into it. Deadline + per-store extension in one query.
+    const batchForDeadline = await prisma.uploadBatch.findFirst({
+      where: { id: parsedBatchId, isDeleted: false },
       select: {
         submissionDeadline: true,
         deadlineExtensions: {
@@ -662,6 +666,13 @@ export async function downloadInventory(req, res, next) {
     let targetBatchId;
     if (queryBatchId) {
       targetBatchId = requireId(queryBatchId, 'batchId');
+      // Same isDeleted rule as the fallback below — an explicit batchId must not be
+      // the one path that can still export a cycle the admin deleted.
+      const live = await prisma.uploadBatch.findFirst({
+        where: { id: targetBatchId, isDeleted: false },
+        select: { id: true },
+      });
+      if (!live) throw new AppError('No inventory records found for your store in this cycle', 404);
     } else {
       // Fall back to latest live batch for this store — a soft-deleted cycle keeps its
       // records, so without the isDeleted filter this can silently export a deleted cycle.

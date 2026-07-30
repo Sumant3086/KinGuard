@@ -332,8 +332,10 @@ export async function updateRecord(req, res, next) {
   try {
     const id = requireId(req.params.id, 'record ID');
 
-    const record = await prisma.inventoryRecord.findUnique({
-      where: { id },
+    // batch.isDeleted guard mirrors getStoreRecords — a review tab opened before the
+    // admin deleted the cycle must not keep writing counts into it.
+    const record = await prisma.inventoryRecord.findFirst({
+      where: { id, batch: { isDeleted: false } },
       select: { storeId: true, batchId: true, status: true, systemQuantity: true },
     });
     if (!record) throw new AppError('This inventory record was not found', 404);
