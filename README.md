@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="client/src/assets/img/HomePage.png" alt="KinMarche Home Page" width="100%" />
+<img src="client/src/assets/img/HomePage.jpg" alt="KinMarché Home Page" width="100%" />
 
-# KinMarche — Loss & Prevention Platform
+# KinMarché — Loss & Prevention Platform
 
 **Track inventory. Spot shortages. Stop losses.**
 
@@ -15,9 +15,9 @@
 
 </div>
 
-## What is KinMarche?
+## What is KinMarché?
 
-KinMarche is an internal inventory reconciliation system built for multi-store retail networks. It replaces manual spreadsheet exchanges between head office and store managers with a structured, auditable digital workflow.
+KinMarché is an internal inventory reconciliation system built for multi-store retail networks. It reconciles what a store's books say it holds against what is physically counted on its shelves, and attributes the difference. It replaces manual spreadsheet exchanges between head office and store managers with a structured, auditable digital workflow.
 
 **For store managers** — receive your assigned item list, enter your physical counts directly in the browser, and submit. No spreadsheets, no emails, no confusion about which file version is correct.
 
@@ -26,6 +26,12 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 **For administrators and L&P managers** — upload one master file to kick off a cycle. Monitor every store's progress in real time, see who is behind, spot recurring shortage patterns, and export reconciliation reports for finance review.
 
 **For senior management** — a live dashboard with network-wide submission rates, shortage hotspots, trend data, risk scores, and a one-page executive summary PDF.
+
+### The one rule everything rests on
+
+**The uploaded book figure is read-only for every role, administrators included.** Shrinkage is defined as the gap between that figure and the physical count, so nobody in the chain — least of all the party being measured — can edit the number they are judged against. A wrong book figure is corrected by re-uploading the cycle, which leaves a batch record and an audit entry behind; it is never quietly moved. Where this is enforced in code is documented in [Security](docs/developer/security.md) and [Database Schema](docs/developer/database-schema.md).
+
+The interface is available in English and French, and the choice is remembered per user.
 
 ## Live Demo
 
@@ -75,7 +81,7 @@ KinMarche is an internal inventory reconciliation system built for multi-store r
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Vite 5, React Router 6, Axios |
+| Frontend | React 18, Vite 5, React Router 7, Axios |
 | Backend | Node.js 22+, Express 4, ESM modules |
 | Database | PostgreSQL 15+ via Prisma ORM |
 | Auth | JWT access + refresh tokens in HttpOnly cookies, bcrypt, DB-backed lockout |
@@ -145,6 +151,10 @@ Opens the API on port 5000 and the React app on port 5173. Visit [http://localho
 | `npm run db:reset` | Drop all data, re-migrate, re-seed (destructive) |
 | `npm run db:clear` | Delete all operational data, keep user accounts |
 | `npm run test:unit` | Run backend unit tests (Vitest) |
+| `npm run lint --workspace=client` | Lint the React app |
+| `npm run lint --workspace=server` | Lint the API |
+
+The two lint runs are separate on purpose — the workspaces use different ESLint majors and different globals, so a single combined run would silently skip files. Run both, plus `npm run test:unit` and `npm run build:client`, before pushing.
 
 ## Environment Variables
 
@@ -170,20 +180,41 @@ See [docs/developer/deployment.md](docs/developer/deployment.md) for the full Re
 
 ## Documentation
 
-Plain-language guides for people using the app, and technical references for people building or running it — see [docs/](docs/) for the full index.
+Everything lives under [docs/](docs/) — plain-language guides for the people who use the app day to day, and technical references for the people building and running it.
 
-| Document | Audience |
+**Where to start**
+
+| If you are… | Read |
 |---|---|
-| [Store Manager Guide](docs/user/store-manager-guide.md) | Store managers completing a stock count |
-| [Area Manager Guide](docs/user/area-manager-guide.md) | Area managers reviewing and approving store submissions |
-| [Administrator Guide](docs/user/admin-guide.md) | Admins running cycles, monitoring stores, exporting reports |
-| [Limitations](docs/user/limitations.md) | Capacity, limits, performance expectations — plain language |
-| [Getting Started](docs/developer/getting-started.md) | Developers setting up the project locally |
-| [Deployment](docs/developer/deployment.md) | DevOps — Render, VPS, database setup |
-| [Architecture](docs/developer/architecture.md) | Backend team — component map, data flow, caching |
-| [Security](docs/developer/security.md) | Security model, auth, store isolation, audit trail |
-| [API Reference](docs/developer/api-reference.md) | All REST endpoints with request/response examples |
-| [Database Schema](docs/developer/database-schema.md) | Tables, relationships, indexes |
+| Setting the project up locally | [Getting Started](docs/developer/getting-started.md), then [Architecture](docs/developer/architecture.md) |
+| Changing server code | [Architecture](docs/developer/architecture.md) and [Security](docs/developer/security.md) before you touch `InventoryRecord` |
+| Integrating with the API | [API Reference](docs/developer/api-reference.md) |
+| Deploying or on call | [Deployment](docs/developer/deployment.md) |
+| Counting stock in a store | [Store Manager Guide](docs/user/store-manager-guide.md) |
+| Reviewing store submissions | [Area Manager Guide](docs/user/area-manager-guide.md) |
+| Running cycles for the network | [Administrator Guide](docs/user/admin-guide.md) |
+
+**[docs/user/](docs/user/)** — no technical background assumed.
+
+| Document | Covers |
+|---|---|
+| [Store Manager Guide](docs/user/store-manager-guide.md) | Signing in, entering counts, submitting a cycle, handling a returned submission |
+| [Area Manager Guide](docs/user/area-manager-guide.md) | Reviewing, editing, approving, and returning store submissions |
+| [Administrator Guide](docs/user/admin-guide.md) | Running cycles, managing stores and users, deadlines, reports, analytics |
+| [Limitations](docs/user/limitations.md) | File size, session length, and other real-world limits, in plain terms |
+
+**[docs/developer/](docs/developer/)** — for anyone building, deploying, or maintaining the platform.
+
+| Document | Covers |
+|---|---|
+| [Getting Started](docs/developer/getting-started.md) | Local setup, environment variables, npm scripts, the checks to run before pushing |
+| [Architecture](docs/developer/architecture.md) | Component map, data flows, caching and invalidation, i18n, design decisions |
+| [API Reference](docs/developer/api-reference.md) | Every REST endpoint with request/response examples |
+| [Database Schema](docs/developer/database-schema.md) | Tables, relationships, indexes, soft deletes, what is writable and by whom |
+| [Security](docs/developer/security.md) | Auth, access control, data integrity, rate limiting, secrets, incident checklist |
+| [Deployment](docs/developer/deployment.md) | Render, Supabase, VPS + PM2 + Nginx, email setup, operating notes |
+
+These docs are versioned with the code. If you change behaviour that one of them describes, change the doc in the same commit.
 
 ## License
 
