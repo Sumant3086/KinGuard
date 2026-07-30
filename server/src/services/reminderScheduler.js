@@ -5,6 +5,7 @@
 
 import prisma from '../config/prisma.js';
 import { withSchedulerLock } from './schedulerLock.js';
+import { logger, errorDetails } from '../config/logger.js';
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const WINDOW_MIN_MS     = 50 * 60 * 1000; // 50 min from now
@@ -13,9 +14,9 @@ const WINDOW_MAX_MS     = 90 * 60 * 1000; // 90 min from now
 async function purgeExpiredTokens() {
   try {
     const { count } = await prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-    if (count > 0) console.warn(`[scheduler] Purged ${count} expired refresh token(s)`);
+    if (count > 0) logger.info('Purged expired refresh tokens', { count });
   } catch (err) {
-    console.error('[scheduler] Token purge failed:', err.message);
+    logger.error('Token purge failed', errorDetails(err));
   }
 }
 
@@ -25,7 +26,7 @@ async function purgeExpiredTokens() {
 // unhandled rejection and take the process down.
 function runReminderCheck() {
   return withSchedulerLock('reminder', CHECK_INTERVAL_MS, runReminderCheckLocked)
-    .catch(err => console.error('[scheduler] Reminder tick failed:', err.message));
+    .catch(err => logger.error('Reminder tick failed', errorDetails(err)));
 }
 
 async function runReminderCheckLocked() {
@@ -88,14 +89,14 @@ async function runReminderCheckLocked() {
             inventoryDate: batch.inventoryDate,
             deadline:      batch.submissionDeadline,
           });
-          console.warn(`[scheduler] 1h reminder batch ${batch.id}: sent=${result.sent}, failed=${result.failed}`);
+          logger.info('1h deadline reminder sent', { batchId: batch.id, sent: result.sent, failed: result.failed });
         }
       } catch (batchErr) {
-        console.error(`[scheduler] Failed to process batch ${batch.id}:`, batchErr.message);
+        logger.error('Failed to process batch for reminder', { batchId: batch.id, ...errorDetails(batchErr) });
       }
     }));
   } catch (err) {
-    console.error('[scheduler] Reminder check failed:', err.message);
+    logger.error('Reminder check failed', errorDetails(err));
   }
 }
 
@@ -107,7 +108,7 @@ export function startReminderScheduler() {
   _initTimer = setTimeout(runReminderCheck, 2 * 60 * 1000);
   _timer = setInterval(runReminderCheck, CHECK_INTERVAL_MS);
   _timer.unref();
-  console.warn('[scheduler] 1-hour deadline reminder scheduler started (every 30 min)');
+  logger.info('Reminder scheduler started', { intervalMs: CHECK_INTERVAL_MS });
 }
 
 export function stopReminderScheduler() {

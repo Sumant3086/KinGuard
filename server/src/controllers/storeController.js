@@ -1,5 +1,6 @@
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
+import { logger, errorDetails } from '../config/logger.js';
 import prisma from '../config/prisma.js';
 import { parseId, requireId, parsePage, parsePageSize } from '../utils/params.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
@@ -75,7 +76,7 @@ export async function getDashboard(req, res, next) {
     const olderPendingBatches = allPendingBatches.filter(b => b.id !== latestBatch.id);
 
     const duration = Date.now() - startTime;
-    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_STORE_DASHBOARD: ${duration}ms`);
+    logger.debug('Store dashboard built', { durationMs: duration });
 
     // Report the deadline this store is actually held to, so the dashboard does not
     // tell a store with a granted extension that the cycle is locked.
@@ -115,7 +116,7 @@ export async function getBatches(req, res, next) {
     `;
 
     const duration = Date.now() - startTime;
-    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_BATCHES (${batches.length} batches): ${duration}ms`);
+    logger.debug('Store batches built', { batches: batches.length, durationMs: duration });
 
     res.json(batches);
   } catch (error) {
@@ -211,7 +212,7 @@ export async function getInventory(req, res, next) {
     const isLocked = deadline ? new Date() > new Date(deadline) : false;
 
     const duration = Date.now() - startTime;
-    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_INVENTORY (${records.length} records): ${duration}ms`);
+    logger.debug('Store inventory built', { records: records.length, durationMs: duration });
 
     res.json({
       records,
@@ -316,10 +317,10 @@ export async function updateInventoryRecord(req, res, next) {
       entityType: 'INVENTORY_RECORD',
       entityId: recordId,
       metadata: { systemQuantity: record.systemQuantity, physicalQuantity: effectivePhysQty, remarks },
-    }).catch(err => console.error('[audit] UPDATE_INVENTORY log failed:', err.message));
+    }).catch(err => logger.error('Audit log failed', { action: 'UPDATE_INVENTORY', ...errorDetails(err) }));
 
     const duration = Date.now() - startTime;
-    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] UPDATE_INVENTORY record ${recordId}: ${duration}ms`);
+    logger.debug('Inventory record updated', { recordId, durationMs: duration });
 
     res.json(result);
   } catch (error) {
@@ -423,8 +424,8 @@ export async function submitInventory(req, res, next) {
       entityType: 'INVENTORY_RECORD',
       entityId: parsedBatchId,
       metadata: { recordCount: count },
-    }).catch(err => console.error('[audit] SUBMIT_INVENTORY log failed:', err.message));
-    detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(err => console.error('[detect-repeat] Failed:', err.message));
+    }).catch(err => logger.error('Audit log failed', { action: 'SUBMIT_INVENTORY', ...errorDetails(err) }));
+    detectRepeatDiscrepancies(storeId, parsedBatchId, req.user.id).catch(err => logger.error('Repeat-discrepancy detection failed', errorDetails(err)));
 
     // Fetch a fresh store row to get the current areaManagerId.
     // req.user.store is populated from the auth cache (30s TTL) and may be stale
@@ -446,7 +447,7 @@ export async function submitInventory(req, res, next) {
         sInvalidate(`am:batches:${amId}`, `am:notifications:${amId}`);
       } catch (amErr) {
         // Non-fatal: log clearly so it can be investigated without failing the submission
-        console.error('[submit] AM review upsert failed — store submitted but AM review not created:', amErr.message);
+        logger.error('AM review upsert failed — store submitted but AM review not created', errorDetails(amErr));
       }
     }
 
@@ -475,7 +476,7 @@ export async function submitInventory(req, res, next) {
           )
         );
         const adminFailed = adminResults.filter(r => r.status === 'rejected');
-        if (adminFailed.length) console.error('[submit] Admin notification error:', adminFailed[0].reason?.message);
+        if (adminFailed.length) logger.error('Admin submission notification error', { err: adminFailed[0].reason?.message });
       }
 
       // 2. Confirm to the submitting store manager
@@ -489,9 +490,9 @@ export async function submitInventory(req, res, next) {
           shortages:    shortageCount,
           matched:      matchedCount,
           excess:       excessCount,
-        }).catch(e => console.error('[submit] Manager confirmation error:', e.message));
+        }).catch(e => logger.error('Manager confirmation email error', errorDetails(e)));
       }
-    }).catch(e => console.error('[submit] Email query failed:', e.message));
+    }).catch(e => logger.error('Submission email query failed', errorDetails(e)));
 
     res.json({
       message: 'Inventory submitted successfully',
@@ -728,7 +729,7 @@ export async function downloadInventory(req, res, next) {
       entityType: 'INVENTORY_RECORD',
       entityId: targetBatchId,
       metadata: { recordCount: records.length, batchId: targetBatchId },
-    }).catch(err => console.error('[audit] DOWNLOAD_INVENTORY log failed:', err.message));
+    }).catch(err => logger.error('Audit log failed', { action: 'DOWNLOAD_INVENTORY', ...errorDetails(err) }));
 
     // Send file
     res.setHeader(

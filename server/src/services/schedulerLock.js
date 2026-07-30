@@ -18,6 +18,7 @@
 // LEASE_FRACTION picks that middle ground.
 
 import prisma from '../config/prisma.js';
+import { logger, errorDetails } from '../config/logger.js';
 
 // Identifies which instance holds a lease. Only ever read by a human debugging why a
 // tick did not fire, so uniqueness matters more than readability.
@@ -57,7 +58,7 @@ export async function withSchedulerLock(name, intervalMs, fn) {
   } catch (err) {
     // Never let a lock problem silently stop the schedulers. Skipping the tick is the
     // safe failure: the next one retries, and duplicate work is what we are avoiding.
-    console.error(`[scheduler-lock] Could not claim "${name}", skipping tick:`, err.message);
+    logger.error('Could not claim scheduler lease, skipping tick', { lock: name, ...errorDetails(err) });
     return false;
   }
 

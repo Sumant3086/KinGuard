@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const queryRaw = vi.fn();
 vi.mock('../config/prisma.js', () => ({ default: { $queryRaw: (...a) => queryRaw(...a) } }));
@@ -8,8 +8,12 @@ const { withSchedulerLock } = await import('./schedulerLock.js');
 describe('withSchedulerLock', () => {
   beforeEach(() => {
     queryRaw.mockReset();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // These cases exercise the failure path on purpose; keep their log lines out of
+    // the test output.
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   });
+
+  afterEach(() => { vi.restoreAllMocks(); });
 
   it('runs the work when the lease is claimed', async () => {
     queryRaw.mockResolvedValue([{ name: 'reminder' }]);

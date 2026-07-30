@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppError, errorHandler } from './errorHandler.js';
 
 describe('AppError', () => {
@@ -27,7 +27,11 @@ describe('errorHandler', () => {
     req  = { method: 'GET', path: '/test' };
     res  = { status: vi.fn().mockReturnThis(), json: vi.fn() };
     next = vi.fn();
+    // The 5xx cases below log by design; keep that out of the test output.
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   });
+
+  afterEach(() => { vi.restoreAllMocks(); });
 
   it('sends operational AppError message as-is in any environment', () => {
     const originalEnv = process.env.NODE_ENV;

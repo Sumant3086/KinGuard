@@ -1,3 +1,5 @@
+import { logger } from '../config/logger.js';
+
 const store = new Map();
 const MAX_ENTRIES = 10_000; // defensive cap — all keys are derived from user IDs so this is never hit in practice
 
@@ -10,7 +12,7 @@ export function sGet(key) {
 
 export function sSet(key, data, ttlMs = 60_000) {
   if (store.size >= MAX_ENTRIES) {
-    console.warn(`[serverCache] MAX_ENTRIES (${MAX_ENTRIES}) reached — skipping write for key: ${key}`);
+    logger.warn('Server cache full — skipping write', { maxEntries: MAX_ENTRIES, key });
     return;
   }
   store.set(key, { data, expires: Date.now() + ttlMs });

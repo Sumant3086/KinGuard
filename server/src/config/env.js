@@ -11,6 +11,11 @@ const requiredEnvVars = [
   'CLIENT_URL',
 ];
 
+// These two checks intentionally stay on console.error rather than the logger. They
+// run at import time, before dotenv has necessarily populated NODE_ENV, and the logger
+// reads NODE_ENV once at module load to pick its level and format. Importing it here
+// would freeze the wrong config. A failure below exits the process anyway, so plain
+// stderr is the right channel.
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     console.error(`Missing required environment variable: ${envVar}`);

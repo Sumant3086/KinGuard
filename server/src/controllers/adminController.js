@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import { parse } from 'csv-parse/sync';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
+import { logger, errorDetails } from '../config/logger.js';
 import prisma from '../config/prisma.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { parseId, requireId, parsePage, parsePageSize, parseIntParam } from '../utils/params.js';
@@ -108,13 +109,13 @@ async function withDbRetry(fn) {
     return await fn();
   } catch (firstErr) {
     if (!isConnectionError(firstErr)) throw firstErr;
-    console.warn('[db-retry] Connection lost, reconnecting:', firstErr.message);
+    logger.warn('DB connection lost, reconnecting', errorDetails(firstErr));
     try {
       await new Promise(r => setTimeout(r, 400));
       await prisma.$connect();
       return await fn();
     } catch (retryErr) {
-      console.error('[db-retry] Retry also failed:', retryErr.message);
+      logger.error('DB retry also failed', errorDetails(retryErr));
       throw new AppError('We are having trouble connecting to the database. Please wait a moment and try again', 503);
     }
   }
@@ -355,7 +356,7 @@ export async function getDashboard(req, res, next) {
     const amReviewPipeline = amReviewPipelineRaw;
 
     const duration = Date.now() - startTime;
-    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_DASHBOARD: ${duration}ms`);
+    logger.debug('Admin dashboard built', { durationMs: duration });
 
     const result = {
       totalStores,
@@ -1008,9 +1009,9 @@ export async function uploadInventory(req, res, next) {
       // Pass the parsed Date objects, not the raw request strings — parseUserDate accepts
       // formats that a bare new Date() in the email template would render "Invalid Date".
       sendNewCycleEmailAM({ managers: amWithCount, inventoryDate: targetDate, deadline: parsedDeadline })
-        .then(r => console.warn(`[upload] AM email result: sent=${r.sent}, failed=${r.failed}`))
-        .catch(e => console.error('[upload] AM email send error:', e.message));
-    }).catch(e => console.error('[upload] AM query failed:', e.message));
+        .then(r => logger.info('Upload AM email result', { sent: r.sent, failed: r.failed }))
+        .catch(e => logger.error('Upload AM email send error', errorDetails(e)));
+    }).catch(e => logger.error('Upload AM query failed', errorDetails(e)));
   } catch (error) {
     next(error);
   }
@@ -1196,7 +1197,7 @@ export async function getInventory(req, res, next) {
     const enrichedRecords = records.map(r => ({ ...r, isRepeat: r.isRepeat ?? false }));
 
     const duration = Date.now() - startTime;
-    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] GET_ADMIN_INVENTORY (${records.length} records, page ${pageNum}): ${duration}ms`);
+    logger.debug('Admin inventory page built', { records: records.length, page: pageNum, durationMs: duration });
 
     res.json({
       data: enrichedRecords,
@@ -1382,7 +1383,7 @@ export async function downloadInventoryExport(req, res, next) {
     });
 
     const duration = Date.now() - startTime;
-    if (process.env.NODE_ENV !== 'production') console.log(`[PERF] DOWNLOAD_ADMIN_EXPORT (${records.length} records): ${duration}ms`);
+    logger.debug('Admin export built', { records: records.length, durationMs: duration });
 
     // Generate filename
     const date = new Date().toISOString().split('T')[0];
@@ -2441,7 +2442,7 @@ export async function sendBatchReminders(req, res, next) {
         failed:     acc.failed + r.failed,
       }), { configured: false, sent: 0, failed: 0 });
     } catch (emailErr) {
-      console.error('[batches] Email service error:', emailErr.message);
+      logger.error('Batch reminder email service error', errorDetails(emailErr));
       emailResult = { configured: true, sent: 0, failed: managers.length };
     }
 
@@ -2449,7 +2450,7 @@ export async function sendBatchReminders(req, res, next) {
       userId: req.user.id, action: 'SEND_BATCH_REMINDERS',
       entityType: 'UPLOAD_BATCH', entityId: batchId,
       metadata: { managerCount: managers.length, pendingStores: storeIds.length, emailsSent: emailResult.sent, smtpConfigured: emailResult.configured },
-    }).catch(err => console.error('[audit] SEND_BATCH_REMINDERS log failed:', err.message));
+    }).catch(err => logger.error('Audit log failed', { action: 'SEND_BATCH_REMINDERS', ...errorDetails(err) }));
 
     const managersWithEmail = managers.length;
     let message;
@@ -3081,7 +3082,7 @@ export async function bulkReviewUsers(req, res, next) {
         include: { store: { select: { id: true, storeCode: true, storeName: true } } },
       });
     } catch (firstErr) {
-      console.warn('[bulkReviewUsers] First DB query failed, retrying after reconnect:', firstErr.message);
+      logger.warn('bulkReviewUsers first DB query failed, retrying after reconnect', errorDetails(firstErr));
       try {
         await new Promise(r => setTimeout(r, 300));
         await prisma.$connect();
@@ -3090,7 +3091,7 @@ export async function bulkReviewUsers(req, res, next) {
           include: { store: { select: { id: true, storeCode: true, storeName: true } } },
         });
       } catch (retryErr) {
-        console.error('[bulkReviewUsers] DB unavailable after retry:', retryErr.message);
+        logger.error('bulkReviewUsers DB unavailable after retry', errorDetails(retryErr));
         throw new AppError('Unable to reach the database. Please try again in a moment.', 503);
       }
     }

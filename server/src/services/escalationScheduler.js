@@ -8,6 +8,7 @@
 
 import prisma from '../config/prisma.js';
 import { withSchedulerLock } from './schedulerLock.js';
+import { logger, errorDetails } from '../config/logger.js';
 
 const CHECK_INTERVAL_MS   = 30 * 60 * 1000; // every 30 minutes
 const TIER1_DELAY_MS      = 0;               // immediately after deadline
@@ -17,7 +18,7 @@ const TIER2_DELAY_MS      = 24 * 60 * 60 * 1000; // 24h after deadline
 // concurrent instances would both pass the `< 1` check and mail every AM twice.
 function runEscalationCheck() {
   return withSchedulerLock('escalation', CHECK_INTERVAL_MS, runEscalationCheckLocked)
-    .catch(err => console.error('[escalation] Tick failed:', err.message));
+    .catch(err => logger.error('Escalation tick failed', errorDetails(err)));
 }
 
 async function runEscalationCheckLocked() {
@@ -100,7 +101,7 @@ async function runEscalationCheckLocked() {
               });
             }));
           }
-          console.warn(`[escalation] Tier 1 sent for batch ${batch.id} — ${storeIds.length} stores pending, ${Math.round(hoursOverdue)}h overdue`);
+          logger.info('Escalation tier 1 sent', { batchId: batch.id, pendingStores: storeIds.length, hoursOverdue: Math.round(hoursOverdue) });
         }
 
         // Tier 2: notify Admins (fires after 24h overdue) — stamp first, same rationale
@@ -118,14 +119,14 @@ async function runEscalationCheckLocked() {
               hoursOverdue: Math.round(hoursOverdue),
             })
           ));
-          console.warn(`[escalation] Tier 2 sent for batch ${batch.id} — ${storeIds.length} stores still pending, ${Math.round(hoursOverdue)}h overdue`);
+          logger.info('Escalation tier 2 sent', { batchId: batch.id, pendingStores: storeIds.length, hoursOverdue: Math.round(hoursOverdue) });
         }
       } catch (batchErr) {
-        console.error(`[escalation] Error processing batch ${batch.id}:`, batchErr.message);
+        logger.error('Error processing batch for escalation', { batchId: batch.id, ...errorDetails(batchErr) });
       }
     }));
   } catch (err) {
-    console.error('[escalation] Check failed:', err.message);
+    logger.error('Escalation check failed', errorDetails(err));
   }
 }
 
@@ -138,7 +139,7 @@ export function startEscalationScheduler() {
   _initTimer = setTimeout(runEscalationCheck, 3 * 60 * 1000);
   _timer     = setInterval(runEscalationCheck, CHECK_INTERVAL_MS);
   _timer.unref();
-  console.warn('[escalation] Post-deadline escalation scheduler started (every 30 min)');
+  logger.info('Escalation scheduler started', { intervalMs: CHECK_INTERVAL_MS });
 }
 
 export function stopEscalationScheduler() {

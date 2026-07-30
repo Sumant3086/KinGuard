@@ -4,33 +4,32 @@ import prisma from './config/prisma.js';
 import { startReminderScheduler, stopReminderScheduler } from './services/reminderScheduler.js';
 import { startEscalationScheduler, stopEscalationScheduler } from './services/escalationScheduler.js';
 import { startCycleScheduler, stopCycleScheduler } from './services/cycleScheduleService.js';
+import { logger, errorDetails } from './config/logger.js';
 import { exec } from 'child_process';
 import { platform } from 'os';
 
 // Catch async errors that escape try/catch (e.g. background fire-and-forget that throws)
 // In development, log but DO NOT exit — let the server keep running for debugging
 process.on('unhandledRejection', (reason) => {
-  console.error('[server] ❌ Unhandled promise rejection:', reason);
-  console.error('[server] Stack:', reason instanceof Error ? reason.stack : 'No stack trace');
+  logger.error('Unhandled promise rejection', errorDetails(reason));
   // Only exit in production (where a process manager can restart)
   const isDev = process.env.NODE_ENV === 'development';
   if (!isDev) {
-    console.error('[server] Exiting due to unhandled rejection in production');
+    logger.error('Exiting due to unhandled rejection in production');
     process.exit(1);
   } else {
-    console.warn('[server] ⚠️  Continuing in development mode despite unhandled rejection');
+    logger.warn('Continuing in development mode despite unhandled rejection');
   }
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('[server] ❌ Uncaught exception:', error);
-  console.error('[server] Stack:', error.stack);
+  logger.error('Uncaught exception', errorDetails(error));
   const isDev = process.env.NODE_ENV === 'development';
   if (!isDev) {
-    console.error('[server] Exiting due to uncaught exception in production');
+    logger.error('Exiting due to uncaught exception in production');
     process.exit(1);
   } else {
-    console.warn('[server] ⚠️  Continuing in development mode despite uncaught exception');
+    logger.warn('Continuing in development mode despite uncaught exception');
   }
 });
 
@@ -58,13 +57,13 @@ async function startServer() {
     // for real models. Without this, the first user.findUnique() in production
     // (or after a watch reload) can miss the prepared-statement cache and fail.
     await prisma.user.count().catch(() => {}); // best-effort — don't block startup
-    console.log('Database connected successfully');
+    logger.info('Database connected successfully');
 
     // Purge expired refresh tokens left over from previous sessions.
     // Best-effort — a failure here should not block startup.
     prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: new Date() } } })
-      .then(r => { if (r.count > 0) console.log(`[startup] Purged ${r.count} expired refresh token(s)`); })
-      .catch(e => console.error('[startup] Failed to purge expired tokens:', e.message));
+      .then(r => { if (r.count > 0) logger.info('Purged expired refresh tokens at startup', { count: r.count }); })
+      .catch(e => logger.error('Failed to purge expired tokens at startup', errorDetails(e)));
 
     // Keep-alive: ping the DB every 3 minutes so Supabase's pooler doesn't
     // drop idle connections (it times out after ~5 min of inactivity).
@@ -86,23 +85,22 @@ async function startServer() {
     if (env.server.nodeEnv === 'development') await freePort(env.server.port);
 
     const server = app.listen(env.server.port, () => {
-      console.log(`Server running on port ${env.server.port}`);
-      console.log(`Environment: ${env.server.nodeEnv}`);
+      logger.info('Server listening', { port: env.server.port, env: env.server.nodeEnv });
     });
 
     server.on('error', (err) => {
-      console.error('Server error:', err);
+      logger.error('Server error', errorDetails(err));
       process.exit(1);
     });
 
     async function shutdown(signal) {
-      console.log(`\n[server] ${signal} received — shutting down gracefully`);
+      logger.info('Shutting down gracefully', { signal });
       stopReminderScheduler();
       stopEscalationScheduler();
       stopCycleScheduler();
       // Cancel the force-exit timer if graceful shutdown succeeds first
       const forceTimer = setTimeout(() => {
-        console.error('[server] Forced shutdown after timeout');
+        logger.error('Forced shutdown after timeout');
         process.exit(1);
       }, 10_000).unref();
       // Stop accepting new connections; give in-flight requests 10 s to finish
@@ -110,9 +108,9 @@ async function startServer() {
         clearTimeout(forceTimer);
         try {
           await prisma.$disconnect();
-          console.log('[server] Database disconnected');
+          logger.info('Database disconnected');
         } catch (err) {
-          console.error('[server] Error during DB disconnect:', err.message);
+          logger.error('Error during DB disconnect', errorDetails(err));
         } finally {
           process.exit(0);
         }
@@ -122,7 +120,7 @@ async function startServer() {
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT',  () => shutdown('SIGINT'));
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server', errorDetails(error));
     process.exit(1);
   }
 }

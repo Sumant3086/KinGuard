@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { AppError } from './errorHandler.js';
 import prisma from '../config/prisma.js';
+import { logger, errorDetails } from '../config/logger.js';
 
 // In-memory user cache — eliminates DB hit on every API request.
 // TTL: 30 seconds — short enough that role/status changes propagate quickly.
@@ -101,9 +102,12 @@ export async function authenticate(req, res, next) {
     }
 
     req.user = cached;
+    // Stamp the caller onto every remaining log line for this request, so a report
+    // like "store 42 saw an error" can be traced without knowing the request id.
+    logger.addContext({ userId: cached.id, role: cached.role });
     next();
   } catch (dbError) {
-    console.error('[auth] DB error during token validation:', dbError.message);
+    logger.error('DB error during token validation', errorDetails(dbError));
     next(new AppError('We could not verify your session right now. Please try again in a moment', 503));
   }
 }

@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { logger, errorDetails } from '../config/logger.js';
 import { createAuditLog } from '../services/auditService.js';
 import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { parseId, requireId } from '../utils/params.js';
@@ -16,7 +17,7 @@ async function withRetry(fn) {
     const isConn = RETRYABLE.has(err.code) ||
       (err.message ?? '').toLowerCase().match(/connect|econnreset|socket/);
     if (!isConn) throw err;
-    console.warn('[am] DB connection lost, reconnecting:', err.message);
+    logger.warn('DB connection lost, reconnecting', errorDetails(err));
     await new Promise(r => setTimeout(r, 400));
     await prisma.$connect();
     return fn();
@@ -460,9 +461,9 @@ export async function approveStore(req, res, next) {
       const { sendAMApprovalEmail } = await import('../services/emailService.js');
       for (const admin of admins) {
         sendAMApprovalEmail({ adminEmail: admin.email, adminName: admin.name, store: storeMeta_, areaManagerName: req.user.name, batchDate: new Date(batch.inventoryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), remarks: remarks || null })
-          .catch(e => console.error('[am-approve] Email error:', e.message));
+          .catch(e => logger.error('AM approval email error', errorDetails(e)));
       }
-    }).catch(e => console.error('[am-approve] Notify error:', e.message));
+    }).catch(e => logger.error('AM approval notify error', errorDetails(e)));
 
     res.json({ ok: true, review });
   } catch (error) { next(error); }

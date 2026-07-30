@@ -6,6 +6,7 @@
 
 import prisma from '../config/prisma.js';
 import { withSchedulerLock } from './schedulerLock.js';
+import { logger, errorDetails } from '../config/logger.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // every 1 hour
 
@@ -53,7 +54,7 @@ export function computeNextRun(frequency, dayOfMonth, dayOfWeek, from = new Date
 // advance nextRunAt, skipping a period and double-logging the due notice.
 function runScheduleCheck() {
   return withSchedulerLock('cycle-schedule', CHECK_INTERVAL_MS, runScheduleCheckLocked)
-    .catch(err => console.error('[cycle-scheduler] Tick failed:', err.message));
+    .catch(err => logger.error('Cycle schedule tick failed', errorDetails(err)));
 }
 
 async function runScheduleCheckLocked() {
@@ -86,7 +87,7 @@ async function runScheduleCheckLocked() {
         // Instead, the scheduler just logs a reminder that a cycle is due and
         // advances nextRunAt. The admin sees the schedule in Admin → Schedules
         // and knows to upload the inventory file for this period.
-        console.warn(`[cycle-scheduler] Schedule "${schedule.name}" is due — inventory date ${inventoryDate.toISOString().split('T')[0]}, deadline ${deadline.toISOString().split('T')[0]}. Admin should upload the inventory file.`);
+        logger.info('Cycle schedule is due — admin should upload the inventory file', { scheduleId: schedule.id, schedule: schedule.name, inventoryDate: inventoryDate.toISOString().split('T')[0], deadline: deadline.toISOString().split('T')[0] });
 
         // Advance nextRunAt regardless
         const next = computeNextRun(schedule.frequency, schedule.dayOfMonth, schedule.dayOfWeek, now);
@@ -95,11 +96,11 @@ async function runScheduleCheckLocked() {
           data: { lastRunAt: now, nextRunAt: next, updatedAt: now },
         });
       } catch (err) {
-        console.error(`[cycle-scheduler] Error for schedule ${schedule.id} "${schedule.name}":`, err.message);
+        logger.error('Error processing cycle schedule', { scheduleId: schedule.id, schedule: schedule.name, ...errorDetails(err) });
       }
     }));
   } catch (err) {
-    console.error('[cycle-scheduler] Check failed:', err.message);
+    logger.error('Cycle schedule check failed', errorDetails(err));
   }
 }
 
@@ -112,7 +113,7 @@ export function startCycleScheduler() {
   _initTimer = setTimeout(runScheduleCheck, 5 * 60 * 1000);
   _timer     = setInterval(runScheduleCheck, CHECK_INTERVAL_MS);
   _timer.unref();
-  console.warn('[cycle-scheduler] Scheduled cycle service started (every 1 hour)');
+  logger.info('Cycle scheduler started', { intervalMs: CHECK_INTERVAL_MS });
 }
 
 export function stopCycleScheduler() {

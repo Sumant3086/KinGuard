@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { logger, errorDetails } from '../config/logger.js';
 
 // Prisma's known request errors carry a `code` and are really client mistakes, not
 // server faults. Left unmapped they fall through as 500s, so a request for a row that
@@ -45,12 +46,14 @@ export function errorHandler(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
   const isOperational = err instanceof AppError || err.name === 'AppError';
 
-  // Log all 5xx errors to console with full context — never shown to the user
+  // Log all 5xx errors with full context — never shown to the user. The requestId
+  // comes from the async context, so this line can be tied to the access-log line
+  // for the same request.
   if (statusCode >= 500) {
-    console.error(
-      `[error] ${req.method} ${req.path} → ${statusCode} | ${err.message}`,
-      env.server.nodeEnv !== 'production' ? err.stack : ''
-    );
+    logger.error(`Unhandled ${statusCode} on ${req.method} ${req.path}`, {
+      status: statusCode,
+      ...errorDetails(err),
+    });
   }
 
   // User-facing message: operational errors keep their message, unexpected errors get a generic one

@@ -3,6 +3,8 @@
 // The Brevo REST API uses HTTPS (port 443) which is never blocked.
 // Set BREVO_API_KEY in server/.env to enable email notifications.
 
+import { logger, errorDetails } from '../config/logger.js';
+
 const BREVO_API = 'https://api.brevo.com/v3/smtp/email';
 
 function isConfigured() {
@@ -40,7 +42,7 @@ async function sendOne({ to, toName, subject, htmlContent }) {
 // Filters out managers with no email, sends all in parallel, returns counts.
 async function sendBulk(managers, buildEmail, tag) {
   if (!isConfigured()) {
-    console.warn('[email] BREVO_API_KEY not set — email notifications disabled');
+    logger.warn('BREVO_API_KEY not set — email notifications disabled');
     return { configured: false, sent: 0, failed: 0 };
   }
   const notifiable = managers.filter(m => m.email);
@@ -50,9 +52,9 @@ async function sendBulk(managers, buildEmail, tag) {
   const sent   = results.filter(r => r.status === 'fulfilled').length;
   const failed = results.filter(r => r.status === 'rejected').length;
   results.filter(r => r.status === 'rejected').forEach(r =>
-    console.error(`[email] ${tag} send failed:`, r.reason?.message)
+    logger.error('Email send failed', { tag, err: r.reason?.message })
   );
-  console.warn(`[email] ${tag}: sent=${sent}, failed=${failed}`);
+  logger.info('Bulk email finished', { tag, sent, failed });
   return { configured: true, sent, failed };
 }
 
@@ -224,5 +226,5 @@ export async function sendEscalationEmail({ to, toName, tier, inventoryDate, pen
           : 'Please contact your store managers and ensure they submit their counts as soon as possible.'}
       </p>
     `),
-  }).catch(e => console.error('[escalation] Email send error:', e.message));
+  }).catch(e => logger.error('Escalation email send error', errorDetails(e)));
 }

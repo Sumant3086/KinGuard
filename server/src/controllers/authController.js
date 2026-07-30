@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { env } from '../config/env.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createAuditLog } from '../services/auditService.js';
+import { logger, errorDetails } from '../config/logger.js';
 import { invalidateUserCache } from '../middleware/auth.js';
 import prisma from '../config/prisma.js';
 
@@ -154,7 +155,7 @@ export async function login(req, res, next) {
     }
     if (lastErr) {
       // Log once — not per retry — so server output stays readable
-      console.error('[auth] DB unavailable after retries:', lastErr.message);
+      logger.error('DB unavailable after retries', errorDetails(lastErr));
       throw new AppError('We are having trouble connecting right now. Please try again in a moment', 503);
     }
 

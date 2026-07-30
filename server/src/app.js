@@ -9,6 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { requestContext } from './middleware/requestContext.js';
 import prisma from './config/prisma.js';
 
 const app = express();
@@ -67,12 +68,9 @@ app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// In production suppress verbose output but keep warn and error for operational signals.
-if (IS_PROD) {
-  console.log   = () => {};
-  console.debug = () => {};
-  console.info  = () => {};
-}
+// ── Request context — must precede the routes so every log line in a request,
+//    including the error handler's, carries the same requestId ────────────────
+app.use(requestContext);
 
 // ── Health check — verifies DB connectivity so wait-on (dev) and
 //    UptimeRobot (prod) only see OK when the server is fully ready ──────────
@@ -86,19 +84,6 @@ app.get('/api/health', async (_req, res) => {
     res.status(503).json({ status: 'starting', timestamp: new Date().toISOString() });
   }
 });
-
-// ── Request logging (development only) ────────────────────────────────────
-if (!IS_PROD) {
-  app.use((req, res, next) => {
-    const start = Date.now();
-    console.log(`🌐 [${new Date().toISOString()}] ${req.method} ${req.path}`);
-    res.on('finish', () => {
-      const ms = Date.now() - start;
-      console.log(`✓ [${new Date().toISOString()}] ${req.method} ${req.path} → ${res.statusCode} (${ms}ms)`);
-    });
-    next();
-  });
-}
 
 // ── Rate limiting ───────────────────────────────────────────────────────────
 const rlOptions = { standardHeaders: true, legacyHeaders: false,
