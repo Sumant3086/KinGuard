@@ -40,8 +40,8 @@ model Store {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  areaManager        User?                  @relation("AreaManagerStores", fields: [areaManagerId], references: [id])
-  users              User[]                 @relation("StoreUsers")
+  areaManager        User?                    @relation("AreaManagerStores", fields: [areaManagerId], references: [id])
+  users              User[]                   @relation("StoreUsers")
   inventoryRecords   InventoryRecord[]
   deadlineExtensions BatchDeadlineExtension[]
   amReviews          AreaManagerReview[]
@@ -51,32 +51,32 @@ model Store {
 }
 
 model User {
-  id                 Int      @id @default(autoincrement())
-  employeeId         String   @unique
+  id                 Int       @id @default(autoincrement())
+  employeeId         String    @unique
   name               String
   passwordHash       String
   role               UserRole
   storeId            Int?
-  isActive           Boolean  @default(true)
-  pendingApproval    Boolean  @default(false)
-  mustChangePassword Boolean  @default(false)
-  source             String   @default("MANUAL")
-  email              String?  @unique
+  isActive           Boolean   @default(true)
+  pendingApproval    Boolean   @default(false)
+  mustChangePassword Boolean   @default(false)
+  source             String    @default("MANUAL")
+  email              String?   @unique
   phone              String?
-  loginAttempts      Int      @default(0)
+  loginAttempts      Int       @default(0)
   lockedUntil        DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  store              Store?             @relation("StoreUsers", fields: [storeId], references: [id])
-  managedStores      Store[]            @relation("AreaManagerStores")
+  store              Store?                   @relation("StoreUsers", fields: [storeId], references: [id])
+  managedStores      Store[]                  @relation("AreaManagerStores")
   uploadBatches      UploadBatch[]
-  submittedRecords   InventoryRecord[]  @relation("SubmittedBy")
+  submittedRecords   InventoryRecord[]        @relation("SubmittedBy")
   auditLogs          AuditLog[]
   deadlineExtensions BatchDeadlineExtension[] @relation("DeadlineExtensions")
   refreshTokens      RefreshToken[]
-  amReviews          AreaManagerReview[] @relation("AMReviews")
-  createdSchedules   CycleSchedule[]    @relation("ScheduleCreator")
+  amReviews          AreaManagerReview[]      @relation("AMReviews")
+  createdSchedules   CycleSchedule[]          @relation("ScheduleCreator")
 
   @@index([employeeId])
   @@index([storeId])
@@ -113,7 +113,7 @@ model UploadBatch {
   deletedAt          DateTime?
   deletedBy          Int?
 
-  uploader           User                    @relation(fields: [uploadedBy], references: [id])
+  uploader           User                     @relation(fields: [uploadedBy], references: [id])
   inventoryRecords   InventoryRecord[]
   deadlineExtensions BatchDeadlineExtension[]
   amReviews          AreaManagerReview[]
@@ -121,6 +121,8 @@ model UploadBatch {
   @@index([uploadedBy])
   @@index([inventoryDate])
   @@index([status])
+  @@index([status, isDeleted, inventoryDate])
+  @@index([isDeleted, inventoryDate])
 }
 
 model InventoryRecord {
@@ -178,6 +180,7 @@ model AreaManagerReview {
   @@index([storeId])
   @@index([status])
   @@index([batchId, areaManagerId, status])
+  @@index([storeId, status])
 }
 
 model AuditLog {
@@ -195,21 +198,22 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@index([entityType, entityId])
+  @@index([action, createdAt])
 }
 
 model CycleSchedule {
-  id                   Int      @id @default(autoincrement())
+  id                   Int       @id @default(autoincrement())
   name                 String
-  frequency            String   // 'weekly' | 'monthly' | 'quarterly'
-  dayOfMonth           Int?     // 1–28 (for monthly / quarterly)
-  dayOfWeek            Int?     // 0–6 (for weekly; 0 = Sunday)
-  submissionWindowDays Int      @default(7)
-  isActive             Boolean  @default(true)
+  frequency            String // 'weekly' | 'monthly' | 'quarterly'
+  dayOfMonth           Int? // 1–28 (for monthly / quarterly)
+  dayOfWeek            Int? // 0–6 (for weekly; 0 = Sunday)
+  submissionWindowDays Int       @default(7)
+  isActive             Boolean   @default(true)
   lastRunAt            DateTime?
   nextRunAt            DateTime?
   createdBy            Int
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   creator User @relation("ScheduleCreator", fields: [createdBy], references: [id])
 

@@ -193,15 +193,21 @@ export async function getDashboard(req, res, next) {
     const cached = bust ? null : sGet('admin:dashboard');
     if (cached) return res.json(cached);
 
-    // Round 1 — two cheap queries; wrap in withDbRetry so a dropped Supabase
+    // Round 1 — three cheap queries; wrap in withDbRetry so a dropped Supabase
     // idle-connection is recovered without surfacing a 503 to the user.
-    const [totalStores, latestBatch] = await withDbRetry(() => Promise.all([
+    // last4Batches belongs here rather than in round 2: it depends on nothing, and
+    // moving it up lets the hotspot query (which needs its ids) run in round 2
+    // instead of forcing a third sequential round-trip.
+    const [totalStores, latestBatch, last4Batches] = await withDbRetry(() => Promise.all([
       prisma.store.count({ where: { isActive: true } }),
       prisma.uploadBatch.findFirst({
         where: { status: 'COMPLETED', isDeleted: false },
         orderBy: { inventoryDate: 'desc' },
         select: { id: true, inventoryDate: true, submissionDeadline: true },
       }),
+      // COMPLETED only, matching latestBatch above — a half-finished upload has no
+      // usable rows and would push a real cycle out of the 4-cycle hotspot window.
+      prisma.uploadBatch.findMany({ where: { status: 'COMPLETED', isDeleted: false }, orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
     ]));
 
     if (!latestBatch) {
@@ -222,12 +228,14 @@ export async function getDashboard(req, res, next) {
       ? now > new Date(latestBatch.submissionDeadline)
       : false;
 
-    // Round 2 — all stat queries + last-4-batches + remarks + AM pipeline in one burst.
-    // topRemarkRows and amReviewPipeline only depend on latestBatch.id (round 1),
-    // so they no longer need to wait for last4Batches — saves a full DB round-trip.
+    const batchIds = last4Batches.map((b) => b.id);
+
+    // Round 2 — every remaining query in one burst. They all depend only on
+    // latestBatch.id / batchIds, both resolved in round 1, so nothing here has to
+    // wait on anything else here.
     const [
-      perStoreStats, networkStats, allStores, last4Batches,
-      topRemarkRows, amReviewPipelineRaw,
+      perStoreStats, networkStats, allStores,
+      topRemarkRows, amReviewPipelineRaw, hotspotRows,
     ] = await Promise.all([
       prisma.$queryRaw`
         SELECT
@@ -252,9 +260,6 @@ export async function getDashboard(req, res, next) {
         WHERE "batchId" = ${latestBatch.id}
       `,
       prisma.store.findMany({ where: { isActive: true }, select: { id: true, storeCode: true, storeName: true, areaManagerId: true, areaManager: { select: { name: true } } } }),
-      // COMPLETED only, matching latestBatch above — a half-finished upload has no
-      // usable rows and would push a real cycle out of the 4-cycle hotspot window.
-      prisma.uploadBatch.findMany({ where: { status: 'COMPLETED', isDeleted: false }, orderBy: { inventoryDate: 'desc' }, take: 4, select: { id: true } }),
       prisma.$queryRaw`
         SELECT "storeId"::int AS "storeId", remarks, COUNT(*)::int AS cnt
         FROM "InventoryRecord"
@@ -270,12 +275,6 @@ export async function getDashboard(req, res, next) {
         WHERE r."batchId" = ${latestBatch.id}
         ORDER BY r.status, s."storeName"
       `.catch(() => []), // table may not exist yet — silently return []
-    ]);
-
-    const batchIds = last4Batches.map((b) => b.id);
-
-    // Round 3 — hotspot query only; depends on batchIds from round 2
-    const [hotspotRows] = await Promise.all([
       batchIds.length >= 2
         ? prisma.$queryRaw`
             SELECT

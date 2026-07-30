@@ -201,20 +201,43 @@ export async function getBatches(req, res, next) {
           where: { storeId: { in: storeIds } },
           select: { storeId: true, status: true },
         },
-        inventoryRecords: {
-          where: { storeId: { in: storeIds } },
-          select: { storeId: true, status: true },
-          distinct: ['storeId', 'status'],
-        },
       },
     });
 
+    // Which statuses each store has in each cycle. Nesting this as an
+    // `inventoryRecords` select with `distinct: ['storeId','status']` cannot be pushed
+    // into SQL, so it dragged every inventory row for every managed store across every
+    // cycle into the query engine to derive at most two statuses per store. groupBy
+    // does the deduplication in Postgres and returns only the distinct triples.
+    const batchIds = batches.map(b => b.id);
+    const statusRows = batchIds.length > 0
+      ? await prisma.inventoryRecord.groupBy({
+          by: ['batchId', 'storeId', 'status'],
+          where: { batchId: { in: batchIds }, storeId: { in: storeIds } },
+          _count: true,
+        })
+      : [];
+
+    // batchId -> storeId -> Set of statuses present
+    const statusesByBatch = new Map();
+    for (const row of statusRows) {
+      let byStore = statusesByBatch.get(row.batchId);
+      if (!byStore) { byStore = new Map(); statusesByBatch.set(row.batchId, byStore); }
+      let statuses = byStore.get(row.storeId);
+      if (!statuses) { statuses = new Set(); byStore.set(row.storeId, statuses); }
+      statuses.add(row.status);
+    }
+
     const result = batches.map(b => {
+      const byStore = statusesByBatch.get(b.id);
       const storeStatuses = storeIds.map(sid => {
         const review = b.amReviews.find(r => r.storeId === sid);
-        const records = b.inventoryRecords.filter(r => r.storeId === sid);
-        const allSubmitted = records.length > 0 && records.every(r => r.status === 'SUBMITTED');
-        const allPending   = records.length > 0 && records.every(r => r.status === 'PENDING');
+        const statuses = byStore?.get(sid);
+        // status is a two-value enum, so "every record is SUBMITTED" is exactly
+        // "SUBMITTED is present and PENDING is not" — same result as the previous
+        // .every() over the distinct rows.
+        const allSubmitted = !!statuses && statuses.has('SUBMITTED') && !statuses.has('PENDING');
+        const allPending   = !!statuses && statuses.has('PENDING')   && !statuses.has('SUBMITTED');
         return {
           storeId: sid,
           reviewStatus: review?.status || null,
@@ -222,7 +245,7 @@ export async function getBatches(req, res, next) {
           pending: allPending,
           // A store with no rows in this cycle simply wasn't part of it — it is
           // neither submitted nor outstanding, so it must not inflate the counts.
-          inBatch: records.length > 0,
+          inBatch: !!statuses,
         };
       });
       const storesInBatch = storeStatuses.filter(s => s.inBatch);
