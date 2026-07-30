@@ -63,15 +63,17 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(request).then(cached => {
         if (cached) return cached;
-        return fetch(request)
-          .then(response => {
-            if (response && response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then(c => c.put(request, clone)).catch(() => {});
-            }
-            return response;
-          })
-          .catch(() => new Response('', { status: 408, statusText: 'Offline' }));
+        // A failed chunk load must surface as a real network error. Answering it
+        // with a synthetic empty 408 made the browser treat the exchange as a
+        // completed HTTP response, so the module failed silently instead of
+        // reporting why — and filled the console with fake "408 (Offline)" rows.
+        return fetch(request).then(response => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(c => c.put(request, clone)).catch(() => {});
+          }
+          return response;
+        });
       })
     );
     return;
@@ -102,8 +104,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── Everything else: network-first, no cache (favicons, manifests, etc.) ──
-  event.respondWith(
-    fetch(request).catch(() => new Response('', { status: 408, statusText: 'Offline' }))
-  );
+  // ── Everything else (favicons, manifest): leave it to the browser ─────────
+  // Not calling respondWith gives the same network-first, no-cache behaviour the
+  // hand-rolled fetch did, minus the fabricated 408 it returned on failure — which
+  // hid the true reason a request failed behind an empty response that looked like
+  // a real HTTP status.
 });

@@ -195,12 +195,15 @@ export async function login(req, res, next) {
       throw new AppError('Your account has been deactivated. Contact your administrator to regain access', 403);
     }
 
+    // Refresh token first: it is the only step left that can still fail (it writes to
+    // the DB). Setting the access cookie before it meant a failed refresh write left
+    // the browser holding a valid 15-minute access cookie attached to an error
+    // response — the page said login failed while the next request was authenticated.
+    await issueRefreshToken(user.id, res);
+
     // Issue access token as HttpOnly cookie
     const accessToken = signAccessToken(user);
     res.cookie(ACCESS_COOKIE, accessToken, cookieOpts(ACCESS_TTL_MS));
-
-    // Issue refresh token stored in DB + HttpOnly cookie
-    await issueRefreshToken(user.id, res);
 
     createAuditLog({
       userId: user.id, action: 'LOGIN', entityType: 'USER', entityId: user.id,

@@ -72,38 +72,37 @@ export default function LoginPage() {
     }
   }
 
-  // Retry delays for transient server errors (ECONNRESET, ECONNREFUSED, 503, 500).
-  // Reduced to 3 retries — enough to survive a node --watch restart (~3-5 s)
-  // without flooding the console with repeated failure messages.
+  // Retry delays for genuinely transient failures. Three retries are enough to
+  // survive a node --watch restart (~3-5 s) without flooding the console.
   const RETRY_DELAYS = [800, 2000, 3500];
+
+  // No response at all means the request never completed (server down, timeout).
+  // 502/503/504 mean the server is reachable but not ready yet — the database
+  // connection dropped or it is still booting. Anything else is a definite answer:
+  // retrying a 400 or a 500 three more times costs four of the twenty per-IP
+  // sign-in attempts allowed per 15 minutes, and then discards the server's real
+  // message in favour of a "taking too long" banner describing the wrong problem.
+  function isTransient(err) {
+    const status = err.response?.status;
+    return status === undefined || status === 502 || status === 503 || status === 504;
+  }
 
   async function attemptLogin(attempt = 0) {
     try {
       await login(employeeId, password);
       // AuthContext handles redirect on success
     } catch (err) {
-      const status = err.response?.status;
-
-      // Definitive auth errors — show the server's message directly and never retry.
-      // 429 carries the lockout countdown from the server ("try again in N minutes").
-      if (status === 401 || status === 403 || status === 429) {
-        setError(err.response?.data?.error || 'Incorrect Employee ID or password');
-        return;
-      }
-
-      // Transient: network down, server restarting, or cold-start 503/500
-      if (attempt < RETRY_DELAYS.length) {
+      if (isTransient(err) && attempt < RETRY_DELAYS.length) {
         setReconnecting(true); // switch button to "Reconnecting…"
         await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
         return attemptLogin(attempt + 1);
       }
 
-      // All retries exhausted — show a clear message
-      if (!err.response) {
-        setError(t('auth.cannotReachServer'));
-      } else {
-        setError(t('auth.serverSlow'));
-      }
+      // Show what the server actually said — wrong credentials, lockout countdown,
+      // account pending approval. Only fall back to a generic message when there
+      // is no response to quote.
+      if (!err.response) setError(t('auth.cannotReachServer'));
+      else setError(err.response.data?.error || t('auth.serverSlow'));
     }
   }
 

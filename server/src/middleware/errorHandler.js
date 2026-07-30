@@ -10,12 +10,36 @@ const PRISMA_STATUS = new Map([
   ['P2034', { status: 409, message: 'That action conflicted with another update. Please try again' }],
 ]);
 
+// Supabase/PgBouncer drops idle connections, so any query can fail with a
+// connection-level error that a retry would fix. adminController.withDbRetry and
+// areaManagerController.withRetry already answer those with a 503, but every path
+// without a retry wrapper — the refresh-token write at the end of login, all of the
+// store routes — fell through here as a 500 "something went wrong on our end". That
+// tells the user the server is broken when it only needed another attempt, and the
+// login page treats 500 as fatal-looking while 503 is the status it already retries.
+const CONNECTION_PRISMA_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017']);
+
+function isPrismaConnectionError(err) {
+  // clientVersion is set on every Prisma error class and on nothing else, so the
+  // message sniff below cannot misfire on an ordinary application bug.
+  if (!err?.clientVersion) return false;
+  // Carries no `code` at all — it is raised only when the server is unreachable.
+  if (err.name === 'PrismaClientInitializationError') return true;
+  if (CONNECTION_PRISMA_CODES.has(err.code)) return true;
+  const msg = (err.message ?? '').toLowerCase();
+  return msg.includes('connect') || msg.includes('econnreset') || msg.includes('socket');
+}
+
 export function errorHandler(err, req, res, _next) {
   const prismaMapped = PRISMA_STATUS.get(err.code);
   if (prismaMapped && !err.statusCode) {
     err.statusCode = prismaMapped.status;
     err.message    = prismaMapped.message;
     err.name       = 'AppError'; // treated as operational so the message survives
+  } else if (!err.statusCode && isPrismaConnectionError(err)) {
+    err.statusCode = 503;
+    err.message    = 'We are having trouble connecting right now. Please try again in a moment';
+    err.name       = 'AppError';
   }
 
   const statusCode = err.statusCode || 500;
