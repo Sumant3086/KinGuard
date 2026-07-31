@@ -60,6 +60,15 @@ jobs:
       - name: Generate Prisma client
         run: npm run prisma:generate --workspace=server
 
+      # Advisories against shipped dependencies, printed on every build. Deliberately
+      # non-blocking: a new advisory in a transitive package is not a reason to stop a
+      # deploy that was already written and reviewed, and a step that turns the whole
+      # repository red for something nobody can act on today gets ignored within a week.
+      # `|| true` keeps it visible instead of fatal. See docs/developer/security.md for
+      # what the current findings are and why they stand.
+      - name: Dependency advisories (non-blocking)
+        run: npm audit --omit=dev || true
+
       - name: Lint
         run: npm run lint
 

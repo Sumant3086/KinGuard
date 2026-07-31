@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../services/errorReporter.js', () => ({ reportError: vi.fn() }));
+
 import { AppError, errorHandler } from './errorHandler.js';
+import { reportError } from '../services/errorReporter.js';
 
 describe('AppError', () => {
   it('stores message and statusCode', () => {
@@ -66,5 +70,36 @@ describe('errorHandler', () => {
     errorHandler(err, req, res, next);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Invalid input' }));
+  });
+
+  describe('error reporting', () => {
+    beforeEach(() => { reportError.mockClear(); });
+
+    it('forwards a server fault with its route and status', () => {
+      errorHandler(new Error('DB failure'), req, res, next);
+
+      expect(reportError).toHaveBeenCalledTimes(1);
+      const [err, context] = reportError.mock.calls[0];
+      expect(err.message).toBe('DB failure');
+      expect(context).toMatchObject({ status: 500, method: 'GET', path: '/test' });
+    });
+
+    it('does not forward a client mistake', () => {
+      // A store manager typing a bad value is not an incident. Reporting 4xx would
+      // drown the sink in ordinary validation failures.
+      errorHandler(new AppError('Invalid input', 400), req, res, next);
+      errorHandler(new AppError('Not found', 404), req, res, next);
+
+      expect(reportError).not.toHaveBeenCalled();
+    });
+
+    it('still sends the response when the reporter throws', () => {
+      // reportError is written not to throw, but the error handler is the last line of
+      // defence in the process and must not depend on that.
+      reportError.mockImplementationOnce(() => { throw new Error('reporter is broken'); });
+
+      expect(() => errorHandler(new Error('DB failure'), req, res, next)).not.toThrow();
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
   });
 });

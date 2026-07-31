@@ -150,6 +150,44 @@ git status server/.env      # should show nothing
 git log -- server/.env      # should show no commits
 ```
 
+## Dependency Advisories
+
+CI runs `npm audit --omit=dev` on every build and prints the result without failing the
+job. The flag matters: build tooling never runs in production, so an advisory against a
+dev dependency is noise on this list. The step is non-blocking on purpose — an advisory
+that lands overnight in a transitive package is not a reason to stop an unrelated deploy,
+and a check that goes red for something nobody can act on today stops being read.
+
+As of 31 July 2026 it reports 11 high-severity findings. They come from two root
+advisories, and both are known and accepted rather than unnoticed.
+
+**brace-expansion — unbounded expansion causing an out-of-memory crash**
+([GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg)). Ten of the
+eleven findings are this one package, reached through
+`exceljs → archiver → glob → minimatch → brace-expansion`. It is a denial of service
+triggered by a hostile *glob pattern*. Nothing in this system builds a glob pattern from
+user input: `exceljs` is used only to read the uploaded workbook and to write exports,
+and the archiver path underneath it is never given a pattern at all. `npm audit fix
+--force` resolves it by downgrading `exceljs` from 4.4.0 to 4.1.1, which is a breaking
+change to the only library that parses inventory uploads. Forcing a patched
+`brace-expansion` through an `overrides` entry is not viable either — the three copies in
+the tree are on majors 1, 2 and 5, and pinning them to one version changes the API under
+packages that were built against a different one. Upgrading `exceljs` is the real fix,
+and 4.4.0 is currently the newest release.
+
+**react-router — CSRF bypass in RSC mode**
+([GHSA-qwww-vcr4-c8h2](https://github.com/advisories/GHSA-qwww-vcr4-c8h2)). The remaining
+finding. It applies to React Server Components mode, where an action can run before the
+framework returns a 400. This client is a Vite single-page application using
+`BrowserRouter`; there is no RSC mode, no server-rendered route, and no router action —
+every write goes through the Axios client to the Express API, which does its own
+authentication and role checks. The advisory covers 7.12.0 through 8.2.0 and 7.18.2 is
+the newest published release, so the only available "fix" is a downgrade to 7.11.0.
+
+Re-check both when `exceljs` or `react-router-dom` publish a release, and update this
+section rather than deleting it — a finding with no written assessment gets re-litigated
+every time someone new reads the build output.
+
 ## Operational Checklist
 
 Before going live:
@@ -164,7 +202,7 @@ Before going live:
 Ongoing:
 - [ ] Review Admin -> Activity Log for unexpected actions
 - [ ] Rotate `JWT_SECRET` and force re-login if a token leak is suspected
-- [ ] Run `npm audit` monthly and update packages
+- [ ] Read the Dependency Advisories step in CI; anything beyond the two findings recorded above is new and needs assessing
 - [ ] Deactivate accounts for employees who have left
 - [ ] Ensure each store manager is assigned to exactly one store, and each area manager's assigned stores are current
 

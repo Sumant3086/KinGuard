@@ -169,8 +169,12 @@ The two lint runs are separate on purpose — the workspaces use different ESLin
 | `BREVO_API_KEY` | No | Brevo API key for email notifications. Free at brevo.com (300 emails/day). Leave blank to disable emails. |
 | `SMTP_FROM` | No | Sender display name and email, e.g. `KinMarché <noreply@kinmarche.com>` |
 | `ADMIN_EMAIL` | No | Fallback admin email if no admin has an email address in the database |
+| `ERROR_WEBHOOK_URL` | No | Endpoint that receives a JSON POST for every server fault. Leave blank to disable error reporting. |
+| `ERROR_WEBHOOK_TOKEN` | No | Sent as `Authorization: Bearer` with each report, if the endpoint needs one |
 
-Email is fully optional. The system works completely without it.
+Email is fully optional. The system works completely without it. So is error reporting —
+with `ERROR_WEBHOOK_URL` unset nothing is sent anywhere, and 5xx faults are recorded in
+the server log exactly as before.
 
 ## Deployment
 

@@ -24,6 +24,8 @@ Single web service — the backend serves both the API and the built React front
 | `BREVO_API_KEY` | Optional — Brevo API key for email notifications (free at brevo.com) |
 | `SMTP_FROM` | Optional — sender name and email, e.g. `KinMarché <noreply@kinmarche.com>` |
 | `ADMIN_EMAIL` | Optional — fallback email for admin notifications |
+| `ERROR_WEBHOOK_URL` | Optional — endpoint that receives a JSON POST for every 5xx. Worth setting on a free tier, where nobody is watching the log viewer at 2am. |
+| `ERROR_WEBHOOK_TOKEN` | Optional — bearer token for that endpoint |
 
 `PORT` is set automatically by Render — do not add it manually.
 

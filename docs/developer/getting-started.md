@@ -52,6 +52,28 @@ Leave `BREVO_API_KEY` blank to disable email notifications entirely. The system 
 | `SMTP_FROM` | Sender display name and email, e.g. `KinMarché <noreply@kinmarche.com>` |
 | `ADMIN_EMAIL` | Fallback admin email if no admin user has an email address set |
 
+### Optional Variables — Error Reporting
+
+Every 5xx is written to the server log. If you would rather find out about them somewhere
+you already look, point `ERROR_WEBHOOK_URL` at anything that accepts a JSON POST — a
+Slack incoming webhook, a collector of your own, a serverless function.
+
+| Variable | Description |
+|----------|-------------|
+| `ERROR_WEBHOOK_URL` | Destination for fault reports. Unset means no reporting at all. |
+| `ERROR_WEBHOOK_TOKEN` | Sent as `Authorization: Bearer <token>` if the destination needs authentication |
+
+The payload carries the route, status, request id, user id, and the error's name, message
+and first twelve stack frames. It never carries the request body, cookies, or headers —
+this leaves the building, and an inventory upload or a session cookie must not leave with
+it. Reports are deduplicated for five minutes per distinct fault and capped at thirty a
+minute, so an outage produces a handful of messages rather than a flood; the count of
+what was dropped rides along on the next report that gets through.
+
+Nothing here can affect a response. The POST is never awaited, is bounded by a five
+second timeout, and a sink that is down or refusing connections produces one warning line
+in the log and nothing else.
+
 ### Generate a Secure JWT Secret
 
 ```bash

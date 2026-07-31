@@ -42,4 +42,11 @@ export const env = {
   client: {
     url: process.env.CLIENT_URL,
   },
+  // Optional, and absent from requiredEnvVars on purpose. With no URL configured the
+  // error reporter does nothing at all, which is the correct behaviour for a local
+  // checkout and for any deployment that has not chosen a destination yet.
+  errorReporting: {
+    url:   process.env.ERROR_WEBHOOK_URL   || null,
+    token: process.env.ERROR_WEBHOOK_TOKEN || null,
+  },
 };

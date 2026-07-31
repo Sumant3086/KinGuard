@@ -150,6 +150,7 @@ server/src/
     escalationScheduler.js   Post-deadline escalation: AM at T+0h, Admin at T+24h
     cycleScheduleService.js  Hourly check for due recurring schedules, auto-creates batches
     schedulerLock.js         withSchedulerLock() — DB lease so only one instance runs a job
+    errorReporter.js         Optional JSON webhook for 5xx faults — no-ops when unconfigured
 
   utils/
     params.js              parseId, requireId, parsePage, parsePageSize, parseIntParam

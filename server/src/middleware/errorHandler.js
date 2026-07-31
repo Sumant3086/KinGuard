@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
-import { logger, errorDetails } from '../config/logger.js';
+import { logger, errorDetails, requestStore } from '../config/logger.js';
+import { reportError } from '../services/errorReporter.js';
 
 // Prisma's known request errors carry a `code` and are really client mistakes, not
 // server faults. Left unmapped they fall through as 500s, so a request for a row that
@@ -54,6 +55,21 @@ export function errorHandler(err, req, res, _next) {
       status: statusCode,
       ...errorDetails(err),
     });
+
+    // Forwards the same event to an external sink if one is configured, and does
+    // nothing otherwise. Not awaited, so the response below is never delayed by it.
+    // The try/catch is not redundant defensiveness: this is the last handler in the
+    // process, and a throw here would leave the request with no response at all.
+    try {
+      const context = requestStore.getStore();
+      reportError(err, {
+        status: statusCode,
+        method: req.method,
+        path: req.path,
+        requestId: context?.requestId ?? null,
+        userId: context?.userId ?? null,
+      });
+    } catch { /* reporting must never cost a response */ }
   }
 
   // User-facing message: operational errors keep their message, unexpected errors get a generic one
