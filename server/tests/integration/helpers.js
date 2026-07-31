@@ -69,12 +69,16 @@ export function clearCaches(ids = {}) {
 // on the paths these tests cover; anything else would throw loudly rather than pass
 // silently, which is the behaviour we want from a stub.
 export function mockRes() {
-  const captured = { statusCode: 200, body: undefined, headers: {} };
+  const captured = { statusCode: 200, body: undefined, headers: {}, cookies: {}, cleared: [] };
   const res = {
     status(code) { captured.statusCode = code; return res; },
     json(payload) { captured.body = payload; return res; },
     send(payload) { captured.body = payload; return res; },
     setHeader(k, v) { captured.headers[k] = v; return res; },
+    // The auth controller carries the whole session in cookies, so a test that only
+    // sees the JSON body cannot tell a successful login from a failed one.
+    cookie(name, value, options) { captured.cookies[name] = { value, options }; return res; },
+    clearCookie(name) { captured.cleared.push(name); delete captured.cookies[name]; return res; },
   };
   return { res, captured };
 }
@@ -89,6 +93,14 @@ export async function run(handler, req) {
   await handler(req, res, (err) => { forwarded = err; });
   if (forwarded) throw forwarded;
   return captured.body;
+}
+
+/** Same as run(), but returns everything the response captured, not just the body. */
+export async function runFull(handler, req) {
+  const { res, captured } = mockRes();
+  let forwarded = null;
+  await handler(req, res, (err) => { forwarded = err; });
+  return { ...captured, error: forwarded };
 }
 
 /** Same as run(), but returns the error instead of the body. */
