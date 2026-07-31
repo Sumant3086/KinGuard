@@ -238,3 +238,24 @@ or, when querying batches directly, `where: { isDeleted: false }`.
 Getting this wrong does not throw. It produces plausible-looking numbers that quietly include a cycle an administrator deleted precisely because it was wrong — a duplicate upload double-counting a network's shrinkage, for instance. Dashboards, scorecards, analytics, exports, and the area manager's record view all carry this filter; a new aggregate query is the likely place for it to go missing.
 
 The audit log is the deliberate exception: `AuditLog` rows are never filtered by batch deletion, and a database trigger blocks `DELETE` on that table entirely. The record that a cycle was deleted must outlive the cycle.
+
+## Migrations Are the Schema
+
+`schema.prisma` describes what the database should look like. The files in `server/prisma/migrations/` are what it will actually look like on a machine that has never seen this project. Those are two different things, and they drift apart the moment someone runs `prisma db push` against a live database and does not commit the SQL.
+
+That is not a theoretical failure mode here — it already happened. `BatchDeadlineExtension`, `InventoryRecord.shrinkageCategory`, `UploadBatch.submissionDeadline`, the `(batchId, storeId, materialCode)` unique constraint, and `InventoryRecord_batchId_status_idx` were all live in production and absent from the migration history. A fresh checkout produced a database with no submission deadlines, no shrinkage categories, no per-store extensions, and nothing stopping a re-run of an upload from doubling a store's line items — while every one of those features looked healthy in production. Migration `20260731000001_align_migrations_with_schema` is the repair, written entirely with `IF NOT EXISTS` guards so it is a no-op against the live database and a fix against a new one.
+
+Two harmless differences are left open on purpose, and both are documented in that migration's header: the unique index on `User.email` is named `User_email_unique` rather than Prisma's `User_email_key`, and `CycleSchedule_createdBy_fkey` carries `NO ACTION` where Prisma emits `RESTRICT`. Neither changes anything the application can observe.
+
+To check for new drift, diff the migration history against the schema using a scratch database as the shadow:
+
+```bash
+cd server
+npx prisma migrate diff \
+  --from-migrations prisma/migrations \
+  --to-schema-datamodel prisma/schema.prisma \
+  --shadow-database-url "postgresql://user:pass@localhost:5432/kinguard_shadow" \
+  --script
+```
+
+Empty output means they agree. Anything else is the SQL you owe the repository. The integration suite catches this too, since CI runs `prisma migrate deploy` into an empty database before it runs a single test.

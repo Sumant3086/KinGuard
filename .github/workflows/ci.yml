@@ -15,6 +15,34 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # The integration suite runs against this, not against a mock. It is a throwaway
+    # database that lives only for the length of the job.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kinguard
+          POSTGRES_PASSWORD: kinguard
+          POSTGRES_DB: kinguard_test
+        ports:
+          - 5432:5432
+        # Without this the first migration can race the server's startup.
+        options: >-
+          --health-cmd "pg_isready -U kinguard"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kinguard:kinguard@localhost:5432/kinguard_test
+      DIRECT_URL: postgresql://kinguard:kinguard@localhost:5432/kinguard_test
+      # Test-only value. Nothing real is signed with it; it exists because config/env.js
+      # refuses to start without 32+ characters.
+      JWT_SECRET: ci-test-secret-not-used-for-anything-real-0123456789
+      NODE_ENV: test
+      PORT: 5000
+      CLIENT_URL: http://localhost:5173
+
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +65,15 @@ jobs:
 
       - name: Test
         run: npm test
+
+      # migrate deploy, not migrate dev — this applies the checked-in migration SQL
+      # exactly as production would, so a migration that drifts from schema.prisma
+      # fails here rather than on a release.
+      - name: Apply migrations
+        run: npm run migrate --workspace=server
+
+      - name: Integration tests
+        run: npm run test:integration
 
       # Catches broken imports and JSX that lint alone lets through.
       - name: Build client

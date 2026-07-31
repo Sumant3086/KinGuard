@@ -167,12 +167,12 @@ npm run build:client
 
 ## Checks Before You Push
 
-There is no CI gate on this repository, so these four commands are the gate. Run all of them, from the repository root, before opening a pull request or pushing to `main`.
+GitHub Actions runs all of this on every push and pull request (`.github/workflows/ci.yml`), but a red build twenty minutes after you push is a slow way to find a missing semicolon. Run these from the repository root first.
 
 ```bash
 npm run lint --workspace=client   # ESLint 9 flat config
 npm run lint --workspace=server   # ESLint 10 flat config
-npm run test:unit                 # Vitest, server unit tests
+npm run test:unit                 # Vitest, server unit tests (mocked, no database)
 npm run build:client              # Production Vite build
 ```
 
@@ -189,6 +189,36 @@ cd server && node -e "import('./src/app.js').then(() => console.log('boot ok'))"
 Run that from `server/`, not from the root — `env.js` validates the required variables at import time and reads them from `server/.env`. From the root you will get `Missing required environment variable: DATABASE_URL` even on a perfectly good checkout.
 
 If the boot fails with a Prisma client error after pulling schema changes, regenerate it: `cd server && npx prisma generate`.
+
+## Integration Tests
+
+`npm run test:unit` mocks Prisma, so it can only check the JavaScript around a query — never the query. Roughly thirty raw SQL statements, every unique constraint, the `AuditLog` delete-blocking trigger, and the scheduler's single-winner lease are all invisible to it. `npm run test:integration` runs the real controllers against a real PostgreSQL database to cover exactly that gap.
+
+These tests are destructive. Every file truncates every table before each test, so they need a throwaway database of their own — never the one in `server/.env`. `tests/integration/guard.js` enforces this: it loads `server/.env` the same way Prisma does and aborts the run if `DATABASE_URL` points anywhere other than localhost. Setting `ALLOW_DESTRUCTIVE_INTEGRATION_TESTS=yes` overrides it, and you should have a very specific reason before you do.
+
+The quickest throwaway database is a container:
+
+```bash
+docker run -d --name kinguard-test-pg -p 55432:5432 \
+  -e POSTGRES_USER=kinguard -e POSTGRES_PASSWORD=kinguard -e POSTGRES_DB=kinguard_test \
+  postgres:16
+
+export DATABASE_URL="postgresql://kinguard:kinguard@localhost:55432/kinguard_test"
+export DIRECT_URL="$DATABASE_URL"
+
+npm run migrate --workspace=server   # prisma migrate deploy
+npm run test:integration
+```
+
+Delete it with `docker rm -f kinguard-test-pg` when you are done. CI does the same thing with a `postgres:16` service container.
+
+Note the `migrate deploy` step. It applies the checked-in migration SQL exactly as production would, rather than reconciling against `schema.prisma` the way `migrate dev` does — so a schema change that was pushed to the live database without its migration being committed fails here instead of on someone else's fresh checkout. That is not hypothetical: the first run of this suite failed on a missing `BatchDeadlineExtension` table, and `20260731000001_align_migrations_with_schema` is the repair.
+
+### Adding an integration test
+
+Put it in `server/tests/integration/` with a `.int.test.js` suffix — the default `vitest.config.js` excludes that suffix, so integration tests never run in `npm test`. Import `resetDb` and the fixture builders from `./helpers.js` and call `resetDb()` in `beforeEach`.
+
+Two things to know before writing assertions. `resetDb` uses `TRUNCATE ... RESTART IDENTITY`, which is the only way to empty `AuditLog` — a `BEFORE DELETE` trigger rejects every `DELETE` against that table, and `TRUNCATE` does not fire row triggers. And audit writes are fire-and-forget, so a test asserting on one needs the `waitForAuditLog` poller rather than a bare read.
 
 ## Troubleshooting
 

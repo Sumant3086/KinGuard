@@ -149,12 +149,18 @@ server/src/
     reminderScheduler.js     Pre-deadline 1h reminder emails every 30 minutes
     escalationScheduler.js   Post-deadline escalation: AM at T+0h, Admin at T+24h
     cycleScheduleService.js  Hourly check for due recurring schedules, auto-creates batches
+    schedulerLock.js         withSchedulerLock() — DB lease so only one instance runs a job
 
   utils/
     params.js              parseId, requireId, parsePage, parsePageSize, parseIntParam
                            — validates all URL/query params
     excelExport.js         buildInventoryWorkbook() — shared Excel builder used by all exports
     shrinkageCategories.js Canonical category set — mirror of the client copy
+
+server/tests/integration/
+  guard.js           Aborts the run unless DATABASE_URL is a local throwaway database
+  helpers.js         resetDb, fixture builders, and a controller runner with a mock res
+  *.int.test.js      Real controllers against real PostgreSQL — excluded from `npm test`
 
 client/public/
   sw.js              Service worker — hashed assets cache-first, HTML shell

@@ -4,7 +4,7 @@ import globals from 'globals';
 export default [
   js.configs.recommended,
   {
-    files: ['src/**/*.js', 'prisma/**/*.js'],
+    files: ['src/**/*.js', 'prisma/**/*.js', 'tests/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node,

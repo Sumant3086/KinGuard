@@ -9,6 +9,7 @@
     "start": "node src/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.js",
     "lint": "eslint . --max-warnings 0",
     "prisma:generate": "prisma generate",
     "migrate": "prisma migrate deploy",
