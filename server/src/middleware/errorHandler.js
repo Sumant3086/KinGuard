@@ -13,7 +13,7 @@ const PRISMA_STATUS = new Map([
 ]);
 
 // Supabase/PgBouncer drops idle connections, so any query can fail with a
-// connection-level error that a retry would fix. adminController.withDbRetry and
+// connection-level error that a retry would fix. admin/shared.js withDbRetry and
 // areaManagerController.withRetry already answer those with a 503, but every path
 // without a retry wrapper — the refresh-token write at the end of login, all of the
 // store routes — fell through here as a 500 "something went wrong on our end". That

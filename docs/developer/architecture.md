@@ -126,7 +126,16 @@ server/src/
 
   controllers/
     authController.js        login (DB-backed lockout), refresh, logout, changePassword, updateProfile
-    adminController.js       All admin operations — upload, batches, inventory, reports, users, stores
+    adminController.js       Barrel — re-exports everything in admin/ so adminRoutes.js has one import
+    admin/shared.js          withDbRetry, cache fan-out, temp passwords, validation limits
+    admin/dashboard.js       Admin dashboard, trends, notifications
+    admin/stores.js          Store CRUD and the several kinds of store deletion
+    admin/users.js           User CRUD, approval, rejection, and the spreadsheet import
+    admin/uploads.js         Inventory upload pipeline: preview, publish, sample template
+    admin/inventory.js       Cross-store inventory reads and admin overrides
+    admin/batches.js         Cycle deadlines, extensions, unlocks, closing, reminders
+    admin/reports.js         Reconciliation reports and every Excel/PDF export
+    admin/audit.js           Audit log read and export
     analyticsController.js   Risk scores, year-over-year trends, executive summary PDF
     scheduleController.js    Scheduled cycle CRUD
     storeController.js       Store dashboard, batches, inventory CRUD, submit, download

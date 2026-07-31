@@ -221,7 +221,7 @@ Store 1──* BatchDeadlineExtension
 
 ## Cascade behavior
 
-Only two relations cascade on delete: `RefreshToken → User` and `AreaManagerReview → UploadBatch` / `AreaManagerReview → Store`. Everything else is deliberately non-cascading — deleting a user reassigns or nulls their foreign keys (see `deleteUser` in `adminController.js`) instead of deleting dependent rows, so cycle history and audit trails are never silently destroyed by a user or store deletion.
+Only two relations cascade on delete: `RefreshToken → User` and `AreaManagerReview → UploadBatch` / `AreaManagerReview → Store`. Everything else is deliberately non-cascading — deleting a user reassigns or nulls their foreign keys (see `deleteUser` in `controllers/admin/users.js`) instead of deleting dependent rows, so cycle history and audit trails are never silently destroyed by a user or store deletion.
 
 ## Querying Soft-Deleted Cycles
 

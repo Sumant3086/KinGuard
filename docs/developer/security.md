@@ -54,7 +54,7 @@ Every store manager query filters by `storeId: req.user.storeId` from the valida
 
 ## Data Integrity
 
-**Book stock is immutable to the audited party after submission.** `InventoryRecord.systemQuantity` has exactly three write paths: the admin upload pipeline, the store's own record update while that record is still `PENDING`, and `adminController.overrideInventoryRecord`. It is not writable by the area manager edit or by the bulk override.
+**Book stock is immutable to the audited party after submission.** `InventoryRecord.systemQuantity` has exactly three write paths: the admin upload pipeline, the store's own record update while that record is still `PENDING`, and `overrideInventoryRecord` in `controllers/admin/inventory.js`. It is not writable by the area manager edit or by the bulk override.
 
 The store write path exists because uploads may deliberately leave the column blank for the store to supply — that is what the downloadable template does. The property being defended is therefore temporal, not role-based:
 
