@@ -326,7 +326,7 @@ export async function sendBatchReminders(req, res, next) {
 
     let emailResult = { configured: false, sent: 0, failed: 0 };
     try {
-      const { sendDeadlineReminderEmail } = await import('../services/emailService.js');
+      const { sendDeadlineReminderEmail } = await import('../../services/emailService.js');
       // With no reachable managers still make one empty call, so the response can
       // tell "email is not configured" apart from "nobody has an email address".
       const entries = groups.size > 0

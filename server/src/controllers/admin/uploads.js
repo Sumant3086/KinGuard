@@ -41,12 +41,26 @@ export function cellText(val) {
 }
 
 export async function parseFileToRows(file) {
-  if (file.mimetype.includes('csv')) {
+  // Decide by extension as well as mimetype. The upload filter accepts a .csv whatever the
+  // browser labels it, and a Windows machine with Excel installed reports .csv as
+  // application/vnd.ms-excel. Checking the mimetype alone sent those real CSV files into
+  // the xlsx parser, where they died on a raw JSZip "is this a zip file?" that reached the
+  // user as a 500 "Something went wrong on our end".
+  const name = (file.originalname || '').toLowerCase();
+  if (file.mimetype.includes('csv') || name.endsWith('.csv')) {
     return parse(file.buffer, { columns: true, skip_empty_lines: true, trim: true });
   }
+
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(file.buffer);
+  // A file that is not a readable workbook is the uploader's mistake, not a server fault,
+  // so it gets a 400 that says what to do rather than a 500 that says nothing.
+  try {
+    await workbook.xlsx.load(file.buffer);
+  } catch {
+    throw new AppError('That file could not be read as a spreadsheet. Save it as .xlsx or .csv and try again', 400);
+  }
   const worksheet = workbook.worksheets[0];
+  if (!worksheet) throw new AppError('That workbook has no sheets in it', 400);
   // Map column number -> header name; bold/rich-text headers are flattened to plain string
   const headerMap = {};
   worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
@@ -368,7 +382,7 @@ export async function uploadInventory(req, res, next) {
       select: { id: true, name: true, email: true, managedStores: { select: { id: true } } },
     }).then(async areaManagers => {
       if (!areaManagers.length) return;
-      const { sendNewCycleEmailAM } = await import('../services/emailService.js');
+      const { sendNewCycleEmailAM } = await import('../../services/emailService.js');
       const amWithCount = areaManagers.map(am => ({ ...am, storeCount: am.managedStores.length }));
       // Pass the parsed Date objects, not the raw request strings — parseUserDate accepts
       // formats that a bare new Date() in the email template would render "Invalid Date".

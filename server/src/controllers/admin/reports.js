@@ -232,7 +232,7 @@ export async function downloadInventoryExportPDF(req, res, next) {
       },
     });
 
-    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../services/pdfService.js');
+    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../../services/pdfService.js');
     const today = new Date().toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
@@ -281,7 +281,7 @@ export async function downloadReconciliationReportPDF(req, res, next) {
       orderBy: [{ storeId: 'asc' }, { materialCode: 'asc' }],
     });
 
-    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../services/pdfService.js');
+    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../../services/pdfService.js');
     const today = new Date().toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
@@ -319,7 +319,7 @@ export async function downloadBatchExportPDF(req, res, next) {
       },
     });
 
-    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../services/pdfService.js');
+    const { buildPDF, baseDocDef, inventoryTableContent } = await import('../../services/pdfService.js');
     const dateStr = batch.inventoryDate.toISOString().split('T')[0];
 
     const pdfBuffer = await buildPDF({
