@@ -38,4 +38,27 @@ export default function guard() {
       'or set ALLOW_DESTRUCTIVE_INTEGRATION_TESTS=yes if you are certain this one is disposable.'
     );
   }
+
+  // schema.prisma declares directUrl, and every `prisma migrate` command uses that rather
+  // than the datasource url. Overriding DATABASE_URL alone therefore points the tests at
+  // the local database while pointing the migrate step that prepares it at whatever
+  // DIRECT_URL says — in this repo, Supabase. The tests then fail on missing tables, which
+  // is the harmless half; the other half already ran DDL against the live database.
+  const directUrl = process.env.DIRECT_URL;
+  if (!directUrl) return;
+
+  let directHost;
+  try {
+    directHost = new URL(directUrl).hostname;
+  } catch {
+    throw new Error('DIRECT_URL is not a valid URL, so it cannot be checked for safety.');
+  }
+
+  if (!LOCAL_HOSTS.has(directHost)) {
+    throw new Error(
+      `DATABASE_URL points at "${host}" but DIRECT_URL points at "${directHost}".\n` +
+      'prisma migrate reads DIRECT_URL, so the command that builds the test schema would\n' +
+      'have run against the remote database instead. Set both to the same local URL.'
+    );
+  }
 }

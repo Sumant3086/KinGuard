@@ -218,6 +218,8 @@ If the boot fails with a Prisma client error after pulling schema changes, regen
 
 These tests are destructive. Every file truncates every table before each test, so they need a throwaway database of their own — never the one in `server/.env`. `tests/integration/guard.js` enforces this: it loads `server/.env` the same way Prisma does and aborts the run if `DATABASE_URL` points anywhere other than localhost. Setting `ALLOW_DESTRUCTIVE_INTEGRATION_TESTS=yes` overrides it, and you should have a very specific reason before you do.
 
+**Export `DIRECT_URL` as well, not just `DATABASE_URL`.** `schema.prisma` declares a `directUrl`, and every `prisma migrate` command uses that instead of the datasource url. Override `DATABASE_URL` on its own and the tests correctly run against your local database while the migrate step that was supposed to build its schema runs against whatever `DIRECT_URL` holds — for a normal checkout, the live Supabase instance. The visible symptom is the whole suite failing with `relation "AuditLog" does not exist`, because the local database was never migrated; the invisible half is the DDL that just went to production. The guard now checks `DIRECT_URL` too and refuses the run rather than letting that happen twice.
+
 The quickest throwaway database is a container:
 
 ```bash
