@@ -39,35 +39,20 @@ export default defineConfig({
     chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
+        // Only the core runtime is grouped by hand. Every page in App.jsx is already
+        // behind React.lazy, so Rollup emits one chunk per route on its own and lifts
+        // whatever two routes share — the layout, the API client, the shared UI — into
+        // a common chunk it loads alongside.
+        //
+        // There used to be an `admin-pages` group listing all ten admin pages, and
+        // grouping them undid the lazy loading it looked like it was helping: opening
+        // the dashboard downloaded the user management screen, the analytics screen and
+        // everything else, 234 kB of it, to render four cards. The same applied to the
+        // store and area manager groups on a smaller scale.
         manualChunks: {
-          // Core runtime — downloaded by every user on first visit
+          // Downloaded by every user on first visit, and unchanged between deploys that
+          // do not touch dependencies — worth pinning so it stays cached.
           vendor: ['react', 'react-dom', 'react-router-dom', 'axios'],
-
-          // Role-specific chunks — each role only downloads its own code
-          'admin-pages': [
-            './src/features/admin/pages/Dashboard',
-            './src/features/admin/pages/Stores',
-            './src/features/admin/pages/Users',
-            './src/features/admin/pages/AuditLogs',
-            './src/features/admin/pages/Inventory',
-            './src/features/admin/pages/Reports',
-            './src/features/admin/pages/Upload',
-            './src/features/admin/pages/Analytics',
-            './src/features/admin/pages/Batches',
-            './src/features/admin/pages/Schedules',
-            './src/features/admin/layout/AdminLayout',
-          ],
-          'store-pages': [
-            './src/features/store/pages/Dashboard',
-            './src/features/store/pages/Inventory',
-            './src/features/store/layout/StoreLayout',
-          ],
-          'am-pages': [
-            './src/features/areaManager/pages/AMDashboard',
-            './src/features/areaManager/pages/AMReviewList',
-            './src/features/areaManager/pages/AMReview',
-            './src/features/areaManager/layout/AMLayout',
-          ],
         },
       },
     },

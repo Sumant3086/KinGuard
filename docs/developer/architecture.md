@@ -261,16 +261,32 @@ AM approves or returns
 
 ### Code Splitting
 
-Vite produces four JS bundles:
+Every page in `App.jsx` is behind `React.lazy`, so Rollup emits one chunk per route and
+lifts what two routes share — the role layout, the API client, the shared UI components —
+into common chunks it loads alongside. Only one group is declared by hand:
 
 | Bundle | Contents | Loaded by |
 |---|---|---|
 | vendor | React, React Router, Axios | All pages |
-| admin-pages | All admin pages + layout | Admin users only |
-| store-pages | Store pages + layout | Store managers only |
-| am-pages | Area manager pages + layout | Area managers only |
 
-Each role only downloads its own code. A store manager never downloads admin code.
+Everything else is left to Rollup on purpose. There used to be `admin-pages`,
+`store-pages` and `am-pages` groups listing each role's routes, and naming them undid the
+lazy loading they appeared to be helping. Grouping ten lazy routes into one chunk means
+opening the admin dashboard downloads the user management screen, the analytics screen
+and the rest of it — 234 kB to render four cards. Worse, the entry statically imports
+i18n, the auth context and the toast context, and Rollup had assigned those shared
+modules to the named chunks; the entry therefore had to preload them. The public landing
+page and the login screen were pulling the entire admin bundle and the entire store
+bundle before showing anything.
+
+Removing the groups cut the first paint from roughly 582 kB to 305 kB, and the admin
+dashboard from 582 kB to about 350 kB. The largest single page, user management at
+54 kB, now downloads only when someone opens `/admin/users`.
+
+The lesson generalises: `manualChunks` is for code with a shared *cache lifetime*, like
+the vendor bundle, which is worth pinning so it survives deploys that only touch
+application code. It is not a tool for grouping by feature, and using it that way
+silently defeats route-level splitting.
 
 ### Auth Flow
 
