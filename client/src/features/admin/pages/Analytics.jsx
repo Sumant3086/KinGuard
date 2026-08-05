@@ -43,6 +43,9 @@ function Sparkline({ values, width = 80, height = 28 }) {
 }
 
 function rateColor(rate) {
+  // null means no data for that period, not a 0% (clean) rate — coloring it green
+  // would show a confident "low risk" badge for a period nobody actually counted.
+  if (rate === null || rate === undefined) return { background: 'rgba(148,163,184,0.15)', color: 'var(--t3)', fontWeight: 600 };
   if (rate >= 20) return { background: 'rgba(239,68,68,0.15)',  color: 'var(--red)',  fontWeight: 700 };
   if (rate >= 5)  return { background: 'rgba(245,158,11,0.15)', color: '#d97706',     fontWeight: 700 };
   return               { background: 'rgba(16,185,129,0.12)',  color: '#059669',     fontWeight: 600 };
@@ -554,7 +557,7 @@ export default function Analytics() {
                 <div style={{ display: 'flex', gap: 12 }}>
                   {yoyData.current.rates.map(r => (
                     <div key={r.batchId} style={{ textAlign: 'center' }}>
-                      <span style={{ display: 'block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(r.rate ?? 0) }}>
+                      <span style={{ display: 'block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(r.rate) }}>
                         {r.rate !== null ? `${r.rate}%` : '—'}
                       </span>
                       <span style={{ fontSize: 10, color: 'var(--t4)', marginTop: 3, display: 'block' }}>
@@ -569,7 +572,7 @@ export default function Analytics() {
                 <div style={{ display: 'flex', gap: 12 }}>
                   {yoyData.comparison.rates.length > 0 ? yoyData.comparison.rates.map(r => (
                     <div key={r.batchId} style={{ textAlign: 'center' }}>
-                      <span style={{ display: 'block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(r.rate ?? 0), opacity: 0.75 }}>
+                      <span style={{ display: 'block', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 700, ...rateColor(r.rate), opacity: 0.75 }}>
                         {r.rate !== null ? `${r.rate}%` : '—'}
                       </span>
                       <span style={{ fontSize: 10, color: 'var(--t4)', marginTop: 3, display: 'block' }}>

@@ -10,10 +10,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const prismaMock = {
   store: { findMany: vi.fn(), findUnique: vi.fn() },
-  inventoryRecord: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn(), update: vi.fn() },
+  inventoryRecord: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
   areaManagerReview: { findUnique: vi.fn(), upsert: vi.fn() },
+  uploadBatch: { findFirst: vi.fn() },
   $queryRaw: vi.fn(),
   $connect: vi.fn(),
+  $transaction: vi.fn((ops) => Promise.all(ops)),
 };
 vi.mock('../config/prisma.js', () => ({ default: prismaMock }));
 vi.mock('../services/auditService.js', () => ({ createAuditLog: vi.fn().mockResolvedValue(undefined) }));
@@ -53,6 +55,10 @@ describe('area manager store assignment', () => {
     });
     // This AM manages exactly one store.
     prismaMock.store.findMany.mockResolvedValue([{ id: ASSIGNED_STORE }]);
+    // Default to a live (non-deleted) batch so tests that don't care about the
+    // isDeleted guard reach the code they're actually exercising.
+    prismaMock.uploadBatch.findFirst.mockResolvedValue({ id: 1 });
+    prismaMock.$transaction.mockImplementation((ops) => Promise.all(ops));
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   });
   afterEach(() => { vi.restoreAllMocks(); });
@@ -129,6 +135,21 @@ describe('area manager store assignment', () => {
       expect(err?.statusCode).toBe(400);
       expect(prismaMock.areaManagerReview.upsert).not.toHaveBeenCalled();
     });
+
+    it('refuses to approve into a cycle the admin has deleted', async () => {
+      // A review tab opened before the delete must not still be able to write an
+      // approval into a cycle that no longer exists on every other screen.
+      prismaMock.uploadBatch.findFirst.mockResolvedValue(null);
+
+      const { err } = await callAndCatch(am.approveStore, {
+        user: AM, params: { batchId: '1', storeId: String(ASSIGNED_STORE) }, body: {},
+      });
+
+      expect(err?.statusCode).toBe(404);
+      expect(prismaMock.uploadBatch.findFirst.mock.calls[0][0].where).toMatchObject({ isDeleted: false });
+      expect(prismaMock.inventoryRecord.count).not.toHaveBeenCalled();
+      expect(prismaMock.areaManagerReview.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe('returnStore', () => {
@@ -141,6 +162,20 @@ describe('area manager store assignment', () => {
 
       expect(err?.statusCode).toBe(403);
       expect(prismaMock.areaManagerReview.upsert).not.toHaveBeenCalled();
+    });
+
+    it('refuses to return records into a cycle the admin has deleted', async () => {
+      prismaMock.uploadBatch.findFirst.mockResolvedValue(null);
+
+      const { err } = await callAndCatch(am.returnStore, {
+        user: AM,
+        params: { batchId: '1', storeId: String(ASSIGNED_STORE) },
+        body: { remarks: 'Please recount' },
+      });
+
+      expect(err?.statusCode).toBe(404);
+      expect(prismaMock.inventoryRecord.count).not.toHaveBeenCalled();
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
   });
 

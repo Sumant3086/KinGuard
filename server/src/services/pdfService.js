@@ -101,7 +101,7 @@ export function inventoryTableContent(records) {
           { text: 'Description', style: 'th' },
           { text: 'Date', style: 'th' },
           { text: 'SYS', style: 'th', alignment: 'right' },
-          { text: 'Sold', style: 'th', alignment: 'right' },
+          { text: 'Physical', style: 'th', alignment: 'right' },
           { text: 'Variance', style: 'th', alignment: 'right' },
           { text: 'Status', style: 'th' },
         ],

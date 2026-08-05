@@ -284,12 +284,12 @@ export async function getBatchStores(req, res, next) {
         select: { id: true, storeCode: true, storeName: true },
       }),
       prisma.areaManagerReview.findMany({
-        where: { batchId, storeId: { in: storeIds } },
+        where: { batchId, storeId: { in: storeIds }, batch: { isDeleted: false } },
         select: { storeId: true, status: true, remarks: true, reviewedAt: true },
       }),
       prisma.inventoryRecord.groupBy({
         by: ['storeId', 'status'],
-        where: { batchId, storeId: { in: storeIds } },
+        where: { batchId, storeId: { in: storeIds }, batch: { isDeleted: false } },
         _count: true,
       }),
     ]);
@@ -425,6 +425,11 @@ export async function approveStore(req, res, next) {
     const storeIds = await getManagedStoreIds(req.user.id, true); // forceRefresh — no stale auth on write
     if (!storeIds.includes(storeId)) throw new AppError('This store is not assigned to you', 403);
 
+    // A review tab opened before the admin deleted the cycle must not be able to
+    // approve into it — mirrors the batch.isDeleted guard on updateRecord/getStoreRecords.
+    const batchRow = await prisma.uploadBatch.findFirst({ where: { id: batchId, isDeleted: false }, select: { id: true } });
+    if (!batchRow) throw new AppError('This inventory cycle no longer exists', 404);
+
     // Server-side guard: all records must be submitted before an AM can approve.
     // The UI checks allSubmitted, but a direct API call could bypass that.
     const pendingCount = await prisma.inventoryRecord.count({
@@ -478,6 +483,11 @@ export async function returnStore(req, res, next) {
 
     const storeIds = await getManagedStoreIds(req.user.id, true); // forceRefresh — no stale auth on write
     if (!storeIds.includes(storeId)) throw new AppError('This store is not assigned to you', 403);
+
+    // A review tab opened before the admin deleted the cycle must not be able to
+    // reset records in it — mirrors the batch.isDeleted guard on updateRecord/getStoreRecords.
+    const batchRow = await prisma.uploadBatch.findFirst({ where: { id: batchId, isDeleted: false }, select: { id: true } });
+    if (!batchRow) throw new AppError('This inventory cycle no longer exists', 404);
 
     const { remarks } = req.body;
     if (!remarks?.trim()) throw new AppError('Please provide a reason so the store manager knows what to correct', 400);

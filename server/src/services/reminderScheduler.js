@@ -1,7 +1,9 @@
 // reminderScheduler.js — automatic 1-hour deadline email reminders
 // Runs every 30 minutes. Finds batches whose deadline falls within the next
-// 50-90 minutes (giving a consistent "~1 hour left" window), sends emails
+// 50-89 minutes (giving a consistent "~1 hour left" window), sends emails
 // to all pending stores, then stamps autoReminderSentAt so it never fires twice.
+// Stores holding an approved deadline extension are reminded separately, against
+// their own extended deadline, once it enters the same window.
 
 import prisma from '../config/prisma.js';
 import { withSchedulerLock } from './schedulerLock.js';
@@ -9,7 +11,10 @@ import { logger, errorDetails } from '../config/logger.js';
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const WINDOW_MIN_MS     = 50 * 60 * 1000; // 50 min from now
-const WINDOW_MAX_MS     = 90 * 60 * 1000; // 90 min from now
+// Kept under 90 min (not equal to it) so "minutes left / 60" always rounds to 1 in the
+// email text — at exactly 90 min that's 1.5h, which Math.round bumps to "2h left",
+// contradicting the "consistent ~1 hour" window this scheduler is meant to give.
+const WINDOW_MAX_MS     = 89 * 60 * 1000; // 89 min from now
 
 async function purgeExpiredTokens() {
   try {
@@ -38,7 +43,7 @@ async function runReminderCheckLocked() {
     const windowStart = new Date(now.getTime() + WINDOW_MIN_MS);
     const windowEnd   = new Date(now.getTime() + WINDOW_MAX_MS);
 
-    // Find batches whose deadline falls in the 50-90 min window
+    // Find batches whose deadline falls in the 50-89 min window
     // and haven't had an automated reminder sent yet
     const batches = await prisma.uploadBatch.findMany({
       where: {
@@ -49,14 +54,29 @@ async function runReminderCheckLocked() {
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     });
 
-    if (batches.length === 0) return;
+    // Extensions are tracked separately from their batch: a store holding one works to
+    // its own (later) deadline, not the batch's, so it needs its own reminder when ITS
+    // deadline enters the window — the batch-level query above never catches that.
+    const dueExtensions = await prisma.batchDeadlineExtension.findMany({
+      where: {
+        newDeadline:        { gte: windowStart, lte: windowEnd },
+        autoReminderSentAt: null,
+        batch: { isDeleted: false },
+      },
+      select: { id: true, batchId: true, storeId: true, newDeadline: true, batch: { select: { inventoryDate: true } } },
+    });
+
+    if (batches.length === 0 && dueExtensions.length === 0) return;
 
     const { sendDeadlineReminderEmail } = await import('./emailService.js');
 
-    // Process all due batches in parallel — each is independent
+    // Process all due batches in parallel — each is independent. Reads happen first and
+    // the batch is only stamped once they've actually succeeded — stamping alongside the
+    // reads (as this used to) let a transient read failure still mark the batch
+    // "reminded" and permanently skip it on every future tick even though nothing was
+    // read or sent.
     await Promise.allSettled(batches.map(async (batch) => {
       try {
-        // Fetch pending store IDs and live extensions in parallel
         const [pendingStoreRows, activeExtensions] = await Promise.all([
           prisma.inventoryRecord.findMany({
             where: { batchId: batch.id, status: 'PENDING' },
@@ -67,32 +87,62 @@ async function runReminderCheckLocked() {
             where: { batchId: batch.id, newDeadline: { gt: now } },
             select: { storeId: true },
           }),
-          // Stamp immediately — even if email fails, don't retry (avoids spam)
-          prisma.uploadBatch.update({ where: { id: batch.id }, data: { autoReminderSentAt: now } }),
         ]);
 
-        if (pendingStoreRows.length === 0) return; // all submitted, already stamped above
-
         // Skip stores holding a live extension — the batch deadline is not their deadline,
-        // so "1 hour left" would be wrong for them.
+        // so "1 hour left" would be wrong for them; dueExtensions above reminds them instead.
         const extendedStoreIds = new Set(activeExtensions.map(e => e.storeId));
         const storeIds = pendingStoreRows.map(r => r.storeId).filter(id => !extendedStoreIds.has(id));
-        if (storeIds.length === 0) return;
-        const managers = await prisma.user.findMany({
-          where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: storeIds }, email: { not: null } },
+
+        if (storeIds.length > 0) {
+          const managers = await prisma.user.findMany({
+            where: { role: 'STORE_MANAGER', isActive: true, storeId: { in: storeIds }, email: { not: null } },
+            include: { store: true },
+          });
+
+          if (managers.length > 0) {
+            const result = await sendDeadlineReminderEmail({
+              managers,
+              inventoryDate: batch.inventoryDate,
+              deadline:      batch.submissionDeadline,
+            });
+            logger.info('1h deadline reminder sent', { batchId: batch.id, sent: result.sent, failed: result.failed });
+          }
+        }
+
+        // Stamp only after the reads (and any send) above completed without throwing —
+        // even if the send itself failed, don't retry (avoids spam on a flaky provider).
+        await prisma.uploadBatch.update({ where: { id: batch.id }, data: { autoReminderSentAt: now } });
+      } catch (batchErr) {
+        logger.error('Failed to process batch for reminder', { batchId: batch.id, ...errorDetails(batchErr) });
+      }
+    }));
+
+    // Process all due extensions in parallel — each is independent, and stamped the
+    // same way: only after its own read/send has actually completed.
+    await Promise.allSettled(dueExtensions.map(async (ext) => {
+      try {
+        const pendingCount = await prisma.inventoryRecord.count({
+          where: { batchId: ext.batchId, storeId: ext.storeId, status: 'PENDING' },
+        });
+
+        const managers = pendingCount === 0 ? [] : await prisma.user.findMany({
+          where: { role: 'STORE_MANAGER', isActive: true, storeId: ext.storeId, email: { not: null } },
           include: { store: true },
         });
 
         if (managers.length > 0) {
           const result = await sendDeadlineReminderEmail({
             managers,
-            inventoryDate: batch.inventoryDate,
-            deadline:      batch.submissionDeadline,
+            inventoryDate: ext.batch.inventoryDate,
+            deadline:      ext.newDeadline,
           });
-          logger.info('1h deadline reminder sent', { batchId: batch.id, sent: result.sent, failed: result.failed });
+          logger.info('1h deadline reminder sent (extension)', { extensionId: ext.id, batchId: ext.batchId, storeId: ext.storeId, sent: result.sent, failed: result.failed });
         }
-      } catch (batchErr) {
-        logger.error('Failed to process batch for reminder', { batchId: batch.id, ...errorDetails(batchErr) });
+
+        await prisma.batchDeadlineExtension.update({ where: { id: ext.id }, data: { autoReminderSentAt: now } });
+      } catch (extErr) {
+        logger.error('Failed to process extension for reminder', { extensionId: ext.id, ...errorDetails(extErr) });
       }
     }));
   } catch (err) {

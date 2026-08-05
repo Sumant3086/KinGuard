@@ -99,6 +99,7 @@ export default function StoreInventory() {
   const blankRowRefs      = useRef({}); // desktop table inputs
   const blankCardRefs     = useRef({}); // mobile card inputs
   const batchesReadyRef   = useRef(false);
+  const loadInventoryToken = useRef(0); // incremented each call; stale calls bail on mismatch
   const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
 
   useEffect(() => { loadBatches(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -186,10 +187,16 @@ export default function StoreInventory() {
   }
 
   async function loadInventory(page = currentPage) {
+    // A rapid cycle switch, filter change, or Prev/Next click can fire a second
+    // request before the first resolves. Without a token, whichever response lands
+    // last wins — even the stale one — silently overwriting newer records, lock
+    // state, and the returned-reason banner with the wrong cycle's data.
+    const token = ++loadInventoryToken.current;
     try {
       setLoading(true);
       setError('');
       const res = await storeApi.getInventory(search, statusFilter, selectedBatch, page);
+      if (token !== loadInventoryToken.current) return; // a newer call started — discard
       const { records: recs, isLocked: locked, returnedByAM, pagination: pag, readiness } = res;
       setRecords(recs);
 
@@ -222,10 +229,11 @@ export default function StoreInventory() {
       setErrorRecords(new Map());
       setOtherCustomIds(new Set());
     } catch (err) {
+      if (token !== loadInventoryToken.current) return;
       console.error('Load inventory records:', err);
       setError('Could not load inventory. Please refresh.');
     } finally {
-      setLoading(false);
+      if (token === loadInventoryToken.current) setLoading(false);
     }
   }
 

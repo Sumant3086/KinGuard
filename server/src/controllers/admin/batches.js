@@ -230,6 +230,9 @@ export async function unlockStoreForBatch(req, res, next) {
     const batchId = requireId(req.params.id, 'batchId');
     const storeId = requireId(req.body.storeId, 'storeId');
 
+    const batch = await prisma.uploadBatch.findFirst({ where: { id: batchId, isDeleted: false }, select: { id: true } });
+    if (!batch) throw new AppError('Cycle not found', 404);
+
     const [result] = await prisma.$transaction([
       prisma.inventoryRecord.updateMany({
         where: { batchId, storeId, status: 'SUBMITTED' },

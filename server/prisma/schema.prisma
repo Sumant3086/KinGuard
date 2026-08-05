@@ -234,13 +234,17 @@ model SchedulerLock {
 }
 
 model BatchDeadlineExtension {
-  id          Int      @id @default(autoincrement())
-  batchId     Int
-  storeId     Int
-  newDeadline DateTime
-  grantedBy   Int
-  grantedAt   DateTime @default(now())
-  note        String?
+  id                 Int       @id @default(autoincrement())
+  batchId            Int
+  storeId            Int
+  newDeadline        DateTime
+  grantedBy          Int
+  grantedAt          DateTime  @default(now())
+  note               String?
+  // Set once the automated "1 hour left" reminder has been sent for this store's own
+  // (extended) deadline — mirrors UploadBatch.autoReminderSentAt, which only covers the
+  // batch-level deadline and so never fires for a store working to an extended one.
+  autoReminderSentAt DateTime?
 
   batch   UploadBatch @relation(fields: [batchId], references: [id])
   store   Store       @relation(fields: [storeId], references: [id])
