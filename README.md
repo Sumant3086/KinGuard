@@ -39,6 +39,16 @@ The interface is available in English and French, and the choice is remembered p
 
 > The demo runs on Render's free tier, kept warm by an automated health-check monitor — no cold-start wait expected on first visit.
 
+## App Flow
+
+<div align="center">
+
+<img src="client/src/assets/Flow/Store Manager App Flow.png" alt="Store Manager App Flow" width="100%" />
+
+<img src="client/src/assets/Flow/Area Manager App Flow.png" alt="Area Manager App Flow" width="100%" />
+
+</div>
+
 ## Features
 
 ### For Administrators
