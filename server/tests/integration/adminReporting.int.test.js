@@ -10,12 +10,13 @@ import {
 } from './helpers.js';
 import { getDashboard } from '../../src/controllers/adminController.js';
 import { getRiskScores, getTrendsYoY } from '../../src/controllers/analyticsController.js';
+import { grantStoreExtension } from '../../src/controllers/admin/batches.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
 let admin, storeA, storeB;
 
-const adminReq = (query = {}) => ({ user: { id: admin.id, role: 'ADMIN', name: 'Admin' }, params: {}, query, body: {} });
+const adminReq = (query = {}, body = {}) => ({ user: { id: admin.id, role: 'ADMIN', name: 'Admin' }, params: {}, query, body });
 
 beforeAll(async () => { await prisma.$connect(); });
 afterAll(async () => { await prisma.$disconnect(); });
@@ -222,24 +223,21 @@ describe('year-on-year trends', () => {
 });
 
 describe('deadline extensions', () => {
-  it('keeps one extension per store per cycle', async () => {
+  it('keeps one extension per store per cycle: a second grant replaces the first rather than failing', async () => {
     const batch = await makeBatch(admin.id);
-    const first = { batchId: batch.id, storeId: storeA.id, newDeadline: new Date(Date.now() + DAY), grantedBy: admin.id };
+    const firstDeadline = new Date(Date.now() + DAY);
+    const secondDeadline = new Date(Date.now() + 5 * DAY);
 
-    await prisma.batchDeadlineExtension.create({ data: first });
-    await expect(prisma.batchDeadlineExtension.create({ data: first })).rejects.toMatchObject({ code: 'P2002' });
-
-    // The admin path upserts rather than inserting, which is what makes a second grant
-    // replace the first instead of failing.
-    const second = new Date(Date.now() + 5 * DAY);
-    await prisma.batchDeadlineExtension.upsert({
-      where:  { batchId_storeId: { batchId: batch.id, storeId: storeA.id } },
-      create: { ...first, newDeadline: second },
-      update: { newDeadline: second },
-    });
+    await run(grantStoreExtension, adminReq({}, {
+      batchId: batch.id, storeId: storeA.id, newDeadline: firstDeadline.toISOString(),
+    }));
+    await run(grantStoreExtension, adminReq({}, {
+      batchId: batch.id, storeId: storeA.id, newDeadline: secondDeadline.toISOString(),
+    }));
 
     const rows = await prisma.batchDeadlineExtension.findMany();
     expect(rows).toHaveLength(1);
-    expect(rows[0].newDeadline.toISOString()).toBe(second.toISOString());
+    expect(rows[0].newDeadline.toISOString()).toBe(secondDeadline.toISOString());
+    expect(rows[0].grantedBy).toBe(admin.id);
   });
 });

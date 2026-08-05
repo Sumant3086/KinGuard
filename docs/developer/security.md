@@ -18,10 +18,14 @@ Tokens are signed with HS256 using `JWT_SECRET` (minimum 32 characters, enforced
 ```json
 {
   "userId": 1,
+  "role": "STORE_MANAGER",
+  "storeId": 1,
   "iat": 1720000000,
   "exp": 1720000900
 }
 ```
+
+`role` and `storeId` are carried for reference only — the auth middleware never reads them back out of the token. On every request it re-resolves the user by `userId` alone (via a 30-second cache or the database), so a role change or store reassignment takes effect immediately rather than waiting for the token to expire.
 
 - **Access token** — 15 minutes, hardcoded (`ACCESS_TTL_MS` in `authController.js`). Not configurable; this is a deliberate design choice, not an oversight — a short-lived access token limits the blast radius of a leaked token, while the refresh token carries the actual session.
 - **Refresh token** — 7 days (`REFRESH_TTL_MS`), a random opaque string stored server-side in the `RefreshToken` table (not just a signed JWT, so it can be revoked). Rotated on every use: `POST /api/auth/refresh` deletes the presented token and issues a new one, so a stolen refresh token stops working the moment the legitimate client refreshes again.
