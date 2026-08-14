@@ -8,7 +8,7 @@ import { useToast } from '../../../shared/context/ToastContext';
 
 // Matches the recommended cap shown in Stores.jsx — kept in sync so the two
 // admin screens don't advertise different limits for the same business rule.
-const MAX_STORES_PER_AM = 5;
+const MAX_STORES_PER_AM = 10;
 
 // ── Password strength indicator ──────────────────────────────────
 function pwScore(pw) {

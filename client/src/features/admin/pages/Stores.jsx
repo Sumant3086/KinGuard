@@ -14,7 +14,7 @@ const StoreIcon = (
   </svg>
 );
 
-const MAX_STORES_PER_AM = 5;
+const MAX_STORES_PER_AM = 10;
 
 export default function Stores() {
   const toast = useToast();
