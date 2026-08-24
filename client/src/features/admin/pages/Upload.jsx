@@ -120,14 +120,22 @@ export default function Upload() {
     setError('');
     setUploading(true);
     try {
+      // If deadline is provided, set it to 23:55 in DRC Congo time (UTC+2)
+      let deadlineToSend = submissionDeadline;
+      if (submissionDeadline) {
+        // Create a date at 23:55 in CAT (UTC+2)
+        const deadlineDate = new Date(submissionDeadline + 'T23:55:00+02:00');
+        deadlineToSend = deadlineDate.toISOString();
+      }
+      
       let result;
       try {
-        result = await adminApi.uploadInventory(file, inventoryDate, submissionDeadline);
+        result = await adminApi.uploadInventory(file, inventoryDate, deadlineToSend);
       } catch (firstErr) {
         // On 503 (server cold-start), retry once automatically after a short delay
         if (firstErr.response?.status === 503) {
           await new Promise(r => setTimeout(r, 2000));
-          result = await adminApi.uploadInventory(file, inventoryDate, submissionDeadline);
+          result = await adminApi.uploadInventory(file, inventoryDate, deadlineToSend);
         } else {
           throw firstErr;
         }
@@ -153,7 +161,14 @@ export default function Upload() {
     setShowDuplicateConfirm(false);
     setUploading(true);
     try {
-      setResult(await adminApi.uploadInventory(file, inventoryDate, submissionDeadline, { force: true }));
+      // If deadline is provided, set it to 23:55 in DRC Congo time (UTC+2)
+      let deadlineToSend = submissionDeadline;
+      if (submissionDeadline) {
+        const deadlineDate = new Date(submissionDeadline + 'T23:55:00+02:00');
+        deadlineToSend = deadlineDate.toISOString();
+      }
+      
+      setResult(await adminApi.uploadInventory(file, inventoryDate, deadlineToSend, { force: true }));
       setPreview(null);
       clearUploadedFile();
     } catch (err) {
@@ -200,6 +215,9 @@ export default function Upload() {
               <div className="form-group">
                 <label htmlFor="upload-deadline">Submission Deadline <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
                 <input id="upload-deadline" type="date" value={submissionDeadline} onChange={e => setSubmissionDeadline(e.target.value)} disabled={previewing} min={inventoryDate} />
+                <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>
+                  Deadline will be set to 23:55 (11:55 PM) DRC Congo time
+                </small>
               </div>
             </div>
             <div className="form-group">
