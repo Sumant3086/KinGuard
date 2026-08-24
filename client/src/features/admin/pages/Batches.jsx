@@ -112,16 +112,34 @@ export default function Batches() {
   async function handleGrantExtension() {
     if (!extStoreId || !extDeadline) { toast.warning('Please select a store and a deadline'); return; }
     setSavingExt(true);
-    const storeId = parseInt(extStoreId);
-    const newDeadline = new Date(extDeadline).toISOString();
     try {
-      await adminApi.grantStoreExtension({ batchId: extendModal.batchId, storeId, newDeadline, note: extNote || undefined });
-      // Optimistic update — add/replace the extension in local state
-      setBatches(prev => prev.map(b => {
-        if (b.id !== extendModal.batchId) return b;
-        const exts = (b.deadlineExtensions || []).filter(e => e.storeId !== storeId);
-        return { ...b, deadlineExtensions: [...exts, { storeId, newDeadline }] };
-      }));
+      if (extStoreId === 'ALL_STORES') {
+        // Grant extension to all stores
+        const newDeadline = new Date(extDeadline).toISOString();
+        await Promise.all(
+          stores.map(store => 
+            adminApi.grantStoreExtension({
+              batchId: extendModal.batchId,
+              storeId: store.id,
+              newDeadline,
+              note: extNote || undefined
+            })
+          )
+        );
+        toast.success(`Extension granted to all ${stores.length} stores`);
+      } else {
+        // Grant extension to single store
+        const storeId = parseInt(extStoreId);
+        const newDeadline = new Date(extDeadline).toISOString();
+        await adminApi.grantStoreExtension({ batchId: extendModal.batchId, storeId, newDeadline, note: extNote || undefined });
+        // Optimistic update — add/replace the extension in local state
+        setBatches(prev => prev.map(b => {
+          if (b.id !== extendModal.batchId) return b;
+          const exts = (b.deadlineExtensions || []).filter(e => e.storeId !== storeId);
+          return { ...b, deadlineExtensions: [...exts, { storeId, newDeadline }] };
+        }));
+        toast.success('Extension granted');
+      }
       setExtendModal(null);
       setExtStoreId(''); setExtDeadline(''); setExtNote('');
       load(); // background sync
@@ -135,8 +153,19 @@ export default function Batches() {
     if (!unlockStoreId) { toast.warning('Select a store first'); return; }
     setUnlocking(true);
     try {
-      await adminApi.unlockStoreForBatch(unlockModal.batchId, parseInt(unlockStoreId));
-      toast.success('Done — manager can now re-count and submit again');
+      if (unlockStoreId === 'ALL_STORES') {
+        // Unlock all stores
+        await Promise.all(
+          stores.map(store => 
+            adminApi.unlockStoreForBatch(unlockModal.batchId, store.id)
+          )
+        );
+        toast.success(`All ${stores.length} stores unlocked — managers can now re-count and submit again`);
+      } else {
+        // Unlock single store
+        await adminApi.unlockStoreForBatch(unlockModal.batchId, parseInt(unlockStoreId));
+        toast.success('Done — manager can now re-count and submit again');
+      }
       setUnlockModal(null);
       setUnlockStoreId('');
       load(); // background sync
@@ -411,6 +440,7 @@ export default function Batches() {
               <label htmlFor="ext-plant">Store</label>
               <select id="ext-plant" value={extStoreId} onChange={e => setExtStoreId(e.target.value)}>
                 <option value="">Select store…</option>
+                <option value="ALL_STORES">✨ All Stores</option>
                 {stores.map(s => <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>)}
               </select>
             </div>
@@ -445,6 +475,7 @@ export default function Batches() {
               <label htmlFor="ul-plant">Store to unlock</label>
               <select id="ul-plant" value={unlockStoreId} onChange={e => setUnlockStoreId(e.target.value)} disabled={unlocking}>
                 <option value="">Select store…</option>
+                <option value="ALL_STORES">✨ All Stores</option>
                 {stores.map(s => <option key={s.id} value={s.id}>{s.storeCode} — {s.storeName}</option>)}
               </select>
             </div>
