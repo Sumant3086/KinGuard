@@ -784,22 +784,22 @@ export default function Stores() {
               />
               {bulkEditMode === 'prefix' && (
                 <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
-                  Example: "{bulkEditValue || 'PREFIX_'}MGR2001"
+                  Example: &quot;{bulkEditValue || 'PREFIX_'}MGR2001&quot;
                 </small>
               )}
               {bulkEditMode === 'suffix' && (
                 <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
-                  Example: "MGR2001{bulkEditValue || '_SUFFIX'}"
+                  Example: &quot;MGR2001{bulkEditValue || '_SUFFIX'}&quot;
                 </small>
               )}
               {bulkEditMode === 'removePrefix' && (
                 <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
-                  Example: "MGR2001" → "{bulkEditValue ? 'MGR2001'.replace(new RegExp(`^${bulkEditValue}`), '') : '2001'}" (if starts with "{bulkEditValue || 'MGR'}")
+                  Example: &quot;MGR2001&quot; → &quot;{bulkEditValue ? 'MGR2001'.replace(new RegExp(`^${bulkEditValue}`), '') : '2001'}&quot; (if starts with &quot;{bulkEditValue || 'MGR'}&quot;)
                 </small>
               )}
               {bulkEditMode === 'removeSuffix' && (
                 <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
-                  Example: "MGR2001" → "{bulkEditValue ? 'MGR2001'.replace(new RegExp(`${bulkEditValue}$`), '') : 'MGR'}" (if ends with "{bulkEditValue || '2001'}")
+                  Example: &quot;MGR2001&quot; → &quot;{bulkEditValue ? 'MGR2001'.replace(new RegExp(`${bulkEditValue}$`), '') : 'MGR'}&quot; (if ends with &quot;{bulkEditValue || '2001'}&quot;)
                 </small>
               )}
             </div>
