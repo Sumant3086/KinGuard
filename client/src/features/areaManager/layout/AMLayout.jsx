@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import logoImg from '../../../assets/img/logo 32px32px.png';
 import NotificationBell from '../../../shared/components/NotificationBell';
@@ -21,7 +21,6 @@ const NAV = [
 export default function AMLayout({ children }) {
   const { user, logout } = useAuth();
   const location  = useLocation();
-  const navigate  = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = p => location.pathname === p || location.pathname.startsWith(p + '/');
