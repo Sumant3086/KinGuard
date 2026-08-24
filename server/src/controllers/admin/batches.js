@@ -78,7 +78,11 @@ export async function updateBatch(req, res, next) {
       entityType: 'UPLOAD_BATCH', entityId: batch.id,
       metadata: { submissionDeadline },
     });
+    
+    // Invalidate caches for admin, all store managers, and all area managers
+    await invalidateBatchAudience(batchId);
     sInvalidate('admin:batches', 'admin:notifications');
+    
     res.json(batch);
   } catch (error) { next(error); }
 }
