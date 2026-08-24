@@ -76,11 +76,11 @@ describe('updateUser', () => {
     expect(transactionOps()).toHaveLength(2);
   });
 
-  it('forces a password change on the target\'s next login', async () => {
+  it('does not force a password change when admin resets password', async () => {
     await callAndCatch(admin.updateUser, req({ password: 'NewPassw0rd!' }));
 
     expect(prismaMock.user.update.mock.calls[0][0].data)
-      .toMatchObject({ mustChangePassword: true });
+      .toMatchObject({ mustChangePassword: false });
   });
 
   it('leaves sessions alone when the edit does not touch the password', async () => {
