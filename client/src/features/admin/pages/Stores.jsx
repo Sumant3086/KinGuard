@@ -129,10 +129,22 @@ export default function Stores() {
             newCode = bulkEditValue + store.storeCode;
           } else if (bulkEditMode === 'suffix') {
             newCode = store.storeCode + bulkEditValue;
+          } else if (bulkEditMode === 'removePrefix') {
+            if (store.storeCode.startsWith(bulkEditValue)) {
+              newCode = store.storeCode.slice(bulkEditValue.length);
+            }
+          } else if (bulkEditMode === 'removeSuffix') {
+            if (store.storeCode.endsWith(bulkEditValue)) {
+              newCode = store.storeCode.slice(0, -bulkEditValue.length);
+            }
           } else if (bulkEditMode === 'replace') {
             newCode = bulkEditValue;
           }
-          return adminApi.updateStore(store.id, { storeCode: newCode });
+          // Only update if the code actually changed
+          if (newCode !== store.storeCode) {
+            return adminApi.updateStore(store.id, { storeCode: newCode });
+          }
+          return Promise.resolve();
         })
       );
       toast.success(`Updated ${selectedStores.length} store code(s)`);
@@ -742,25 +754,52 @@ export default function Stores() {
               <select value={bulkEditMode} onChange={e => setBulkEditMode(e.target.value)} disabled={bulkEditing}>
                 <option value="prefix">Add Prefix</option>
                 <option value="suffix">Add Suffix</option>
+                <option value="removePrefix">Remove Prefix</option>
+                <option value="removeSuffix">Remove Suffix</option>
                 <option value="replace">Replace All</option>
               </select>
             </div>
             <div className="form-group">
               <label htmlFor="bulk-edit-value">
-                {bulkEditMode === 'prefix' ? 'Prefix to add' : bulkEditMode === 'suffix' ? 'Suffix to add' : 'New store code'}
+                {bulkEditMode === 'prefix' ? 'Prefix to add' 
+                  : bulkEditMode === 'suffix' ? 'Suffix to add' 
+                  : bulkEditMode === 'removePrefix' ? 'Prefix to remove'
+                  : bulkEditMode === 'removeSuffix' ? 'Suffix to remove'
+                  : 'New store code'}
               </label>
               <input 
                 id="bulk-edit-value" 
                 type="text" 
                 value={bulkEditValue} 
                 onChange={e => setBulkEditValue(e.target.value)} 
-                placeholder={bulkEditMode === 'prefix' ? 'e.g. NEW_' : bulkEditMode === 'suffix' ? 'e.g. _2024' : 'e.g. STORE001'}
+                placeholder={
+                  bulkEditMode === 'prefix' ? 'e.g. NEW_' 
+                  : bulkEditMode === 'suffix' ? 'e.g. _2024' 
+                  : bulkEditMode === 'removePrefix' ? 'e.g. MGR'
+                  : bulkEditMode === 'removeSuffix' ? 'e.g. _OLD'
+                  : 'e.g. STORE001'
+                }
                 autoFocus 
                 disabled={bulkEditing} 
               />
-              {bulkEditMode !== 'replace' && (
+              {bulkEditMode === 'prefix' && (
                 <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
-                  Example: {bulkEditMode === 'prefix' ? `"${bulkEditValue || 'PREFIX_'}MGR2001"` : `"MGR2001${bulkEditValue || '_SUFFIX'}"`}
+                  Example: "{bulkEditValue || 'PREFIX_'}MGR2001"
+                </small>
+              )}
+              {bulkEditMode === 'suffix' && (
+                <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
+                  Example: "MGR2001{bulkEditValue || '_SUFFIX'}"
+                </small>
+              )}
+              {bulkEditMode === 'removePrefix' && (
+                <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
+                  Example: "MGR2001" → "{bulkEditValue ? 'MGR2001'.replace(new RegExp(`^${bulkEditValue}`), '') : '2001'}" (if starts with "{bulkEditValue || 'MGR'}")
+                </small>
+              )}
+              {bulkEditMode === 'removeSuffix' && (
+                <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
+                  Example: "MGR2001" → "{bulkEditValue ? 'MGR2001'.replace(new RegExp(`${bulkEditValue}$`), '') : 'MGR'}" (if ends with "{bulkEditValue || '2001'}")
                 </small>
               )}
             </div>
