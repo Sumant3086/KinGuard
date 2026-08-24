@@ -54,6 +54,11 @@ export default function Stores() {
   const [bulkEditMode, setBulkEditMode]   = useState('prefix'); // 'prefix' | 'suffix' | 'replace'
   const [bulkEditValue, setBulkEditValue] = useState('');
 
+  // Smart auto-assign
+  const [showAutoAssign, setShowAutoAssign]   = useState(false);
+  const [autoAssignMatches, setAutoAssignMatches] = useState([]);
+  const [autoAssigning, setAutoAssigning]     = useState(false);
+
   useEffect(() => {
     loadStores();
     adminApi.getAreaManagers().then(setAreaManagers).catch(() => {});
@@ -157,6 +162,49 @@ export default function Stores() {
       toast.error(err.response?.data?.error || 'Could not update stores. Try again.');
     } finally {
       setBulkEditing(false);
+    }
+  }
+
+  // ── Smart Auto-Assign ──────────────────────────────────────────────
+  async function findAutoAssignMatches() {
+    // Get all store managers
+    const allUsers = await adminApi.getUsers();
+    const storeManagers = allUsers.filter(u => u.role === 'STORE_MANAGER' && !u.storeId);
+    
+    // Get unassigned stores
+    const unassignedStores = stores.filter(s => s._count.users === 0);
+    
+    const matches = [];
+    for (const store of unassignedStores) {
+      // Look for a manager whose name contains the store code
+      const manager = storeManagers.find(m => m.name && m.name.includes(store.storeCode));
+      if (manager) {
+        matches.push({ store, manager });
+      }
+    }
+    
+    setAutoAssignMatches(matches);
+    setShowAutoAssign(true);
+  }
+
+  async function confirmAutoAssign() {
+    setAutoAssigning(true);
+    try {
+      await Promise.all(
+        autoAssignMatches.map(match => 
+          adminApi.updateUser(match.manager.id, { storeId: match.store.id })
+        )
+      );
+      toast.success(`Assigned ${autoAssignMatches.length} store manager(s)`);
+      setShowAutoAssign(false);
+      setAutoAssignMatches([]);
+      await loadStores();
+      await adminApi.getUsers.cache?.clear?.(); // Clear user cache
+    } catch (err) {
+      console.error('Auto-assign stores:', err);
+      toast.error(err.response?.data?.error || 'Could not assign stores. Try again.');
+    } finally {
+      setAutoAssigning(false);
     }
   }
 
@@ -290,7 +338,19 @@ export default function Stores() {
       <PageHeader
         title="Store Management"
         subtitle={subtitle}
-        actions={<button onClick={openCreate} className="btn btn-primary">+ Add Store</button>}
+        actions={
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button 
+              onClick={findAutoAssignMatches} 
+              className="btn btn-secondary"
+              disabled={loading || stores.filter(s => s._count.users === 0).length === 0}
+              title="Automatically match and assign store managers to stores based on name patterns"
+            >
+              🤖 Smart Auto-Assign
+            </button>
+            <button onClick={openCreate} className="btn btn-primary">+ Add Store</button>
+          </div>
+        }
       />
 
       {/* Tab bar */}
@@ -809,6 +869,63 @@ export default function Stores() {
                 {bulkEditing ? 'Updating…' : `Update ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Smart Auto-Assign Modal */}
+      {showAutoAssign && (
+        <Modal onClose={() => !autoAssigning && setShowAutoAssign(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+            <div className="modal-header">
+              <h3>🤖 Smart Auto-Assign Preview</h3>
+              <button className="close-btn" onClick={() => setShowAutoAssign(false)} disabled={autoAssigning}>&times;</button>
+            </div>
+            
+            {autoAssignMatches.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+                <h4 style={{ fontSize: 16, fontWeight: 600, color: 'var(--tx1)', marginBottom: 8 }}>No Matches Found</h4>
+                <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 16 }}>
+                  Could not find any store managers whose names contain the store codes of unassigned stores.
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--tx3)', background: 'rgba(59,130,246,0.08)', padding: '12px 16px', borderRadius: 'var(--r)', border: '1px solid rgba(59,130,246,0.22)' }}>
+                  <strong>Tip:</strong> Make sure manager names include the store code. For example, &quot;Manager 2001&quot; will match store &quot;2001&quot;.
+                </p>
+                <button className="btn btn-secondary" onClick={() => setShowAutoAssign(false)} style={{ marginTop: 16 }}>Close</button>
+              </div>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 16 }}>
+                  Found <strong>{autoAssignMatches.length}</strong> potential match{autoAssignMatches.length !== 1 ? 'es' : ''} based on store codes in manager names. Review and confirm to assign:
+                </p>
+                
+                <div style={{ maxHeight: 400, overflowY: 'auto', marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
+                  {autoAssignMatches.map((match, idx) => (
+                    <div key={idx} style={{ padding: '12px 16px', borderBottom: idx < autoAssignMatches.length - 1 ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 4 }}>Store</div>
+                        <div style={{ fontWeight: 700, color: 'var(--vi)', fontFamily: 'monospace', fontSize: 13 }}>{match.store.storeCode}</div>
+                        <div style={{ fontSize: 12, color: 'var(--tx2)' }}>{match.store.storeName}</div>
+                      </div>
+                      <div style={{ fontSize: 20, color: 'var(--tx4)' }}>→</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: 'var(--tx3)', marginBottom: 4 }}>Manager</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--tx1)' }}>{match.manager.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--tx3)', fontFamily: 'monospace' }}>{match.manager.employeeId}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary" onClick={() => setShowAutoAssign(false)} disabled={autoAssigning}>Cancel</button>
+                  <button className="btn btn-primary" onClick={confirmAutoAssign} disabled={autoAssigning}>
+                    {autoAssigning ? 'Assigning…' : `Assign ${autoAssignMatches.length} Manager${autoAssignMatches.length !== 1 ? 's' : ''}`}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}
