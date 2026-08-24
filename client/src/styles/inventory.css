@@ -89,13 +89,13 @@
   flex-wrap: wrap;
   align-items: flex-end;
   margin-bottom: 14px;
-  background: rgba(255, 252, 250, 0.86);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
-  border: 1.5px solid rgba(185,28,28,0.20);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 12px 16px;
-  box-shadow: 0 6px 20px rgba(100,20,10,0.10), inset 0 1px 0 rgba(255,255,255,0.70);
+  padding: 16px;
+  box-shadow: var(--sh-sm);
 }
 .search-wrap { position:relative; display:flex; align-items:center; }
 .search-icon { position:absolute; left:9px; color:var(--t4); pointer-events:none; }
@@ -328,7 +328,15 @@
 
 /* ─── Submit summary ─────────────────────────────────────────────── */
 .submit-summary        { max-width:680px; margin:44px auto; padding:0 20px; }
-.submit-summary-header { text-align:center; margin-bottom:28px; }
+.submit-summary-header { 
+  text-align:center; 
+  margin-bottom:28px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 32px 24px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-sm);
+}
 .submit-success-icon {
   width: 64px; height: 64px;
   border-radius: 50%;
@@ -351,22 +359,23 @@
   text-align: center;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
   box-shadow: var(--sh-xs);
 }
 .summary-metric h4, .sum-metric-label {
   font-size: 9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;
 }
 .summary-metric .metric-value, .sum-metric-value { font-size:30px; font-weight:800; line-height:1; letter-spacing:-1px; }
-.summary-metric.matched, .sum-matched  { background:rgba(22,163,74,0.04);  border-color:rgba(22,163,74,0.18); }
-.summary-metric.shortage,.sum-shortage { background:rgba(220,38,38,0.04);  border-color:rgba(220,38,38,0.18); }
-.summary-metric.excess,  .sum-excess   { background:rgba(139,92,246,0.04); border-color:rgba(139,92,246,0.18); }
-.summary-metric.matched  h4, .sum-matched  .sum-metric-label { color:#16a34a; }
-.summary-metric.shortage h4, .sum-shortage .sum-metric-label { color:var(--red-light); }
-.summary-metric.excess   h4, .sum-excess   .sum-metric-label { color:var(--violet-light); }
-.summary-metric.matched  .metric-value, .sum-matched  .sum-metric-value { color:#16a34a; }
-.summary-metric.shortage .metric-value, .sum-shortage .sum-metric-value { color:var(--red-light); }
-.summary-metric.excess   .metric-value, .sum-excess   .sum-metric-value { color:var(--violet-light); }
+.summary-metric.matched, .sum-matched  { background:rgba(22,163,74,0.12);  border-color:rgba(22,163,74,0.28); }
+.summary-metric.shortage,.sum-shortage { background:rgba(220,38,38,0.12);  border-color:rgba(220,38,38,0.28); }
+.summary-metric.excess,  .sum-excess   { background:rgba(139,92,246,0.12); border-color:rgba(139,92,246,0.28); }
+.summary-metric.matched  h4, .sum-matched  .sum-metric-label { color:#15803d; }
+.summary-metric.shortage h4, .sum-shortage .sum-metric-label { color:#b91c1c; }
+.summary-metric.excess   h4, .sum-excess   .sum-metric-label { color:#6d28d9; }
+.summary-metric.matched  .metric-value, .sum-matched  .sum-metric-value { color:#15803d; }
+.summary-metric.shortage .metric-value, .sum-shortage .sum-metric-value { color:#b91c1c; }
+.summary-metric.excess   .metric-value, .sum-excess   .sum-metric-value { color:#6d28d9; }
 
 /* ─── Responsive — inventory ─────────────────────────────────────── */
 @media (max-width:768px) {
