@@ -56,12 +56,7 @@ function PrivateRoute({ children, role }) {
   if (loading) return <PageLoader />;
   // Save the intended URL so LoginPage can redirect back after a successful login
   if (!user) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
-  // Force password change before allowing access to any protected page.
-  // Exclude /change-password itself to prevent an infinite redirect loop when
-  // PrivateRoute wraps the change-password route and mustChangePassword is true.
-  if (user.mustChangePassword && location.pathname !== '/change-password') {
-    return <Navigate to="/change-password" replace />;
-  }
+  // Removed mustChangePassword check - users can login directly without forced password change
   // Wrong role — send to the user's own dashboard, not home
   if (role && user.role !== role) {
     const dash = user.role === 'ADMIN' ? '/admin/dashboard'
@@ -94,7 +89,7 @@ function App() {
             <Route path="/"                element={<Home />} />
             <Route path="/login"           element={<LoginPage />} />
             <Route path="/change-password" element={<PrivateRoute><ErrorBoundary><ChangePassword /></ErrorBoundary></PrivateRoute>} />
-            <Route path="/profile"         element={<PrivateRoute><ErrorBoundary><ProfilePage /></ErrorBoundary></PrivateRoute>} />
+            <Route path="/profile"         element={<PrivateRoute role="ADMIN"><ErrorBoundary><ProfilePage /></ErrorBoundary></PrivateRoute>} />
 
             {/* Admin Routes — each page has its own boundary */}
             <Route path="/admin/dashboard"  element={<PrivateRoute role="ADMIN"><ErrorBoundary><AdminDashboard /></ErrorBoundary></PrivateRoute>} />

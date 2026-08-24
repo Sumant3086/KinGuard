@@ -48,6 +48,12 @@ export default function Stores() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkConfirmText, setBulkConfirmText] = useState('');
 
+  // Bulk edit
+  const [showBulkEdit, setShowBulkEdit]   = useState(false);
+  const [bulkEditing, setBulkEditing]     = useState(false);
+  const [bulkEditMode, setBulkEditMode]   = useState('prefix'); // 'prefix' | 'suffix' | 'replace'
+  const [bulkEditValue, setBulkEditValue] = useState('');
+
   useEffect(() => {
     loadStores();
     adminApi.getAreaManagers().then(setAreaManagers).catch(() => {});
@@ -111,6 +117,37 @@ export default function Stores() {
     }
   }
 
+  // ── Bulk edit ──────────────────────────────────────────────────────
+  async function confirmBulkEdit() {
+    setBulkEditing(true);
+    const selectedStores = stores.filter(s => selected.has(s.id));
+    try {
+      await Promise.all(
+        selectedStores.map(store => {
+          let newCode = store.storeCode;
+          if (bulkEditMode === 'prefix') {
+            newCode = bulkEditValue + store.storeCode;
+          } else if (bulkEditMode === 'suffix') {
+            newCode = store.storeCode + bulkEditValue;
+          } else if (bulkEditMode === 'replace') {
+            newCode = bulkEditValue;
+          }
+          return adminApi.updateStore(store.id, { storeCode: newCode });
+        })
+      );
+      toast.success(`Updated ${selectedStores.length} store code(s)`);
+      setShowBulkEdit(false);
+      setBulkEditValue('');
+      setSelected(new Set());
+      await loadStores();
+    } catch (err) {
+      console.error('Bulk edit stores:', err);
+      toast.error(err.response?.data?.error || 'Could not update stores. Try again.');
+    } finally {
+      setBulkEditing(false);
+    }
+  }
+
   // ── Single CRUD ────────────────────────────────────────────────────
   function openCreate() {
     setEditingId(null);
@@ -139,7 +176,11 @@ export default function Stores() {
     setSubmitting(true);
     try {
       if (editingId) {
-        const updated = await adminApi.updateStore(editingId, { storeName: formData.storeName, isActive: formData.isActive });
+        const updated = await adminApi.updateStore(editingId, { 
+          storeCode: formData.storeCode.trim(),
+          storeName: formData.storeName, 
+          isActive: formData.isActive 
+        });
         setStores(prev => prev.map(s => s.id === editingId ? { ...s, ...updated } : s));
       } else {
         const created = await adminApi.createStore({ ...formData, storeCode: formData.storeCode.trim() });
@@ -363,6 +404,14 @@ export default function Stores() {
               </span>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => setSelected(new Set())} disabled={bulkDeleting}>Clear selection</button>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => { setBulkEditMode('prefix'); setBulkEditValue(''); setShowBulkEdit(true); }}
+                  disabled={bulkDeleting}
+                  style={{ background: 'rgba(59,130,246,0.14)', color: '#2563eb', border: '1px solid rgba(59,130,246,0.28)', fontWeight: 600 }}
+                >
+                  Edit {selected.size} Code{selected.size !== 1 ? 's' : ''}
+                </button>
                 <button
                   className="btn btn-sm"
                   onClick={() => { setBulkConfirmText(''); setShowBulkConfirm(true); }}
@@ -613,8 +662,8 @@ export default function Stores() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label htmlFor="store-code">Store Code</label>
-                <input id="store-code" type="text" value={formData.storeCode} onChange={e => setFormData(f => ({ ...f, storeCode: e.target.value }))} required disabled={editingId !== null || submitting} placeholder="e.g. 2050" autoFocus />
-                {!editingId && <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>Must match the code used in your Excel upload files. Cannot be changed after creation.</small>}
+                <input id="store-code" type="text" value={formData.storeCode} onChange={e => setFormData(f => ({ ...f, storeCode: e.target.value }))} required disabled={submitting} placeholder="e.g. 2050" autoFocus />
+                {!editingId && <small style={{ color: 'var(--t3)', fontSize: 11, marginTop: 4, display: 'block' }}>Must match the code used in your Excel upload files.</small>}
               </div>
               <div className="form-group">
                 <label htmlFor="store-name">Store Name</label>
@@ -671,6 +720,54 @@ export default function Stores() {
               <button className="btn btn-secondary" onClick={() => setAmModal(null)} disabled={amAssigning}>Cancel</button>
               <button className="btn btn-primary" disabled={amAssigning} onClick={handleAssignAM}>
                 {amAssigning ? 'Saving…' : 'Save Assignment'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk Edit Modal */}
+      {showBulkEdit && (
+        <Modal onClose={() => !bulkEditing && setShowBulkEdit(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="modal-header">
+              <h3>Bulk Edit Store Codes</h3>
+              <button className="close-btn" onClick={() => setShowBulkEdit(false)} disabled={bulkEditing}>&times;</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--tx3)', marginBottom: 16 }}>
+              Update store codes for {selected.size} selected store{selected.size !== 1 ? 's' : ''}.
+            </p>
+            <div className="form-group">
+              <label>Edit Mode</label>
+              <select value={bulkEditMode} onChange={e => setBulkEditMode(e.target.value)} disabled={bulkEditing}>
+                <option value="prefix">Add Prefix</option>
+                <option value="suffix">Add Suffix</option>
+                <option value="replace">Replace All</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="bulk-edit-value">
+                {bulkEditMode === 'prefix' ? 'Prefix to add' : bulkEditMode === 'suffix' ? 'Suffix to add' : 'New store code'}
+              </label>
+              <input 
+                id="bulk-edit-value" 
+                type="text" 
+                value={bulkEditValue} 
+                onChange={e => setBulkEditValue(e.target.value)} 
+                placeholder={bulkEditMode === 'prefix' ? 'e.g. NEW_' : bulkEditMode === 'suffix' ? 'e.g. _2024' : 'e.g. STORE001'}
+                autoFocus 
+                disabled={bulkEditing} 
+              />
+              {bulkEditMode !== 'replace' && (
+                <small style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
+                  Example: {bulkEditMode === 'prefix' ? `"${bulkEditValue || 'PREFIX_'}MGR2001"` : `"MGR2001${bulkEditValue || '_SUFFIX'}"`}
+                </small>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn btn-secondary" onClick={() => setShowBulkEdit(false)} disabled={bulkEditing}>Cancel</button>
+              <button className="btn btn-primary" onClick={confirmBulkEdit} disabled={bulkEditing || !bulkEditValue.trim()}>
+                {bulkEditing ? 'Updating…' : `Update ${selected.size} Store${selected.size !== 1 ? 's' : ''}`}
               </button>
             </div>
           </div>

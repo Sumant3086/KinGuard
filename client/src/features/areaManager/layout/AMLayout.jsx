@@ -55,7 +55,7 @@ export default function AMLayout({ children }) {
 
         <div className="hl-right">
           <NotificationBell fetcher={getNotifications} role="AREA_MANAGER" userId={user?.id} />
-          <button className="hl-avatar" onClick={() => navigate('/profile')} title="My Profile" style={{ cursor: 'pointer', border: 'none', background: 'none', padding: 0 }}>{initials}</button>
+          <div className="hl-avatar" title={user?.name} style={{ cursor: 'default' }}>{initials}</div>
           <div className="hl-user-info">
             <span className="hl-emp">{user?.employeeId}</span>
             <span className="hl-role">Area Manager</span>

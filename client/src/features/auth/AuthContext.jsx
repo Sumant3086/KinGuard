@@ -79,11 +79,7 @@ export function AuthProvider({ children }) {
     // next render cycle — resulting in two back-to-back replace() calls that can land the
     // user on the wrong page.
     //
-    // Exception: mustChangePassword forces a specific destination that LoginPage doesn't
-    // know about, so we keep that navigate here.
-    if (userData.mustChangePassword) {
-      navigate('/change-password', { replace: true });
-    }
+    // Removed mustChangePassword handling - users login directly without forced password change
     // For all other cases LoginPage's useEffect does the redirect.
   }
 

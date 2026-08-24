@@ -112,16 +112,18 @@ export async function deleteStore(req, res, next) {
 export async function updateStore(req, res, next) {
   try {
     const storeId = requireId(req.params.id, 'storeId');
-    const { storeName, isActive } = req.body;
+    const { storeName, storeCode, isActive } = req.body;
 
     const store = await prisma.store.update({
       where: { id: storeId },
       data: {
+        storeCode: storeCode !== undefined ? storeCode : undefined,
         storeName: storeName !== undefined ? storeName : undefined,
         isActive: isActive !== undefined ? isActive : undefined,
       },
     }).catch(err => {
       if (err.code === 'P2025') throw new AppError('Store not found', 404);
+      if (err.code === 'P2002') throw new AppError('Store code already exists', 400);
       throw err;
     });
 

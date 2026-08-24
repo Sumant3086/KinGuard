@@ -160,8 +160,8 @@ export async function updateUser(req, res, next) {
     if (password) {
       validatePassword(password);
       data.passwordHash = await bcrypt.hash(password, 10);
-      // Admin-reset passwords must be changed on next login
-      data.mustChangePassword = true;
+      // Allow users to login without forced password change
+      data.mustChangePassword = false;
     }
 
     // An admin-issued password reset has to end live sessions the same way a
@@ -279,7 +279,7 @@ export async function approveUser(req, res, next) {
 
         const updated = await tx.user.update({
           where: { id: userId },
-          data: { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: true },
+          data: { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: false },
           include: { store: { select: { id: true, storeCode: true, storeName: true } } },
         });
         return { updated, tempPassword, original: user };
@@ -366,7 +366,7 @@ export async function batchCreateUsersForPlants(req, res, next) {
       withPasswords.map(async ({ store, employeeId, userName, tempPassword, passwordHash }) => {
         try {
           const newUser = await prisma.user.create({
-            data: { employeeId, name: userName, passwordHash, role: 'STORE_MANAGER', storeId: store.id, isActive: true, mustChangePassword: true },
+            data: { employeeId, name: userName, passwordHash, role: 'STORE_MANAGER', storeId: store.id, isActive: true, mustChangePassword: false },
             include: { store: { select: { storeCode: true, storeName: true } } },
           }).catch(err => {
             if (err.code === 'P2002') throw new AppError(`Username ${employeeId} already exists`, 409);
@@ -763,7 +763,7 @@ export async function bulkReviewUsers(req, res, next) {
           try {
             await prisma.user.update({
               where: { id: user.id, pendingApproval: true, isActive: false },
-              data:  { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: true },
+              data:  { isActive: true, pendingApproval: false, passwordHash, mustChangePassword: false },
             });
             createAuditLog({
               userId: req.user.id, action: 'APPROVE_USER',
