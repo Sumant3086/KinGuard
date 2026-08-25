@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import logoImg from '../../../assets/img/logo 32px32px.png';
 import NotificationBell from '../../../shared/components/NotificationBell';
+import ChangePasswordModal from '../../../shared/components/ChangePasswordModal';
 import { getNotifications } from '../../../shared/api/amApi';
 
 const Icons = {
@@ -11,6 +12,7 @@ const Icons = {
   menu:      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
   close:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
   logout:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  key:       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>,
 };
 
 const NAV = [
@@ -22,6 +24,7 @@ export default function AMLayout({ children }) {
   const { user, logout } = useAuth();
   const location  = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const isActive = p => location.pathname === p || location.pathname.startsWith(p + '/');
   const initials = user?.name
@@ -54,6 +57,38 @@ export default function AMLayout({ children }) {
 
         <div className="hl-right">
           <NotificationBell fetcher={getNotifications} role="AREA_MANAGER" userId={user?.id} />
+          <button
+            onClick={() => setShowPasswordModal(true)}
+            className="hl-pwd-btn"
+            title="Change Password"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              fontSize: '12px',
+              fontWeight: 600,
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              background: 'transparent',
+              color: 'var(--t2)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--surface-2)';
+              e.currentTarget.style.borderColor = 'var(--pr)';
+              e.currentTarget.style.color = 'var(--pr)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.color = 'var(--t2)';
+            }}
+          >
+            {Icons.key}
+            <span>Change Password</span>
+          </button>
           <div className="hl-avatar" title={user?.name} style={{ cursor: 'default' }}>{initials}</div>
           <div className="hl-user-info">
             <span className="hl-emp">{user?.employeeId}</span>
@@ -91,6 +126,30 @@ export default function AMLayout({ children }) {
               </Link>
             ))}
             <div className="hl-mob-sep" />
+            <button
+              className="hl-mob-link"
+              onClick={() => {
+                setMobileOpen(false);
+                setShowPasswordModal(true);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                width: '100%',
+                padding: '14px 20px',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--t2)',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <span className="hl-mob-icon">{Icons.key}</span>
+              Change Password
+            </button>
             <button className="hl-mob-logout" onClick={logout}>{Icons.logout} Sign Out</button>
           </div>
         </>
@@ -120,6 +179,15 @@ export default function AMLayout({ children }) {
           </button>
         </div>
       </nav>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={() => {
+          // Optional: show a success toast/notification
+        }}
+      />
     </div>
   );
 }

@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../auth/AuthContext';
 import { setLanguage } from '../../../i18n/index.js';
 import logoImg from '../../../assets/img/logo 32px32px.png';
 import NotificationBell from '../../../shared/components/NotificationBell';
+import ChangePasswordModal from '../../../shared/components/ChangePasswordModal';
 import { getNotifications } from '../../../shared/api/storeApi';
 
 const Icons = {
@@ -26,12 +28,18 @@ const Icons = {
       <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
     </svg>
   ),
+  key: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+    </svg>
+  ),
 };
 
 export default function StoreLayout({ children }) {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const isActive = path => location.pathname === path;
 
   return (
@@ -72,6 +80,37 @@ export default function StoreLayout({ children }) {
               ))}
             </div>
 
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                background: 'transparent',
+                color: 'var(--t2)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-2)';
+                e.currentTarget.style.borderColor = 'var(--red)';
+                e.currentTarget.style.color = 'var(--red)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.color = 'var(--t2)';
+              }}
+            >
+              {Icons.key}
+              <span>Change Password</span>
+            </button>
+
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t2)' }}>
               {user?.name}
             </div>
@@ -104,6 +143,15 @@ export default function StoreLayout({ children }) {
           </button>
         </div>
       </nav>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={() => {
+          // Optional: show a success toast/notification
+        }}
+      />
     </div>
   );
 }
