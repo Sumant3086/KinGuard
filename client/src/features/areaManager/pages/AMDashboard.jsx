@@ -120,6 +120,37 @@ export default function AMDashboard() {
               : `${storeProgress.length} store${storeProgress.length !== 1 ? 's' : ''} under your supervision`}
           </div>
           
+          {/* Smart cycle status message */}
+          {!loading && currentBatch && (() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const cycleDate = new Date(currentBatch.inventoryDate);
+            cycleDate.setHours(0, 0, 0, 0);
+            
+            const isToday = cycleDate.getTime() === today.getTime();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const isYesterday = cycleDate.getTime() === yesterday.getTime();
+            
+            if (!isToday && (isYesterday || cycleDate < today)) {
+              return (
+                <div style={{ 
+                  marginTop: 8, 
+                  padding: '8px 12px', 
+                  background: 'rgba(245,158,11,0.1)', 
+                  border: '1px solid rgba(245,158,11,0.3)', 
+                  borderRadius: 6,
+                  fontSize: 12,
+                  color: '#b45309',
+                  fontWeight: 600
+                }}>
+                  ⚠️ Today&apos;s cycle not uploaded yet. Showing {isYesterday ? 'yesterday' : fmtDate(currentBatch.inventoryDate)} for pending approvals.
+                </div>
+              );
+            }
+            return null;
+          })()}
+          
           {/* Cycle Selector */}
           {!loading && currentBatch && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>

@@ -51,24 +51,39 @@ export async function getDashboard(req, res, next) {
     const storeIds = await withRetry(() => getManagedStoreIds(req.user.id, forceRefresh));
     const selectedBatchId = req.query.batchId ? parseId(req.query.batchId, 'batchId') : null;
 
-    // Get TODAY'S cycle only (not past, not future)
+    // Get the most recent ACTIVE cycle (today, yesterday, or most recent past)
+    // This ensures dashboard is never empty and AM can see pending approvals
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
+    // Try to get today's cycle first
+    let latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
       where: { 
         status: 'COMPLETED', 
         isDeleted: false,
         inventoryDate: { 
-          gte: today,    // Greater than or equal to today 00:00:00
-          lt: tomorrow   // Less than tomorrow 00:00:00 (so only today)
+          gte: today,    // >= today at 00:00:00
+          lt: tomorrow   // < tomorrow at 00:00:00
         }
       },
       orderBy: { inventoryDate: 'desc' },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     }));
+    
+    // If no cycle for today, get the most recent past cycle (for AM to complete approvals)
+    if (!latestBatch) {
+      latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
+        where: { 
+          status: 'COMPLETED', 
+          isDeleted: false,
+          inventoryDate: { lt: today } // Past cycles only
+        },
+        orderBy: { inventoryDate: 'desc' },
+        select: { id: true, inventoryDate: true, submissionDeadline: true },
+      }));
+    }
 
     if (!storeIds.length || !latestBatch) {
       return res.json({ 
