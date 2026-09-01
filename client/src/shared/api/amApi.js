@@ -19,7 +19,7 @@ export const getDashboard = () =>
 
 export const getBatches = () =>
   withCache('am:batches', 60_000, async () => {
-    const { data } = await client.get('/am/batches');
+    const { data} = await client.get('/am/batches');
     return data;
   });
 

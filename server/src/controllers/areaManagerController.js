@@ -50,8 +50,8 @@ async function getManagedStoreIds(areaManagerId, forceRefresh = false) {
 // ── Dashboard overview ────────────────────────────────────────────────────────
 export async function getDashboard(req, res, next) {
   try {
-    // Allow cache bypass with ?refresh=1
-    const forceRefresh = req.query.refresh === '1';
+    // ALWAYS bypass cache for dashboard to ensure fresh store assignments
+    const forceRefresh = true;
     const storeIds = await withRetry(() => getManagedStoreIds(req.user.id, forceRefresh));
     console.log('[AM Dashboard] User ID:', req.user.id, '| Store IDs found:', storeIds, '| Force refresh:', forceRefresh);
     const selectedBatchId = req.query.batchId ? parseId(req.query.batchId, 'batchId') : null;
