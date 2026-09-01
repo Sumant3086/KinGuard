@@ -52,7 +52,11 @@ export async function getDashboard(req, res, next) {
     const selectedBatchId = req.query.batchId ? parseId(req.query.batchId, 'batchId') : null;
 
     const latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
-      where: { status: 'COMPLETED', isDeleted: false },
+      where: { 
+        status: 'COMPLETED', 
+        isDeleted: false,
+        inventoryDate: { lte: new Date() } // Only cycles up to today
+      },
       orderBy: { inventoryDate: 'desc' },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
     }));
