@@ -67,7 +67,7 @@ export default function AMDashboard() {
 
   const loadDashboard = (batchId) => {
     setLoading(true);
-    let url = batchId ? `/am/dashboard?batchId=${batchId}` : '/am/dashboard';
+    let url = batchId ? `/api/am/dashboard?batchId=${batchId}` : '/api/am/dashboard';
     // Add cache-busting timestamp to force fresh data
     url += (url.includes('?') ? '&' : '?') + `_t=${Date.now()}`;
     
