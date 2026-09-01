@@ -32,16 +32,12 @@ async function getManagedStoreIds(areaManagerId, forceRefresh = false) {
   const key = `am:stores:${areaManagerId}`;
   if (!forceRefresh) {
     const cached = sGet(key);
-    if (cached) {
-      console.log('[getManagedStoreIds] Returning cached stores for AM', areaManagerId, ':', cached);
-      return cached;
-    }
+    if (cached) return cached;
   }
   const stores = await prisma.store.findMany({
     where: { areaManagerId, isActive: true },
-    select: { id: true, storeCode: true, storeName: true },
+    select: { id: true },
   });
-  console.log('[getManagedStoreIds] DB Query for AM', areaManagerId, '- Found stores:', stores);
   const ids = stores.map(s => s.id);
   sSet(key, ids, AM_STORES_TTL);
   return ids;
@@ -50,26 +46,9 @@ async function getManagedStoreIds(areaManagerId, forceRefresh = false) {
 // ── Dashboard overview ────────────────────────────────────────────────────────
 export async function getDashboard(req, res, next) {
   try {
-    // Debug: Check user info
-    console.log('[AM Dashboard] Authenticated user:', {
-      id: req.user.id,
-      employeeId: req.user.employeeId,
-      name: req.user.name,
-      role: req.user.role,
-    });
-    
     // ALWAYS bypass cache for dashboard to ensure fresh store assignments
     const forceRefresh = true;
     const storeIds = await withRetry(() => getManagedStoreIds(req.user.id, forceRefresh));
-    
-    // Additional debug: Query stores directly to verify
-    const directStoreQuery = await prisma.store.findMany({
-      where: { areaManagerId: req.user.id, isActive: true },
-      select: { id: true, storeCode: true, storeName: true, areaManagerId: true, isActive: true },
-    });
-    console.log('[AM Dashboard] Store IDs from getManagedStoreIds:', storeIds);
-    console.log('[AM Dashboard] Direct store query result:', directStoreQuery);
-    
     const selectedBatchId = req.query.batchId ? parseId(req.query.batchId, 'batchId') : null;
 
     const latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
@@ -79,7 +58,6 @@ export async function getDashboard(req, res, next) {
     }));
 
     if (!storeIds.length || !latestBatch) {
-      console.warn('[AM Dashboard] No stores found or no batches - User ID:', req.user.id, '| Stores:', storeIds.length, '| Latest Batch:', !!latestBatch);
       return res.json({ 
         storeCount: storeIds.length, 
         pendingReview: 0, 
@@ -91,11 +69,6 @@ export async function getDashboard(req, res, next) {
         recentActivity: [],
         performanceStats: null,
         availableBatches: [],
-        debugInfo: {
-          userId: req.user.id,
-          storesFound: storeIds.length,
-          hasLatestBatch: !!latestBatch,
-        },
       });
     }
 

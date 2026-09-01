@@ -77,7 +77,12 @@ export default function AMDashboard() {
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
       },
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
       .then(d => setData(d))
       .catch(e => {
         console.error('AM dashboard:', e);
@@ -272,15 +277,7 @@ export default function AMDashboard() {
           </div>
         ) : storeProgress.length === 0 ? (
           <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--tx3)', fontSize: 14 }}>
-            <p style={{ marginBottom: 8 }}>No stores have been assigned to you yet. Contact the admin.</p>
-            {data?.debugInfo && (
-              <details style={{ marginTop: 12, fontSize: 11, color: 'var(--tx3)', textAlign: 'left', background: 'var(--surface-2)', padding: 12, borderRadius: 6 }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Debug Info</summary>
-                <pre style={{ marginTop: 8, fontSize: 10, whiteSpace: 'pre-wrap' }}>
-                  {JSON.stringify(data.debugInfo, null, 2)}
-                </pre>
-              </details>
-            )}
+            No stores have been assigned to you yet. Contact the admin.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
