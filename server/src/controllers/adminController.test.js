@@ -88,6 +88,22 @@ describe('updateUser', () => {
 
     expect(prismaMock.refreshToken.deleteMany).not.toHaveBeenCalled();
     expect(transactionOps()).toHaveLength(1);
+    expect(prismaMock.$transaction).toHaveBeenCalledOnce();
+    expect(transactionOps()).toHaveLength(2);
+  });
+
+  it('does not force a password change when admin resets password', async () => {
+    await callAndCatch(admin.updateUser, req({ password: 'NewPassw0rd!' }));
+
+    expect(prismaMock.user.update.mock.calls[0][0].data)
+      .toMatchObject({ mustChangePassword: false });
+  });
+
+  it('leaves sessions alone when the edit does not touch the password', async () => {
+    await callAndCatch(admin.updateUser, req({ name: 'Sam Renamed' }));
+
+    expect(prismaMock.refreshToken.deleteMany).not.toHaveBeenCalled();
+    expect(transactionOps()).toHaveLength(1);
   });
 
   it('drops the target from the auth cache so the change takes effect at once', async () => {

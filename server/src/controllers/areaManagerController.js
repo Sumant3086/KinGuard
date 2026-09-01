@@ -427,8 +427,26 @@ export async function approveStore(req, res, next) {
 
     // A review tab opened before the admin deleted the cycle must not be able to
     // approve into it — mirrors the batch.isDeleted guard on updateRecord/getStoreRecords.
-    const batchRow = await prisma.uploadBatch.findFirst({ where: { id: batchId, isDeleted: false }, select: { id: true } });
+    const batchRow = await prisma.uploadBatch.findFirst({ 
+      where: { id: batchId, isDeleted: false }, 
+      select: { id: true, inventoryDate: true } 
+    });
     if (!batchRow) throw new AppError('This inventory cycle no longer exists', 404);
+
+    // NEW: Area Manager can only approve TODAY's or YESTERDAY's inventory cycle
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const cycleDate = new Date(batchRow.inventoryDate);
+    cycleDate.setHours(0, 0, 0, 0);
+    
+    // Allow approval if cycle is today or yesterday (submission day + next day)
+    if (cycleDate.getTime() !== today.getTime() && cycleDate.getTime() !== yesterday.getTime()) {
+      throw new AppError('You can only approve submissions from today or yesterday. This cycle is for ' + cycleDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), 403);
+    }
 
     // Server-side guard: all records must be submitted before an AM can approve.
     // The UI checks allSubmitted, but a direct API call could bypass that.

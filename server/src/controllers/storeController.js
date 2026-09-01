@@ -360,6 +360,7 @@ export async function submitInventory(req, res, next) {
     const batchForDeadline = await prisma.uploadBatch.findFirst({
       where: { id: parsedBatchId, isDeleted: false },
       select: {
+        inventoryDate: true,
         submissionDeadline: true,
         deadlineExtensions: {
           where: { storeId },
@@ -369,6 +370,17 @@ export async function submitInventory(req, res, next) {
       },
     });
     if (!batchForDeadline) throw new AppError('This inventory cycle was not found', 404);
+
+    // NEW: Store Manager can only submit TODAY's inventory cycle
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cycleDate = new Date(batchForDeadline.inventoryDate);
+    cycleDate.setHours(0, 0, 0, 0);
+    
+    if (cycleDate.getTime() !== today.getTime()) {
+      throw new AppError('You can only submit inventory for today\'s date. This cycle is scheduled for ' + cycleDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), 403);
+    }
+    
     if (batchForDeadline.submissionDeadline) {
       const deadline = effectiveDeadline(batchForDeadline);
       if (new Date() > new Date(deadline)) {

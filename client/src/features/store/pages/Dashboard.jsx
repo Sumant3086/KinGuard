@@ -103,6 +103,15 @@ export default function StoreDashboard() {
   }
 
   const { store, batch, stats, olderPendingBatches = [] } = dashboard;
+  
+  // Check if this is today's cycle
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const cycleDate = new Date(batch.inventoryDate);
+  cycleDate.setHours(0, 0, 0, 0);
+  const isFutureCycle = cycleDate.getTime() > today.getTime();
+  const isPastCycle = cycleDate.getTime() < today.getTime();
+  
   const completionPct = stats.totalItems > 0
     ? Math.round((stats.submittedItems / stats.totalItems) * 100)
     : 0;
@@ -152,13 +161,22 @@ export default function StoreDashboard() {
       )}
 
       {/* Deadline banners */}
-      {isPastDue && (
+      {isFutureCycle && (
+        <div className="deadline-banner" style={{ background: 'rgba(59,130,246,0.07)', borderColor: 'rgba(59,130,246,0.22)', color: '#1d4ed8' }}>
+          <span className="deadline-banner-icon"><IcoBannerLock /></span>
+          <p>
+            <strong>Future Cycle:</strong> This inventory cycle is scheduled for {fmt(batch.inventoryDate)}. 
+            You can only submit counts for today's date. This cycle will become available on that date.
+          </p>
+        </div>
+      )}
+      {isPastDue && !isFutureCycle && (
         <div className="deadline-banner overdue">
           <span className="deadline-banner-icon"><IcoBannerLock /></span>
           <p><strong>Count Cycle Locked.</strong> The submission deadline has passed. Contact your administrator to request an extension.</p>
         </div>
       )}
-      {isApproaching && !isPastDue && (
+      {isApproaching && !isPastDue && !isFutureCycle && (
         <div className="deadline-banner">
           <span className="deadline-banner-icon"><IcoBannerClock /></span>
           <p>Submission deadline approaching. Complete your count by: <strong>{deadline.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong></p>
@@ -248,7 +266,21 @@ export default function StoreDashboard() {
 
       {/* Action card */}
       <div className="card">
-        {stats.pendingItems > 0 ? (
+        {isFutureCycle ? (
+          <div className="store-action-card-inner">
+            <div>
+              <p style={{ fontWeight: 700, marginBottom: 4, color: 'var(--vi)' }}>
+                This cycle is not yet available
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--t3)' }}>
+                You can only submit inventory counts for today's date. This cycle becomes available on {fmt(batch.inventoryDate)}.
+              </p>
+            </div>
+            <button disabled className="btn btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0, opacity: 0.5, cursor: 'not-allowed' }}>
+              Not Available
+            </button>
+          </div>
+        ) : stats.pendingItems > 0 ? (
           <div className="store-action-card-inner">
             <div>
               <p style={{ fontWeight: 700, marginBottom: 4 }}>
