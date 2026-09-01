@@ -279,13 +279,16 @@ describe('updateInventoryRecord', () => {
 
 describe('submitInventory', () => {
   it('refuses to lock in a record with a blank baseline', async () => {
-    await makeRecords(batch.id, store.id, [
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayBatch = await makeBatch(admin.id, { inventoryDate: today });
+    await makeRecords(todayBatch.id, store.id, [
       { code: 'A', sys: 10,   phys: 10 },
       { code: 'B', sys: null, phys: 5 },
     ]);
 
     const req = storeReq(manager, store);
-    req.body = { batchId: batch.id };
+    req.body = { batchId: todayBatch.id };
 
     const err = await runExpectingError(submitInventory, req);
 
@@ -296,10 +299,13 @@ describe('submitInventory', () => {
   });
 
   it('refuses when a physical count is missing', async () => {
-    await makeRecords(batch.id, store.id, [{ code: 'A', sys: 10, phys: null }]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayBatch = await makeBatch(admin.id, { inventoryDate: today });
+    await makeRecords(todayBatch.id, store.id, [{ code: 'A', sys: 10, phys: null }]);
 
     const req = storeReq(manager, store);
-    req.body = { batchId: batch.id };
+    req.body = { batchId: todayBatch.id };
 
     const err = await runExpectingError(submitInventory, req);
 
@@ -307,10 +313,13 @@ describe('submitInventory', () => {
   });
 
   it('refuses a discrepancy with no category', async () => {
-    await makeRecords(batch.id, store.id, [{ code: 'A', sys: 10, phys: 4 }]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayBatch = await makeBatch(admin.id, { inventoryDate: today });
+    await makeRecords(todayBatch.id, store.id, [{ code: 'A', sys: 10, phys: 4 }]);
 
     const req = storeReq(manager, store);
-    req.body = { batchId: batch.id };
+    req.body = { batchId: todayBatch.id };
 
     const err = await runExpectingError(submitInventory, req);
 
@@ -318,18 +327,21 @@ describe('submitInventory', () => {
   });
 
   it('submits a complete cycle and freezes both quantities', async () => {
-    await makeRecords(batch.id, store.id, [
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayBatch = await makeBatch(admin.id, { inventoryDate: today });
+    await makeRecords(todayBatch.id, store.id, [
       { code: 'A', sys: 10, phys: 10 },
       { code: 'B', sys: 10, phys: 6, category: 'Theft', remarks: 'Missing from aisle 3' },
     ]);
 
     const req = storeReq(manager, store);
-    req.body = { batchId: batch.id };
+    req.body = { batchId: todayBatch.id };
 
     const body = await run(submitInventory, req);
 
     expect(body.recordCount).toBe(2);
-    const rows = await prisma.inventoryRecord.findMany({ where: { batchId: batch.id }, orderBy: { materialCode: 'asc' } });
+    const rows = await prisma.inventoryRecord.findMany({ where: { batchId: todayBatch.id }, orderBy: { materialCode: 'asc' } });
     expect(rows.every(r => r.status === 'SUBMITTED')).toBe(true);
     expect(rows.every(r => r.submittedBy === manager.id)).toBe(true);
     expect(rows.every(r => r.submittedAt !== null)).toBe(true);
@@ -343,26 +355,32 @@ describe('submitInventory', () => {
   });
 
   it('opens an area manager review when the store has one assigned', async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayBatch = await makeBatch(admin.id, { inventoryDate: today });
     const am = await makeUser({ role: 'AREA_MANAGER' });
     await prisma.store.update({ where: { id: store.id }, data: { areaManagerId: am.id } });
-    await makeRecords(batch.id, store.id, [{ code: 'A', sys: 10, phys: 10 }]);
+    await makeRecords(todayBatch.id, store.id, [{ code: 'A', sys: 10, phys: 10 }]);
 
     const req = storeReq(manager, store);
-    req.body = { batchId: batch.id };
+    req.body = { batchId: todayBatch.id };
     await run(submitInventory, req);
 
     const review = await prisma.areaManagerReview.findUnique({
-      where: { batchId_storeId: { batchId: batch.id, storeId: store.id } },
+      where: { batchId_storeId: { batchId: todayBatch.id, storeId: store.id } },
     });
     expect(review).toMatchObject({ status: 'PENDING_REVIEW', areaManagerId: am.id });
   });
 
   it('refuses to submit into a cycle the admin deleted', async () => {
-    await makeRecords(batch.id, store.id, [{ code: 'A', sys: 10, phys: 10 }]);
-    await prisma.uploadBatch.update({ where: { id: batch.id }, data: { isDeleted: true } });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayBatch = await makeBatch(admin.id, { inventoryDate: today });
+    await makeRecords(todayBatch.id, store.id, [{ code: 'A', sys: 10, phys: 10 }]);
+    await prisma.uploadBatch.update({ where: { id: todayBatch.id }, data: { isDeleted: true } });
 
     const req = storeReq(manager, store);
-    req.body = { batchId: batch.id };
+    req.body = { batchId: todayBatch.id };
 
     const err = await runExpectingError(submitInventory, req);
 
@@ -370,8 +388,10 @@ describe('submitInventory', () => {
   });
 
   it('refuses to submit after the deadline has passed', async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const past = await makeBatch(admin.id, {
-      inventoryDate: new Date(Date.now() - 10 * DAY),
+      inventoryDate: today,
       submissionDeadline: new Date(Date.now() - 2 * DAY),
     });
     await makeRecords(past.id, store.id, [{ code: 'A', sys: 10, phys: 10 }]);
