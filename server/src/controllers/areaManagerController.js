@@ -63,6 +63,7 @@ export async function getDashboard(req, res, next) {
     }));
 
     if (!storeIds.length || !latestBatch) {
+      console.warn('[AM Dashboard] No stores found or no batches - User ID:', req.user.id, '| Stores:', storeIds.length, '| Latest Batch:', !!latestBatch);
       return res.json({ 
         storeCount: storeIds.length, 
         pendingReview: 0, 
@@ -74,6 +75,11 @@ export async function getDashboard(req, res, next) {
         recentActivity: [],
         performanceStats: null,
         availableBatches: [],
+        debugInfo: {
+          userId: req.user.id,
+          storesFound: storeIds.length,
+          hasLatestBatch: !!latestBatch,
+        },
       });
     }
 
