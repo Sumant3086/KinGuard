@@ -126,6 +126,11 @@ describe('area manager store assignment', () => {
 
     it('refuses to approve while the store still has pending items', async () => {
       // The UI hides the button, but a direct API call must not bypass it.
+      const today = new Date();
+      prismaMock.uploadBatch.findFirst.mockResolvedValue({ 
+        id: 1, 
+        inventoryDate: today 
+      });
       prismaMock.inventoryRecord.count.mockResolvedValue(4);
 
       const { err } = await callAndCatch(am.approveStore, {

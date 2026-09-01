@@ -292,8 +292,11 @@ describe('store manager record scoping', () => {
     });
 
     it('refuses to submit while any item still has a blank system quantity', async () => {
+      const today = new Date();
       prismaMock.uploadBatch.findFirst.mockResolvedValue({
-        submissionDeadline: FUTURE, deadlineExtensions: [],
+        inventoryDate: today,
+        submissionDeadline: FUTURE, 
+        deadlineExtensions: [],
       });
       // Run the callback the controller passes to $transaction against a stub tx.
       const tx = {

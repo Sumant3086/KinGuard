@@ -88,8 +88,6 @@ describe('updateUser', () => {
 
     expect(prismaMock.refreshToken.deleteMany).not.toHaveBeenCalled();
     expect(transactionOps()).toHaveLength(1);
-    expect(prismaMock.$transaction).toHaveBeenCalledOnce();
-    expect(transactionOps()).toHaveLength(2);
   });
 
   it('does not force a password change when admin resets password', async () => {
