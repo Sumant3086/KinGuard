@@ -51,11 +51,20 @@ export async function getDashboard(req, res, next) {
     const storeIds = await withRetry(() => getManagedStoreIds(req.user.id, forceRefresh));
     const selectedBatchId = req.query.batchId ? parseId(req.query.batchId, 'batchId') : null;
 
+    // Get TODAY'S cycle only (not past, not future)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
     const latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
       where: { 
         status: 'COMPLETED', 
         isDeleted: false,
-        inventoryDate: { lte: new Date() } // Only cycles up to today
+        inventoryDate: { 
+          gte: today,    // Greater than or equal to today 00:00:00
+          lt: tomorrow   // Less than tomorrow 00:00:00 (so only today)
+        }
       },
       orderBy: { inventoryDate: 'desc' },
       select: { id: true, inventoryDate: true, submissionDeadline: true },
