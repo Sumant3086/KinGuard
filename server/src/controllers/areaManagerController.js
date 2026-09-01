@@ -32,12 +32,16 @@ async function getManagedStoreIds(areaManagerId, forceRefresh = false) {
   const key = `am:stores:${areaManagerId}`;
   if (!forceRefresh) {
     const cached = sGet(key);
-    if (cached) return cached;
+    if (cached) {
+      console.log('[getManagedStoreIds] Returning cached stores for AM', areaManagerId, ':', cached);
+      return cached;
+    }
   }
   const stores = await prisma.store.findMany({
     where: { areaManagerId, isActive: true },
-    select: { id: true },
+    select: { id: true, storeCode: true, storeName: true },
   });
+  console.log('[getManagedStoreIds] DB Query for AM', areaManagerId, '- Found stores:', stores);
   const ids = stores.map(s => s.id);
   sSet(key, ids, AM_STORES_TTL);
   return ids;
@@ -46,7 +50,10 @@ async function getManagedStoreIds(areaManagerId, forceRefresh = false) {
 // ── Dashboard overview ────────────────────────────────────────────────────────
 export async function getDashboard(req, res, next) {
   try {
-    const storeIds = await withRetry(() => getManagedStoreIds(req.user.id));
+    // Allow cache bypass with ?refresh=1
+    const forceRefresh = req.query.refresh === '1';
+    const storeIds = await withRetry(() => getManagedStoreIds(req.user.id, forceRefresh));
+    console.log('[AM Dashboard] User ID:', req.user.id, '| Store IDs found:', storeIds, '| Force refresh:', forceRefresh);
     const selectedBatchId = req.query.batchId ? parseId(req.query.batchId, 'batchId') : null;
 
     const latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({

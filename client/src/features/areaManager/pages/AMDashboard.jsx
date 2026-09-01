@@ -67,7 +67,10 @@ export default function AMDashboard() {
 
   const loadDashboard = (batchId) => {
     setLoading(true);
-    const url = batchId ? `/am/dashboard?batchId=${batchId}` : '/am/dashboard';
+    let url = batchId ? `/am/dashboard?batchId=${batchId}` : '/am/dashboard';
+    // Add cache-busting refresh parameter on first load
+    if (!selectedBatchId) url += (url.includes('?') ? '&' : '?') + 'refresh=1';
+    
     fetch(url, {
       headers: {
         'Content-Type': 'application/json',
@@ -75,7 +78,10 @@ export default function AMDashboard() {
       },
     })
       .then(res => res.json())
-      .then(d => setData(d))
+      .then(d => {
+        console.log('AM Dashboard Response:', d); // Debug log
+        setData(d);
+      })
       .catch(e => {
         console.error('AM dashboard:', e);
         toast.error('Could not load dashboard. Please refresh.');
