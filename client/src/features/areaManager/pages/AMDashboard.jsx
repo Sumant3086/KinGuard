@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import AMLayout from '../layout/AMLayout';
 import { LoadingText } from '../../../shared/components/ui/LoadingCard';
 import { useToast } from '../../../shared/context/ToastContext';
-import * as amApi from '../../../shared/api/amApi';
 
 const IcoStores = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -26,26 +25,69 @@ const IcoReturn = () => (
     <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
   </svg>
 );
+const IcoCalendar = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
 
 const REVIEW_COLOR = { PENDING_REVIEW: '#d97706', APPROVED: '#16a34a', RETURNED: '#dc2626' };
 const REVIEW_LABEL = { PENDING_REVIEW: 'Awaiting Review', APPROVED: 'Approved', RETURNED: 'Returned' };
+const STATUS_ICON = { APPROVED: '✓', RETURNED: '↩', PENDING_REVIEW: '⏳' };
+
+const fmtDate = (d) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const fmtDateTime = (d) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  
+  if (diffHours < 1) return 'Just now';
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 48) return 'Yesterday';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
 
 export default function AMDashboard() {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedBatchId, setSelectedBatchId] = useState(null);
   const navigate = useNavigate();
   const toast    = useToast();
 
   useEffect(() => {
-    let live = true;
-    amApi.getDashboard()
-      .then(d => { if (live) setData(d); })
-      .catch(e => { console.error('AM dashboard:', e); if (live) toast.error('Could not load dashboard. Please refresh.'); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    loadDashboard(selectedBatchId);
+  }, [selectedBatchId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadDashboard = (batchId) => {
+    setLoading(true);
+    const url = batchId ? `/am/dashboard?batchId=${batchId}` : '/am/dashboard';
+    fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+      },
+    })
+      .then(res => res.json())
+      .then(d => setData(d))
+      .catch(e => {
+        console.error('AM dashboard:', e);
+        toast.error('Could not load dashboard. Please refresh.');
+      })
+      .finally(() => setLoading(false));
+  };
 
   const storeProgress = data?.storeProgress ?? [];
+  const currentBatch = data?.selectedBatch || data?.latestBatch;
+  const monthlyStats = data?.monthlyStats;
+  const recentActivity = data?.recentActivity ?? [];
+  const availableBatches = data?.availableBatches ?? [];
 
   const kpis = [
     { label: 'Stores Under You',    value: data?.storeCount    ?? 0, cls: 'kpi-blue',  icon: <IcoStores />, sub: 'assigned locations' },
@@ -60,15 +102,45 @@ export default function AMDashboard() {
 
   return (
     <AMLayout>
-      {/* Command header */}
+      {/* Command header with cycle selector */}
       <div className="dash-command" style={{ marginBottom: 20 }}>
-        <div>
+        <div style={{ flex: 1 }}>
           <div className="dash-cmd-title">Area Manager Overview</div>
           <div className="dash-cmd-sub">
             {loading
               ? 'Loading…'
               : `${storeProgress.length} store${storeProgress.length !== 1 ? 's' : ''} under your supervision`}
           </div>
+          
+          {/* Cycle Selector */}
+          {!loading && currentBatch && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+              <IcoCalendar />
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t2)' }}>Viewing Cycle:</span>
+              <select
+                value={selectedBatchId || currentBatch.id}
+                onChange={(e) => setSelectedBatchId(e.target.value === currentBatch.id.toString() ? null : parseInt(e.target.value))}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--t1)',
+                  cursor: 'pointer',
+                }}
+              >
+                {availableBatches.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {fmtDate(b.inventoryDate)}
+                    {b.id === data?.latestBatch?.id ? ' (Latest)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {!loading && data?.pendingReview > 0 && (
             <div className="dash-cmd-badges" style={{ marginTop: 8 }}>
               <span className="dash-cmd-badge warning">
@@ -87,7 +159,12 @@ export default function AMDashboard() {
         )}
       </div>
 
-      {/* KPI grid */}
+      {/* KPI grid - Current Cycle */}
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--t2)', marginBottom: 8 }}>
+          Current Cycle ({currentBatch ? fmtDate(currentBatch.inventoryDate) : '—'})
+        </h3>
+      </div>
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         {kpis.map(k => (
           <div
@@ -108,6 +185,62 @@ export default function AMDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Monthly Summary & Performance Stats */}
+      {!loading && monthlyStats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 24 }}>
+          {/* Monthly Summary */}
+          <div className="card" style={{ padding: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <IcoCalendar />
+              This Month Summary
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 2 }}>Total Cycles</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--t1)' }}>{monthlyStats.totalCycles}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 2 }}>Approval Rate</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a' }}>{monthlyStats.approvalRate}%</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 2 }}>Approved</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#16a34a' }}>{monthlyStats.approved}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 2 }}>Returned</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#dc2626' }}>{monthlyStats.returned}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="card" style={{ padding: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 12 }}>
+              Recent Activity
+            </h3>
+            {recentActivity.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--t3)', fontStyle: 'italic' }}>No recent reviews</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {recentActivity.map((a, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                    <span style={{ fontSize: 14 }}>{STATUS_ICON[a.status]}</span>
+                    <span style={{ fontWeight: 600, color: REVIEW_COLOR[a.status] }}>
+                      {a.status === 'APPROVED' ? 'Approved' : 'Returned'}
+                    </span>
+                    <span style={{ color: 'var(--t2)' }}>{a.storeCode}</span>
+                    <span style={{ color: 'var(--t3)', fontSize: 11, marginLeft: 'auto' }}>
+                      {fmtDateTime(a.reviewedAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Store Submission Progress */}
       <div className="card">
@@ -143,36 +276,65 @@ export default function AMDashboard() {
             {storeProgress.map(s => {
               const pct = s.total > 0 ? Math.round((s.submitted / s.total) * 100) : 0;
               const color = s.reviewStatus ? REVIEW_COLOR[s.reviewStatus] : s.total === 0 ? 'var(--tx3)' : s.pending > 0 ? '#d97706' : '#16a34a';
+              const statusText = s.reviewStatus 
+                ? REVIEW_LABEL[s.reviewStatus]
+                : s.total === 0 
+                  ? 'No items'
+                  : s.pending === 0 && s.submitted > 0
+                    ? 'Submitted'
+                    : `${s.pending} pending`;
+              
               return (
-                <div key={s.storeId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--r)', border: '1px solid var(--red-border)', background: 'rgba(255,248,245,0.6)' }}>
-                  <div style={{ minWidth: 60 }}>
-                    <div style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 800, color: 'var(--vi-light)' }}>{s.storeCode}</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120 }}>{s.storeName}</div>
+                <div key={s.storeId} style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '140px 1fr 120px', 
+                  alignItems: 'center', 
+                  gap: 16, 
+                  padding: '12px 14px', 
+                  borderRadius: 'var(--r)', 
+                  border: '1px solid var(--red-border)', 
+                  background: 'rgba(255,248,245,0.6)' 
+                }}>
+                  {/* Store Info */}
+                  <div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: 'var(--vi-light)', marginBottom: 2 }}>
+                      {s.storeCode}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx1)' }} title={s.storeName}>
+                      {s.storeName}
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+
+                  {/* Progress Bar */}
+                  <div>
                     {s.total > 0 ? (
                       <>
-                        <div style={{ height: 5, borderRadius: 99, background: 'rgba(185,28,28,0.10)', overflow: 'hidden', marginBottom: 3 }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
+                        <div style={{ height: 6, borderRadius: 99, background: 'rgba(185,28,28,0.10)', overflow: 'hidden', marginBottom: 4 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.3s' }} />
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--tx3)' }}>{s.submitted}/{s.total} items · {pct}%</div>
+                        <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
+                          {s.submitted}/{s.total} items ({pct}%)
+                        </div>
                       </>
                     ) : (
                       <div style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>No items assigned</div>
                     )}
                   </div>
-                  <div style={{ flexShrink: 0 }}>
-                    {s.reviewStatus ? (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: `${REVIEW_COLOR[s.reviewStatus]}18`, color: REVIEW_COLOR[s.reviewStatus], border: `1px solid ${REVIEW_COLOR[s.reviewStatus]}35` }}>
-                        {REVIEW_LABEL[s.reviewStatus]}
-                      </span>
-                    ) : s.pending === 0 && s.total > 0 ? (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'rgba(22,163,74,0.12)', color: '#16a34a', border: '1px solid rgba(22,163,74,0.30)' }}>
-                        Submitted
-                      </span>
-                    ) : s.pending > 0 ? (
-                      <span style={{ fontSize: 10, color: '#d97706', fontWeight: 600 }}>{s.pending} pending</span>
-                    ) : null}
+
+                  {/* Status Badge */}
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ 
+                      fontSize: 11, 
+                      fontWeight: 700, 
+                      padding: '4px 10px', 
+                      borderRadius: 99, 
+                      background: `${color}18`, 
+                      color: color, 
+                      border: `1px solid ${color}35`,
+                      display: 'inline-block',
+                    }}>
+                      {statusText}
+                    </span>
                   </div>
                 </div>
               );

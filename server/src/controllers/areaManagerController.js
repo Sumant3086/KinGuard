@@ -47,6 +47,7 @@ async function getManagedStoreIds(areaManagerId, forceRefresh = false) {
 export async function getDashboard(req, res, next) {
   try {
     const storeIds = await withRetry(() => getManagedStoreIds(req.user.id));
+    const selectedBatchId = req.query.batchId ? parseId(req.query.batchId, 'batchId') : null;
 
     const latestBatch = await withRetry(() => prisma.uploadBatch.findFirst({
       where: { status: 'COMPLETED', isDeleted: false },
@@ -55,12 +56,36 @@ export async function getDashboard(req, res, next) {
     }));
 
     if (!storeIds.length || !latestBatch) {
-      return res.json({ storeCount: storeIds.length, pendingReview: 0, approved: 0, returned: 0, latestBatch: null });
+      return res.json({ 
+        storeCount: storeIds.length, 
+        pendingReview: 0, 
+        approved: 0, 
+        returned: 0, 
+        latestBatch: null,
+        selectedBatch: null,
+        monthlyStats: null,
+        recentActivity: [],
+        performanceStats: null,
+        availableBatches: [],
+      });
     }
 
-    const [reviews, storeCounts, storeList] = await Promise.all([
+    // Use selected batch or latest batch
+    const targetBatchId = selectedBatchId || latestBatch.id;
+    const selectedBatch = selectedBatchId 
+      ? await prisma.uploadBatch.findUnique({
+          where: { id: targetBatchId },
+          select: { id: true, inventoryDate: true, submissionDeadline: true },
+        })
+      : latestBatch;
+
+    if (!selectedBatch) {
+      throw new AppError('Selected batch not found', 404);
+    }
+
+    const [reviews, storeCounts, storeList, monthlyStats, recentActivity, allBatches] = await Promise.all([
       prisma.areaManagerReview.findMany({
-        where: { batchId: latestBatch.id, areaManagerId: req.user.id },
+        where: { batchId: targetBatchId, areaManagerId: req.user.id },
         select: { storeId: true, status: true },
       }),
       // Per-store submitted/pending counts for the live progress view
@@ -70,13 +95,54 @@ export async function getDashboard(req, res, next) {
                COUNT(CASE WHEN status = 'SUBMITTED' THEN 1 END)::int AS "submitted",
                COUNT(CASE WHEN status = 'PENDING'   THEN 1 END)::int AS "pending"
         FROM "InventoryRecord"
-        WHERE "batchId" = ${latestBatch.id} AND "storeId" = ANY(${storeIds})
+        WHERE "batchId" = ${targetBatchId} AND "storeId" = ANY(${storeIds})
         GROUP BY "storeId"
       `,
       prisma.store.findMany({
         where: { id: { in: storeIds } },
         select: { id: true, storeCode: true, storeName: true },
         orderBy: { storeCode: 'asc' },
+      }),
+      // Monthly stats: all reviews this month
+      prisma.$queryRaw`
+        SELECT
+          COUNT(DISTINCT "batchId")::int AS "totalCycles",
+          COUNT(CASE WHEN status = 'APPROVED' THEN 1 END)::int AS "approved",
+          COUNT(CASE WHEN status = 'RETURNED' THEN 1 END)::int AS "returned",
+          COUNT(CASE WHEN status = 'PENDING_REVIEW' THEN 1 END)::int AS "pending"
+        FROM "AreaManagerReview"
+        WHERE "areaManagerId" = ${req.user.id}
+          AND "createdAt" >= DATE_TRUNC('month', CURRENT_DATE)
+          AND "batchId" IN (
+            SELECT id FROM "UploadBatch" WHERE "isDeleted" = false
+          )
+      `,
+      // Recent activity: last 5 review actions
+      prisma.areaManagerReview.findMany({
+        where: { 
+          areaManagerId: req.user.id,
+          status: { in: ['APPROVED', 'RETURNED'] },
+          reviewedAt: { not: null },
+        },
+        select: {
+          status: true,
+          reviewedAt: true,
+          batch: { select: { inventoryDate: true } },
+          store: { select: { storeName: true, storeCode: true } },
+        },
+        orderBy: { reviewedAt: 'desc' },
+        take: 5,
+      }),
+      // All available batches for cycle selector
+      prisma.uploadBatch.findMany({
+        where: { 
+          status: 'COMPLETED', 
+          isDeleted: false,
+          inventoryRecords: { some: { storeId: { in: storeIds } } },
+        },
+        select: { id: true, inventoryDate: true },
+        orderBy: { inventoryDate: 'desc' },
+        take: 20,
       }),
     ]);
 
@@ -96,13 +162,35 @@ export async function getDashboard(req, res, next) {
       };
     });
 
+    // Calculate performance stats
+    const totalApproved = monthlyStats[0]?.approved ?? 0;
+    const totalReturned = monthlyStats[0]?.returned ?? 0;
+    const totalReviewed = totalApproved + totalReturned;
+    const approvalRate = totalReviewed > 0 ? Math.round((totalApproved / totalReviewed) * 100) : 0;
+
     res.json({
       storeCount:    storeIds.length,
       pendingReview: reviews.filter(r => r.status === 'PENDING_REVIEW').length,
       approved:      reviews.filter(r => r.status === 'APPROVED').length,
       returned:      reviews.filter(r => r.status === 'RETURNED').length,
       latestBatch,
+      selectedBatch,
       storeProgress,
+      monthlyStats: {
+        totalCycles: monthlyStats[0]?.totalCycles ?? 0,
+        approved: monthlyStats[0]?.approved ?? 0,
+        returned: monthlyStats[0]?.returned ?? 0,
+        pending: monthlyStats[0]?.pending ?? 0,
+        approvalRate,
+      },
+      recentActivity: recentActivity.map(a => ({
+        status: a.status,
+        reviewedAt: a.reviewedAt,
+        inventoryDate: a.batch?.inventoryDate,
+        storeName: a.store?.storeName,
+        storeCode: a.store?.storeCode,
+      })),
+      availableBatches: allBatches,
     });
   } catch (error) { next(error); }
 }
