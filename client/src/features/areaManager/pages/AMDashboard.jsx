@@ -78,10 +78,7 @@ export default function AMDashboard() {
       },
     })
       .then(res => res.json())
-      .then(d => {
-        console.log('AM Dashboard Response:', d); // Debug log
-        setData(d);
-      })
+      .then(d => setData(d))
       .catch(e => {
         console.error('AM dashboard:', e);
         toast.error('Could not load dashboard. Please refresh.');
