@@ -110,7 +110,6 @@ export default function StoreDashboard() {
   const cycleDate = new Date(batch.inventoryDate);
   cycleDate.setHours(0, 0, 0, 0);
   const isFutureCycle = cycleDate.getTime() > today.getTime();
-  const isPastCycle = cycleDate.getTime() < today.getTime();
   
   const completionPct = stats.totalItems > 0
     ? Math.round((stats.submittedItems / stats.totalItems) * 100)
@@ -166,7 +165,7 @@ export default function StoreDashboard() {
           <span className="deadline-banner-icon"><IcoBannerLock /></span>
           <p>
             <strong>Future Cycle:</strong> This inventory cycle is scheduled for {fmt(batch.inventoryDate)}. 
-            You can only submit counts for today's date. This cycle will become available on that date.
+            You can only submit counts for today&apos;s date. This cycle will become available on that date.
           </p>
         </div>
       )}
@@ -273,7 +272,7 @@ export default function StoreDashboard() {
                 This cycle is not yet available
               </p>
               <p style={{ fontSize: 13, color: 'var(--t3)' }}>
-                You can only submit inventory counts for today's date. This cycle becomes available on {fmt(batch.inventoryDate)}.
+                You can only submit inventory counts for today&apos;s date. This cycle becomes available on {fmt(batch.inventoryDate)}.
               </p>
             </div>
             <button disabled className="btn btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0, opacity: 0.5, cursor: 'not-allowed' }}>
