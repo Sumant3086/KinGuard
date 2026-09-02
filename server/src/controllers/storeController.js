@@ -420,20 +420,9 @@ export async function submitInventory(req, res, next) {
         }
 
         const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
-        const missingCategory = discrepant.filter(r => !r.shrinkageCategory);
-        if (missingCategory.length > 0) {
-          throw new AppError(
-            `${missingCategory.length} item${missingCategory.length > 1 ? 's have' : ' has'} a discrepancy but no category selected. Please choose a category for each discrepancy`,
-            400
-          );
-        }
-        const missingDetail = discrepant.filter(r => !r.remarks || r.remarks.trim() === '');
-        if (missingDetail.length > 0) {
-          throw new AppError(
-            `${missingDetail.length} item${missingDetail.length > 1 ? 's have' : ' has'} a discrepancy but no issue detail entered. Please describe each discrepancy before submitting`,
-            400
-          );
-        }
+        
+        // Removed mandatory category and remarks validation - now optional
+        // Store managers can submit without providing reasons if they choose
 
         const { count } = await tx.inventoryRecord.updateMany({
           where: { storeId, batchId: parsedBatchId, status: 'PENDING' },
