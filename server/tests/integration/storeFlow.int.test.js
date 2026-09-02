@@ -312,7 +312,7 @@ describe('submitInventory', () => {
     expect(err.message).toMatch(/missing a physical count/i);
   });
 
-  it('refuses a discrepancy with no category', async () => {
+  it('allows submission of discrepancy without category (now optional)', async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayBatch = await makeBatch(admin.id, { inventoryDate: today });
@@ -321,9 +321,13 @@ describe('submitInventory', () => {
     const req = storeReq(manager, store);
     req.body = { batchId: todayBatch.id };
 
-    const err = await runExpectingError(submitInventory, req);
-
-    expect(err.message).toMatch(/no category selected/i);
+    // Should succeed - category is now optional
+    const body = await run(submitInventory, req);
+    
+    expect(body.recordCount).toBe(1);
+    const record = await prisma.inventoryRecord.findFirst({ where: { batchId: todayBatch.id } });
+    expect(record.status).toBe('SUBMITTED');
+    expect(record.shrinkageCategory).toBeNull(); // No category provided
   });
 
   it('submits a complete cycle and freezes both quantities', async () => {
