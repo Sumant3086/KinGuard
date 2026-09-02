@@ -419,8 +419,6 @@ export async function submitInventory(req, res, next) {
           );
         }
 
-        const discrepant = pending.filter(r => r.difference !== null && r.difference !== 0);
-        
         // Removed mandatory category and remarks validation - now optional
         // Store managers can submit without providing reasons if they choose
 
