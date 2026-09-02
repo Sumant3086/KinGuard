@@ -373,9 +373,20 @@ export default function Upload() {
 
           {result.errors?.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <strong style={{ fontSize: 13 }}>Rejected Rows (first 10):</strong>
+              <strong style={{ fontSize: 13 }}>Rejected/Duplicate Rows:</strong>
               <ul style={{ marginTop: 8, fontSize: 12, color: 'var(--t3)', paddingLeft: 20 }}>
-                {result.errors.slice(0, 10).map((err, idx) => <li key={idx}>Row {err.row}: {err.error}</li>)}
+                {result.errors.slice(0, 10).map((err, idx) => (
+                  <li key={idx}>
+                    {err.row ? `Row ${err.row}: ` : ''}{err.error}
+                    {err.details && err.details.length > 0 && (
+                      <ul style={{ marginLeft: 20, marginTop: 4, fontSize: 11 }}>
+                        {err.details.map((d, i) => (
+                          <li key={i}>Store {d.store}, Material {d.material}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
           )}

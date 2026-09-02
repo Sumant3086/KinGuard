@@ -308,6 +308,30 @@ export async function uploadInventory(req, res, next) {
       insertedRows = count;
     }
     const duplicateRows = successfulRecords.length - insertedRows;
+    
+    // Report duplicate details so admin knows which rows were skipped
+    if (duplicateRows > 0) {
+      const seen = new Set();
+      const duplicateDetails = [];
+      for (const rec of successfulRecords) {
+        const key = `${rec.storeId}_${rec.materialCode}`;
+        if (seen.has(key)) {
+          const store = allStores.find(s => s.id === rec.storeId);
+          duplicateDetails.push({
+            store: store?.storeCode || 'Unknown',
+            material: rec.materialCode,
+          });
+        }
+        seen.add(key);
+      }
+      if (duplicateDetails.length > 0) {
+        errors.push({
+          row: 'Multiple',
+          error: `${duplicateRows} duplicate row(s) skipped: same Store+Material combination appears multiple times in your file`,
+          details: duplicateDetails.slice(0, 20),
+        });
+      }
+    }
 
     // If every row failed, delete the orphan batch and surface a clean error
     if (successfulRecords.length === 0) {
