@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import StoreLayout from '../layout/StoreLayout';
 import * as storeApi from '../../../shared/api/storeApi';
 import * as cache from '../../../shared/api/cache';
+import { isDeadlinePassed } from '../../../shared/utils/dateUtils';
 
 const IcoBannerInfo  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
 const IcoBannerLock  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
@@ -117,7 +118,7 @@ export default function StoreDashboard() {
 
   const now = new Date();
   const deadline = batch.submissionDeadline ? new Date(batch.submissionDeadline) : null;
-  const isPastDue    = deadline && now > deadline;
+  const isPastDue    = isDeadlinePassed(batch.submissionDeadline);
   const isApproaching = deadline && !isPastDue && (deadline - now) < 48 * 3600 * 1000;
 
   const fmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });

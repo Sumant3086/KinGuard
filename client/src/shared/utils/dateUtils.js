@@ -19,14 +19,16 @@ function toDate(value) {
 export function fmtDate(value, style = 'short') {
   const d = toDate(value);
   if (!d) return '—';
-  return d.toLocaleDateString(LOCALE, OPTS[style] ?? OPTS.short);
+  // Always display in Congo timezone (CAT, UTC+2) for consistency
+  return d.toLocaleDateString(LOCALE, { ...OPTS[style] ?? OPTS.short, timeZone: 'Africa/Kinshasa' });
 }
 
 /** Format as a datetime string (includes seconds). */
 export function fmtDateTime(value) {
   const d = toDate(value);
   if (!d) return '—';
-  return d.toLocaleString(LOCALE, OPTS.dateTime);
+  // Always display in Congo timezone (CAT, UTC+2) for consistency
+  return d.toLocaleString(LOCALE, { ...OPTS.dateTime, timeZone: 'Africa/Kinshasa' });
 }
 
 /** Return the ISO date portion only: "2026-07-11". */
@@ -41,4 +43,15 @@ export function fmtDateTZ(dateStr, timeZone, style = 'long') {
   const d = toDate(dateStr);
   if (!d) return '—';
   return d.toLocaleDateString(LOCALE, { ...OPTS[style], timeZone });
+}
+
+/** Check if a deadline has passed in Congo timezone (Africa/Kinshasa, CAT, UTC+2) */
+export function isDeadlinePassed(deadlineStr) {
+  if (!deadlineStr) return false;
+  const deadline = toDate(deadlineStr);
+  if (!deadline) return false;
+  
+  // Get current time in Congo timezone (CAT, UTC+2)
+  const nowInCongo = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Kinshasa' }));
+  return nowInCongo > deadline;
 }

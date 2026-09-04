@@ -7,7 +7,7 @@ import { SkeletonTable } from '../../../shared/components/ui/LoadingCard';
 import { useDownload } from '../../../shared/hooks/useDownload';
 import * as adminApi from '../../../shared/api/adminApi';
 import { useToast } from '../../../shared/context/ToastContext';
-import { fmtDate, fmtISO } from '../../../shared/utils/dateUtils';
+import { fmtDate, fmtISO, isDeadlinePassed } from '../../../shared/utils/dateUtils';
 
 // Format a date for a datetime-local input in the USER'S timezone.
 // (toISOString() would inject UTC into a field the browser treats as local time.)
@@ -283,7 +283,7 @@ export default function Batches() {
               const sub    = stats.submittedCount || 0;
               const pend   = stats.pendingCount   || 0;
               const pct    = total > 0 ? Math.round((sub / total) * 100) : 0;
-              const passed = b.submissionDeadline && new Date() > new Date(b.submissionDeadline);
+              const passed = isDeadlinePassed(b.submissionDeadline);
 
               return (
                 <div key={b.id} className="batch-card">
@@ -368,7 +368,7 @@ export default function Batches() {
                   const sub    = stats.submittedCount || 0;
                   const pend   = stats.pendingCount   || 0;
                   const pct    = total > 0 ? Math.round((sub / total) * 100) : 0;
-                  const passed = b.submissionDeadline && new Date() > new Date(b.submissionDeadline);
+                  const passed = isDeadlinePassed(b.submissionDeadline);
 
                   return (
                     <tr key={b.id}>
