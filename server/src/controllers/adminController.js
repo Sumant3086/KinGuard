@@ -57,6 +57,7 @@ export {
   updateBatch,
   closeBatch,
   grantStoreExtension,
+  grantBulkStoreExtension,
   getBatchExport,
   deleteBatch,
   unlockStoreForBatch,

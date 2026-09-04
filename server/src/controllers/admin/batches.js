@@ -162,6 +162,73 @@ export async function grantStoreExtension(req, res, next) {
   } catch (error) { next(error); }
 }
 
+/**
+ * Grant extension to ALL stores in a batch at once
+ */
+export async function grantBulkStoreExtension(req, res, next) {
+  try {
+    const { newDeadline, note } = req.body;
+    const batchId = requireId(req.body.batchId, 'batchId');
+    
+    if (!newDeadline) throw new AppError('newDeadline is required', 400);
+    const deadlineDate = new Date(newDeadline);
+    if (isNaN(deadlineDate.getTime())) throw new AppError('Invalid deadline date', 400);
+    if (deadlineDate <= new Date()) throw new AppError('Extension deadline must be in the future', 400);
+    
+    const batch = await prisma.uploadBatch.findFirst({
+      where: { id: batchId, isDeleted: false },
+      select: { id: true, inventoryDate: true },
+    });
+    if (!batch) throw new AppError('Batch not found', 404);
+    
+    // Get all unique stores in this batch
+    const storesInBatch = await prisma.inventoryRecord.findMany({
+      where: { batchId },
+      select: { storeId: true },
+      distinct: ['storeId'],
+    });
+    
+    if (storesInBatch.length === 0) {
+      throw new AppError('No stores found in this batch', 400);
+    }
+    
+    const storeIds = storesInBatch.map(r => r.storeId);
+    
+    // Create/update extensions for all stores in parallel
+    const extensions = await Promise.all(
+      storeIds.map(storeId =>
+        prisma.batchDeadlineExtension.upsert({
+          where: { batchId_storeId: { batchId, storeId } },
+          update: { newDeadline: deadlineDate, grantedBy: req.user.id, grantedAt: new Date(), note: note || null },
+          create: { batchId, storeId, newDeadline: deadlineDate, grantedBy: req.user.id, note: note || null },
+        })
+      )
+    );
+    
+    await createAuditLog({
+      userId: req.user.id,
+      action: 'GRANT_BULK_STORE_EXTENSION',
+      entityType: 'UPLOAD_BATCH',
+      entityId: batchId,
+      metadata: { storeCount: storeIds.length, newDeadline, note },
+    });
+    
+    // Invalidate all affected caches
+    sInvalidate('admin:batches');
+    storeIds.forEach(sid => {
+      sInvalidate(`store:dashboard:${sid}`, `store:notifications:${sid}`);
+    });
+    
+    res.json({
+      message: `Extension granted to ${extensions.length} store(s)`,
+      count: extensions.length,
+      newDeadline: deadlineDate,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getBatchExport(req, res, next) {
   try {
     const batchId = requireId(req.params.batchId, 'batchId');

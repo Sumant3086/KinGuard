@@ -7,6 +7,7 @@ import { sGet, sSet, sInvalidate } from '../services/serverCache.js';
 import { VALID_SHRINKAGE_CATEGORIES } from '../utils/shrinkageCategories.js';
 import { computeDifference } from '../utils/inventoryMath.js';
 import { buildInventoryWorkbook } from '../utils/excelExport.js';
+import { getTodayInKinshasa as _getTodayInKinshasa, isYesterdayInKinshasa, isTodayInKinshasa, getNowInKinshasa, formatKinshasaDate } from '../utils/dateHelpers.js';
 
 const EMPTY_STATS = { totalItems: 0, pendingItems: 0, submittedItems: 0, matchedItems: 0, shortageItems: 0, excessItems: 0 };
 
@@ -371,19 +372,26 @@ export async function submitInventory(req, res, next) {
     });
     if (!batchForDeadline) throw new AppError('This inventory cycle was not found', 404);
 
-    // NEW: Store Manager can only submit TODAY's inventory cycle
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Store Manager can submit for TODAY or YESTERDAY (if deadline extended)
+    // All date comparisons use Kinshasa timezone (CAT, UTC+2)
     const cycleDate = new Date(batchForDeadline.inventoryDate);
     cycleDate.setHours(0, 0, 0, 0);
     
-    if (cycleDate.getTime() !== today.getTime()) {
-      throw new AppError('You can only submit inventory for today\'s date. This cycle is scheduled for ' + cycleDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), 403);
+    const isCycleToday = isTodayInKinshasa(cycleDate);
+    const isCycleYesterday = isYesterdayInKinshasa(cycleDate);
+    
+    if (!isCycleToday && !isCycleYesterday) {
+      throw new AppError(
+        `You can only submit inventory for today's or yesterday's cycle (if extended). This cycle is scheduled for ${formatKinshasaDate(cycleDate)}`,
+        403
+      );
     }
     
+    // Check deadline (using Kinshasa timezone)
     if (batchForDeadline.submissionDeadline) {
       const deadline = effectiveDeadline(batchForDeadline);
-      if (new Date() > new Date(deadline)) {
+      const now = getNowInKinshasa();
+      if (now > new Date(deadline)) {
         throw new AppError('This cycle is now closed — the submission deadline has passed. Contact your administrator if you need an extension', 403);
       }
     }

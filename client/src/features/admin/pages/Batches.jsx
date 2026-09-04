@@ -113,24 +113,19 @@ export default function Batches() {
     if (!extStoreId || !extDeadline) { toast.warning('Please select a store and a deadline'); return; }
     setSavingExt(true);
     try {
+      const newDeadline = new Date(extDeadline).toISOString();
+      
       if (extStoreId === 'ALL_STORES') {
-        // Grant extension to all stores
-        const newDeadline = new Date(extDeadline).toISOString();
-        await Promise.all(
-          stores.map(store => 
-            adminApi.grantStoreExtension({
-              batchId: extendModal.batchId,
-              storeId: store.id,
-              newDeadline,
-              note: extNote || undefined
-            })
-          )
-        );
-        toast.success(`Extension granted to all ${stores.length} stores`);
+        // Grant extension to all stores using bulk API
+        await adminApi.grantBulkStoreExtension({
+          batchId: extendModal.batchId,
+          newDeadline,
+          note: extNote || undefined
+        });
+        toast.success('Extension granted to all stores in this batch');
       } else {
         // Grant extension to single store
         const storeId = parseInt(extStoreId);
-        const newDeadline = new Date(extDeadline).toISOString();
         await adminApi.grantStoreExtension({ batchId: extendModal.batchId, storeId, newDeadline, note: extNote || undefined });
         // Optimistic update — add/replace the extension in local state
         setBatches(prev => prev.map(b => {

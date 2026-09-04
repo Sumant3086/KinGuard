@@ -99,6 +99,7 @@ router.patch('/batches/:id', adminController.updateBatch);
 router.post('/batches/:id/close', adminController.closeBatch);
 router.delete('/batches/:id', adminController.deleteBatch);
 router.post('/batches/extend', adminController.grantStoreExtension);
+router.post('/batches/extend-all', adminController.grantBulkStoreExtension);
 router.post('/batches/:id/unlock-store', adminController.unlockStoreForBatch);
 router.get('/batches/:batchId/export',     adminController.getBatchExport);
 router.get('/batches/:batchId/export-pdf', adminController.downloadBatchExportPDF);

@@ -205,6 +205,12 @@ export async function grantStoreExtension(payload) {
   return data;
 }
 
+export async function grantBulkStoreExtension(payload) {
+  const { data } = await client.post('/admin/batches/extend-all', payload);
+  cacheInvalidate('admin:batches-client');
+  return data;
+}
+
 export async function unlockStoreForBatch(batchId, storeId) {
   const { data } = await client.post(`/admin/batches/${batchId}/unlock-store`, { storeId });
   cacheInvalidate('admin:dashboard', 'admin:batches-client');
