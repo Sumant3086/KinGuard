@@ -482,7 +482,7 @@ export default function Inventory() {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="ov-sys">System Stock (override)</label>
-                  <input id="ov-sys" type="number" step="0.0001" min="0" value={overrideForm.systemQuantity} onChange={e => setOverrideForm(f => ({ ...f, systemQuantity: e.target.value }))} placeholder="Leave blank to clear" disabled={overriding} />
+                  <input id="ov-sys" type="number" step="0.0001" value={overrideForm.systemQuantity} onChange={e => setOverrideForm(f => ({ ...f, systemQuantity: e.target.value }))} placeholder="Leave blank to clear" disabled={overriding} />
                 </div>
                 <div className="form-group">
                   <label htmlFor="ov-qty">Physical Stock (override)</label>

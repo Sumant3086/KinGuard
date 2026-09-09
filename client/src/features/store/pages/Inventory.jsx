@@ -769,7 +769,6 @@ export default function StoreInventory() {
                         type="number"
                         inputMode="decimal"
                         step="0.01"
-                        min="0"
                         value={getFieldValue(record, 'systemQuantity')}
                         onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
                         placeholder="Enter system stock…"
@@ -976,7 +975,6 @@ export default function StoreInventory() {
                             type="number"
                             inputMode="decimal"
                             step="0.01"
-                            min="0"
                             value={getFieldValue(record, 'systemQuantity')}
                             onChange={e => updateField(record.id, 'systemQuantity', e.target.value)}
                             placeholder="—"

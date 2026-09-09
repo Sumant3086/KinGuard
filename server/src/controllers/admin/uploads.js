@@ -264,10 +264,10 @@ export async function uploadInventory(req, res, next) {
         // System quantity is optional. A blank cell stays blank (null) rather than
         // becoming 0, so the store manager is asked to supply the figure instead of
         // being shown a confident zero nobody entered. An explicit 0 in the file is a
-        // real figure and is kept as 0.
+        // real figure and is kept as 0. Negative values are allowed (e.g., for returns/adjustments).
         const qtyProvided = rawQty !== null && rawQty !== undefined && String(rawQty).trim() !== '';
         const qty = qtyProvided ? parseFloat(rawQty) : null;
-        if (qtyProvided && (isNaN(qty) || qty < 0)) {
+        if (qtyProvided && isNaN(qty)) {
           errors.push({ row: rowNum, error: 'Invalid System Quantity' });
           continue;
         }
