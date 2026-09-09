@@ -215,13 +215,18 @@ describe('store manager record scoping', () => {
       expect(data.difference).toBeNull();
     });
 
-    it('rejects a negative system quantity', async () => {
+    it('allows a negative system quantity', async () => {
+      prismaMock.inventoryRecord.findFirst.mockResolvedValue(openRecord({ systemQuantity: 10 }));
+      prismaMock.inventoryRecord.update.mockResolvedValue({ id: 77, systemQuantity: -1 });
+
       const { err } = await callAndCatch(store.updateInventoryRecord, {
         user: MANAGER, params: { id: '77' }, body: { systemQuantity: -1 },
       });
 
-      expect(err?.statusCode).toBe(400);
-      expect(prismaMock.inventoryRecord.findFirst).not.toHaveBeenCalled();
+      expect(err).toBeNull();
+      expect(prismaMock.inventoryRecord.update).toHaveBeenCalled();
+      const data = prismaMock.inventoryRecord.update.mock.calls[0][0].data;
+      expect(data.systemQuantity).toBe(-1);
     });
 
     it('leaves the system quantity untouched when the field is not sent', async () => {
