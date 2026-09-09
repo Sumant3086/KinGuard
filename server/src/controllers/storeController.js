@@ -260,7 +260,7 @@ export async function updateInventoryRecord(req, res, next) {
     }
     if (systemProvided && systemQuantity !== null) {
       const qty = parseFloat(systemQuantity);
-      if (isNaN(qty) || qty < 0) throw new AppError('System quantity must be zero or a positive number', 400);
+      if (isNaN(qty)) throw new AppError('System quantity must be a valid number', 400);
     }
     if (shrinkageCategory !== undefined && shrinkageCategory && !VALID_SHRINKAGE_CATEGORIES.has(shrinkageCategory)) {
       throw new AppError('Invalid shrinkage category', 400);
